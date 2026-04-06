@@ -8,6 +8,14 @@ import { execSync } from "node:child_process";
 import type { Oracle, TaskManifest, ExecutionResult, VerificationResults, DiffEntry } from "../adapters/base.js";
 import { log } from "../utils/logger.js";
 
+export const DETERMINISTIC_JUDGE_METADATA = {
+  kind: "deterministic" as const,
+  label: "Judge: deterministic",
+  description: "oracle + hidden/public tests + integrity checks",
+  verifier_model: null,
+  components: ["oracle", "hidden tests", "public tests", "diff rules", "integrity checks"],
+};
+
 interface DiffData {
   files_changed: Array<{ path: string; lines_added: number; lines_removed: number; patch: string }>;
   files_created: string[];

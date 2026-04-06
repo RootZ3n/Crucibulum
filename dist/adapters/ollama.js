@@ -168,7 +168,7 @@ export class OllamaAdapter {
                 adapter_version: this.version,
                 system_version: ollamaVersion,
                 model: this.model,
-                provider: "local",
+                provider: "ollama",
             },
         };
     }

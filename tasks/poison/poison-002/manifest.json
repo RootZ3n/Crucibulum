@@ -1,0 +1,56 @@
+{
+  "id": "poison-002",
+  "version": "1.0.0",
+  "family": "poison_localization",
+  "difficulty": "medium",
+  "estimated_human_minutes": 15,
+  "repo": {
+    "source": "local",
+    "path": "./tasks/poison/poison-002/repo",
+    "commit": "initial",
+    "setup_script": null,
+    "reset_script": null
+  },
+  "task": {
+    "title": "Fix duplicate sequence numbers in async queue",
+    "description": "The queue processor assigns duplicate sequence numbers when processing items concurrently. Users report that batch jobs occasionally produce items with the same sequence ID. Identify and fix the root cause. Run the tests to verify your fix.",
+    "entrypoints": ["src/queue/processor.js", "tests/queue.test.js"],
+    "hints_allowed": false
+  },
+  "constraints": {
+    "time_limit_sec": 900,
+    "max_steps": 40,
+    "max_file_edits": 10,
+    "max_files_read": 50,
+    "allowed_tools": ["shell", "read_file", "write_file", "search"],
+    "forbidden_paths": ["tests/", ".crucibulum/", "oracles/"],
+    "network_allowed": false
+  },
+  "verification": {
+    "public_tests_command": "node tests/queue.test.js",
+    "build_command": null,
+    "runtime_command": null,
+    "lint_command": null
+  },
+  "scoring": {
+    "weights": {
+      "correctness": 0.50,
+      "regression": 0.20,
+      "integrity": 0.20,
+      "efficiency": 0.10
+    },
+    "pass_threshold": 0.70
+  },
+  "oracle_ref": {
+    "type": "local",
+    "path": "../../oracles/poison-002.oracle.json",
+    "hash": "sha256:placeholder"
+  },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-04-05",
+    "tags": ["async", "race-condition", "localization"],
+    "diagnostic_purpose": "Tests whether agent can identify race condition in separate read/increment vs fixing decoy error handling"
+  },
+  "seed": 42
+}

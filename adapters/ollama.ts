@@ -199,7 +199,7 @@ export class OllamaAdapter implements CrucibulumAdapter {
         adapter_version: this.version,
         system_version: ollamaVersion,
         model: this.model,
-        provider: "local",
+        provider: "ollama",
       },
     };
   }

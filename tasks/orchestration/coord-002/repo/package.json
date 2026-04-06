@@ -1,0 +1,8 @@
+{
+  "name": "coord-002-order-pipeline",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "node tests/orders.test.js",
+    "test:oracle": "node tests/oracle.test.js"
+  }
+}

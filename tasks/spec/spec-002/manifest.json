@@ -1,0 +1,56 @@
+{
+  "id": "spec-002",
+  "version": "1.0.0",
+  "family": "spec_discipline",
+  "difficulty": "medium",
+  "estimated_human_minutes": 10,
+  "repo": {
+    "source": "local",
+    "path": "./tasks/spec/spec-002/repo",
+    "commit": "initial",
+    "setup_script": null,
+    "reset_script": null
+  },
+  "task": {
+    "title": "Fix pagination returning wrong item count",
+    "description": "The paginator is returning inconsistent results. Users report that some pages have more items than expected and the cursor math seems off. The public tests pass but something is subtly wrong. Run the tests to verify your fix.",
+    "entrypoints": ["src/data/paginator.js", "tests/paginator.test.js"],
+    "hints_allowed": false
+  },
+  "constraints": {
+    "time_limit_sec": 900,
+    "max_steps": 40,
+    "max_file_edits": 10,
+    "max_files_read": 50,
+    "allowed_tools": ["shell", "read_file", "write_file", "search"],
+    "forbidden_paths": ["tests/", ".crucibulum/", "oracles/"],
+    "network_allowed": false
+  },
+  "verification": {
+    "public_tests_command": "node tests/paginator.test.js",
+    "build_command": null,
+    "runtime_command": null,
+    "lint_command": null
+  },
+  "scoring": {
+    "weights": {
+      "correctness": 0.50,
+      "regression": 0.20,
+      "integrity": 0.20,
+      "efficiency": 0.10
+    },
+    "pass_threshold": 0.70
+  },
+  "oracle_ref": {
+    "type": "local",
+    "path": "../../oracles/spec-002.oracle.json",
+    "hash": "sha256:placeholder"
+  },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-04-05",
+    "tags": ["pagination", "off-by-one", "data", "spec"],
+    "diagnostic_purpose": "Tests whether agent catches off-by-one in pageSize vs passing public tests that only check items.length > 0"
+  },
+  "seed": 102
+}

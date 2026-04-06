@@ -1,0 +1,8 @@
+{
+  "name": "poison-006-regex-backtracking",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "node tests/validator.test.js",
+    "test:oracle": "node tests/oracle.test.js"
+  }
+}

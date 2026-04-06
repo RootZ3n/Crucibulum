@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CrucibulumLeaderboardSubmission",
+  "type": "object",
+  "required": ["submission_id", "submitted_at", "agent", "suite", "tasks_attempted", "tasks_passed", "scores", "performance"],
+  "properties": {
+    "submission_id": { "type": "string" },
+    "submitted_at": { "type": "string", "format": "date-time" },
+    "bundle_hashes": { "type": "array", "items": { "type": "string" } },
+    "crucibulum_version": { "type": "string" },
+    "agent": {
+      "type": "object",
+      "required": ["adapter", "model"],
+      "properties": {
+        "adapter": { "type": "string" },
+        "model": { "type": "string" },
+        "system": { "type": "string" },
+        "system_version": { "type": "string" }
+      }
+    },
+    "suite": { "type": "string" },
+    "tasks_attempted": { "type": "integer" },
+    "tasks_passed": { "type": "integer" },
+    "scores": {
+      "type": "object",
+      "properties": {
+        "total": { "type": "number" },
+        "correctness": { "type": "number" },
+        "regression": { "type": "number" },
+        "integrity": { "type": "number" },
+        "efficiency": { "type": "number" }
+      }
+    },
+    "pass_at": { "type": "object", "additionalProperties": { "type": "boolean" } },
+    "failure_taxonomy": { "type": "object", "additionalProperties": { "type": "integer" } },
+    "performance": {
+      "type": "object",
+      "properties": {
+        "median_time_sec": { "type": "number" },
+        "p90_time_sec": { "type": "number" },
+        "median_steps": { "type": "integer" },
+        "total_cost_usd": { "type": "number" }
+      }
+    },
+    "verified": { "type": "boolean" }
+  }
+}

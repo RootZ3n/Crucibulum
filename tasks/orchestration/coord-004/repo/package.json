@@ -1,0 +1,8 @@
+{
+  "name": "coord-004-search-performance",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "node tests/search.test.js",
+    "test:oracle": "node tests/oracle.test.js"
+  }
+}

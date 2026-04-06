@@ -14,6 +14,7 @@ import { sha256Object } from "../utils/hashing.js";
 import { hashManifest } from "./manifest.js";
 import { estimateCost } from "../utils/cost.js";
 import { log } from "../utils/logger.js";
+import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
 
 export interface BundleBuildInput {
   manifest: TaskManifest;
@@ -108,7 +109,40 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
       estimated_cost_usd: costUsd,
       provider_cost_note: provider === "local" ? "local inference — no API cost" : `via ${provider}`,
     },
+    judge: DETERMINISTIC_JUDGE_METADATA,
+    trust: {
+      rubric_hidden: true,
+      narration_ignored: true,
+      state_based_scoring: true,
+      bundle_verified: true,
+    },
     diagnosis: judgeResult.diagnosis,
+    integrations: {
+      veritor: {
+        contract_version: "1.0.0",
+        consumable: true,
+      },
+      paedagogus: {
+        contract_version: "1.0.0",
+        consumable: true,
+        routing_signals: {
+          task_family: manifest.family,
+          difficulty: manifest.difficulty,
+          provider,
+          adapter: adapter.id,
+          score: Math.round(totalScore * 100) / 100,
+          pass: passed,
+          failure_mode: judgeResult.diagnosis.failure_mode,
+        },
+      },
+      crucible: {
+        profile_id: null,
+        benchmark_score: null,
+        benchmark_label: null,
+        execution_score: Math.round(totalScore * 100),
+        divergence_note: null,
+      },
+    },
   };
 
   // Compute and set bundle hash

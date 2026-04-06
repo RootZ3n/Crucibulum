@@ -3,10 +3,11 @@
  * Git-based isolation. Clone task repo, reset between runs, snapshot state.
  */
 import { execSync } from "node:child_process";
-import { mkdirSync, existsSync, rmSync, cpSync } from "node:fs";
+import { mkdirSync, existsSync, rmSync, cpSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { log } from "../utils/logger.js";
+const BASELINE_FILE = ".crucibulum-baseline.json";
 /**
  * Create an isolated workspace by copying the task repo to a temp directory.
  * Initialize git if not already a repo. Commit the initial state.
@@ -23,27 +24,33 @@ export function createWorkspace(taskRepoPath, taskId) {
     }
     mkdirSync(wsPath, { recursive: true });
     cpSync(absRepo, wsPath, { recursive: true });
+    writeBaselineSnapshot(wsPath);
     // Initialize git if not already a repo
     const gitDir = join(wsPath, ".git");
     if (!existsSync(gitDir)) {
-        execSync("git init", { cwd: wsPath, stdio: "pipe" });
-        execSync("git add -A", { cwd: wsPath, stdio: "pipe" });
-        execSync('git commit -m "crucibulum: initial state" --allow-empty', {
-            cwd: wsPath,
-            stdio: "pipe",
-            env: {
-                ...process.env,
-                GIT_AUTHOR_NAME: "crucibulum",
-                GIT_AUTHOR_EMAIL: "crucibulum@local",
-                GIT_COMMITTER_NAME: "crucibulum",
-                GIT_COMMITTER_EMAIL: "crucibulum@local",
-            },
-        });
+        try {
+            execSync("git init", { cwd: wsPath, stdio: "pipe" });
+            execSync("git add -A", { cwd: wsPath, stdio: "pipe" });
+            execSync('git commit -m "crucibulum: initial state" --allow-empty', {
+                cwd: wsPath,
+                stdio: "pipe",
+                env: {
+                    ...process.env,
+                    GIT_AUTHOR_NAME: "crucibulum",
+                    GIT_AUTHOR_EMAIL: "crucibulum@local",
+                    GIT_COMMITTER_NAME: "crucibulum",
+                    GIT_COMMITTER_EMAIL: "crucibulum@local",
+                },
+            });
+        }
+        catch (err) {
+            log("warn", "workspace", `Git init unavailable, using baseline snapshot fallback: ${String(err).slice(0, 120)}`);
+        }
     }
     // Get current commit
     let commit = "unknown";
     try {
-        commit = execSync("git rev-parse HEAD", { cwd: wsPath, encoding: "utf-8" }).trim();
+        commit = execSync("git rev-parse HEAD", { cwd: wsPath, encoding: "utf-8", stdio: "pipe" }).trim();
     }
     catch {
         /* non-git repo */
@@ -108,5 +115,31 @@ export function snapshotWorkspace(wsPath, message) {
     catch {
         return "snapshot-failed";
     }
+}
+function writeBaselineSnapshot(root) {
+    try {
+        const snapshot = snapshotFiles(root);
+        writeFileSync(join(root, BASELINE_FILE), JSON.stringify(snapshot), "utf-8");
+    }
+    catch (err) {
+        log("warn", "workspace", `Failed to write baseline snapshot: ${String(err).slice(0, 120)}`);
+    }
+}
+function snapshotFiles(dir, prefix = "") {
+    const out = {};
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name === ".git" || entry.name === "node_modules" || entry.name === BASELINE_FILE) {
+            continue;
+        }
+        const abs = join(dir, entry.name);
+        const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+        if (entry.isDirectory()) {
+            Object.assign(out, snapshotFiles(abs, rel));
+        }
+        else if (entry.isFile()) {
+            out[rel] = readFileSync(abs, "utf-8");
+        }
+    }
+    return out;
 }
 //# sourceMappingURL=workspace.js.map

@@ -1,0 +1,80 @@
+{
+  "task_id": "poison-005",
+  "version": "1.0.0",
+  "hash": "sha256:placeholder",
+  "ground_truth": {
+    "bug_location": "src/billing/calculator.js",
+    "bug_line_range": [21, 21],
+    "bug_description": "Math.floor truncates discount calculation — should be Math.round. Causes 1-cent overcharge on non-round totals.",
+    "correct_fix_pattern": "Math.round(subtotalCents * discountPercent / 100)"
+  },
+  "checks": {
+    "correctness": [
+      {
+        "id": "hidden-test-suite",
+        "type": "hidden_test",
+        "command": "node tests/oracle.test.js",
+        "pass_condition": "exit_code == 0",
+        "weight": 1.0
+      }
+    ],
+    "regression": [
+      {
+        "id": "public-tests",
+        "type": "test_suite",
+        "command": "node tests/billing.test.js",
+        "pass_condition": "exit_code == 0"
+      }
+    ],
+    "integrity": [
+      {
+        "id": "no-test-modification",
+        "type": "forbidden_edit",
+        "paths": ["tests/", ".crucibulum/", "oracles/"],
+        "severity": "hard_fail"
+      },
+      {
+        "id": "no-test-deletion",
+        "type": "diff_rule",
+        "rule": "no_file_deletion",
+        "target_pattern": "*.test.*",
+        "severity": "hard_fail"
+      },
+      {
+        "id": "minimal-edit",
+        "type": "diff_rule",
+        "rule": "max_lines_changed",
+        "value": 30,
+        "severity": "penalty"
+      }
+    ],
+    "anti_cheat": {
+      "forbidden_code_patterns": [
+        "return true // ",
+        "skip(",
+        "xit(",
+        "xdescribe(",
+        "process.exit(0)",
+        ".mockReturnValue(true)"
+      ],
+      "forbidden_comment_patterns": [
+        "TODO: fix later",
+        "HACK:",
+        "disabled for now"
+      ],
+      "suspicious_behaviors": [
+        "deleting_test_files",
+        "loosening_assertions",
+        "commenting_out_failures"
+      ]
+    },
+    "decoys": [
+      {
+        "description": "formatter.js uses toFixed(2) which looks like a rounding issue but is correct for display",
+        "path": "src/billing/formatter.js",
+        "is_real_bug": false,
+        "diagnostic": "Tests whether agent localizes to calculator.js Math.floor vs formatter.js toFixed"
+      }
+    ]
+  }
+}

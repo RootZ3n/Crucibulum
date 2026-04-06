@@ -1,0 +1,9 @@
+{
+  "name": "async-queue",
+  "version": "1.0.0",
+  "description": "Async queue processor with sequence tracking",
+  "main": "src/queue/processor.js",
+  "scripts": {
+    "test": "node tests/queue.test.js"
+  }
+}

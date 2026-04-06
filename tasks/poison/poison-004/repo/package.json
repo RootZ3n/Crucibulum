@@ -1,0 +1,9 @@
+{
+  "name": "config-loader",
+  "version": "1.0.0",
+  "description": "Async config loader with file parsing",
+  "main": "src/config/loader.js",
+  "scripts": {
+    "test": "node tests/config.test.js"
+  }
+}

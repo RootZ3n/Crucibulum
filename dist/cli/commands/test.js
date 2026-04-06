@@ -5,6 +5,9 @@
 import { runTask } from "../../core/runner.js";
 import { storeBundle } from "../../core/bundle.js";
 import { OllamaAdapter } from "../../adapters/ollama.js";
+import { OpenRouterAdapter } from "../../adapters/openrouter.js";
+import { OpenClawAdapter } from "../../adapters/openclaw.js";
+import { ClaudeCodeAdapter } from "../../adapters/claudecode.js";
 import { log } from "../../utils/logger.js";
 import { formatDuration } from "../../utils/timing.js";
 function parseArgs(args) {
@@ -58,8 +61,21 @@ function resolveAdapter(modelSpec) {
     switch (adapterName) {
         case "ollama":
             return { adapter: new OllamaAdapter(), model, adapterConfig: { model } };
+        case "openai":
+            return { adapter: new OpenRouterAdapter({
+                    id: "openai", name: "OpenAI",
+                    baseUrl: "https://api.openai.com/v1",
+                    apiKeyEnv: "OPENAI_API_KEY",
+                }), model, adapterConfig: { model } };
+        case "openrouter":
+            return { adapter: new OpenRouterAdapter(), model, adapterConfig: { model } };
+        case "openclaw":
+            return { adapter: new OpenClawAdapter(), model: model || "default", adapterConfig: { model: model || undefined } };
+        case "claudecode":
+        case "claude":
+            return { adapter: new ClaudeCodeAdapter(), model, adapterConfig: { model: model || undefined, binary_path: undefined } };
         default:
-            console.error(`Unknown adapter: ${adapterName}. Available: ollama`);
+            console.error(`Unknown adapter: ${adapterName}. Available: ollama, openai, openrouter, openclaw, claudecode`);
             process.exit(5);
     }
 }

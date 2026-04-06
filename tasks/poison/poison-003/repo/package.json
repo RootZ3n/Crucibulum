@@ -1,0 +1,9 @@
+{
+  "name": "data-sync",
+  "version": "1.0.0",
+  "description": "Data synchronization with validation and persistence",
+  "main": "src/data/sync.js",
+  "scripts": {
+    "test": "node tests/sync.test.js"
+  }
+}

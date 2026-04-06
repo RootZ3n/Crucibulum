@@ -29,12 +29,26 @@ async function main(): Promise<void> {
       await verifyCommand(args.slice(1));
       break;
     }
-    case "compare":
-    case "replay":
-    case "leaderboard":
-      console.log(`Command '${command}' is planned for V1.1`);
-      process.exit(0);
+    case "compare": {
+      const { compareCommand } = await import("./commands/compare.js");
+      await compareCommand(args.slice(1));
       break;
+    }
+    case "leaderboard": {
+      const { leaderboardCommand } = await import("./commands/leaderboard.js");
+      await leaderboardCommand(args.slice(1));
+      break;
+    }
+    case "replay": {
+      const { replayCommand } = await import("./commands/replay.js");
+      await replayCommand(args.slice(1));
+      break;
+    }
+    case "doctor": {
+      const { doctorCommand } = await import("./commands/doctor.js");
+      await doctorCommand(args.slice(1));
+      break;
+    }
     default:
       console.log(`Crucibulum — Execution-Based AI Agent Evaluation
 
@@ -43,8 +57,10 @@ Usage:
   crucibulum list    tasks [--family poison|spec|orchestration]
   crucibulum list    runs [--task <taskId>]
   crucibulum verify  <bundle_id>
-  crucibulum compare --models <a>,<b> --task <taskId>
+  crucibulum compare --models <a>,<b> --task <taskId> [--runs N]
+  crucibulum leaderboard [show|submit]
   crucibulum replay  <bundle_id>
+  crucibulum doctor
 
 Options:
   --verbose    Show debug output

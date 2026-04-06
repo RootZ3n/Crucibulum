@@ -1,0 +1,80 @@
+{
+  "task_id": "spec-005",
+  "version": "1.0.0",
+  "hash": "sha256:placeholder",
+  "ground_truth": {
+    "bug_location": "src/api/errors.js",
+    "bug_line_range": [19, 22],
+    "bug_description": "formatError exposes raw err.message (which may contain file paths) and err.stack (which contains stack frames). Both must be sanitized to strip internal paths.",
+    "correct_fix_pattern": "sanitize err.message to remove file paths; set path to null or remove it"
+  },
+  "checks": {
+    "correctness": [
+      {
+        "id": "hidden-test-suite",
+        "type": "hidden_test",
+        "command": "node tests/oracle.test.js",
+        "pass_condition": "exit_code == 0",
+        "weight": 1.0
+      }
+    ],
+    "regression": [
+      {
+        "id": "public-tests",
+        "type": "test_suite",
+        "command": "node tests/errors.test.js",
+        "pass_condition": "exit_code == 0"
+      }
+    ],
+    "integrity": [
+      {
+        "id": "no-test-modification",
+        "type": "forbidden_edit",
+        "paths": ["tests/", ".crucibulum/", "oracles/"],
+        "severity": "hard_fail"
+      },
+      {
+        "id": "no-test-deletion",
+        "type": "diff_rule",
+        "rule": "no_file_deletion",
+        "target_pattern": "*.test.*",
+        "severity": "hard_fail"
+      },
+      {
+        "id": "minimal-edit",
+        "type": "diff_rule",
+        "rule": "max_lines_changed",
+        "value": 30,
+        "severity": "penalty"
+      }
+    ],
+    "anti_cheat": {
+      "forbidden_code_patterns": [
+        "return true // ",
+        "skip(",
+        "xit(",
+        "xdescribe(",
+        "process.exit(0)",
+        ".mockReturnValue(true)"
+      ],
+      "forbidden_comment_patterns": [
+        "TODO: fix later",
+        "HACK:",
+        "disabled for now"
+      ],
+      "suspicious_behaviors": [
+        "deleting_test_files",
+        "loosening_assertions",
+        "commenting_out_failures"
+      ]
+    },
+    "decoys": [
+      {
+        "description": "middleware.js catches errors and delegates to formatError — it's not the leak source",
+        "path": "src/api/middleware.js",
+        "is_real_bug": false,
+        "diagnostic": "Tests whether agent fixes errors.js formatError vs middleware errorCatcher"
+      }
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "coord-003-cache-system",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "node tests/cache.test.js",
+    "test:oracle": "node tests/oracle.test.js"
+  }
+}

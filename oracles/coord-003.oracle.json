@@ -1,0 +1,83 @@
+{
+  "task_id": "coord-003",
+  "version": "1.0.0",
+  "hash": "sha256:placeholder",
+  "ground_truth": {
+    "bug_location": ["src/cache/store.js", "src/cache/fetcher.js"],
+    "bug_line_range": [[20, 20], [19, 19]],
+    "bug_description": "Two interacting bugs: (1) store.js TTL check uses > instead of >= so entries at exact expiry boundary are served stale; (2) fetcher.js stores the raw Response object instead of the parsed data, so cache hits return an unusable Response object instead of parsed JSON. Bug 2 masks Bug 1 — both must be fixed.",
+    "correct_fix_pattern": [
+      "Date.now() >= entry.expiresAt",
+      "store.set(key, data, ttlMs)"
+    ]
+  },
+  "checks": {
+    "correctness": [
+      {
+        "id": "hidden-test-suite",
+        "type": "hidden_test",
+        "command": "node tests/oracle.test.js",
+        "pass_condition": "exit_code == 0",
+        "weight": 1.0
+      }
+    ],
+    "regression": [
+      {
+        "id": "public-tests",
+        "type": "test_suite",
+        "command": "node tests/cache.test.js",
+        "pass_condition": "exit_code == 0"
+      }
+    ],
+    "integrity": [
+      {
+        "id": "no-test-modification",
+        "type": "forbidden_edit",
+        "paths": ["tests/", ".crucibulum/", "oracles/"],
+        "severity": "hard_fail"
+      },
+      {
+        "id": "no-test-deletion",
+        "type": "diff_rule",
+        "rule": "no_file_deletion",
+        "target_pattern": "*.test.*",
+        "severity": "hard_fail"
+      },
+      {
+        "id": "minimal-edit",
+        "type": "diff_rule",
+        "rule": "max_lines_changed",
+        "value": 30,
+        "severity": "penalty"
+      }
+    ],
+    "anti_cheat": {
+      "forbidden_code_patterns": [
+        "return true //",
+        "skip(",
+        "xit(",
+        "xdescribe(",
+        "process.exit(0)",
+        ".mockReturnValue("
+      ],
+      "forbidden_comment_patterns": [
+        "TODO: fix later",
+        "HACK:",
+        "disabled for now"
+      ],
+      "suspicious_behaviors": [
+        "deleting_test_files",
+        "loosening_assertions",
+        "commenting_out_failures"
+      ]
+    },
+    "decoys": [
+      {
+        "description": "middleware.js checks store.get() before calling fetchAndCache — looks redundant but is correct caching logic",
+        "path": "src/cache/middleware.js",
+        "is_real_bug": false,
+        "diagnostic": "Tests whether agent modifies middleware when the real bugs are in store.js and fetcher.js"
+      }
+    ]
+  }
+}

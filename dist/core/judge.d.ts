@@ -4,6 +4,13 @@
  * Scoring order: Integrity → Correctness → Regression → Efficiency
  */
 import type { Oracle, TaskManifest, ExecutionResult, VerificationResults } from "../adapters/base.js";
+export declare const DETERMINISTIC_JUDGE_METADATA: {
+    kind: "deterministic";
+    label: string;
+    description: string;
+    verifier_model: null;
+    components: string[];
+};
 interface DiffData {
     files_changed: Array<{
         path: string;

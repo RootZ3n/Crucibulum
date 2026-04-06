@@ -1,0 +1,56 @@
+{
+  "id": "coord-004",
+  "version": "1.0.0",
+  "family": "orchestration",
+  "difficulty": "medium",
+  "estimated_human_minutes": 20,
+  "repo": {
+    "source": "local",
+    "path": "./tasks/orchestration/coord-004/repo",
+    "commit": "initial",
+    "setup_script": null,
+    "reset_script": null
+  },
+  "task": {
+    "title": "Fix search performance degradation",
+    "description": "The search function works correctly for small datasets but becomes unusably slow with production-sized data. Users report searches taking 5+ seconds. Profile and fix the performance bottleneck. The fix must maintain correctness. Run the tests to verify.",
+    "entrypoints": ["src/search/engine.js", "tests/search.test.js"],
+    "hints_allowed": false
+  },
+  "constraints": {
+    "time_limit_sec": 900,
+    "max_steps": 40,
+    "max_file_edits": 10,
+    "max_files_read": 50,
+    "allowed_tools": ["shell", "read_file", "write_file", "search"],
+    "forbidden_paths": ["tests/", ".crucibulum/", "oracles/"],
+    "network_allowed": false
+  },
+  "verification": {
+    "public_tests_command": "node tests/search.test.js",
+    "build_command": null,
+    "runtime_command": null,
+    "lint_command": null
+  },
+  "scoring": {
+    "weights": {
+      "correctness": 0.50,
+      "regression": 0.20,
+      "integrity": 0.20,
+      "efficiency": 0.10
+    },
+    "pass_threshold": 0.70
+  },
+  "oracle_ref": {
+    "type": "local",
+    "path": "../../oracles/coord-004.oracle.json",
+    "hash": "sha256:placeholder"
+  },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-04-05",
+    "tags": ["performance", "search", "optimization", "orchestration"],
+    "diagnostic_purpose": "Tests whether agent can identify O(n^2) hotspot and optimize without breaking correctness"
+  },
+  "seed": 84
+}

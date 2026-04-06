@@ -1,0 +1,43 @@
+/**
+ * Crucibulum — Leaderboard Aggregator
+ * Aggregates evidence bundles into leaderboard entries.
+ * Computes pass@k, failure taxonomy, performance metrics.
+ */
+import type { EvidenceBundle } from "../adapters/base.js";
+export interface LeaderboardEntry {
+    submission_id: string;
+    submitted_at: string;
+    bundle_hashes: string[];
+    crucibulum_version: string;
+    agent: {
+        adapter: string;
+        model: string;
+        system: string;
+        system_version: string;
+    };
+    suite: string;
+    tasks_attempted: number;
+    tasks_passed: number;
+    scores: {
+        total: number;
+        correctness: number;
+        regression: number;
+        integrity: number;
+        efficiency: number;
+    };
+    pass_at: Record<string, boolean>;
+    failure_taxonomy: Record<string, number>;
+    performance: {
+        median_time_sec: number;
+        p90_time_sec: number;
+        median_steps: number;
+        total_cost_usd: number;
+    };
+    verified: boolean;
+}
+export declare function loadBundles(): EvidenceBundle[];
+export declare function aggregateByModel(bundles: EvidenceBundle[]): Map<string, EvidenceBundle[]>;
+export declare function buildLeaderboardEntry(modelKey: string, bundles: EvidenceBundle[]): LeaderboardEntry;
+export declare function saveSubmission(entry: LeaderboardEntry): string;
+export declare function loadSubmissions(): LeaderboardEntry[];
+//# sourceMappingURL=aggregator.d.ts.map

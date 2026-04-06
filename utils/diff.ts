@@ -3,6 +3,9 @@
  */
 import { execSync } from "node:child_process";
 import { join } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+
+const BASELINE_FILE = ".crucibulum-baseline.json";
 
 export interface FileDiff {
   path: string;
@@ -18,7 +21,7 @@ export function getGitDiff(workspacePath: string): { files_changed: FileDiff[]; 
 
   try {
     // Get list of changed files
-    const statusRaw = execSync("git diff --name-status HEAD", { cwd: workspacePath, encoding: "utf-8" }).trim();
+    const statusRaw = execSync("git diff --name-status HEAD", { cwd: workspacePath, encoding: "utf-8", stdio: "pipe" }).trim();
     if (!statusRaw) return { files_changed, files_created, files_deleted };
 
     for (const line of statusRaw.split("\n")) {
@@ -34,7 +37,7 @@ export function getGitDiff(workspacePath: string): { files_changed: FileDiff[]; 
 
       // Get patch for this file
       try {
-        const patch = execSync(`git diff HEAD -- "${filePath}"`, { cwd: workspacePath, encoding: "utf-8" }).trim();
+        const patch = execSync(`git diff HEAD -- "${filePath}"`, { cwd: workspacePath, encoding: "utf-8", stdio: "pipe" }).trim();
         const added = (patch.match(/^\+[^+]/gm) ?? []).length;
         const removed = (patch.match(/^-[^-]/gm) ?? []).length;
         files_changed.push({ path: filePath, lines_added: added, lines_removed: removed, patch });
@@ -43,7 +46,7 @@ export function getGitDiff(workspacePath: string): { files_changed: FileDiff[]; 
       }
     }
   } catch {
-    // Not a git repo or no changes
+    return getSnapshotDiff(workspacePath);
   }
 
   return { files_changed, files_created, files_deleted };
@@ -56,4 +59,53 @@ export function getForbiddenPathsTouched(diff: { files_changed: FileDiff[]; file
     ...diff.files_deleted,
   ];
   return allPaths.filter(p => forbiddenPaths.some(fp => p.startsWith(fp)));
+}
+
+function getSnapshotDiff(workspacePath: string): { files_changed: FileDiff[]; files_created: string[]; files_deleted: string[] } {
+  const baselinePath = join(workspacePath, BASELINE_FILE);
+  if (!existsSync(baselinePath)) {
+    return { files_changed: [], files_created: [], files_deleted: [] };
+  }
+
+  const baseline = JSON.parse(readFileSync(baselinePath, "utf-8")) as Record<string, string>;
+  const current = snapshotFiles(workspacePath);
+  const files_changed: FileDiff[] = [];
+  const files_created: string[] = [];
+  const files_deleted: string[] = [];
+
+  const allPaths = new Set([...Object.keys(baseline), ...Object.keys(current)]);
+  for (const filePath of allPaths) {
+    const before = baseline[filePath];
+    const after = current[filePath];
+    if (before === after) continue;
+    if (before === undefined) files_created.push(filePath);
+    if (after === undefined) files_deleted.push(filePath);
+    const beforeLines = before ? before.split("\n").length : 0;
+    const afterLines = after ? after.split("\n").length : 0;
+    files_changed.push({
+      path: filePath,
+      lines_added: Math.max(afterLines - beforeLines, 0),
+      lines_removed: Math.max(beforeLines - afterLines, 0),
+      patch: after ?? "",
+    });
+  }
+
+  return { files_changed, files_created, files_deleted };
+}
+
+function snapshotFiles(dir: string, prefix: string = ""): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === ".git" || entry.name === "node_modules" || entry.name === BASELINE_FILE) {
+      continue;
+    }
+    const abs = join(dir, entry.name);
+    const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      Object.assign(out, snapshotFiles(abs, rel));
+    } else if (entry.isFile()) {
+      out[rel] = readFileSync(abs, "utf-8");
+    }
+  }
+  return out;
 }

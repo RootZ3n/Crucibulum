@@ -1,0 +1,8 @@
+{
+  "name": "poison-005-billing-rounding",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "node tests/billing.test.js",
+    "test:oracle": "node tests/oracle.test.js"
+  }
+}

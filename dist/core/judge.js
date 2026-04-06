@@ -5,6 +5,13 @@
  */
 import { execSync } from "node:child_process";
 import { log } from "../utils/logger.js";
+export const DETERMINISTIC_JUDGE_METADATA = {
+    kind: "deterministic",
+    label: "Judge: deterministic",
+    description: "oracle + hidden/public tests + integrity checks",
+    verifier_model: null,
+    components: ["oracle", "hidden tests", "public tests", "diff rules", "integrity checks"],
+};
 export function judge(manifest, oracle, diff, execution, workspacePath) {
     log("info", "judge", `Judging ${manifest.id}: ${diff.files_changed.length} files changed, ${execution.steps_used} steps`);
     // -- 1. INTEGRITY (check first — hard fails) -------------------------------

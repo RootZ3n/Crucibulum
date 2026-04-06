@@ -279,11 +279,82 @@ export interface EvidenceBundle {
     estimated_cost_usd: number;
     provider_cost_note: string;
   };
+  judge: {
+    kind: "deterministic";
+    label: string;
+    description: string;
+    verifier_model: string | null;
+    components: string[];
+  };
+  trust: {
+    rubric_hidden: boolean;
+    narration_ignored: boolean;
+    state_based_scoring: boolean;
+    bundle_verified: boolean;
+  };
   diagnosis: {
     localized_correctly: boolean;
     avoided_decoys: boolean;
     first_fix_correct: boolean;
     self_verified: boolean;
     failure_mode: string | null;
+  };
+  review?: {
+    secondOpinion: {
+      enabled: boolean;
+      provider: string;
+      model: string;
+      status: "completed" | "error" | "skipped";
+      summary: string;
+      flags: string[];
+      confidence: "high" | "medium" | "low";
+      recommendation: "accept" | "rerun" | "challenge" | null;
+      disagreement: boolean;
+      error?: string | undefined;
+      tokens_in?: number | undefined;
+      tokens_out?: number | undefined;
+      duration_ms?: number | undefined;
+    };
+    qcReview: {
+      enabled: boolean;
+      provider: string;
+      model: string;
+      status: "completed" | "error" | "skipped";
+      summary: string;
+      flags: string[];
+      confidence: "high" | "medium" | "low";
+      recommendation: "accept" | "rerun" | "challenge" | null;
+      disagreement: boolean;
+      error?: string | undefined;
+      tokens_in?: number | undefined;
+      tokens_out?: number | undefined;
+      duration_ms?: number | undefined;
+    };
+  };
+  integrations?: {
+    veritor?: {
+      contract_version: string;
+      consumable: boolean;
+    };
+    paedagogus?: {
+      contract_version: string;
+      consumable: boolean;
+      routing_signals: {
+        task_family: string;
+        difficulty: string;
+        provider: string;
+        adapter: string;
+        score: number;
+        pass: boolean;
+        failure_mode: string | null;
+      };
+    };
+    crucible?: {
+      profile_id: string | null;
+      benchmark_score: number | null;
+      benchmark_label: string | null;
+      execution_score: number;
+      divergence_note: string | null;
+    };
   };
 }

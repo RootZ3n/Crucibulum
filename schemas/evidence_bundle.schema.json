@@ -8,7 +8,7 @@
     "bundle_id", "bundle_hash", "bundle_version",
     "task", "agent", "environment",
     "timeline", "diff", "security",
-    "verification_results", "score", "usage", "diagnosis"
+    "verification_results", "score", "usage", "judge", "trust", "diagnosis"
   ],
   "additionalProperties": false,
   "properties": {
@@ -196,6 +196,32 @@
         "provider_cost_note": { "type": "string" }
       }
     },
+    "judge": {
+      "type": "object",
+      "required": ["kind", "label", "description", "verifier_model", "components"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "type": "string", "enum": ["deterministic"] },
+        "label": { "type": "string" },
+        "description": { "type": "string" },
+        "verifier_model": { "type": ["string", "null"] },
+        "components": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "trust": {
+      "type": "object",
+      "required": ["rubric_hidden", "narration_ignored", "state_based_scoring", "bundle_verified"],
+      "additionalProperties": false,
+      "properties": {
+        "rubric_hidden": { "type": "boolean" },
+        "narration_ignored": { "type": "boolean" },
+        "state_based_scoring": { "type": "boolean" },
+        "bundle_verified": { "type": "boolean" }
+      }
+    },
     "diagnosis": {
       "type": "object",
       "required": ["localized_correctly", "avoided_decoys", "first_fix_correct", "self_verified", "failure_mode"],
@@ -206,6 +232,56 @@
         "first_fix_correct": { "type": "boolean" },
         "self_verified": { "type": "boolean" },
         "failure_mode": { "type": ["string", "null"] }
+      }
+    },
+    "integrations": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "veritor": {
+          "type": "object",
+          "required": ["contract_version", "consumable"],
+          "additionalProperties": false,
+          "properties": {
+            "contract_version": { "type": "string" },
+            "consumable": { "type": "boolean" }
+          }
+        },
+        "paedagogus": {
+          "type": "object",
+          "required": ["contract_version", "consumable", "routing_signals"],
+          "additionalProperties": false,
+          "properties": {
+            "contract_version": { "type": "string" },
+            "consumable": { "type": "boolean" },
+            "routing_signals": {
+              "type": "object",
+              "required": ["task_family", "difficulty", "provider", "adapter", "score", "pass", "failure_mode"],
+              "additionalProperties": false,
+              "properties": {
+                "task_family": { "type": "string" },
+                "difficulty": { "type": "string" },
+                "provider": { "type": "string" },
+                "adapter": { "type": "string" },
+                "score": { "type": "number" },
+                "pass": { "type": "boolean" },
+                "failure_mode": { "type": ["string", "null"] }
+              }
+            }
+          }
+        },
+        "crucible": {
+          "type": "object",
+          "required": ["profile_id", "benchmark_score", "benchmark_label", "execution_score", "divergence_note"],
+          "additionalProperties": false,
+          "properties": {
+            "profile_id": { "type": ["string", "null"] },
+            "benchmark_score": { "type": ["number", "null"] },
+            "benchmark_label": { "type": ["string", "null"] },
+            "execution_score": { "type": "number" },
+            "divergence_note": { "type": ["string", "null"] }
+          }
+        }
       }
     }
   },

@@ -1,0 +1,8 @@
+{
+  "name": "coord-001-user-registration",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "node tests/register.test.js",
+    "test:oracle": "node tests/oracle.test.js"
+  }
+}

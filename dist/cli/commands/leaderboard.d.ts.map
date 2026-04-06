@@ -1,1 +1,1 @@
-{"version":3,"file":"leaderboard.d.ts","sourceRoot":"","sources":["../../../cli/commands/leaderboard.ts"],"names":[],"mappings":"AAAA,wBAAsB,kBAAkB,CAAC,KAAK,EAAE,MAAM,EAAE,GAAG,OAAO,CAAC,IAAI,CAAC,CAEvE"}
+{"version":3,"file":"leaderboard.d.ts","sourceRoot":"","sources":["../../../cli/commands/leaderboard.ts"],"names":[],"mappings":"AAAA;;;;GAIG;AAIH,wBAAsB,kBAAkB,CAAC,IAAI,EAAE,MAAM,EAAE,GAAG,OAAO,CAAC,IAAI,CAAC,CAuCtE"}

@@ -1,0 +1,8 @@
+{
+  "name": "spec-002-pagination",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "node tests/paginator.test.js",
+    "test:oracle": "node tests/oracle.test.js"
+  }
+}

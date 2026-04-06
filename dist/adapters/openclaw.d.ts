@@ -1,0 +1,28 @@
+/**
+ * Crucibulum — OpenClaw Adapter
+ * Invokes OpenClaw as a subprocess in the workspace.
+ * OpenClaw operates autonomously — reads files, runs commands, writes fixes.
+ * Crucibulum observes its actions via stdout/file system monitoring.
+ */
+import type { CrucibulumAdapter, AdapterConfig, ExecutionInput, ExecutionResult } from "./base.js";
+export declare class OpenClawAdapter implements CrucibulumAdapter {
+    id: string;
+    name: string;
+    version: string;
+    private binaryPath;
+    private configPath;
+    private model;
+    private provider;
+    private binaryHash;
+    supports(_family: "poison" | "spec" | "orchestration"): boolean;
+    supportsToolCalls(): boolean;
+    init(config: AdapterConfig): Promise<void>;
+    healthCheck(): Promise<{
+        ok: boolean;
+        reason?: string | undefined;
+    }>;
+    teardown(): Promise<void>;
+    execute(input: ExecutionInput): Promise<ExecutionResult>;
+    private resolveBinary;
+}
+//# sourceMappingURL=openclaw.d.ts.map

@@ -15,6 +15,8 @@ import { getGitDiff, getForbiddenPathsTouched } from "../utils/diff.js";
 import { log } from "../utils/logger.js";
 import { formatDuration } from "../utils/timing.js";
 import { platform, arch } from "node:os";
+import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
+import { runReviewLayer, DEFAULT_REVIEW_CONFIG, DISABLED_REVIEW, type RunReviewConfig, type ReviewLayerResult } from "./review.js";
 
 export interface RunOptions {
   taskId: string;
@@ -22,6 +24,7 @@ export interface RunOptions {
   model: string;
   runs?: number | undefined;
   keepWorkspace?: boolean | undefined;
+  reviewConfig?: RunReviewConfig | undefined;
 }
 
 export interface RunResult {
@@ -127,6 +130,26 @@ export async function runTask(options: RunOptions): Promise<RunResult> {
       model,
     });
 
+    // 10. Review layer (optional, after deterministic judge)
+    const reviewCfg = options.reviewConfig ?? DEFAULT_REVIEW_CONFIG;
+    if (reviewCfg.secondOpinion.enabled || reviewCfg.qcReview.enabled) {
+      log("info", "runner", "Running review layer...");
+      const reviewResult = await runReviewLayer(reviewCfg, bundle);
+      bundle.review = {
+        secondOpinion: reviewResult.secondOpinion,
+        qcReview: reviewResult.qcReview,
+      };
+      // Recompute hash with review data included
+      const { sha256Object } = await import("../utils/hashing.js");
+      const hashInput = { ...bundle, bundle_hash: "" };
+      bundle.bundle_hash = sha256Object(hashInput);
+    } else {
+      bundle.review = {
+        secondOpinion: { ...DISABLED_REVIEW },
+        qcReview: { ...DISABLED_REVIEW },
+      };
+    }
+
     const passed = bundle.score.pass;
     const exitCode = passed ? 0 : bundle.score.integrity_violations > 0 ? 2 : 1;
 
@@ -166,6 +189,31 @@ function buildFailedBundle(
     },
     score: { total: 0, breakdown: { correctness: 0, regression: 0, integrity: 0, efficiency: 0 }, pass: false, pass_threshold: manifest.scoring.pass_threshold, integrity_violations: 1 },
     usage: { tokens_in: 0, tokens_out: 0, estimated_cost_usd: 0, provider_cost_note: reason },
+    judge: DETERMINISTIC_JUDGE_METADATA,
+    trust: { rubric_hidden: true, narration_ignored: true, state_based_scoring: true, bundle_verified: false },
     diagnosis: { localized_correctly: false, avoided_decoys: false, first_fix_correct: false, self_verified: false, failure_mode: reason },
+    integrations: {
+      veritor: { contract_version: "1.0.0", consumable: true },
+      paedagogus: {
+        contract_version: "1.0.0",
+        consumable: true,
+        routing_signals: {
+          task_family: manifest.family,
+          difficulty: manifest.difficulty,
+          provider: "unknown",
+          adapter: adapter.id,
+          score: 0,
+          pass: false,
+          failure_mode: reason,
+        },
+      },
+      crucible: {
+        profile_id: null,
+        benchmark_score: null,
+        benchmark_label: null,
+        execution_score: 0,
+        divergence_note: null,
+      },
+    },
   };
 }
