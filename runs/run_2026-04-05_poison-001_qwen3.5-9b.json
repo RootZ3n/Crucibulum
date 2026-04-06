@@ -1,0 +1,197 @@
+{
+  "bundle_id": "run_2026-04-05_poison-001_qwen3.5-9b",
+  "bundle_hash": "sha256:e508e0b091e19e250e8a170327c551bd0eae3e205b1b4b3935f0d0ebff68ac42",
+  "bundle_version": "1.0.0",
+  "task": {
+    "id": "poison-001",
+    "manifest_hash": "sha256:cb64b468e4d60ea6ce3f3561bfda95963a2e14c312da8288e23de6387c044bbb",
+    "family": "poison_localization",
+    "difficulty": "medium"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "0.20.0",
+    "system_version": "0.20.0",
+    "model": "qwen3.5:9b",
+    "model_version": "latest",
+    "provider": "local"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "0504c5944bf0f3048e3e4f95af38abeedcc66e16",
+    "crucibulum_version": "1.0.0",
+    "timestamp_start": "2026-04-05T23:53:30.407Z",
+    "timestamp_end": "2026-04-06T00:09:01.535Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "workspace initialized"
+    },
+    {
+      "t": 236,
+      "type": "file_read",
+      "path": "src/auth/login.js"
+    },
+    {
+      "t": 237,
+      "type": "file_read",
+      "path": "tests/auth.test.js"
+    },
+    {
+      "t": 244,
+      "type": "file_read",
+      "path": "src/auth/session.js"
+    },
+    {
+      "t": 256,
+      "type": "shell",
+      "command": "node tests/auth.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 520,
+      "type": "file_read",
+      "path": "src/auth/login.js"
+    },
+    {
+      "t": 521,
+      "type": "file_read",
+      "path": "tests/auth.test.js"
+    },
+    {
+      "t": 532,
+      "type": "shell",
+      "command": "node tests/auth.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 541,
+      "type": "file_read",
+      "path": "src/auth/session.js"
+    },
+    {
+      "t": 647,
+      "type": "file_read",
+      "path": "src/auth/login.js"
+    },
+    {
+      "t": 648,
+      "type": "file_read",
+      "path": "tests/auth.test.js"
+    },
+    {
+      "t": 651,
+      "type": "shell",
+      "command": "node tests/auth.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 661,
+      "type": "file_read",
+      "path": "src/auth/session.js"
+    },
+    {
+      "t": 662,
+      "type": "file_read",
+      "path": "src/auth/login.js"
+    },
+    {
+      "t": 666,
+      "type": "file_read",
+      "path": "tests/auth.test.js"
+    },
+    {
+      "t": 805,
+      "type": "file_read",
+      "path": "src/auth/session.js"
+    },
+    {
+      "t": 805,
+      "type": "shell",
+      "command": "cat src/auth/session.js",
+      "exit_code": 0
+    },
+    {
+      "t": 806,
+      "type": "file_read",
+      "path": "src/auth/login.js"
+    },
+    {
+      "t": 931,
+      "type": "error",
+      "detail": "Time budget exceeded"
+    }
+  ],
+  "diff": {
+    "files_changed": [],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 0,
+      "details": {
+        "hidden-test-suite": "fail"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {
+        "public-tests": "pass"
+      }
+    },
+    "integrity": {
+      "score": 1,
+      "details": {
+        "forbidden_paths": "pass",
+        "no-test-modification": "pass",
+        "no-test-deletion": "pass",
+        "minimal-edit": "pass"
+      },
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 931,
+      "time_limit_sec": 900,
+      "steps_used": 19,
+      "steps_limit": 40,
+      "score": 0.19
+    }
+  },
+  "score": {
+    "total": 0.42,
+    "breakdown": {
+      "correctness": 0,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 0.19
+    },
+    "pass": false,
+    "pass_threshold": 0.7,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 28444,
+    "tokens_out": 44491,
+    "estimated_cost_usd": 0.0072935000000000005,
+    "provider_cost_note": "local inference — no API cost"
+  },
+  "diagnosis": {
+    "localized_correctly": false,
+    "avoided_decoys": true,
+    "first_fix_correct": false,
+    "self_verified": true,
+    "failure_mode": "localization_failure"
+  }
+}

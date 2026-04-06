@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crucibulum.local/schemas/oracle.schema.json",
+  "title": "Crucibulum Oracle",
+  "description": "Validates oracle files containing ground truth and verification checks.",
+  "type": "object",
+  "required": ["task_id", "version", "hash", "ground_truth", "checks"],
+  "additionalProperties": false,
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "description": "Must match the task manifest id."
+    },
+    "version": {
+      "type": "string"
+    },
+    "hash": {
+      "type": "string",
+      "description": "SHA-256 hash for tamper detection."
+    },
+    "ground_truth": {
+      "type": "object",
+      "required": ["bug_location", "bug_line_range", "bug_description", "correct_fix_pattern"],
+      "additionalProperties": false,
+      "properties": {
+        "bug_location": {
+          "type": "string",
+          "description": "File path containing the bug."
+        },
+        "bug_line_range": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Start and end line numbers of the bug."
+        },
+        "bug_description": {
+          "type": "string"
+        },
+        "correct_fix_pattern": {
+          "type": "string",
+          "description": "Regex or pattern that a correct fix should match."
+        }
+      }
+    },
+    "checks": {
+      "type": "object",
+      "required": ["correctness", "regression", "integrity", "anti_cheat", "decoys"],
+      "additionalProperties": false,
+      "properties": {
+        "correctness": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/oracle_check" },
+          "description": "Checks that verify the bug is fixed."
+        },
+        "regression": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/oracle_check" },
+          "description": "Checks that verify nothing else broke."
+        },
+        "integrity": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/oracle_check" },
+          "description": "Checks that verify workspace rules were followed."
+        },
+        "anti_cheat": {
+          "type": "object",
+          "required": ["forbidden_code_patterns", "forbidden_comment_patterns", "suspicious_behaviors"],
+          "additionalProperties": false,
+          "properties": {
+            "forbidden_code_patterns": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Regex patterns that must not appear in the diff."
+            },
+            "forbidden_comment_patterns": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Comment patterns that indicate gaming."
+            },
+            "suspicious_behaviors": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Behavioral patterns to flag."
+            }
+          }
+        },
+        "decoys": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/oracle_decoy" },
+          "description": "Red herrings planted in the repo."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "oracle_check": {
+      "type": "object",
+      "required": ["id", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["hidden_test", "api_check", "test_suite", "build", "lint", "forbidden_edit", "diff_rule"]
+        },
+        "command": { "type": "string" },
+        "pass_condition": { "type": "string" },
+        "weight": { "type": "number", "minimum": 0, "maximum": 1 },
+        "endpoint": { "type": "string" },
+        "method": { "type": "string" },
+        "input": { "type": "object" },
+        "expected": { "type": "object" },
+        "paths": { "type": "array", "items": { "type": "string" } },
+        "severity": { "type": "string", "enum": ["hard_fail", "penalty"] },
+        "rule": { "type": "string" },
+        "target_pattern": { "type": "string" },
+        "value": { "type": "number" }
+      }
+    },
+    "oracle_decoy": {
+      "type": "object",
+      "required": ["description", "path", "is_real_bug", "diagnostic"],
+      "additionalProperties": false,
+      "properties": {
+        "description": { "type": "string" },
+        "path": { "type": "string" },
+        "is_real_bug": { "type": "boolean" },
+        "diagnostic": { "type": "string" }
+      }
+    }
+  }
+}

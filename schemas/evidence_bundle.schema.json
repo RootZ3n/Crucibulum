@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crucibulum.local/schemas/evidence_bundle.schema.json",
+  "title": "Crucibulum Evidence Bundle",
+  "description": "Validates evidence bundles produced by the judge after a benchmark run.",
+  "type": "object",
+  "required": [
+    "bundle_id", "bundle_hash", "bundle_version",
+    "task", "agent", "environment",
+    "timeline", "diff", "security",
+    "verification_results", "score", "usage", "diagnosis"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "bundle_id": {
+      "type": "string",
+      "description": "Unique identifier for this evidence bundle."
+    },
+    "bundle_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of the bundle for tamper detection."
+    },
+    "bundle_version": {
+      "type": "string",
+      "description": "Schema version of this bundle format."
+    },
+    "task": {
+      "type": "object",
+      "required": ["id", "manifest_hash", "family", "difficulty"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "manifest_hash": { "type": "string" },
+        "family": { "type": "string" },
+        "difficulty": { "type": "string" }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "required": ["adapter", "adapter_version", "system", "system_version", "model", "model_version", "provider"],
+      "additionalProperties": false,
+      "properties": {
+        "adapter": { "type": "string" },
+        "adapter_version": { "type": "string" },
+        "system": { "type": "string" },
+        "system_version": { "type": "string" },
+        "model": { "type": "string" },
+        "model_version": { "type": "string" },
+        "provider": { "type": "string" }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "required": ["os", "arch", "repo_commit", "crucibulum_version", "timestamp_start", "timestamp_end"],
+      "additionalProperties": false,
+      "properties": {
+        "os": { "type": "string" },
+        "arch": { "type": "string" },
+        "repo_commit": { "type": "string" },
+        "crucibulum_version": { "type": "string" },
+        "timestamp_start": { "type": "string", "description": "ISO 8601 timestamp." },
+        "timestamp_end": { "type": "string", "description": "ISO 8601 timestamp." }
+      }
+    },
+    "timeline": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/timeline_event" },
+      "description": "Ordered list of agent actions during execution."
+    },
+    "diff": {
+      "type": "object",
+      "required": ["files_changed", "files_created", "files_deleted", "forbidden_paths_touched"],
+      "additionalProperties": false,
+      "properties": {
+        "files_changed": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/diff_entry" }
+        },
+        "files_created": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "files_deleted": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "forbidden_paths_touched": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "security": {
+      "type": "object",
+      "required": ["injection_scan", "forbidden_paths_violations", "anti_cheat_violations", "workspace_escape_attempts"],
+      "additionalProperties": false,
+      "properties": {
+        "injection_scan": {
+          "type": "string",
+          "enum": ["clean", "detected"]
+        },
+        "forbidden_paths_violations": { "type": "number", "minimum": 0 },
+        "anti_cheat_violations": { "type": "number", "minimum": 0 },
+        "workspace_escape_attempts": { "type": "number", "minimum": 0 }
+      }
+    },
+    "verification_results": {
+      "type": "object",
+      "required": ["correctness", "regression", "integrity", "efficiency"],
+      "additionalProperties": false,
+      "properties": {
+        "correctness": {
+          "type": "object",
+          "required": ["score", "details"],
+          "additionalProperties": false,
+          "properties": {
+            "score": { "type": "number", "minimum": 0, "maximum": 1 },
+            "details": {
+              "type": "object",
+              "additionalProperties": { "type": "string", "enum": ["pass", "fail"] }
+            }
+          }
+        },
+        "regression": {
+          "type": "object",
+          "required": ["score", "details"],
+          "additionalProperties": false,
+          "properties": {
+            "score": { "type": "number", "minimum": 0, "maximum": 1 },
+            "details": {
+              "type": "object",
+              "additionalProperties": { "type": "string", "enum": ["pass", "fail"] }
+            }
+          }
+        },
+        "integrity": {
+          "type": "object",
+          "required": ["score", "details", "violations"],
+          "additionalProperties": false,
+          "properties": {
+            "score": { "type": "number", "minimum": 0, "maximum": 1 },
+            "details": {
+              "type": "object",
+              "additionalProperties": { "type": "string", "enum": ["pass", "fail"] }
+            },
+            "violations": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "efficiency": {
+          "type": "object",
+          "required": ["time_sec", "time_limit_sec", "steps_used", "steps_limit", "score"],
+          "additionalProperties": false,
+          "properties": {
+            "time_sec": { "type": "number", "minimum": 0 },
+            "time_limit_sec": { "type": "number", "minimum": 0 },
+            "steps_used": { "type": "number", "minimum": 0 },
+            "steps_limit": { "type": "number", "minimum": 0 },
+            "score": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        }
+      }
+    },
+    "score": {
+      "type": "object",
+      "required": ["total", "breakdown", "pass", "pass_threshold", "integrity_violations"],
+      "additionalProperties": false,
+      "properties": {
+        "total": { "type": "number", "minimum": 0, "maximum": 1 },
+        "breakdown": {
+          "type": "object",
+          "required": ["correctness", "regression", "integrity", "efficiency"],
+          "additionalProperties": false,
+          "properties": {
+            "correctness": { "type": "number" },
+            "regression": { "type": "number" },
+            "integrity": { "type": "number" },
+            "efficiency": { "type": "number" }
+          }
+        },
+        "pass": { "type": "boolean" },
+        "pass_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "integrity_violations": { "type": "number", "minimum": 0 }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "required": ["tokens_in", "tokens_out", "estimated_cost_usd", "provider_cost_note"],
+      "additionalProperties": false,
+      "properties": {
+        "tokens_in": { "type": "number", "minimum": 0 },
+        "tokens_out": { "type": "number", "minimum": 0 },
+        "estimated_cost_usd": { "type": "number", "minimum": 0 },
+        "provider_cost_note": { "type": "string" }
+      }
+    },
+    "diagnosis": {
+      "type": "object",
+      "required": ["localized_correctly", "avoided_decoys", "first_fix_correct", "self_verified", "failure_mode"],
+      "additionalProperties": false,
+      "properties": {
+        "localized_correctly": { "type": "boolean" },
+        "avoided_decoys": { "type": "boolean" },
+        "first_fix_correct": { "type": "boolean" },
+        "self_verified": { "type": "boolean" },
+        "failure_mode": { "type": ["string", "null"] }
+      }
+    }
+  },
+  "$defs": {
+    "timeline_event": {
+      "type": "object",
+      "required": ["t", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "t": { "type": "number", "description": "Milliseconds since task start." },
+        "type": {
+          "type": "string",
+          "enum": ["file_read", "file_write", "shell", "search", "task_start", "task_complete", "error"]
+        },
+        "path": { "type": "string" },
+        "command": { "type": "string" },
+        "exit_code": { "type": "number" },
+        "detail": { "type": "string" }
+      }
+    },
+    "diff_entry": {
+      "type": "object",
+      "required": ["path", "lines_added", "lines_removed", "patch"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string" },
+        "lines_added": { "type": "number", "minimum": 0 },
+        "lines_removed": { "type": "number", "minimum": 0 },
+        "patch": { "type": "string" }
+      }
+    }
+  }
+}

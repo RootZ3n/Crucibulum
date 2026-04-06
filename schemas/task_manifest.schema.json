@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crucibulum.local/schemas/task_manifest.schema.json",
+  "title": "Crucibulum Task Manifest",
+  "description": "Validates the full task manifest format for a Crucibulum benchmark task.",
+  "type": "object",
+  "required": ["id", "version", "family", "difficulty", "repo", "task", "constraints", "verification", "scoring", "oracle_ref", "metadata", "seed"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique task identifier."
+    },
+    "version": {
+      "type": "string",
+      "description": "Semantic version of this manifest."
+    },
+    "family": {
+      "type": "string",
+      "enum": ["poison_localization", "spec_discipline", "orchestration"],
+      "description": "Task family classification."
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": ["easy", "medium", "hard"],
+      "description": "Difficulty rating."
+    },
+    "repo": {
+      "type": "object",
+      "required": ["source", "path", "commit"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Repository source URL or identifier."
+        },
+        "path": {
+          "type": "string",
+          "description": "Path within the repository."
+        },
+        "commit": {
+          "type": "string",
+          "description": "Pinned commit hash."
+        },
+        "setup_script": {
+          "type": ["string", "null"],
+          "description": "Script to run for workspace setup."
+        },
+        "reset_script": {
+          "type": ["string", "null"],
+          "description": "Script to reset workspace to clean state."
+        }
+      }
+    },
+    "task": {
+      "type": "object",
+      "required": ["title", "description", "entrypoints", "hints_allowed"],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Human-readable task title."
+        },
+        "description": {
+          "type": "string",
+          "description": "Full task description shown to the agent."
+        },
+        "entrypoints": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "File paths the agent should start from."
+        },
+        "hints_allowed": {
+          "type": "boolean",
+          "description": "Whether the agent may request hints."
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "required": ["time_limit_sec", "max_steps", "max_file_edits", "max_files_read", "allowed_tools", "forbidden_paths", "network_allowed"],
+      "additionalProperties": false,
+      "properties": {
+        "time_limit_sec": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Wall-clock time limit in seconds."
+        },
+        "max_steps": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Maximum number of agent steps."
+        },
+        "max_file_edits": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum number of files the agent may edit."
+        },
+        "max_files_read": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum number of files the agent may read."
+        },
+        "allowed_tools": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Tool IDs the agent is permitted to use."
+        },
+        "forbidden_paths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Glob patterns for paths the agent must not touch."
+        },
+        "network_allowed": {
+          "type": "boolean",
+          "description": "Whether outbound network access is allowed."
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "required": [],
+      "additionalProperties": false,
+      "properties": {
+        "public_tests_command": {
+          "type": ["string", "null"],
+          "description": "Command to run public tests visible to the agent."
+        },
+        "build_command": {
+          "type": ["string", "null"],
+          "description": "Command to build the project."
+        },
+        "runtime_command": {
+          "type": ["string", "null"],
+          "description": "Command to run the project."
+        },
+        "lint_command": {
+          "type": ["string", "null"],
+          "description": "Command to lint the project."
+        }
+      }
+    },
+    "scoring": {
+      "type": "object",
+      "required": ["weights", "pass_threshold"],
+      "additionalProperties": false,
+      "properties": {
+        "weights": {
+          "type": "object",
+          "required": ["correctness", "regression", "integrity", "efficiency"],
+          "additionalProperties": false,
+          "properties": {
+            "correctness": { "type": "number", "minimum": 0, "maximum": 1 },
+            "regression": { "type": "number", "minimum": 0, "maximum": 1 },
+            "integrity": { "type": "number", "minimum": 0, "maximum": 1 },
+            "efficiency": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "pass_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Minimum total score to pass."
+        }
+      }
+    },
+    "oracle_ref": {
+      "type": "object",
+      "required": ["type", "path", "hash"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Oracle format type."
+        },
+        "path": {
+          "type": "string",
+          "description": "Path to the oracle file."
+        },
+        "hash": {
+          "type": "string",
+          "description": "SHA-256 hash of the oracle file for tamper detection."
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["author", "created", "tags", "diagnostic_purpose"],
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "created": {
+          "type": "string",
+          "description": "ISO 8601 date string."
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "diagnostic_purpose": {
+          "type": "string",
+          "description": "What this task is designed to measure."
+        }
+      }
+    },
+    "seed": {
+      "type": "number",
+      "description": "Random seed for reproducibility."
+    }
+  }
+}

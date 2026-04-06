@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crucibulum.local/schemas/adapter_config.schema.json",
+  "title": "Crucibulum Adapter Config",
+  "description": "Validates adapter configuration passed to CrucibulumAdapter.init().",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "timeout_ms": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Override timeout in milliseconds for adapter operations."
+    },
+    "extra_flags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Additional CLI flags passed to the adapter process."
+    },
+    "env": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Environment variables injected into the adapter process."
+    }
+  }
+}

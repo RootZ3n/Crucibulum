@@ -1,0 +1,8 @@
+{
+  "name": "poison-001-auth-bug",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "node tests/auth.test.js",
+    "test:oracle": "node tests/oracle.test.js"
+  }
+}
