@@ -18,6 +18,7 @@ const RUNS_DIR = process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs
 const UI_PATH = join(import.meta.dirname, "..", "..", "ui", "index.html");
 const activeRuns = new Map();
 const sseClients = new Map();
+const activeSuiteRuns = new Map();
 function broadcastSSE(runId, event, data) {
     const clients = sseClients.get(runId) ?? [];
     const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -477,6 +478,155 @@ async function handleRequest(req, res) {
                 const idx = clients.indexOf(res);
                 if (idx >= 0)
                     clients.splice(idx, 1);
+            });
+            return;
+        }
+        // ── Suite run endpoints ────────────────────────────────────────────
+        if (path === "/api/run-suite" && method === "POST") {
+            const body = JSON.parse(await readBody(req) || "{}");
+            const adapterId = body.adapter || body.providerId || "";
+            if (!body.model || !adapterId) {
+                sendJSON(res, 400, { error: "model and adapter (or providerId) are required" });
+                return;
+            }
+            const allTasks = listTaskDetails();
+            const suiteId = `suite_${Date.now().toString(36)}`;
+            const reviewConfig = {
+                secondOpinion: {
+                    enabled: !!(body.secondOpinion?.enabled),
+                    provider: body.secondOpinion?.provider ?? "",
+                    model: body.secondOpinion?.model ?? "",
+                },
+                qcReview: {
+                    enabled: !!(body.qcReview?.enabled),
+                    provider: body.qcReview?.provider ?? "",
+                    model: body.qcReview?.model ?? "",
+                },
+            };
+            activeSuiteRuns.set(suiteId, {
+                id: suiteId,
+                status: "running",
+                total: allTasks.length,
+                completed: 0,
+                results: [],
+                summary: null,
+            });
+            sendJSON(res, 202, {
+                ok: true,
+                suite_id: suiteId,
+                total_tasks: allTasks.length,
+                judge: DETERMINISTIC_JUDGE_METADATA,
+            });
+            // Run tasks sequentially in background
+            void (async () => {
+                const suite = activeSuiteRuns.get(suiteId);
+                let adapterInstance = null;
+                try {
+                    adapterInstance = await instantiateAdapterForRun({
+                        adapter: adapterId,
+                        model: body.model,
+                        provider: null,
+                    });
+                    const health = await adapterInstance.adapter.healthCheck();
+                    if (!health.ok) {
+                        throw new Error(health.reason ?? `${adapterId} unavailable`);
+                    }
+                    for (const task of allTasks) {
+                        const taskId = task.id;
+                        try {
+                            // Create fresh adapter instance per task to avoid state leaks
+                            const taskAdapter = await instantiateAdapterForRun({
+                                adapter: adapterId,
+                                model: body.model,
+                                provider: null,
+                            });
+                            const result = await runTask({
+                                taskId,
+                                adapter: taskAdapter.adapter,
+                                model: body.model,
+                                keepWorkspace: false,
+                                reviewConfig,
+                            });
+                            storeBundle(result.bundle);
+                            const durationSec = Math.round((new Date(result.bundle.environment.timestamp_end).getTime() -
+                                new Date(result.bundle.environment.timestamp_start).getTime()) / 1000);
+                            suite.results.push({
+                                task_id: taskId,
+                                bundle_id: result.bundle.bundle_id,
+                                score: result.bundle.score.total,
+                                pass: result.bundle.score.pass,
+                                duration_sec: durationSec,
+                                tokens_in: result.bundle.usage.tokens_in,
+                                tokens_out: result.bundle.usage.tokens_out,
+                                cost_usd: result.bundle.usage.estimated_cost_usd,
+                            });
+                            await taskAdapter.adapter.teardown();
+                        }
+                        catch (err) {
+                            suite.results.push({
+                                task_id: taskId,
+                                bundle_id: "",
+                                score: 0,
+                                pass: false,
+                                duration_sec: 0,
+                                tokens_in: 0,
+                                tokens_out: 0,
+                                cost_usd: 0,
+                                error: String(err).slice(0, 200),
+                            });
+                        }
+                        suite.completed = suite.results.length;
+                    }
+                    // Compute summary
+                    const passed = suite.results.filter((r) => r.pass).length;
+                    const failed = suite.results.length - passed;
+                    const avgScore = suite.results.length > 0
+                        ? Math.round(suite.results.reduce((s, r) => s + r.score, 0) / suite.results.length * 100)
+                        : 0;
+                    const totalTime = suite.results.reduce((s, r) => s + r.duration_sec, 0);
+                    const totalTokens = suite.results.reduce((s, r) => s + r.tokens_in + r.tokens_out, 0);
+                    const totalCost = suite.results.reduce((s, r) => s + r.cost_usd, 0);
+                    suite.summary = {
+                        total: suite.results.length,
+                        passed,
+                        failed,
+                        pass_rate: suite.results.length > 0 ? Math.round((passed / suite.results.length) * 100) : 0,
+                        avg_score: avgScore,
+                        total_time_sec: totalTime,
+                        total_tokens: totalTokens,
+                        total_cost_usd: Math.round(totalCost * 10000) / 10000,
+                    };
+                    suite.status = "complete";
+                    log("info", "api", `Suite ${suiteId} complete: ${passed}/${suite.results.length} passed`);
+                }
+                catch (err) {
+                    suite.status = "error";
+                    suite.error = String(err);
+                    log("error", "api", `Suite ${suiteId} failed: ${String(err)}`);
+                }
+                finally {
+                    if (adapterInstance) {
+                        await adapterInstance.adapter.teardown();
+                    }
+                }
+            })();
+            return;
+        }
+        if (path.startsWith("/api/run-suite/") && path.endsWith("/status") && method === "GET") {
+            const suiteId = path.replace("/api/run-suite/", "").replace("/status", "");
+            const suite = activeSuiteRuns.get(suiteId);
+            if (!suite) {
+                sendJSON(res, 404, { error: "Suite run not found" });
+                return;
+            }
+            sendJSON(res, 200, {
+                suite_id: suite.id,
+                status: suite.status,
+                total: suite.total,
+                completed: suite.completed,
+                results: suite.results,
+                summary: suite.summary,
+                error: suite.error ?? null,
             });
             return;
         }

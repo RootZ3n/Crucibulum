@@ -762,6 +762,44 @@ table tbody td.mono-bright {
   flex-shrink: 0;
   padding: 0 32px 24px;
   background: var(--surface);
+  display: flex;
+  gap: 12px;
+}
+
+.run-btn-container .run-btn {
+  flex: 1;
+}
+
+.run-btn-suite {
+  height: 52px;
+  background: transparent;
+  color: var(--active);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0 16px;
+  border: 2px solid var(--active);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.run-btn-suite:hover:not(:disabled) {
+  background: rgba(255, 159, 28, 0.1);
+}
+
+.run-btn-suite:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.run-btn-suite.running {
+  border-color: var(--warn);
+  color: var(--warn);
 }
 
 .config-section {
@@ -1686,6 +1724,12 @@ table tbody td.mono-bright {
   }
   .run-btn-container {
     padding: 0 16px 16px;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .run-btn-suite {
+    font-size: 12px;
+    height: 48px;
   }
 }
 </style>
@@ -2395,6 +2439,9 @@ function renderRunTask(el) {
         '</div>' +
         '<div class="run-btn-container">' +
           '<button class="' + btnClass + '" id="run-btn" onclick="startRun()" ' + (isRunning ? 'disabled' : '') + '>' + btnText + '</button>' +
+          '<button class="run-btn-suite' + (isRunning ? ' running' : '') + '" id="run-suite-btn" onclick="startSuiteRun()" ' + (isRunning ? 'disabled' : '') + '>' +
+            (isRunning ? '\u25C9 RUNNING...' : '\u25B6 RUN FULL SUITE') +
+          '</button>' +
         '</div>' +
       '</div>' +
       '<div class="run-log-panel">' +
@@ -2573,8 +2620,15 @@ function renderRunTask(el) {
     }
 
     var runBtn = document.getElementById('run-btn');
+    var suiteBtn = document.getElementById('run-suite-btn');
+    var hasTask = !!(taskSel && taskSel.value);
+    var providerReady = providerEntry && providerEntry.available;
+    var hasModel = !!(modelInput && modelInput.value.trim());
     if (runBtn && !isRunning) {
-      runBtn.disabled = !providerEntry || !providerEntry.available;
+      runBtn.disabled = !hasTask || !providerReady || !hasModel;
+    }
+    if (suiteBtn && !isRunning) {
+      suiteBtn.disabled = !providerReady || !hasModel;
     }
   }
 
@@ -2677,6 +2731,177 @@ async function startRun() {
     connectSSE(runId, logBody, progressBar);
   } catch (e) {
     appendLog(logBody, 'error', 'Failed to start run: ' + e.message);
+    resetRunBtn();
+  }
+}
+
+async function startSuiteRun() {
+  var model = document.getElementById('run-model') ? document.getElementById('run-model').value : '';
+  var providerId = document.getElementById('run-provider') ? document.getElementById('run-provider').value : '';
+  var providerEntry = getProviderEntry(providerId);
+  var adapter = providerEntry ? providerEntry.adapter : providerId;
+
+  if (!providerId) { showToast('Select a provider.'); return; }
+  if (!model) { showToast('Enter a model name.'); return; }
+  if (!providerEntry) { showToast('Unknown provider: ' + providerId); return; }
+  if (!providerEntry.available) { showToast('Provider unavailable: ' + (providerEntry.reason || 'check configuration')); return; }
+
+  localStorage.setItem('crucibulum-model', model);
+  localStorage.setItem('crucibulum-provider', providerId);
+
+  var btn = document.getElementById('run-btn');
+  var suiteBtn = document.getElementById('run-suite-btn');
+  var logBody = document.getElementById('run-log-body');
+  var progressBar = document.getElementById('run-progress-bar');
+  var logTask = document.getElementById('run-log-task');
+  var logModel = document.getElementById('run-log-model');
+  var logTimer = document.getElementById('run-log-timer');
+
+  if (btn) { btn.disabled = true; }
+  if (suiteBtn) { suiteBtn.className = 'run-btn-suite running'; suiteBtn.innerHTML = '\u25C9 RUNNING SUITE...'; suiteBtn.disabled = true; }
+  logBody.innerHTML = '';
+  progressBar.style.width = '2%';
+  progressBar.style.animation = '';
+  progressBar.style.background = '';
+  if (logTask) logTask.textContent = 'Full Suite';
+  if (logModel) logModel.textContent = (providerEntry ? providerEntry.label : providerId) + ' \u2192 ' + model;
+
+  runStartTime = Date.now();
+  if (runTimerInterval) clearInterval(runTimerInterval);
+  runTimerInterval = setInterval(function() {
+    if (logTimer && runStartTime) {
+      var elapsed = Math.floor((Date.now() - runStartTime) / 1000);
+      var mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
+      var ss = String(elapsed % 60).padStart(2, '0');
+      logTimer.textContent = mm + ':' + ss;
+    }
+  }, 1000);
+
+  // Build review config
+  var soEnabledChk = document.getElementById('review-so-enabled');
+  var qcEnabledChk = document.getElementById('review-qc-enabled');
+  var reviewPayload = {};
+  if (soEnabledChk && soEnabledChk.checked) {
+    reviewPayload.secondOpinion = {
+      enabled: true,
+      provider: (document.getElementById('review-so-provider') || {}).value || '',
+      model: (document.getElementById('review-so-model') || {}).value || '',
+    };
+  }
+  if (qcEnabledChk && qcEnabledChk.checked) {
+    reviewPayload.qcReview = {
+      enabled: true,
+      provider: (document.getElementById('review-qc-provider') || {}).value || '',
+      model: (document.getElementById('review-qc-model') || {}).value || '',
+    };
+  }
+
+  appendLog(logBody, 'task_start', 'Suite run starting: ' + tasks.length + ' tasks');
+
+  try {
+    var result = await api('POST', '/api/run-suite', {
+      model: model,
+      adapter: adapter,
+      providerId: providerId,
+      secondOpinion: reviewPayload.secondOpinion,
+      qcReview: reviewPayload.qcReview,
+    });
+
+    var suiteId = result.suite_id;
+    if (!suiteId) {
+      appendLog(logBody, 'error', 'No suite ID returned.');
+      resetRunBtn();
+      return;
+    }
+
+    activeRunId = suiteId;
+    appendLog(logBody, 'task_start', 'Suite ID: ' + suiteId);
+
+    // Poll suite status
+    var pollInterval = setInterval(async function() {
+      try {
+        var status = await api('GET', '/api/run-suite/' + encodeURIComponent(suiteId) + '/status');
+        var completed = status.completed || 0;
+        var total = status.total || 1;
+        var pct = Math.min(5 + (completed / total) * 90, 95);
+        progressBar.style.width = pct + '%';
+
+        // Log newly completed tasks
+        if (status.results) {
+          var shown = logBody.querySelectorAll('.suite-task-result').length;
+          for (var i = shown; i < status.results.length; i++) {
+            var r = status.results[i];
+            var sc = Math.round((r.score || 0) * 100);
+            var badge = r.pass ? '\x1b[32mPASS\x1b[0m' : '\x1b[31mFAIL\x1b[0m';
+            var line = document.createElement('div');
+            line.className = 'run-log-entry suite-task-result';
+            var typeSpan = document.createElement('span');
+            typeSpan.className = 'log-type ' + (r.pass ? 'type-complete' : 'type-error');
+            typeSpan.textContent = r.pass ? 'PASS' : 'FAIL';
+            line.appendChild(typeSpan);
+            var textSpan = document.createElement('span');
+            textSpan.className = 'log-text';
+            textSpan.textContent = '  ' + (r.task_id || '--') + '  ' + sc + '%';
+            line.appendChild(textSpan);
+            logBody.appendChild(line);
+            logBody.scrollTop = logBody.scrollHeight;
+          }
+        }
+
+        if (status.status === 'complete' || status.status === 'error') {
+          clearInterval(pollInterval);
+          progressBar.style.width = '100%';
+          progressBar.style.animation = 'none';
+          progressBar.style.background = 'var(--pass)';
+
+          // Render suite summary
+          var s = status.summary || {};
+          var scoreArea = document.createElement('div');
+          scoreArea.className = 'run-score-result';
+          scoreArea.innerHTML =
+            '<div style="font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent-muted);margin-bottom:12px;">Suite Results</div>' +
+            '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">' +
+              '<div style="text-align:center;">' +
+                '<div style="font-size:36px;font-weight:800;color:var(--pass);">' + (s.passed || 0) + '</div>' +
+                '<div style="font-size:11px;color:var(--text-muted);">PASSED</div>' +
+              '</div>' +
+              '<div style="text-align:center;">' +
+                '<div style="font-size:36px;font-weight:800;color:var(--fail);">' + (s.failed || 0) + '</div>' +
+                '<div style="font-size:11px;color:var(--text-muted);">FAILED</div>' +
+              '</div>' +
+              '<div style="text-align:center;">' +
+                '<div style="font-size:36px;font-weight:800;color:var(--active);">' + (s.pass_rate || 0) + '%</div>' +
+                '<div style="font-size:11px;color:var(--text-muted);">PASS RATE</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);line-height:1.8;">' +
+              '<span style="color:var(--accent-muted);">Tasks:</span> ' + (s.total || 0) + '<br>' +
+              '<span style="color:var(--accent-muted);">Avg score:</span> ' + (s.avg_score || 0) + '%<br>' +
+              '<span style="color:var(--accent-muted);">Total time:</span> ' + formatDuration(s.total_time_sec || 0) + '<br>' +
+              '<span style="color:var(--accent-muted);">Total tokens:</span> ' + ((s.total_tokens || 0)).toLocaleString() + '<br>' +
+              '<span style="color:var(--accent-muted);">Total cost:</span> $' + ((s.total_cost_usd || 0)).toFixed(4) +
+            '</div>';
+          logBody.parentElement.appendChild(scoreArea);
+
+          appendLog(logBody, 'complete', 'Suite complete: ' + (s.passed || 0) + '/' + (s.total || 0) + ' passed');
+
+          activeRunId = null;
+          if (runTimerInterval) clearInterval(runTimerInterval);
+          runTimerInterval = null;
+          resetRunBtn();
+
+          loadRuns().then(function() {
+            loadStats();
+            updateSidebarStatus();
+          });
+        }
+      } catch (err) {
+        // Polling error — keep trying
+      }
+    }, 2000);
+
+  } catch (e) {
+    appendLog(logBody, 'error', 'Failed to start suite: ' + e.message);
     resetRunBtn();
   }
 }
@@ -2819,6 +3044,12 @@ function resetRunBtn() {
     btn.className = 'run-btn';
     btn.innerHTML = '\u25B6 RUN EVALUATION';
     btn.disabled = false;
+  }
+  var suiteBtn = document.getElementById('run-suite-btn');
+  if (suiteBtn) {
+    suiteBtn.className = 'run-btn-suite';
+    suiteBtn.innerHTML = '\u25B6 RUN FULL SUITE';
+    suiteBtn.disabled = false;
   }
   runStartTime = null;
 }
