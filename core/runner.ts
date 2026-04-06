@@ -134,17 +134,28 @@ export async function runTask(options: RunOptions): Promise<RunResult> {
     const reviewCfg = options.reviewConfig ?? DEFAULT_REVIEW_CONFIG;
     if (reviewCfg.secondOpinion.enabled || reviewCfg.qcReview.enabled) {
       log("info", "runner", "Running review layer...");
-      const reviewResult = await runReviewLayer(reviewCfg, bundle);
-      bundle.review = {
-        secondOpinion: reviewResult.secondOpinion,
-        qcReview: reviewResult.qcReview,
-      };
+      bundle.review = await runReviewLayer(reviewCfg, bundle, {
+        taskTitle: manifest.task.title,
+        taskDescription: manifest.task.description,
+      });
       // Recompute hash with review data included
       const { sha256Object } = await import("../utils/hashing.js");
       const hashInput = { ...bundle, bundle_hash: "" };
       bundle.bundle_hash = sha256Object(hashInput);
     } else {
       bundle.review = {
+        authority: "advisory",
+        deterministic_result_authoritative: true,
+        security: {
+          review_input_scanned: false,
+          review_input_sanitized: false,
+          injection_flags_count: 0,
+          flagged_sources: [],
+          flagged_artifacts: [],
+          review_blocked_reason: null,
+          review_output_invalid: false,
+          trust_boundary_violations: [],
+        },
         secondOpinion: { ...DISABLED_REVIEW },
         qcReview: { ...DISABLED_REVIEW },
       };
@@ -190,7 +201,14 @@ function buildFailedBundle(
     score: { total: 0, breakdown: { correctness: 0, regression: 0, integrity: 0, efficiency: 0 }, pass: false, pass_threshold: manifest.scoring.pass_threshold, integrity_violations: 1 },
     usage: { tokens_in: 0, tokens_out: 0, estimated_cost_usd: 0, provider_cost_note: reason },
     judge: DETERMINISTIC_JUDGE_METADATA,
-    trust: { rubric_hidden: true, narration_ignored: true, state_based_scoring: true, bundle_verified: false },
+    trust: {
+      rubric_hidden: true,
+      narration_ignored: true,
+      state_based_scoring: true,
+      bundle_verified: false,
+      deterministic_judge_authoritative: true,
+      review_layer_advisory: true,
+    },
     diagnosis: { localized_correctly: false, avoided_decoys: false, first_fix_correct: false, self_verified: false, failure_mode: reason },
     integrations: {
       veritor: { contract_version: "1.0.0", consumable: true },

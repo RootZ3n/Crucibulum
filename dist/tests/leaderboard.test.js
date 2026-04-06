@@ -50,7 +50,14 @@ function makeMockBundle(overrides) {
         },
         usage: { tokens_in: 1000, tokens_out: 500, estimated_cost_usd: 0, provider_cost_note: "local" },
         judge: { kind: "deterministic", label: "Judge: deterministic", description: "oracle + hidden/public tests + integrity checks", verifier_model: null, components: ["oracle", "hidden tests", "public tests", "diff rules", "integrity checks"] },
-        trust: { rubric_hidden: true, narration_ignored: true, state_based_scoring: true, bundle_verified: true },
+        trust: {
+            rubric_hidden: true,
+            narration_ignored: true,
+            state_based_scoring: true,
+            bundle_verified: true,
+            deterministic_judge_authoritative: true,
+            review_layer_advisory: true,
+        },
         diagnosis: { localized_correctly: true, avoided_decoys: true, first_fix_correct: o.pass, self_verified: true, failure_mode: o.failureMode },
         integrations: {
             veritor: { contract_version: "1.0.0", consumable: true },

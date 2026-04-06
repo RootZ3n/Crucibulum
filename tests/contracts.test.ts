@@ -28,7 +28,14 @@ function makeBundle(overrides: Partial<EvidenceBundle> = {}): EvidenceBundle {
     score: { total: 0.95, breakdown: { correctness: 1, regression: 1, integrity: 1, efficiency: 0.75 }, pass: true, pass_threshold: 0.7, integrity_violations: 0 },
     usage: { tokens_in: 123, tokens_out: 456, estimated_cost_usd: 0.1234, provider_cost_note: "via openrouter" },
     judge: { kind: "deterministic", label: "Judge: deterministic", description: "oracle + hidden/public tests + integrity checks", verifier_model: null, components: ["oracle", "hidden tests", "public tests", "diff rules", "integrity checks"] },
-    trust: { rubric_hidden: true, narration_ignored: true, state_based_scoring: true, bundle_verified: true },
+    trust: {
+      rubric_hidden: true,
+      narration_ignored: true,
+      state_based_scoring: true,
+      bundle_verified: true,
+      deterministic_judge_authoritative: true,
+      review_layer_advisory: true,
+    },
     diagnosis: { localized_correctly: true, avoided_decoys: true, first_fix_correct: true, self_verified: true, failure_mode: null },
     integrations: {
       veritor: { contract_version: "1.0.0", consumable: true },
@@ -47,13 +54,56 @@ function makeBundle(overrides: Partial<EvidenceBundle> = {}): EvidenceBundle {
 
 describe("evaluation contracts", () => {
   it("builds structured summary consumable by veritor and paedagogus", () => {
-    const bundle = makeBundle();
+    const bundle = makeBundle({
+      review: {
+        authority: "advisory",
+        deterministic_result_authoritative: true,
+        security: {
+          review_input_scanned: true,
+          review_input_sanitized: true,
+          injection_flags_count: 2,
+          flagged_sources: ["diff", "timeline"],
+          flagged_artifacts: ["diff:src/a.ts => injection"],
+          review_blocked_reason: "review_input_injection_detected",
+          review_output_invalid: false,
+          trust_boundary_violations: ["untrusted_review_input_blocked"],
+        },
+        secondOpinion: {
+          enabled: true,
+          provider: "openai",
+          model: "gpt-4.1-mini",
+          status: "blocked_injection",
+          summary: "blocked",
+          flags: ["flag"],
+          confidence: "low",
+          recommendation: null,
+          disagreement: false,
+        },
+        qcReview: {
+          enabled: false,
+          provider: "",
+          model: "",
+          status: "skipped",
+          summary: "",
+          flags: [],
+          confidence: "high",
+          recommendation: null,
+          disagreement: false,
+        },
+      },
+    });
     const summary = summarizeBundle(bundle, 3, { profile_id: "crucible:model-1", benchmark_score: 71, benchmark_label: "Crucible April" });
     assert.equal(summary.schema, "crucibulum.evaluation.summary.v1");
     assert.equal(summary.target.adapter, "openrouter");
     assert.equal(summary.target.provider, "openrouter");
     assert.equal(summary.judge.kind, "deterministic");
+    assert.equal(summary.authority.deterministic_judge_authoritative, true);
+    assert.equal(summary.authority.review_layer_advisory, true);
     assert.equal(summary.trust.bundle_hash_verified, true);
+    assert.equal(summary.review_input_sanitized, true);
+    assert.equal(summary.injection_flags_count, 2);
+    assert.deepEqual(summary.flagged_sources, ["diff", "timeline"]);
+    assert.deepEqual(summary.trust_boundary_violations, ["untrusted_review_input_blocked"]);
     assert.equal(summary.repeat_run_count, 3);
     assert.equal(summary.integrations.veritor?.consumable, true);
     assert.equal(summary.integrations.paedagogus?.routing_signals.provider, "openrouter");

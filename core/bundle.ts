@@ -115,6 +115,8 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
       narration_ignored: true,
       state_based_scoring: true,
       bundle_verified: true,
+      deterministic_judge_authoritative: true,
+      review_layer_advisory: true,
     },
     diagnosis: judgeResult.diagnosis,
     integrations: {

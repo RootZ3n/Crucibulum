@@ -291,6 +291,8 @@ export interface EvidenceBundle {
     narration_ignored: boolean;
     state_based_scoring: boolean;
     bundle_verified: boolean;
+    deterministic_judge_authoritative: boolean;
+    review_layer_advisory: boolean;
   };
   diagnosis: {
     localized_correctly: boolean;
@@ -300,11 +302,23 @@ export interface EvidenceBundle {
     failure_mode: string | null;
   };
   review?: {
+    authority: "advisory";
+    deterministic_result_authoritative: true;
+    security: {
+      review_input_scanned: boolean;
+      review_input_sanitized: boolean;
+      injection_flags_count: number;
+      flagged_sources: string[];
+      flagged_artifacts: string[];
+      review_blocked_reason: string | null;
+      review_output_invalid: boolean;
+      trust_boundary_violations: string[];
+    };
     secondOpinion: {
       enabled: boolean;
       provider: string;
       model: string;
-      status: "completed" | "error" | "skipped";
+      status: "completed" | "invalid_output" | "blocked_injection" | "error" | "skipped";
       summary: string;
       flags: string[];
       confidence: "high" | "medium" | "low";
@@ -319,7 +333,7 @@ export interface EvidenceBundle {
       enabled: boolean;
       provider: string;
       model: string;
-      status: "completed" | "error" | "skipped";
+      status: "completed" | "invalid_output" | "blocked_injection" | "error" | "skipped";
       summary: string;
       flags: string[];
       confidence: "high" | "medium" | "low";

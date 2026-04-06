@@ -33,6 +33,10 @@ export interface EvaluationSummary {
     };
   };
   judge: EvidenceBundle["judge"];
+  authority: {
+    deterministic_judge_authoritative: true;
+    review_layer_advisory: true;
+  };
   trust: EvidenceBundle["trust"] & { bundle_hash_verified: boolean };
   usage: {
     tokens_in: number;
@@ -47,6 +51,17 @@ export interface EvaluationSummary {
   };
   repeat_run_count: number;
   review: EvidenceBundle["review"] | null;
+  review_security: EvidenceBundle["review"] extends infer R
+    ? R extends { security: infer S }
+      ? S | null
+      : null
+    : null;
+  review_input_sanitized: boolean;
+  injection_flags_count: number;
+  flagged_sources: string[];
+  review_blocked_reason: string | null;
+  review_output_invalid: boolean;
+  trust_boundary_violations: string[];
   integrations: NonNullable<EvidenceBundle["integrations"]>;
 }
 
@@ -130,12 +145,18 @@ export function summarizeBundle(bundle: EvidenceBundle, repeatRunCount = 1, cruc
       },
     },
     judge: bundle.judge ?? DETERMINISTIC_JUDGE_METADATA,
+    authority: {
+      deterministic_judge_authoritative: true,
+      review_layer_advisory: true,
+    },
     trust: {
       ...(bundle.trust ?? {
         rubric_hidden: true,
         narration_ignored: true,
         state_based_scoring: true,
         bundle_verified: validity.valid,
+        deterministic_judge_authoritative: true,
+        review_layer_advisory: true,
       }),
       bundle_hash_verified: validity.valid,
     },
@@ -152,6 +173,13 @@ export function summarizeBundle(bundle: EvidenceBundle, repeatRunCount = 1, cruc
     },
     repeat_run_count: repeatRunCount,
     review: bundle.review ?? null,
+    review_security: bundle.review?.security ?? null,
+    review_input_sanitized: bundle.review?.security.review_input_sanitized ?? false,
+    injection_flags_count: bundle.review?.security.injection_flags_count ?? 0,
+    flagged_sources: bundle.review?.security.flagged_sources ?? [],
+    review_blocked_reason: bundle.review?.security.review_blocked_reason ?? null,
+    review_output_invalid: bundle.review?.security.review_output_invalid ?? false,
+    trust_boundary_violations: bundle.review?.security.trust_boundary_violations ?? [],
     integrations,
   };
 }

@@ -2541,7 +2541,7 @@ function renderRunTask(el) {
         '<span class="ctx-label">Provider:</span> ' + esc(providerEntry ? providerEntry.label + ' [' + providerKindLabel(providerEntry.kind) + ']' : '--') + '<br>' +
         '<span class="ctx-label">Model:</span> ' + esc(currentModel || 'not entered') + '<br>' +
         '<span class="ctx-label">Judge:</span> deterministic (authoritative)' + '<br>' +
-        '<span class="ctx-label">Review:</span> ' + esc(reviewLine) + '<br>' +
+        '<span class="ctx-label">Review:</span> ' + esc(reviewLine) + ' (advisory only)' + '<br>' +
         '<span class="ctx-label">Bundle:</span> signed evidence bundle';
     }
 
@@ -3210,7 +3210,7 @@ function renderBundleDrawer(bundle) {
       '</div>' +
       '<div class="bundle-meta-item">' +
         '<span class="bm-label">Judge</span>' +
-        '<span class="bm-value">' + esc((bundle.judge && bundle.judge.description) || 'deterministic oracle + tests + integrity checks') + '</span>' +
+        '<span class="bm-value">' + esc((bundle.judge && bundle.judge.description) || 'deterministic oracle + tests + integrity checks') + ' <span style="color:var(--accent-soft);font-size:11px;">authoritative</span></span>' +
       '</div>' +
       '<div class="bundle-meta-item">' +
         '<span class="bm-label">Timestamp</span>' +
@@ -3379,9 +3379,38 @@ function buildSection(title, id, content) {
 function buildReviewSection(bundle) {
   var review = bundle.review;
   if (!review) return '';
+  var reviewSecurity = review.security || {};
+
+  function renderReviewSecurity() {
+    var lines = [
+      '<div><span style="color:var(--accent-muted);font-size:11px;text-transform:uppercase;">Authority:</span> Deterministic result authoritative</div>',
+      '<div><span style="color:var(--accent-muted);font-size:11px;text-transform:uppercase;">Review role:</span> Advisory only</div>'
+    ];
+    if (reviewSecurity.review_input_scanned) {
+      lines.push('<div style="color:var(--pass);font-size:12px;">Review input sanitized</div>');
+    }
+    if ((reviewSecurity.injection_flags_count || 0) > 0) {
+      lines.push('<div style="color:var(--warn);font-size:12px;">Injection flags detected: ' + esc(String(reviewSecurity.injection_flags_count)) + '</div>');
+    }
+    if (reviewSecurity.review_blocked_reason) {
+      lines.push('<div style="color:var(--fail);font-size:12px;">Review blocked: ' + esc(reviewSecurity.review_blocked_reason) + '</div>');
+    }
+    if (reviewSecurity.review_output_invalid) {
+      lines.push('<div style="color:var(--warn);font-size:12px;">Invalid review output rejected</div>');
+    }
+    return '<div style="margin-bottom:16px;font-size:13px;line-height:1.7;">' + lines.join('') + '</div>';
+  }
 
   function renderReview(label, r) {
     if (!r || !r.enabled) return '<div style="color:var(--text-muted);font-size:13px;">Off</div>';
+    if (r.status === 'blocked_injection') {
+      return '<div style="color:var(--fail);font-size:13px;">Review blocked</div>' +
+        '<div style="color:var(--text-secondary);font-size:12px;margin-top:6px;">' + esc(r.summary || 'Prompt-injection indicators detected in review input.') + '</div>';
+    }
+    if (r.status === 'invalid_output') {
+      return '<div style="color:var(--warn);font-size:13px;">Invalid output rejected</div>' +
+        '<div style="color:var(--text-secondary);font-size:12px;margin-top:6px;">' + esc(r.error || 'Schema validation failed.') + '</div>';
+    }
     if (r.status === 'error') {
       return '<div style="color:var(--fail);font-size:13px;">Error: ' + esc(r.error || 'unknown') + '</div>';
     }
@@ -3407,6 +3436,7 @@ function buildReviewSection(bundle) {
   }
 
   var html =
+    renderReviewSecurity() +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">' +
       '<div>' +
         '<div style="font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent-muted);margin-bottom:8px;">Second Opinion</div>' +

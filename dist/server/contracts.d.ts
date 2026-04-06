@@ -29,6 +29,10 @@ export interface EvaluationSummary {
         };
     };
     judge: EvidenceBundle["judge"];
+    authority: {
+        deterministic_judge_authoritative: true;
+        review_layer_advisory: true;
+    };
     trust: EvidenceBundle["trust"] & {
         bundle_hash_verified: boolean;
     };
@@ -45,6 +49,15 @@ export interface EvaluationSummary {
     };
     repeat_run_count: number;
     review: EvidenceBundle["review"] | null;
+    review_security: EvidenceBundle["review"] extends infer R ? R extends {
+        security: infer S;
+    } ? S | null : null : null;
+    review_input_sanitized: boolean;
+    injection_flags_count: number;
+    flagged_sources: string[];
+    review_blocked_reason: string | null;
+    review_output_invalid: boolean;
+    trust_boundary_violations: string[];
     integrations: NonNullable<EvidenceBundle["integrations"]>;
 }
 export declare function summarizeBundle(bundle: EvidenceBundle, repeatRunCount?: number, crucible?: CrucibleLink | null): EvaluationSummary;
