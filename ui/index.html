@@ -746,10 +746,26 @@ table tbody td.mono-bright {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 32px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.run-config-scroll {
+  flex: 1;
   overflow-y: auto;
+  padding: 32px 32px 0;
+  min-height: 0;
+}
+
+.run-btn-container {
+  position: sticky;
+  bottom: 0;
+  padding: 16px 32px 24px;
+  background: linear-gradient(to top, var(--surface) 60%, transparent);
+  z-index: 10;
+  flex-shrink: 0;
 }
 
 .config-section {
@@ -877,7 +893,6 @@ table tbody td.mono-bright {
   cursor: pointer;
   transition: all 0.15s ease;
   width: 100%;
-  margin-top: auto;
   text-transform: uppercase;
 }
 
@@ -1613,6 +1628,9 @@ table tbody td.mono-bright {
     grid-template-columns: 1fr;
     height: auto;
   }
+  .run-config-panel {
+    max-height: 70vh;
+  }
   .run-log-panel {
     min-height: 400px;
   }
@@ -1663,6 +1681,15 @@ table tbody td.mono-bright {
   }
   .hero-meta-line {
     word-break: break-word;
+  }
+  .run-config-panel {
+    max-height: 65vh;
+  }
+  .run-config-scroll {
+    padding: 20px 16px 0;
+  }
+  .run-btn-container {
+    padding: 12px 16px 16px;
   }
 }
 </style>
@@ -2295,6 +2322,7 @@ function renderRunTask(el) {
   el.innerHTML =
     '<div class="run-layout">' +
       '<div class="run-config-panel">' +
+        '<div class="run-config-scroll">' +
         '<div class="config-section">' +
           '<div class="config-section-label">Task</div>' +
           '<div class="form-group">' +
@@ -2368,7 +2396,10 @@ function renderRunTask(el) {
           '<div class="config-section-label">Evaluation Pipeline</div>' +
           '<div class="pipeline-summary" id="pipeline-summary"></div>' +
         '</div>' +
-        '<button class="' + btnClass + '" id="run-btn" onclick="startRun()" ' + (isRunning ? 'disabled' : '') + '>' + btnText + '</button>' +
+        '</div>' +
+        '<div class="run-btn-container">' +
+          '<button class="' + btnClass + '" id="run-btn" onclick="startRun()" ' + (isRunning ? 'disabled' : '') + '>' + btnText + '</button>' +
+        '</div>' +
       '</div>' +
       '<div class="run-log-panel">' +
         '<div class="run-log-header">' +
