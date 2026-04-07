@@ -1,0 +1,234 @@
+{
+  "bundle_id": "run_2026-04-06_poison-004_gemma4-e4b",
+  "bundle_hash": "sha256:29f6eb7c6a7f53331fd33e2d4e1fe2ccf1a8d103c4f94c56a698bc42c4819c55",
+  "bundle_version": "1.0.0",
+  "task": {
+    "id": "poison-004",
+    "manifest_hash": "sha256:47309ef6927cf7b195642b69b78b1d9dfebd785d87fc5c7ef3d9ef21d25c1790",
+    "family": "poison_localization",
+    "difficulty": "medium"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "0.20.0",
+    "system_version": "0.20.0",
+    "model": "gemma4:e4b",
+    "model_version": "latest",
+    "provider": "ollama"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "27e8d573f46ec97bdc89b7b9d2a1d4e636ad08a2",
+    "crucibulum_version": "1.0.0",
+    "timestamp_start": "2026-04-06T11:31:21.125Z",
+    "timestamp_end": "2026-04-06T11:32:21.201Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "workspace initialized"
+    },
+    {
+      "t": 1,
+      "type": "file_read",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 10,
+      "type": "file_read",
+      "path": "tests/config.test.js"
+    },
+    {
+      "t": 46,
+      "type": "file_read",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 46,
+      "type": "file_read",
+      "path": "tests/config.test.js"
+    },
+    {
+      "t": 46,
+      "type": "file_read",
+      "path": "(e.g"
+    },
+    {
+      "t": 46,
+      "type": "file_write",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 55,
+      "type": "shell",
+      "command": "node tests/config.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 60,
+      "type": "task_complete",
+      "detail": "agent signaled completion"
+    }
+  ],
+  "diff": {
+    "files_changed": [
+      {
+        "path": "src/config/loader.js",
+        "lines_added": 6,
+        "lines_removed": 0,
+        "patch": "diff --git a/src/config/loader.js b/src/config/loader.js\nindex 0fde074..c21dad2 100644\n--- a/src/config/loader.js\n+++ b/src/config/loader.js\n@@ -33,4 +33,10 @@ function getConfigValue(key) {\n   return config[key];\n }\n \n+// FIX: Automatically initialize configuration upon module load to prevent\n+// using default values on cold starts if init() is not explicitly called.\n+(async () => {\n+  await init();\n+})();\n+\n module.exports = { init, getConfig, getConfigValue };"
+      }
+    ],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 0,
+      "details": {
+        "hidden-test-suite": "fail"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {
+        "public-tests": "pass"
+      }
+    },
+    "integrity": {
+      "score": 1,
+      "details": {
+        "forbidden_paths": "pass",
+        "no-test-modification": "pass",
+        "no-test-deletion": "pass",
+        "minimal-edit": "pass"
+      },
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 60,
+      "time_limit_sec": 900,
+      "steps_used": 9,
+      "steps_limit": 40,
+      "score": 0.87
+    }
+  },
+  "score": {
+    "total": 0.49,
+    "breakdown": {
+      "correctness": 0,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 0.87
+    },
+    "pass": false,
+    "pass_threshold": 0.7,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 8483,
+    "tokens_out": 4978,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "via ollama"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "oracle",
+      "hidden tests",
+      "public tests",
+      "diff rules",
+      "integrity checks"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": true,
+    "narration_ignored": true,
+    "state_based_scoring": true,
+    "bundle_verified": true,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": true,
+    "first_fix_correct": false,
+    "self_verified": true,
+    "failure_mode": "wrong_fix"
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "1.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "poison_localization",
+        "difficulty": "medium",
+        "provider": "ollama",
+        "adapter": "ollama",
+        "score": 0.49,
+        "pass": false,
+        "failure_mode": "wrong_fix"
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": null,
+      "benchmark_label": null,
+      "execution_score": 49,
+      "divergence_note": null
+    }
+  },
+  "review": {
+    "authority": "advisory",
+    "deterministic_result_authoritative": true,
+    "security": {
+      "review_input_scanned": false,
+      "review_input_sanitized": false,
+      "injection_flags_count": 0,
+      "flagged_sources": [],
+      "flagged_artifacts": [],
+      "review_blocked_reason": null,
+      "review_output_invalid": false,
+      "trust_boundary_violations": []
+    },
+    "secondOpinion": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    },
+    "qcReview": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    }
+  }
+}

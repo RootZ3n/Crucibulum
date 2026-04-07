@@ -44,6 +44,11 @@ describe("Run Full Suite", () => {
     it("Run Full Suite has distinct CSS class", () => {
       assert.match(ui, /run-btn-suite/);
     });
+
+    it("action area is sticky and deliberate", () => {
+      assert.match(ui, /\.run-btn-container[\s\S]*?position:\s*sticky/);
+      assert.match(ui, /Action Chamber/);
+    });
   });
 
   // ── Distinct behavior ──────────────────────────────────────────────
@@ -67,6 +72,11 @@ describe("Run Full Suite", () => {
 
     it("startRun calls /api/run endpoint", () => {
       assert.match(ui, /\/api\/run'/);
+    });
+
+    it("startRun forwards requested repeat count instead of blocking it", () => {
+      assert.match(ui, /count:\s*count/);
+      assert.doesNotMatch(ui, /Multi-run API batching is not available yet/);
     });
   });
 
@@ -121,6 +131,10 @@ describe("Run Full Suite", () => {
       assert.match(apiSrc, /results:\s*suite\.results/);
       assert.match(apiSrc, /summary:\s*suite\.summary/);
     });
+
+    it("preserves explicit provider identity through suite execution", () => {
+      assert.match(apiSrc, /provider:\s*body\.provider \?\? null/);
+    });
   });
 
   // ── Suite results rendering ────────────────────────────────────────
@@ -135,8 +149,17 @@ describe("Run Full Suite", () => {
       assert.match(ui, /Total cost/i);
     });
 
+    it("shows total tasks and average score", () => {
+      assert.match(ui, /Tasks:/);
+      assert.match(ui, /Avg score:/);
+    });
+
     it("shows per-task results in log", () => {
       assert.match(ui, /suite-task-result/);
+    });
+
+    it("links suite completion to a follow-up surface", () => {
+      assert.match(ui, /View run history/);
     });
 
     it("resets buttons after suite completion", () => {
@@ -153,6 +176,10 @@ describe("Run Full Suite", () => {
 
     it("suite button has reduced font size on mobile", () => {
       assert.match(ui, /\.run-btn-suite[\s\S]*?font-size:\s*12px/);
+    });
+
+    it("action area stays stacked on mobile", () => {
+      assert.match(ui, /\.run-action-copy/);
     });
   });
 

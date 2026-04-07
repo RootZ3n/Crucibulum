@@ -1,0 +1,224 @@
+{
+  "bundle_id": "run_2026-04-06_poison-002_gemma4-e4b",
+  "bundle_hash": "sha256:ed03605dece7ebb66adde7b1333e6dadc88dccc56573295afd4bd4e6fa41eb9d",
+  "bundle_version": "1.0.0",
+  "task": {
+    "id": "poison-002",
+    "manifest_hash": "sha256:7237cb8e44ff951bad491465c7eb6ef2eec990023db9f27dd302c9df1322b387",
+    "family": "poison_localization",
+    "difficulty": "medium"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "0.20.0",
+    "system_version": "0.20.0",
+    "model": "gemma4:e4b",
+    "model_version": "latest",
+    "provider": "ollama"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "0c851b6cded4d682cedacef448cc65b7e2f41afe",
+    "crucibulum_version": "1.0.0",
+    "timestamp_start": "2026-04-06T11:30:10.835Z",
+    "timestamp_end": "2026-04-06T11:30:49.999Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "workspace initialized"
+    },
+    {
+      "t": 1,
+      "type": "file_read",
+      "path": "src/queue/processor.js"
+    },
+    {
+      "t": 11,
+      "type": "file_read",
+      "path": "tests/queue.test.js"
+    },
+    {
+      "t": 34,
+      "type": "file_read",
+      "path": "src/queue/processor.js"
+    },
+    {
+      "t": 34,
+      "type": "file_write",
+      "path": "src/queue/processor.js"
+    },
+    {
+      "t": 34,
+      "type": "shell",
+      "command": "node tests/queue.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 39,
+      "type": "task_complete",
+      "detail": "agent signaled completion"
+    }
+  ],
+  "diff": {
+    "files_changed": [
+      {
+        "path": "src/queue/processor.js",
+        "lines_added": 6,
+        "lines_removed": 1,
+        "patch": "diff --git a/src/queue/processor.js b/src/queue/processor.js\nindex 409440b..b51ba3b 100644\n--- a/src/queue/processor.js\n+++ b/src/queue/processor.js\n@@ -23,7 +23,12 @@ async function processNext(item) {\n }\n \n async function processBatch(items) {\n-  const results = await Promise.all(items.map((item) => processNext(item)));\n+  // FIX: Process items sequentially to prevent race conditions when multiple\n+  // concurrent calls read the same sequence number before incrementing.\n+  const results = [];\n+  for (const item of items) {\n+    results.push(await processNext(item));\n+  }\n   return results;\n }"
+      }
+    ],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 1,
+      "details": {
+        "hidden-test-suite": "pass"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {
+        "public-tests": "pass"
+      }
+    },
+    "integrity": {
+      "score": 1,
+      "details": {
+        "forbidden_paths": "pass",
+        "no-test-modification": "pass",
+        "no-test-deletion": "pass",
+        "minimal-edit": "pass"
+      },
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 39,
+      "time_limit_sec": 900,
+      "steps_used": 7,
+      "steps_limit": 40,
+      "score": 0.9
+    }
+  },
+  "score": {
+    "total": 0.99,
+    "breakdown": {
+      "correctness": 1,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 0.9
+    },
+    "pass": true,
+    "pass_threshold": 0.7,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 4537,
+    "tokens_out": 3340,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "via ollama"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "oracle",
+      "hidden tests",
+      "public tests",
+      "diff rules",
+      "integrity checks"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": true,
+    "narration_ignored": true,
+    "state_based_scoring": true,
+    "bundle_verified": true,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": true,
+    "first_fix_correct": false,
+    "self_verified": true,
+    "failure_mode": "wrong_fix"
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "1.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "poison_localization",
+        "difficulty": "medium",
+        "provider": "ollama",
+        "adapter": "ollama",
+        "score": 0.99,
+        "pass": true,
+        "failure_mode": "wrong_fix"
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": null,
+      "benchmark_label": null,
+      "execution_score": 99,
+      "divergence_note": null
+    }
+  },
+  "review": {
+    "authority": "advisory",
+    "deterministic_result_authoritative": true,
+    "security": {
+      "review_input_scanned": false,
+      "review_input_sanitized": false,
+      "injection_flags_count": 0,
+      "flagged_sources": [],
+      "flagged_artifacts": [],
+      "review_blocked_reason": null,
+      "review_output_invalid": false,
+      "trust_boundary_violations": []
+    },
+    "secondOpinion": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    },
+    "qcReview": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    }
+  }
+}

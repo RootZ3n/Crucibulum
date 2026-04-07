@@ -11,6 +11,7 @@ import type { EvidenceBundle } from "../adapters/base.js";
 
 function makeMockBundle(overrides: Partial<{
   adapter: string;
+  provider: string;
   model: string;
   taskId: string;
   pass: boolean;
@@ -25,6 +26,7 @@ function makeMockBundle(overrides: Partial<{
 }>): EvidenceBundle {
   const o = {
     adapter: "mock",
+    provider: "local",
     model: "mock-model",
     taskId: "task-001",
     pass: true,
@@ -44,7 +46,7 @@ function makeMockBundle(overrides: Partial<{
     bundle_hash: "sha256:test",
     bundle_version: "1.0.0",
     task: { id: o.taskId, manifest_hash: "sha256:abc", family: "poison_localization", difficulty: "medium" },
-    agent: { adapter: o.adapter, adapter_version: "1.0.0", system: "test", system_version: "1.0.0", model: o.model, model_version: "1.0.0", provider: "local" },
+    agent: { adapter: o.adapter, adapter_version: "1.0.0", system: "test", system_version: "1.0.0", model: o.model, model_version: "1.0.0", provider: o.provider },
     environment: { os: "linux-x64", arch: "x64", repo_commit: "abc123", crucibulum_version: "1.0.0", timestamp_start: o.timestampStart, timestamp_end: o.timestampEnd },
     timeline: [
       { t: 0, type: "task_start", detail: "init" },
@@ -85,7 +87,7 @@ function makeMockBundle(overrides: Partial<{
         routing_signals: {
           task_family: "poison_localization",
           difficulty: "medium",
-          provider: "local",
+          provider: o.provider,
           adapter: o.adapter,
           score: o.total,
           pass: o.pass,
@@ -100,17 +102,17 @@ function makeMockBundle(overrides: Partial<{
 // ── aggregateByModel ────────────────────────────────────────────────────────
 
 describe("aggregateByModel", () => {
-  it("groups bundles by adapter:model key", () => {
+  it("groups bundles by adapter:provider:model key", () => {
     const bundles = [
-      makeMockBundle({ adapter: "ollama", model: "gemma3:27b" }),
-      makeMockBundle({ adapter: "ollama", model: "gemma3:27b" }),
-      makeMockBundle({ adapter: "ollama", model: "llama3:8b" }),
+      makeMockBundle({ adapter: "ollama", provider: "ollama", model: "gemma3:27b" }),
+      makeMockBundle({ adapter: "ollama", provider: "ollama", model: "gemma3:27b" }),
+      makeMockBundle({ adapter: "ollama", provider: "openrouter", model: "gemma3:27b" }),
     ];
 
     const groups = aggregateByModel(bundles);
     assert.equal(groups.size, 2);
-    assert.equal(groups.get("ollama:gemma3:27b")!.length, 2);
-    assert.equal(groups.get("ollama:llama3:8b")!.length, 1);
+    assert.equal(groups.get("ollama:ollama:gemma3:27b")!.length, 2);
+    assert.equal(groups.get("ollama:openrouter:gemma3:27b")!.length, 1);
   });
 
   it("returns empty map for empty input", () => {
@@ -128,7 +130,7 @@ describe("buildLeaderboardEntry", () => {
       makeMockBundle({ pass: false, total: 0.3, failureMode: "wrong_fix" }),
     ];
 
-    const entry = buildLeaderboardEntry("mock:mock-model", bundles);
+    const entry = buildLeaderboardEntry("mock:local:mock-model", bundles);
 
     assert.equal(typeof entry.submission_id, "string");
     assert.equal(typeof entry.submitted_at, "string");
@@ -136,6 +138,7 @@ describe("buildLeaderboardEntry", () => {
     assert.equal(entry.bundle_hashes.length, 2);
     assert.equal(entry.crucibulum_version, "1.0.0");
     assert.equal(entry.agent.adapter, "mock");
+    assert.equal(entry.agent.provider, "local");
     assert.equal(entry.agent.model, "mock-model");
     assert.equal(typeof entry.tasks_attempted, "number");
     assert.equal(typeof entry.tasks_passed, "number");
@@ -148,6 +151,7 @@ describe("buildLeaderboardEntry", () => {
     assert.equal(typeof entry.performance.p90_time_sec, "number");
     assert.equal(typeof entry.performance.median_steps, "number");
     assert.equal(typeof entry.performance.total_cost_usd, "number");
+    assert.equal(typeof entry.review_signals.disagreement_rate, "number");
     assert.equal(typeof entry.verified, "boolean");
   });
 
@@ -158,7 +162,7 @@ describe("buildLeaderboardEntry", () => {
       makeMockBundle({ pass: false, total: 0.3, failureMode: "localization_failure" }),
     ];
 
-    const entry = buildLeaderboardEntry("mock:mock-model", bundles);
+    const entry = buildLeaderboardEntry("mock:local:mock-model", bundles);
     assert.equal(entry.failure_taxonomy["wrong_fix"], 2);
     assert.equal(entry.failure_taxonomy["localization_failure"], 1);
   });
@@ -174,12 +178,13 @@ describe("pass@k", () => {
       makeMockBundle({ taskId: "task-pk", pass: false, total: 0.3, failureMode: "wrong_fix" }),
     ];
 
-    const entry = buildLeaderboardEntry("mock:mock-model", bundles);
+    const entry = buildLeaderboardEntry("mock:local:mock-model", bundles);
 
     // pass@1 checks the first run only
     assert.equal(entry.pass_at["task-pk_pass@1"], false);
     // pass@3 checks if any of the 3 runs passed
     assert.equal(entry.pass_at["task-pk_pass@3"], true);
+    assert.equal(entry.pass_at["overall_pass@3"], true);
   });
 
   it("pass@1 = true when first run passes", () => {
@@ -188,8 +193,62 @@ describe("pass@k", () => {
       makeMockBundle({ taskId: "task-pk2", pass: false, total: 0.2, failureMode: "wrong_fix" }),
     ];
 
-    const entry = buildLeaderboardEntry("mock:mock-model", bundles);
+    const entry = buildLeaderboardEntry("mock:local:mock-model", bundles);
     assert.equal(entry.pass_at["task-pk2_pass@1"], true);
     assert.equal(entry.pass_at["task-pk2_pass@2"], true);
+  });
+
+  it("computes pass@5 and review rates when enough runs exist", () => {
+    const flaggedBundle: EvidenceBundle = {
+      ...makeMockBundle({ taskId: "task-pk5", pass: true, total: 0.9, timestampStart: "2026-01-01T00:04:00Z" }),
+      review: {
+        authority: "advisory",
+        deterministic_result_authoritative: true,
+        security: {
+          review_input_scanned: true,
+          review_input_sanitized: true,
+          injection_flags_count: 0,
+          flagged_sources: [],
+          flagged_artifacts: [],
+          review_blocked_reason: "review_input_injection_detected",
+          review_output_invalid: false,
+          trust_boundary_violations: [],
+        },
+        secondOpinion: {
+          enabled: true,
+          provider: "openai",
+          model: "gpt-4.1-mini",
+          status: "blocked_injection",
+          summary: "",
+          flags: [],
+          confidence: "low",
+          recommendation: null,
+          disagreement: false,
+        },
+        qcReview: {
+          enabled: true,
+          provider: "openai",
+          model: "gpt-4.1-mini",
+          status: "completed",
+          summary: "",
+          flags: [],
+          confidence: "medium",
+          recommendation: null,
+          disagreement: true,
+        },
+      },
+    };
+    const bundles = [
+      makeMockBundle({ taskId: "task-pk5", pass: false, total: 0.2, failureMode: "wrong_fix", timestampStart: "2026-01-01T00:00:00Z" }),
+      makeMockBundle({ taskId: "task-pk5", pass: false, total: 0.2, failureMode: "wrong_fix", timestampStart: "2026-01-01T00:01:00Z" }),
+      makeMockBundle({ taskId: "task-pk5", pass: false, total: 0.2, failureMode: "wrong_fix", timestampStart: "2026-01-01T00:02:00Z" }),
+      makeMockBundle({ taskId: "task-pk5", pass: false, total: 0.2, failureMode: "wrong_fix", timestampStart: "2026-01-01T00:03:00Z" }),
+      flaggedBundle,
+    ];
+
+    const entry = buildLeaderboardEntry("mock:local:mock-model", bundles);
+    assert.equal(entry.pass_at["task-pk5_pass@5"], true);
+    assert.equal(entry.review_signals.qc_disagreement_rate, 0.2);
+    assert.equal(entry.review_signals.review_blocked_rate, 0.2);
   });
 });

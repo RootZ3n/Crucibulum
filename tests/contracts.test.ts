@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { summarizeBundle, countRepeatRuns } from "../server/contracts.js";
+import { summarizeBundle, countRepeatRuns, summarizeRunSet } from "../server/contracts.js";
 import { writeCrucibleLink, readCrucibleLink } from "../server/validation-links.js";
 import { sha256Object } from "../utils/hashing.js";
 import type { EvidenceBundle } from "../adapters/base.js";
@@ -92,7 +92,16 @@ describe("evaluation contracts", () => {
         },
       },
     });
-    const summary = summarizeBundle(bundle, 3, { profile_id: "crucible:model-1", benchmark_score: 71, benchmark_label: "Crucible April" });
+    const repeatPeer = makeBundle({
+      bundle_id: "run_test_contracts_repeat",
+      environment: { os: "linux-x64", arch: "x64", repo_commit: "abc123", crucibulum_version: "1.0.0", timestamp_start: "2026-04-05T00:05:00Z", timestamp_end: "2026-04-05T00:06:00Z" },
+    });
+    const summary = summarizeBundle(
+      bundle,
+      3,
+      { profile_id: "crucible:model-1", benchmark_score: 71, benchmark_label: "Crucible April" },
+      [bundle, repeatPeer],
+    );
     assert.equal(summary.schema, "crucibulum.evaluation.summary.v1");
     assert.equal(summary.target.adapter, "openrouter");
     assert.equal(summary.target.provider, "openrouter");
@@ -105,6 +114,11 @@ describe("evaluation contracts", () => {
     assert.deepEqual(summary.flagged_sources, ["diff", "timeline"]);
     assert.deepEqual(summary.trust_boundary_violations, ["untrusted_review_input_blocked"]);
     assert.equal(summary.repeat_run_count, 3);
+    assert.equal(summary.pass_at.pass_at_1, true);
+    assert.equal(summary.pass_at.pass_at_3, null);
+    assert.equal(summary.reliability.repeated_runs, 2);
+    assert.equal(summary.reliability.assessment, "guarded");
+    assert.ok(summary.reliability.reasons.includes("single_run_only") || summary.reliability.reasons.length >= 1);
     assert.equal(summary.integrations.veritor?.consumable, true);
     assert.equal(summary.integrations.paedagogus?.routing_signals.provider, "openrouter");
     assert.equal(summary.integrations.crucible?.profile_id, "crucible:model-1");
@@ -118,6 +132,74 @@ describe("evaluation contracts", () => {
       makeBundle({ bundle_id: "run_other", task: { id: "spec-001", manifest_hash: "sha256:def", family: "spec_discipline", difficulty: "easy" } }),
     ];
     assert.equal(countRepeatRuns(bundles, "poison-001", "openrouter", "openai/gpt-4.1-mini"), 2);
+    assert.equal(countRepeatRuns(bundles, "poison-001", "openrouter", "openai/gpt-4.1-mini", "openrouter"), 2);
+  });
+
+  it("derives repeat-run reliability and pass@k from stored evidence", () => {
+    const runSet = summarizeRunSet([
+      makeBundle({
+        bundle_id: "run_a",
+        score: { total: 0.2, breakdown: { correctness: 0, regression: 0.5, integrity: 1, efficiency: 0.5 }, pass: false, pass_threshold: 0.7, integrity_violations: 0 },
+        diagnosis: { localized_correctly: false, avoided_decoys: true, first_fix_correct: false, self_verified: false, failure_mode: "wrong_fix" },
+        environment: { os: "linux-x64", arch: "x64", repo_commit: "abc123", crucibulum_version: "1.0.0", timestamp_start: "2026-04-05T00:00:00Z", timestamp_end: "2026-04-05T00:01:00Z" },
+      }),
+      makeBundle({
+        bundle_id: "run_b",
+        review: {
+          authority: "advisory",
+          deterministic_result_authoritative: true,
+          security: {
+            review_input_scanned: true,
+            review_input_sanitized: true,
+            injection_flags_count: 1,
+            flagged_sources: ["diff"],
+            flagged_artifacts: [],
+            review_blocked_reason: "review_input_injection_detected",
+            review_output_invalid: false,
+            trust_boundary_violations: [],
+          },
+          secondOpinion: {
+            enabled: true,
+            provider: "openai",
+            model: "gpt-4.1-mini",
+            status: "blocked_injection",
+            summary: "",
+            flags: [],
+            confidence: "low",
+            recommendation: null,
+            disagreement: false,
+          },
+          qcReview: {
+            enabled: true,
+            provider: "openai",
+            model: "gpt-4.1-mini",
+            status: "completed",
+            summary: "",
+            flags: [],
+            confidence: "medium",
+            recommendation: null,
+            disagreement: true,
+          },
+        },
+        environment: { os: "linux-x64", arch: "x64", repo_commit: "abc123", crucibulum_version: "1.0.0", timestamp_start: "2026-04-05T00:02:00Z", timestamp_end: "2026-04-05T00:03:00Z" },
+      }),
+      makeBundle({
+        bundle_id: "run_c",
+        environment: { os: "linux-x64", arch: "x64", repo_commit: "abc123", crucibulum_version: "1.0.0", timestamp_start: "2026-04-05T00:04:00Z", timestamp_end: "2026-04-05T00:05:00Z" },
+      }),
+    ]);
+
+    assert.equal(runSet.run_count, 3);
+    assert.equal(runSet.passes, 2);
+    assert.equal(runSet.failures, 1);
+    assert.equal(runSet.pass_at.pass_at_1, false);
+    assert.equal(runSet.pass_at.pass_at_3, true);
+    assert.equal(runSet.pass_at.pass_at_5, null);
+    assert.equal(runSet.reliability.outcome_stability, "mixed");
+    assert.equal(runSet.reliability.qc_disagreement_rate, 0.3333);
+    assert.equal(runSet.reliability.review_blocked_count, 1);
+    assert.equal(runSet.reliability.injection_flagged_runs, 1);
+    assert.equal(runSet.reliability.assessment, "mixed");
   });
 
   it("stores and reloads crucible validation links", () => {
