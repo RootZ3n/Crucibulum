@@ -11,6 +11,7 @@ export interface LeaderboardEntry {
     crucibulum_version: string;
     agent: {
         adapter: string;
+        provider: string;
         model: string;
         system: string;
         system_version: string;
@@ -27,6 +28,11 @@ export interface LeaderboardEntry {
     };
     pass_at: Record<string, boolean>;
     failure_taxonomy: Record<string, number>;
+    review_signals: {
+        disagreement_rate: number;
+        qc_disagreement_rate: number;
+        review_blocked_rate: number;
+    };
     performance: {
         median_time_sec: number;
         p90_time_sec: number;

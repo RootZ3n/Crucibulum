@@ -26,7 +26,7 @@ export function loadBundles() {
 export function aggregateByModel(bundles) {
     const groups = new Map();
     for (const b of bundles) {
-        const key = `${b.agent.adapter}:${b.agent.model}`;
+        const key = `${b.agent.adapter}:${b.agent.provider}:${b.agent.model}`;
         const group = groups.get(key) ?? [];
         group.push(b);
         groups.set(key, group);
@@ -43,9 +43,26 @@ export function buildLeaderboardEntry(modelKey, bundles) {
     }
     // pass@k: for each task, did at least 1 run pass?
     const passAt = {};
+    const taskPassAt = new Map();
     for (const [taskId, runs] of taskResults) {
-        passAt[`${taskId}_pass@1`] = runs[0]?.score.pass ?? false;
-        passAt[`${taskId}_pass@${runs.length}`] = runs.some(r => r.score.pass);
+        const orderedRuns = [...runs].sort((a, b) => new Date(a.environment.timestamp_start).getTime() - new Date(b.environment.timestamp_start).getTime());
+        const pass1 = orderedRuns[0]?.score.pass ?? false;
+        const pass3 = orderedRuns.length >= 3 ? orderedRuns.slice(0, 3).some((run) => run.score.pass) : null;
+        const pass5 = orderedRuns.length >= 5 ? orderedRuns.slice(0, 5).some((run) => run.score.pass) : null;
+        passAt[`${taskId}_pass@1`] = pass1;
+        if (pass3 !== null)
+            passAt[`${taskId}_pass@3`] = pass3;
+        if (pass5 !== null)
+            passAt[`${taskId}_pass@5`] = pass5;
+        passAt[`${taskId}_pass@${orderedRuns.length}`] = orderedRuns.some(r => r.score.pass);
+        taskPassAt.set(taskId, { pass1, pass3, pass5 });
+    }
+    passAt["overall_pass@1"] = [...taskPassAt.values()].every((task) => task.pass1);
+    if ([...taskPassAt.values()].every((task) => task.pass3 !== null)) {
+        passAt["overall_pass@3"] = [...taskPassAt.values()].every((task) => !!task.pass3);
+    }
+    if ([...taskPassAt.values()].every((task) => task.pass5 !== null)) {
+        passAt["overall_pass@5"] = [...taskPassAt.values()].every((task) => !!task.pass5);
     }
     // Failure taxonomy
     const failureTaxonomy = {};
@@ -70,6 +87,9 @@ export function buildLeaderboardEntry(modelKey, bundles) {
     const median = (arr) => arr.length === 0 ? 0 : arr[Math.floor(arr.length / 2)];
     const p90 = (arr) => arr.length === 0 ? 0 : arr[Math.floor(arr.length * 0.9)];
     const totalCost = bundles.reduce((s, b) => s + b.usage.estimated_cost_usd, 0);
+    const disagreementRate = bundles.length === 0 ? 0 : bundles.filter((bundle) => bundle.review?.secondOpinion?.disagreement || bundle.review?.qcReview?.disagreement).length / bundles.length;
+    const qcDisagreementRate = bundles.length === 0 ? 0 : bundles.filter((bundle) => bundle.review?.qcReview?.disagreement).length / bundles.length;
+    const reviewBlockedRate = bundles.length === 0 ? 0 : bundles.filter((bundle) => !!bundle.review?.security.review_blocked_reason).length / bundles.length;
     const tasksPassedCount = [...taskResults.entries()].filter(([, runs]) => runs.some(r => r.score.pass)).length;
     return {
         submission_id: `sub_${new Date().toISOString().slice(0, 10)}_${modelKey.replace(/[/:]/g, "-")}`,
@@ -78,6 +98,7 @@ export function buildLeaderboardEntry(modelKey, bundles) {
         crucibulum_version: "1.0.0",
         agent: {
             adapter: first.agent.adapter,
+            provider: first.agent.provider,
             model: first.agent.model,
             system: first.agent.system,
             system_version: first.agent.system_version,
@@ -94,6 +115,11 @@ export function buildLeaderboardEntry(modelKey, bundles) {
         },
         pass_at: passAt,
         failure_taxonomy: failureTaxonomy,
+        review_signals: {
+            disagreement_rate: Math.round(disagreementRate * 10000) / 10000,
+            qc_disagreement_rate: Math.round(qcDisagreementRate * 10000) / 10000,
+            review_blocked_rate: Math.round(reviewBlockedRate * 10000) / 10000,
+        },
         performance: {
             median_time_sec: median(durations),
             p90_time_sec: p90(durations),

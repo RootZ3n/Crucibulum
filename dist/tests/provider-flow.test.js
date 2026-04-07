@@ -181,6 +181,14 @@ describe("provider flow validation", () => {
         it("mobile: run log header wraps on narrow screens", () => {
             assert.match(ui, /\.run-log-header[\s\S]*?flex-wrap:\s*wrap/);
         });
+        it("mobile: verdict chamber stacks cleanly", () => {
+            assert.match(ui, /\.verdict-header[\s\S]*?flex-direction:\s*column/);
+            assert.match(ui, /\.verdict-grid[\s\S]*?grid-template-columns:\s*1fr/);
+        });
+        it("mobile: sticky action area remains reachable", () => {
+            assert.match(ui, /\.run-btn-container[\s\S]*?position:\s*sticky/);
+            assert.match(ui, /\.run-btn-container[\s\S]*?bottom:\s*0/);
+        });
     });
     // ── Bundle metadata preserves provider ─────────────────────────────
     describe("bundle detail view", () => {
@@ -192,6 +200,23 @@ describe("provider flow validation", () => {
         });
         it("bundle drawer shows model with adapter attribution", () => {
             assert.match(ui, /via.*adapter/i);
+        });
+    });
+    describe("run surface trust signals", () => {
+        it("shows decisive verdict copy and trust indicators", () => {
+            assert.match(ui, /Claim evaluated under controlled conditions/);
+            assert.match(ui, /Deterministic Judge \(authoritative\)/);
+            assert.match(ui, /Advisory Review Only/);
+            assert.match(ui, /Bundle Signed/);
+        });
+        it("shows process chain stages", () => {
+            assert.match(ui, /Task/);
+            assert.match(ui, /Provider/);
+            assert.match(ui, /Model/);
+            assert.match(ui, /Judge/);
+            assert.match(ui, /Review/);
+            assert.match(ui, /Bundle/);
+            assert.match(ui, /pipeline-chain/);
         });
     });
 });

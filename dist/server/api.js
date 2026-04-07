@@ -10,7 +10,7 @@ import { loadManifest, listTasks } from "../core/manifest.js";
 import { runTask } from "../core/runner.js";
 import { storeBundle } from "../core/bundle.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "../core/judge.js";
-import { summarizeBundle, countRepeatRuns } from "./contracts.js";
+import { summarizeBundle, countRepeatRuns, getRelatedBundles, summarizeRunSet } from "./contracts.js";
 import { readCrucibleLink, writeCrucibleLink } from "./validation-links.js";
 import { log } from "../utils/logger.js";
 const PORT = parseInt(process.env["CRUCIBULUM_PORT"] ?? "18795", 10);
@@ -105,6 +105,8 @@ function listTaskDetails() {
             network_allowed: manifest.constraints.network_allowed,
             public_tests_command: manifest.verification.public_tests_command,
             build_command: manifest.verification.build_command,
+            diagnostic_purpose: manifest.metadata.diagnostic_purpose,
+            tags: manifest.metadata.tags,
         };
     });
 }
@@ -122,8 +124,9 @@ function listSuites() {
         }];
 }
 function bundleSummary(bundle, allBundles) {
-    const repeats = countRepeatRuns(allBundles, bundle.task.id, bundle.agent.adapter, bundle.agent.model);
-    return summarizeBundle(bundle, repeats, readCrucibleLink(bundle.bundle_id));
+    const relatedBundles = getRelatedBundles(allBundles, bundle);
+    const repeats = countRepeatRuns(allBundles, bundle.task.id, bundle.agent.adapter, bundle.agent.model, bundle.agent.provider);
+    return summarizeBundle(bundle, repeats, readCrucibleLink(bundle.bundle_id), relatedBundles);
 }
 async function handleRequest(req, res) {
     const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
@@ -187,6 +190,7 @@ async function handleRequest(req, res) {
                 const summary = bundleSummary(bundle, bundles);
                 return {
                     bundle_id: bundle.bundle_id,
+                    bundle_hash: bundle.bundle_hash,
                     task_id: bundle.task.id,
                     family: bundle.task.family,
                     difficulty: bundle.task.difficulty,
@@ -195,16 +199,26 @@ async function handleRequest(req, res) {
                     adapter: bundle.agent.adapter,
                     score: bundle.score.total,
                     pass: bundle.score.pass,
+                    pass_threshold: bundle.score.pass_threshold,
                     integrity_violations: bundle.score.integrity_violations,
                     breakdown: bundle.score.breakdown,
+                    failure_taxonomy: summary.outcome.failure_taxonomy,
                     timestamp: bundle.environment.timestamp_start,
                     duration_sec: summary.timing.duration_sec,
                     tokens_in: bundle.usage.tokens_in,
                     tokens_out: bundle.usage.tokens_out,
                     cost_usd: bundle.usage.estimated_cost_usd,
                     judge: bundle.judge,
+                    judge_status: "authoritative",
                     trust: summary.trust,
                     review: bundle.review ?? null,
+                    second_opinion_status: bundle.review?.secondOpinion?.status ?? "skipped",
+                    qc_review_status: bundle.review?.qcReview?.status ?? "skipped",
+                    disagreement: !!(bundle.review?.secondOpinion?.disagreement || bundle.review?.qcReview?.disagreement),
+                    repeat_run_count: summary.repeat_run_count,
+                    pass_at: summary.pass_at,
+                    reliability: summary.reliability,
+                    review_security: summary.review_security,
                 };
             });
             sendJSON(res, 200, { runs });
@@ -282,33 +296,37 @@ async function handleRequest(req, res) {
         }
         if (path === "/api/compare" && method === "GET") {
             const taskId = url.searchParams.get("task") ?? "";
+            const suiteId = url.searchParams.get("suite") ?? "v1";
             const bundles = loadBundles();
             const filtered = taskId ? bundles.filter((bundle) => bundle.task.id === taskId) : bundles;
             const groups = new Map();
             for (const bundle of filtered) {
-                const key = `${bundle.agent.adapter}:${bundle.agent.provider}:${bundle.agent.model}`;
-                const group = groups.get(key) ?? { runs: 0, passes: 0, totalScore: 0, totalCost: 0, totalDuration: 0 };
-                group.runs += 1;
-                group.passes += bundle.score.pass ? 1 : 0;
-                group.totalScore += bundle.score.total;
-                group.totalCost += bundle.usage.estimated_cost_usd;
-                group.totalDuration += new Date(bundle.environment.timestamp_end).getTime() - new Date(bundle.environment.timestamp_start).getTime();
+                const key = JSON.stringify([bundle.agent.adapter, bundle.agent.provider, bundle.agent.model]);
+                const group = groups.get(key) ?? [];
+                group.push(bundle);
                 groups.set(key, group);
             }
             const comparisons = Array.from(groups.entries()).map(([key, group]) => {
-                const [adapter, provider, model] = key.split(":");
+                const [adapter, provider, model] = JSON.parse(key);
+                const aggregate = summarizeRunSet(group);
                 return {
                     adapter,
                     provider,
                     model,
-                    runs: group.runs,
-                    pass_rate: group.runs ? Math.round((group.passes / group.runs) * 100) : 0,
-                    avg_score: group.runs ? Math.round((group.totalScore / group.runs) * 100) : 0,
-                    avg_cost_usd: group.runs ? Math.round((group.totalCost / group.runs) * 10000) / 10000 : 0,
-                    avg_duration_sec: group.runs ? Math.round(group.totalDuration / group.runs / 1000) : 0,
+                    suite_id: suiteId,
+                    task_scope: taskId || "all",
+                    runs: aggregate.run_count,
+                    pass_rate: Math.round(aggregate.pass_rate * 100),
+                    pass_at: aggregate.pass_at,
+                    avg_score: Math.round(aggregate.avg_score * 100),
+                    avg_cost_usd: aggregate.run_count ? Math.round((aggregate.total_cost_usd / aggregate.run_count) * 10000) / 10000 : 0,
+                    avg_duration_sec: aggregate.run_count ? Math.round(aggregate.total_time_sec / aggregate.run_count) : 0,
+                    qc_disagreement_rate: aggregate.qc_disagreement_rate,
+                    review_blocked_rate: aggregate.review_blocked_rate,
+                    reliability: aggregate.reliability,
                 };
             }).sort((a, b) => b.avg_score - a.avg_score);
-            sendJSON(res, 200, { comparisons, task_id: taskId || null });
+            sendJSON(res, 200, { comparisons, task_id: taskId || null, suite_id: suiteId });
             return;
         }
         if (path.startsWith("/api/run/") && path.endsWith("/status") && method === "GET") {
@@ -321,6 +339,8 @@ async function handleRequest(req, res) {
                     error: active.error ?? null,
                     request: active.request ?? null,
                     bundle_id: active.bundle?.bundle_id ?? null,
+                    bundle_ids: active.bundles?.map((bundle) => bundle.bundle_id) ?? (active.bundle ? [active.bundle.bundle_id] : []),
+                    aggregate: active.aggregate ?? null,
                 });
                 return;
             }
@@ -335,9 +355,12 @@ async function handleRequest(req, res) {
                         adapter: stored.agent.adapter,
                         provider: stored.agent.provider,
                         model: stored.agent.model,
+                        count: 1,
                         judge: stored.judge ?? DETERMINISTIC_JUDGE_METADATA,
                     },
                     bundle_id: stored.bundle_id,
+                    bundle_ids: [stored.bundle_id],
+                    aggregate: summarizeRunSet([stored]),
                 });
                 return;
             }
@@ -352,6 +375,7 @@ async function handleRequest(req, res) {
                 sendJSON(res, 400, { error: "task, model, and adapter (or providerId) are required" });
                 return;
             }
+            const requestedCount = Math.min(Math.max(Math.floor(body.count ?? 1), 1), 10);
             // Build review config from request
             const reviewConfig = {
                 secondOpinion: {
@@ -375,6 +399,7 @@ async function handleRequest(req, res) {
                     adapter: adapterId,
                     provider: body.provider ?? null,
                     model: body.model,
+                    count: requestedCount,
                     judge: DETERMINISTIC_JUDGE_METADATA,
                 },
             });
@@ -384,44 +409,68 @@ async function handleRequest(req, res) {
                 judge: DETERMINISTIC_JUDGE_METADATA,
             });
             void (async () => {
-                let adapterInstance = null;
                 try {
-                    adapterInstance = await instantiateAdapterForRun({
+                    const healthAdapter = await instantiateAdapterForRun({
                         adapter: adapterId,
                         model: body.model,
                         provider: body.provider ?? null,
                     });
-                    const health = await adapterInstance.adapter.healthCheck();
+                    const health = await healthAdapter.adapter.healthCheck();
                     if (!health.ok) {
                         throw new Error(health.reason ?? `${adapterId} unavailable`);
                     }
+                    await healthAdapter.adapter.teardown();
                     broadcastSSE(runId, "step", {
                         type: "task_start",
-                        detail: `Target ${body.task} via ${adapterId}/${body.model}`,
+                        detail: `Target ${body.task} via ${adapterId}/${body.model} (${requestedCount} run${requestedCount === 1 ? "" : "s"})`,
                     });
-                    const result = await runTask({
-                        taskId: body.task,
-                        adapter: adapterInstance.adapter,
-                        model: body.model,
-                        keepWorkspace: false,
-                        reviewConfig,
-                    });
-                    storeBundle(result.bundle);
+                    const completedBundles = [];
+                    for (let index = 0; index < requestedCount; index += 1) {
+                        const adapterInstance = await instantiateAdapterForRun({
+                            adapter: adapterId,
+                            model: body.model,
+                            provider: body.provider ?? null,
+                        });
+                        try {
+                            broadcastSSE(runId, "step", {
+                                type: "task_start",
+                                detail: `Run ${index + 1}/${requestedCount} executing`,
+                            });
+                            const result = await runTask({
+                                taskId: body.task,
+                                adapter: adapterInstance.adapter,
+                                model: body.model,
+                                keepWorkspace: false,
+                                reviewConfig,
+                            });
+                            storeBundle(result.bundle);
+                            completedBundles.push(result.bundle);
+                        }
+                        finally {
+                            await adapterInstance.adapter.teardown();
+                        }
+                    }
+                    const latestBundle = completedBundles[completedBundles.length - 1];
+                    const aggregate = summarizeRunSet(completedBundles);
                     const active = activeRuns.get(runId);
                     if (active) {
                         active.status = "complete";
-                        active.bundle = result.bundle;
+                        active.bundle = latestBundle;
+                        active.bundles = completedBundles;
+                        active.aggregate = aggregate;
                     }
                     broadcastSSE(runId, "complete", {
-                        bundle_id: result.bundle.bundle_id,
-                        score: result.bundle.score,
-                        pass: result.bundle.score.pass,
-                        judge: result.bundle.judge,
-                        review: result.bundle.review,
+                        bundle_id: latestBundle.bundle_id,
+                        bundle_ids: completedBundles.map((bundle) => bundle.bundle_id),
+                        score: latestBundle.score,
+                        pass: latestBundle.score.pass,
+                        judge: latestBundle.judge,
+                        review: latestBundle.review,
+                        aggregate,
                         target: {
-                            adapter: result.bundle.agent.adapter,
-                            provider: result.bundle.agent.provider,
-                            model: result.bundle.agent.model,
+                            adapter: latestBundle.agent.adapter,
+                            provider: latestBundle.agent.provider,
+                            model: latestBundle.agent.model,
                         },
                     });
                 }
@@ -434,9 +483,6 @@ async function handleRequest(req, res) {
                     broadcastSSE(runId, "error", { error: String(err) });
                 }
                 finally {
-                    if (adapterInstance) {
-                        await adapterInstance.adapter.teardown();
-                    }
                     const clients = sseClients.get(runId) ?? [];
                     for (const client of clients) {
                         try {
@@ -525,7 +571,7 @@ async function handleRequest(req, res) {
                     adapterInstance = await instantiateAdapterForRun({
                         adapter: adapterId,
                         model: body.model,
-                        provider: null,
+                        provider: body.provider ?? null,
                     });
                     const health = await adapterInstance.adapter.healthCheck();
                     if (!health.ok) {
@@ -538,7 +584,7 @@ async function handleRequest(req, res) {
                             const taskAdapter = await instantiateAdapterForRun({
                                 adapter: adapterId,
                                 model: body.model,
-                                provider: null,
+                                provider: body.provider ?? null,
                             });
                             const result = await runTask({
                                 taskId,

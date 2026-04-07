@@ -271,16 +271,16 @@ describe("provider-first selection flow", () => {
     });
 
     it("pipeline summary includes Provider field", () => {
-      assert.match(ui, /ctx-label.*Provider:/);
+      assert.match(ui, /renderPipelineStage\('Provider'/);
     });
 
     it("pipeline summary includes Model field", () => {
-      assert.match(ui, /ctx-label.*Model:/);
+      assert.match(ui, /renderPipelineStage\('Model'/);
     });
 
     it("pipeline summary includes Judge and Review fields", () => {
-      assert.match(ui, /ctx-label.*Judge:/);
-      assert.match(ui, /ctx-label.*Review:/);
+      assert.match(ui, /renderPipelineStage\('Judge'/);
+      assert.match(ui, /renderPipelineStage\('Review'/);
     });
 
     it("run payload sends providerId", () => {

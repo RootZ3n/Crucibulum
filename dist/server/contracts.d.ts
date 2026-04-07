@@ -4,6 +4,39 @@ export interface CrucibleLink {
     benchmark_score: number | null;
     benchmark_label: string | null;
 }
+export interface PassAtSummary {
+    pass_at_1: boolean;
+    pass_at_3: boolean | null;
+    pass_at_5: boolean | null;
+}
+export interface ReliabilitySummary {
+    repeated_runs: number;
+    pass_rate: number;
+    pass_at: PassAtSummary;
+    outcome_stability: "single_run" | "consistent" | "mixed";
+    review_disagreement_rate: number;
+    qc_disagreement_rate: number;
+    review_blocked_count: number;
+    injection_flagged_runs: number;
+    assessment: "stable" | "guarded" | "mixed";
+    reasons: string[];
+}
+export interface RunSetSummary {
+    run_count: number;
+    passes: number;
+    failures: number;
+    pass_rate: number;
+    pass_at: PassAtSummary;
+    avg_score: number;
+    total_tokens: number;
+    total_cost_usd: number;
+    total_time_sec: number;
+    disagreement_rate: number;
+    qc_disagreement_rate: number;
+    review_blocked_rate: number;
+    injection_flagged_rate: number;
+    reliability: ReliabilitySummary;
+}
 export interface EvaluationSummary {
     schema: "crucibulum.evaluation.summary.v1";
     bundle_id: string;
@@ -48,6 +81,8 @@ export interface EvaluationSummary {
         duration_sec: number;
     };
     repeat_run_count: number;
+    pass_at: PassAtSummary;
+    reliability: ReliabilitySummary;
     review: EvidenceBundle["review"] | null;
     review_security: EvidenceBundle["review"] extends infer R ? R extends {
         security: infer S;
@@ -60,6 +95,8 @@ export interface EvaluationSummary {
     trust_boundary_violations: string[];
     integrations: NonNullable<EvidenceBundle["integrations"]>;
 }
-export declare function summarizeBundle(bundle: EvidenceBundle, repeatRunCount?: number, crucible?: CrucibleLink | null): EvaluationSummary;
-export declare function countRepeatRuns(bundles: EvidenceBundle[], taskId: string, adapter: string, model: string): number;
+export declare function getRelatedBundles(bundles: EvidenceBundle[], bundle: EvidenceBundle): EvidenceBundle[];
+export declare function summarizeRunSet(bundles: EvidenceBundle[]): RunSetSummary;
+export declare function summarizeBundle(bundle: EvidenceBundle, repeatRunCount?: number, crucible?: CrucibleLink | null, relatedBundles?: EvidenceBundle[]): EvaluationSummary;
+export declare function countRepeatRuns(bundles: EvidenceBundle[], taskId: string, adapter: string, model: string, provider?: string): number;
 //# sourceMappingURL=contracts.d.ts.map

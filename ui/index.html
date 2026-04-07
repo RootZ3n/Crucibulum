@@ -18,29 +18,27 @@
 }
 
 :root {
-  --void: #0a0d14;
-  --surface: #111620;
-  --surface-raised: #1a1f2e;
-  --border: #252d3a;
-  --border-subtle: #1e2535;
-  --text-primary: #e2e8f0;
-  --text-secondary: #94a3b8;
-  --text-muted: #475569;
-  --accent-primary: #FF9F1C;
-  --accent-soft: #FFB347;
-  --accent-muted: #E08A00;
-  --pass: #34d399;
-  --fail: #f87171;
-  --warn: #fbbf24;
-  --active: var(--accent-primary);
-  --integrity: var(--accent-soft);
-  --neutral: #64748b;
+  --void: #080b12;
+  --surface: #0d1117;
+  --surface-raised: #161b22;
+  --border: #21262d;
+  --border-subtle: #161b22;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #484f58;
+  --pass: #39d353;
+  --fail: #f85149;
+  --warn: #d29922;
+  --active: #58a6ff;
+  --integrity: #bc8cff;
+  --teal: #2dd4bf;
+  --orange: #fb923c;
+  --pink: #f472b6;
   --font-mono: 'JetBrains Mono', monospace;
   --font-body: 'IBM Plex Sans', sans-serif;
   --sidebar-width: 240px;
-  --bundle-width: 640px;
-  --transparency-width: 480px;
-  --content-max: 1080px;
+  --bundle-width: 660px;
+  --content-max: 1200px;
 }
 
 html, body {
@@ -85,6 +83,21 @@ html, body {
   from { width: 0%; }
 }
 
+@keyframes sidebar-glow-cycle {
+  0%   { background: var(--active); }
+  16%  { background: var(--integrity); }
+  33%  { background: var(--teal); }
+  50%  { background: var(--pass); }
+  66%  { background: var(--orange); }
+  83%  { background: var(--pink); }
+  100% { background: var(--active); }
+}
+
+@keyframes score-bar-animate {
+  from { width: 0%; }
+  to { width: var(--bar-width); }
+}
+
 .loading-pulse {
   animation: pulse-load 1.8s ease-in-out infinite;
 }
@@ -113,6 +126,17 @@ html, body {
   overflow-y: auto;
   z-index: 10;
   position: relative;
+}
+
+#sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 3px;
+  animation: sidebar-glow-cycle 8s linear infinite;
+  z-index: 11;
 }
 
 #sidebar-header {
@@ -162,7 +186,7 @@ html, body {
   font-family: var(--font-body);
   font-size: 15px;
   font-weight: 500;
-  border-left: 2px solid transparent;
+  border-left: 3px solid transparent;
   transition: all 0.15s ease;
   user-select: none;
   position: relative;
@@ -170,13 +194,13 @@ html, body {
 
 .nav-item:hover {
   color: var(--text-secondary);
-  background: rgba(255, 159, 28, 0.05);
+  background: rgba(88, 166, 255, 0.05);
 }
 
 .nav-item.active {
   color: var(--text-primary);
   border-left-color: var(--active);
-  background: rgba(255, 159, 28, 0.1);
+  background: rgba(88, 166, 255, 0.08);
 }
 
 .nav-item.disabled {
@@ -189,9 +213,9 @@ html, body {
 .nav-item .nav-badge {
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--accent-soft);
+  color: var(--active);
   background: var(--surface-raised);
-  border: 1px solid rgba(255, 159, 28, 0.25);
+  border: 1px solid rgba(88, 166, 255, 0.25);
   padding: 2px 8px;
   border-radius: 3px;
   margin-left: auto;
@@ -209,7 +233,7 @@ html, body {
 }
 
 .status-label {
-  color: var(--accent-muted);
+  color: var(--text-muted);
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -221,6 +245,11 @@ html, body {
   font-family: var(--font-mono);
   font-size: 12px;
 }
+
+.status-value.sv-model { color: var(--active); }
+.status-value.sv-tasks { color: var(--teal); }
+.status-value.sv-lastrun-pass { color: var(--pass); }
+.status-value.sv-lastrun-fail { color: var(--fail); }
 
 .sidebar-credit {
   margin-top: 16px;
@@ -272,7 +301,7 @@ html, body {
 .header-btn {
   background: transparent;
   border: 1px solid var(--border);
-  color: var(--accent-soft);
+  color: var(--active);
   font-family: var(--font-mono);
   font-size: 12px;
   padding: 8px 16px;
@@ -286,8 +315,8 @@ html, body {
 }
 
 .header-btn:hover {
-  color: var(--accent-primary);
-  border-color: rgba(255, 159, 28, 0.4);
+  color: var(--text-primary);
+  border-color: rgba(88, 166, 255, 0.4);
   background: var(--surface-raised);
 }
 
@@ -304,7 +333,7 @@ html, body {
 }
 
 /* =========================================================================
-   HERO PANEL — LAST VERIFIED RUN
+   HERO PANEL -- LAST VERIFIED RUN
    ========================================================================= */
 .hero-panel {
   background: var(--surface);
@@ -322,11 +351,11 @@ html, body {
   top: 0;
   left: 0;
   right: 0;
-  height: 2px;
+  height: 3px;
 }
 
-.hero-panel.pass-accent::before { background: var(--pass); }
-.hero-panel.fail-accent::before { background: var(--fail); }
+.hero-panel.pass-accent::before { background: linear-gradient(90deg, var(--pass), var(--teal)); }
+.hero-panel.fail-accent::before { background: linear-gradient(90deg, var(--fail), var(--orange)); }
 .hero-panel.neutral-accent::before { background: var(--border); }
 
 .hero-eyebrow {
@@ -335,7 +364,7 @@ html, body {
   font-weight: 600;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--accent-muted);
+  color: var(--text-muted);
   margin-bottom: 28px;
 }
 
@@ -355,7 +384,7 @@ html, body {
 
 .hero-score {
   font-family: var(--font-mono);
-  font-size: 88px;
+  font-size: 200px;
   font-weight: 800;
   line-height: 1;
 }
@@ -376,7 +405,7 @@ html, body {
   margin: 0 8px;
 }
 
-/* Trust Badges */
+/* Trust Badges -- distinct colors */
 .trust-badges {
   display: flex;
   gap: 12px;
@@ -392,15 +421,47 @@ html, body {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.03em;
-  color: var(--accent-soft);
   padding: 6px 12px;
-  background: rgba(255, 159, 28, 0.08);
-  border: 1px solid rgba(255, 159, 28, 0.24);
   border-radius: 5px;
 }
 
+.trust-badge:nth-child(1) {
+  color: var(--integrity);
+  background: rgba(188, 140, 255, 0.08);
+  border: 1px solid rgba(188, 140, 255, 0.24);
+}
+.trust-badge:nth-child(1) .trust-check { color: var(--integrity); }
+
+.trust-badge:nth-child(2) {
+  color: var(--active);
+  background: rgba(88, 166, 255, 0.08);
+  border: 1px solid rgba(88, 166, 255, 0.24);
+}
+.trust-badge:nth-child(2) .trust-check { color: var(--active); }
+
+.trust-badge:nth-child(3) {
+  color: var(--teal);
+  background: rgba(45, 212, 191, 0.08);
+  border: 1px solid rgba(45, 212, 191, 0.24);
+}
+.trust-badge:nth-child(3) .trust-check { color: var(--teal); }
+
+.trust-badge:nth-child(4) {
+  color: var(--pass);
+  background: rgba(57, 211, 83, 0.08);
+  border: 1px solid rgba(57, 211, 83, 0.24);
+}
+.trust-badge:nth-child(4) .trust-check { color: var(--pass); }
+
+/* fallback for badges beyond 4 */
+.trust-badge:nth-child(n+5) {
+  color: var(--orange);
+  background: rgba(251, 146, 60, 0.08);
+  border: 1px solid rgba(251, 146, 60, 0.24);
+}
+.trust-badge:nth-child(n+5) .trust-check { color: var(--orange); }
+
 .trust-check {
-  color: var(--accent-primary);
   font-size: 13px;
   opacity: 1;
 }
@@ -412,7 +473,7 @@ html, body {
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--accent-muted);
+  color: var(--text-muted);
   margin-bottom: 18px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--border-subtle);
@@ -438,7 +499,7 @@ html, body {
 }
 
 /* =========================================================================
-   STAT TILES — SUMMARY METRICS (secondary)
+   STAT TILES -- SUMMARY METRICS
    ========================================================================= */
 .summary-metrics {
   display: grid;
@@ -462,15 +523,15 @@ html, body {
   top: 0;
   left: 0;
   right: 0;
-  height: 2px;
+  height: 3px;
 }
 
-.metric-tile.accent-blue::before { background: var(--active); opacity: 0.6; }
-.metric-tile.accent-green::before { background: var(--pass); opacity: 0.6; }
-.metric-tile.accent-amber::before { background: var(--warn); opacity: 0.6; }
-.metric-tile.accent-secondary::before { background: var(--neutral); opacity: 0.6; }
-.metric-tile.accent-red::before { background: var(--fail); opacity: 0.6; }
-.metric-tile.accent-purple::before { background: var(--integrity); opacity: 0.6; }
+.metric-tile.accent-blue::before { background: var(--active); }
+.metric-tile.accent-green::before { background: var(--pass); }
+.metric-tile.accent-amber::before { background: var(--warn); }
+.metric-tile.accent-secondary::before { background: var(--orange); }
+.metric-tile.accent-red::before { background: var(--fail); }
+.metric-tile.accent-purple::before { background: var(--integrity); }
 
 .metric-tile .metric-label {
   font-family: var(--font-mono);
@@ -478,13 +539,13 @@ html, body {
   font-weight: 500;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--accent-muted);
+  color: var(--text-muted);
   margin-bottom: 8px;
 }
 
 .metric-tile .metric-value {
   font-family: var(--font-mono);
-  font-size: 29px;
+  font-size: 48px;
   font-weight: 700;
   line-height: 1.1;
   color: var(--text-primary);
@@ -494,7 +555,115 @@ html, body {
 .metric-tile .metric-value.color-pass { color: var(--pass); }
 .metric-tile .metric-value.color-fail { color: var(--fail); }
 .metric-tile .metric-value.color-warn { color: var(--warn); }
-.metric-tile .metric-value.color-secondary { color: var(--text-secondary); }
+.metric-tile .metric-value.color-secondary { color: var(--orange); }
+
+/* =========================================================================
+   SCORE TREND CHART
+   ========================================================================= */
+.score-trend-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.score-trend-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--teal), var(--active));
+}
+
+.score-trend-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.score-trend-chart {
+  width: 100%;
+  height: 120px;
+}
+
+.score-trend-chart line.grid-line {
+  stroke: var(--border-subtle);
+  stroke-width: 1;
+}
+
+.score-trend-chart polyline.trend-line {
+  fill: none;
+  stroke: var(--teal);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.score-trend-chart circle.dot-pass { fill: var(--pass); }
+.score-trend-chart circle.dot-fail { fill: var(--fail); }
+
+/* =========================================================================
+   RUN HEATMAP
+   ========================================================================= */
+.run-heatmap-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.run-heatmap-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--pass), var(--fail));
+}
+
+.heatmap-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.heatmap-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.heatmap-cell {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  transition: transform 0.1s ease;
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.3);
+}
+
+.heatmap-cell.cell-pass { background: var(--pass); }
+.heatmap-cell.cell-fail { background: var(--fail); }
+.heatmap-cell.cell-empty { background: var(--border-subtle); }
 
 /* =========================================================================
    BADGES
@@ -511,28 +680,46 @@ html, body {
 }
 
 .badge-pass {
-  background: rgba(52, 211, 153, 0.1);
+  background: rgba(57, 211, 83, 0.1);
   color: var(--pass);
-  border: 1px solid rgba(52, 211, 153, 0.2);
+  border: 1px solid rgba(57, 211, 83, 0.2);
 }
 
 .badge-fail {
-  background: rgba(248, 113, 113, 0.1);
+  background: rgba(248, 81, 73, 0.1);
   color: var(--fail);
-  border: 1px solid rgba(248, 113, 113, 0.2);
+  border: 1px solid rgba(248, 81, 73, 0.2);
 }
 
 .badge-warn {
-  background: rgba(251, 191, 36, 0.1);
+  background: rgba(210, 153, 34, 0.1);
   color: var(--warn);
-  border: 1px solid rgba(251, 191, 36, 0.2);
+  border: 1px solid rgba(210, 153, 34, 0.2);
 }
 
 .badge-neutral {
-  background: rgba(100, 116, 139, 0.1);
-  color: var(--neutral);
-  border: 1px solid rgba(100, 116, 139, 0.2);
+  background: rgba(139, 148, 158, 0.1);
+  color: var(--text-secondary);
+  border: 1px solid rgba(139, 148, 158, 0.2);
 }
+
+/* Task family pills */
+.task-pill {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+  margin-right: 4px;
+}
+
+.task-pill.fam-poison { background: rgba(248, 81, 73, 0.12); color: var(--fail); }
+.task-pill.fam-spec { background: rgba(210, 153, 34, 0.12); color: var(--warn); }
+.task-pill.fam-coord,
+.task-pill.fam-orchestration { background: rgba(88, 166, 255, 0.12); color: var(--active); }
+.task-pill.fam-general { background: rgba(139, 148, 158, 0.1); color: var(--text-secondary); }
 
 /* =========================================================================
    SCORE BARS
@@ -562,7 +749,7 @@ html, body {
 
 .score-bar-track {
   flex: 1;
-  height: 10px;
+  height: 20px;
   background: var(--border);
   border-radius: 4px;
   overflow: hidden;
@@ -574,6 +761,7 @@ html, body {
   border-radius: 4px;
   transition: width 0.6s ease;
   min-width: 2px;
+  animation: bar-grow 0.8s ease;
 }
 
 .score-bar-fill.correctness { background: var(--pass); }
@@ -615,7 +803,7 @@ html, body {
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--accent-muted);
+  color: var(--text-muted);
 }
 
 .table-scroll {
@@ -633,7 +821,7 @@ table thead th {
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--accent-muted);
+  color: var(--text-muted);
   text-align: left;
   padding: 14px 18px;
   border-bottom: 1px solid var(--border-subtle);
@@ -661,7 +849,7 @@ table tbody tr:last-child {
 }
 
 table tbody tr:hover {
-  background: rgba(255, 159, 28, 0.05);
+  background: rgba(88, 166, 255, 0.04);
 }
 
 table tbody td {
@@ -676,6 +864,11 @@ table tbody td {
 table tbody td.mono-bright {
   color: var(--text-primary);
 }
+
+table tbody td.score-high { color: var(--pass); font-weight: 600; }
+table tbody td.score-mid { color: var(--warn); font-weight: 600; }
+table tbody td.score-low { color: var(--fail); font-weight: 600; }
+table tbody td.col-time { color: var(--orange); }
 
 /* =========================================================================
    EMPTY STATE
@@ -749,25 +942,55 @@ table tbody td.mono-bright {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  position: relative;
+  overflow: hidden;
 }
 
 .run-config-scroll {
   flex: 1 1 0;
   overflow-y: auto;
-  padding: 32px 32px 24px;
+  padding: 32px 32px 20px;
   min-height: 0;
 }
 
 .run-btn-container {
   flex-shrink: 0;
-  padding: 0 32px 24px;
-  background: var(--surface);
+  padding: 16px 32px 24px;
+  background: linear-gradient(180deg, rgba(13, 17, 23, 0.42) 0%, rgba(13, 17, 23, 0.96) 20%, rgba(13, 17, 23, 1) 100%);
   display: flex;
   gap: 12px;
+  position: sticky;
+  bottom: 0;
+  border-top: 1px solid rgba(88, 166, 255, 0.12);
+  box-shadow: 0 -16px 28px rgba(0,0,0,0.22);
+  z-index: 4;
 }
 
 .run-btn-container .run-btn {
   flex: 1;
+}
+
+.run-action-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  margin-right: auto;
+}
+
+.run-action-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--active);
+}
+
+.run-action-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
 }
 
 .run-btn-suite {
@@ -786,10 +1009,11 @@ table tbody td.mono-bright {
   flex: 1;
   text-transform: uppercase;
   white-space: nowrap;
+  box-shadow: inset 0 0 0 1px rgba(88, 166, 255, 0.08);
 }
 
 .run-btn-suite:hover:not(:disabled) {
-  background: rgba(255, 159, 28, 0.1);
+  background: rgba(88, 166, 255, 0.1);
 }
 
 .run-btn-suite:disabled {
@@ -812,10 +1036,15 @@ table tbody td.mono-bright {
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--accent-muted);
+  color: var(--warn);
   margin-bottom: 12px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border-subtle);
+}
+
+.config-section-label .section-num {
+  color: var(--warn);
+  margin-right: 8px;
 }
 
 .form-group {
@@ -879,7 +1108,7 @@ table tbody td.mono-bright {
 }
 
 .task-context-mini .ctx-label {
-  color: var(--accent-muted);
+  color: var(--teal);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -906,8 +1135,113 @@ table tbody td.mono-bright {
   overflow-wrap: break-word;
 }
 
+.pipeline-chain {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pipeline-stage {
+  position: relative;
+  background: linear-gradient(180deg, rgba(22, 27, 34, 0.92), rgba(8, 11, 18, 0.98));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 12px 10px;
+  min-height: 92px;
+}
+
+.pipeline-stage::after {
+  content: "\2192";
+  position: absolute;
+  right: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.pipeline-stage:last-child::after {
+  display: none;
+}
+
+.pipeline-stage.is-active {
+  border-color: rgba(88, 166, 255, 0.55);
+  box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.14), 0 10px 22px rgba(0,0,0,0.24);
+}
+
+.pipeline-stage.is-complete {
+  border-color: rgba(57, 211, 83, 0.28);
+}
+
+.pipeline-stage.is-waiting {
+  opacity: 0.84;
+}
+
+.pipeline-stage .stage-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.pipeline-stage .stage-value {
+  display: block;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.pipeline-stage .stage-meta {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.compare-foundation {
+  background: linear-gradient(180deg, rgba(22, 27, 34, 0.95), rgba(13, 17, 23, 0.92));
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 14px 16px;
+}
+
+.compare-foundation-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--active);
+  margin-bottom: 6px;
+}
+
+.compare-foundation-copy {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+.compare-entry {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--active);
+  cursor: pointer;
+}
+
 .pipeline-summary .ctx-label {
-  color: var(--accent-muted);
+  color: var(--teal);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -915,7 +1249,7 @@ table tbody td.mono-bright {
 
 .run-btn {
   height: 52px;
-  background: var(--active);
+  background: linear-gradient(135deg, var(--active), #3d8bfd);
   color: #fff;
   font-family: var(--font-mono);
   font-size: 14px;
@@ -931,8 +1265,8 @@ table tbody td.mono-bright {
 }
 
 .run-btn:hover:not(:disabled) {
-  background: var(--accent-soft);
-  color: var(--void);
+  background: linear-gradient(135deg, #6cb6ff, var(--active));
+  color: #fff;
 }
 
 .run-btn:disabled {
@@ -951,12 +1285,181 @@ table tbody td.mono-bright {
 }
 
 .run-log-panel {
-  background: var(--void);
+  background:
+    radial-gradient(circle at top right, rgba(88, 166, 255, 0.08), transparent 30%),
+    linear-gradient(180deg, rgba(13, 17, 23, 0.96), rgba(8, 11, 18, 1));
   border: 1px solid var(--border);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+}
+
+.run-log-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.02), transparent 22%),
+    radial-gradient(circle at 50% 0%, rgba(88, 166, 255, 0.06), transparent 40%);
+  pointer-events: none;
+}
+
+.verdict-chamber {
+  position: relative;
+  padding: 24px 24px 18px;
+  border-bottom: 1px solid rgba(88, 166, 255, 0.14);
+  background: linear-gradient(180deg, rgba(22, 27, 34, 0.88), rgba(13, 17, 23, 0.58));
+}
+
+.verdict-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.verdict-kicker {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.verdict-state {
+  font-family: var(--font-mono);
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+  animation: fade-in 0.35s ease;
+}
+
+.verdict-state.pass { color: var(--pass); }
+.verdict-state.fail { color: var(--fail); }
+.verdict-state.error,
+.verdict-state.blocked { color: var(--warn); }
+.verdict-state.pending { color: var(--text-secondary); }
+
+.verdict-side {
+  min-width: 140px;
+  text-align: right;
+}
+
+.verdict-score {
+  font-family: var(--font-mono);
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+  animation: fade-in 0.45s ease;
+}
+
+.verdict-confidence {
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.verdict-subcopy {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.65;
+  margin-bottom: 16px;
+  max-width: 720px;
+}
+
+.verdict-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.verdict-item {
+  background: rgba(8, 11, 18, 0.68);
+  border: 1px solid rgba(33, 38, 45, 0.95);
+  border-radius: 8px;
+  padding: 10px 12px;
+  min-height: 66px;
+}
+
+.verdict-item-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.verdict-item-value {
+  display: block;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.verdict-review-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.verdict-review-card {
+  background: rgba(8, 11, 18, 0.55);
+  border: 1px solid rgba(33, 38, 45, 0.95);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.verdict-review-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.verdict-review-status {
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.verdict-review-status .status-tone {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.verdict-scorebar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  overflow: hidden;
+  margin-top: 16px;
+}
+
+.verdict-scorebar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--active), var(--teal), var(--pass));
+  animation: bar-grow 0.7s ease;
 }
 
 .run-log-header {
@@ -1035,10 +1538,29 @@ table tbody td.mono-bright {
 .log-line.type-error { color: var(--fail); font-weight: 700; }
 .log-line.type-search { color: var(--integrity); }
 
+.run-log-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.run-log-entry .log-type {
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.run-log-entry .log-type.type-complete { color: var(--pass); }
+.run-log-entry .log-type.type-error { color: var(--fail); }
+
 .run-score-result {
   padding: 24px 16px;
   border-top: 1px solid var(--border);
   background: var(--surface);
+  animation: fade-in 0.35s ease;
 }
 
 /* =========================================================================
@@ -1080,7 +1602,7 @@ table tbody td.mono-bright {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(10, 13, 20, 0.7);
+  background: rgba(8, 11, 18, 0.7);
   backdrop-filter: blur(3px);
   z-index: 100;
   display: none;
@@ -1138,7 +1660,7 @@ table tbody td.mono-bright {
 .drawer-close {
   background: none;
   border: 1px solid var(--border);
-  color: var(--accent-soft);
+  color: var(--active);
   font-size: 18px;
   width: 32px;
   height: 32px;
@@ -1151,8 +1673,8 @@ table tbody td.mono-bright {
 }
 
 .drawer-close:hover {
-  color: var(--accent-primary);
-  border-color: rgba(255, 159, 28, 0.4);
+  color: var(--text-primary);
+  border-color: rgba(88, 166, 255, 0.4);
   background: var(--border);
 }
 
@@ -1181,7 +1703,7 @@ table tbody td.mono-bright {
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--accent-muted);
+  color: var(--text-muted);
 }
 
 .bundle-meta-item .bm-value {
@@ -1217,9 +1739,18 @@ table tbody td.mono-bright {
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--accent-muted);
+  color: var(--text-muted);
   transition: color 0.1s ease;
 }
+
+/* Bundle section header colors */
+#score-section .section-title { color: var(--pass); }
+#diff-section .section-title { color: var(--active); }
+#timeline-section .section-title { color: var(--teal); }
+#security-section .section-title { color: var(--fail); }
+#usage-section .section-title { color: var(--orange); }
+#diagnosis-section .section-title { color: var(--integrity); }
+#review-section .section-title { color: var(--pink); }
 
 .bundle-section-header .section-toggle {
   font-size: 12px;
@@ -1269,32 +1800,32 @@ table tbody td.mono-bright {
 }
 
 .timeline-type-badge.file_read {
-  background: rgba(148, 163, 184, 0.1);
+  background: rgba(139, 148, 158, 0.1);
   color: var(--text-secondary);
 }
 
 .timeline-type-badge.shell {
-  background: rgba(52, 211, 153, 0.08);
+  background: rgba(57, 211, 83, 0.08);
   color: var(--pass);
 }
 
 .timeline-type-badge.shell-fail {
-  background: rgba(248, 113, 113, 0.08);
+  background: rgba(248, 81, 73, 0.08);
   color: var(--fail);
 }
 
 .timeline-type-badge.file_write {
-  background: rgba(255, 159, 28, 0.1);
+  background: rgba(88, 166, 255, 0.1);
   color: var(--active);
 }
 
 .timeline-type-badge.task_start {
-  background: rgba(100, 116, 139, 0.08);
-  color: var(--neutral);
+  background: rgba(139, 148, 158, 0.08);
+  color: var(--text-secondary);
 }
 
 .timeline-type-badge.search {
-  background: rgba(255, 179, 71, 0.1);
+  background: rgba(188, 140, 255, 0.1);
   color: var(--integrity);
 }
 
@@ -1344,8 +1875,8 @@ table tbody td.mono-bright {
   white-space: pre;
 }
 
-.diff-line-add { color: var(--pass); }
-.diff-line-del { color: var(--fail); }
+.diff-line-add { color: var(--pass); background: rgba(57, 211, 83, 0.06); }
+.diff-line-del { color: var(--fail); background: rgba(248, 81, 73, 0.06); }
 .diff-line-ctx { color: var(--text-muted); }
 .diff-line-hdr { color: var(--integrity); }
 
@@ -1419,14 +1950,14 @@ table tbody td.mono-bright {
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--accent-muted);
+  color: var(--text-muted);
 }
 
 .usage-item .usage-value {
   font-family: var(--font-mono);
   font-size: 15px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--orange);
 }
 
 /* =========================================================================
@@ -1438,7 +1969,7 @@ table tbody td.mono-bright {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(10, 13, 20, 0.5);
+  background: rgba(8, 11, 18, 0.5);
   z-index: 200;
   display: none;
 }
@@ -1449,7 +1980,7 @@ table tbody td.mono-bright {
   position: fixed;
   top: 0;
   right: 0;
-  width: var(--transparency-width);
+  width: 480px;
   max-width: 90vw;
   height: 100vh;
   background: var(--surface);
@@ -1586,10 +2117,12 @@ table tbody td.mono-bright {
   top: 0;
   left: 0;
   right: 0;
-  height: 2px;
-  background: var(--active);
-  opacity: 0.5;
+  height: 3px;
 }
+
+.receipts-summary .summary-tile:nth-child(1)::before { background: var(--active); }
+.receipts-summary .summary-tile:nth-child(2)::before { background: var(--orange); }
+.receipts-summary .summary-tile:nth-child(3)::before { background: var(--teal); }
 
 .summary-tile .sum-label {
   font-family: var(--font-mono);
@@ -1597,7 +2130,7 @@ table tbody td.mono-bright {
   font-weight: 500;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--accent-muted);
+  color: var(--text-muted);
   margin-bottom: 10px;
 }
 
@@ -1668,12 +2201,24 @@ table tbody td.mono-bright {
   .run-log-panel {
     min-height: 400px;
   }
+  .pipeline-chain {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .verdict-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .verdict-review-row {
+    grid-template-columns: 1fr;
+  }
   .hero-top-row {
     flex-direction: column;
     gap: 16px;
   }
   .hero-score {
-    font-size: 62px;
+    font-size: 100px;
+  }
+  .metric-tile .metric-value {
+    font-size: 36px;
   }
 }
 
@@ -1716,20 +2261,65 @@ table tbody td.mono-bright {
   .hero-meta-line {
     word-break: break-word;
   }
+  .hero-score {
+    font-size: 72px;
+  }
+  .metric-tile .metric-value {
+    font-size: 32px;
+  }
   .run-config-panel {
-    max-height: 65vh;
+    max-height: none;
   }
   .run-config-scroll {
     padding: 20px 16px 16px;
   }
   .run-btn-container {
-    padding: 0 16px 16px;
+    padding: 14px 16px 16px;
     flex-direction: column;
     gap: 8px;
+  }
+  .run-action-copy {
+    margin-right: 0;
   }
   .run-btn-suite {
     font-size: 12px;
     height: 48px;
+  }
+  .pipeline-chain {
+    grid-template-columns: 1fr;
+  }
+  .pipeline-stage {
+    min-height: 0;
+  }
+  .pipeline-stage::after {
+    content: "\2193";
+    right: 12px;
+    top: auto;
+    bottom: -14px;
+    transform: none;
+  }
+  .pipeline-stage:last-child::after {
+    display: none;
+  }
+  .verdict-chamber {
+    padding: 20px 16px 16px;
+  }
+  .verdict-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .verdict-state {
+    font-size: 36px;
+  }
+  .verdict-side {
+    min-width: 0;
+    text-align: left;
+  }
+  .verdict-score {
+    font-size: 30px;
+  }
+  .verdict-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>
@@ -1746,11 +2336,11 @@ table tbody td.mono-bright {
     <div id="sidebar-footer">
       <div class="status-row">
         <span class="status-label">Model</span>
-        <span class="status-value" id="status-model">--</span>
+        <span class="status-value sv-model" id="status-model">--</span>
       </div>
       <div class="status-row">
         <span class="status-label">Tasks</span>
-        <span class="status-value" id="status-tasks">--</span>
+        <span class="status-value sv-tasks" id="status-tasks">--</span>
       </div>
       <div class="status-row">
         <span class="status-label">Last Run</span>
@@ -2035,6 +2625,73 @@ function renderTrustBadges() {
   '</div>';
 }
 
+function reviewStatusLabel(reviewEntry, label) {
+  if (!reviewEntry || !reviewEntry.enabled) return label + ': Disabled';
+  var status = reviewEntry.status || 'unknown';
+  var provider = reviewEntry.provider || 'Unavailable';
+  var model = reviewEntry.model || 'Unavailable';
+  return label + ': ' + status + ' / ' + provider + ' / ' + model;
+}
+
+function renderPipelineStage(label, value, meta, stateCls) {
+  return '<div class="pipeline-stage ' + stateCls + '">' +
+    '<span class="stage-label ctx-label">' + esc(label) + ':</span>' +
+    '<span class="stage-value">' + esc(value || 'Unavailable') + '</span>' +
+    '<span class="stage-meta">' + esc(meta || 'waiting') + '</span>' +
+  '</div>';
+}
+
+function renderPipelineChain(data) {
+  return '<div class="pipeline-chain">' +
+    renderPipelineStage('Task', data.task, '', data.taskState) +
+    renderPipelineStage('Provider', data.provider, data.adapter, data.providerState) +
+    renderPipelineStage('Model', data.model, 'under test', data.modelState) +
+    renderPipelineStage('Judge', data.judge, 'authoritative', data.judgeState) +
+    renderPipelineStage('Review', data.review, 'advisory only', data.reviewState) +
+    renderPipelineStage('Bundle', data.bundle, 'signed evidence', data.bundleState) +
+  '</div>';
+}
+
+function renderVerdictChamber(data) {
+  var scoreValue = data.score != null ? data.score + '%' : 'Unavailable';
+  var confidenceValue = data.confidence || 'Unavailable';
+  var runtimeValue = data.runtime || 'Unavailable';
+  var tokensValue = data.tokens || 'Unavailable';
+  var costValue = data.cost || 'Unavailable';
+  var trustBadges = data.trustBadges || '';
+
+  return '<div class="verdict-chamber">' +
+    '<div class="verdict-header">' +
+      '<div>' +
+        '<div class="verdict-kicker">VERDICT</div>' +
+        '<div class="verdict-state ' + esc(data.stateTone || 'pending') + '">' + esc(data.verdict || 'Pending') + '</div>' +
+      '</div>' +
+      '<div class="verdict-side">' +
+        '<div class="verdict-score">' + esc(scoreValue) + '</div>' +
+        '<div class="verdict-confidence">Confidence: ' + esc(confidenceValue) + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="verdict-subcopy">' + esc(data.subcopy || 'Claim evaluated under controlled conditions.') + '</div>' +
+    '<div class="verdict-grid">' +
+      '<div class="verdict-item"><span class="verdict-item-label">Provider</span><span class="verdict-item-value">' + esc(data.provider || 'Unavailable') + '</span></div>' +
+      '<div class="verdict-item"><span class="verdict-item-label">Model Under Test</span><span class="verdict-item-value">' + esc(data.model || 'Unavailable') + '</span></div>' +
+      '<div class="verdict-item"><span class="verdict-item-label">Adapter</span><span class="verdict-item-value">' + esc(data.adapter || 'Unavailable') + '</span></div>' +
+      '<div class="verdict-item"><span class="verdict-item-label">Runtime</span><span class="verdict-item-value">' + esc(runtimeValue) + '</span></div>' +
+      '<div class="verdict-item"><span class="verdict-item-label">Deterministic Judge</span><span class="verdict-item-value">' + esc(data.judge || 'Deterministic Judge (authoritative)') + '</span></div>' +
+      '<div class="verdict-item"><span class="verdict-item-label">Token Usage</span><span class="verdict-item-value">' + esc(tokensValue) + '</span></div>' +
+      '<div class="verdict-item"><span class="verdict-item-label">Estimated Cost</span><span class="verdict-item-value">' + esc(costValue) + '</span></div>' +
+      '<div class="verdict-item"><span class="verdict-item-label">Bundle</span><span class="verdict-item-value">' + esc(data.bundle || 'Bundle Signed') + '</span></div>' +
+    '</div>' +
+    trustBadges +
+    '<div class="verdict-review-row">' +
+      '<div class="verdict-review-card"><div class="verdict-review-title">Second Opinion</div><div class="verdict-review-status">' + esc(data.secondOpinion || 'Disabled') + '</div></div>' +
+      '<div class="verdict-review-card"><div class="verdict-review-title">QC Review</div><div class="verdict-review-status">' + esc(data.qcReview || 'Disabled') + '</div></div>' +
+      '<div class="verdict-review-card"><div class="verdict-review-title">Usage</div><div class="verdict-review-status">' + esc(data.usageLine || 'Unavailable') + '</div></div>' +
+    '</div>' +
+    '<div class="verdict-scorebar"><div class="verdict-scorebar-fill" style="width:' + esc(String(data.scoreBarWidth || 0)) + '%;"></div></div>' +
+  '</div>';
+}
+
 /* =========================================================================
    SIDEBAR
    ========================================================================= */
@@ -2058,7 +2715,9 @@ function updateSidebarStatus() {
   document.getElementById('status-model').textContent = lastModel;
   document.getElementById('status-tasks').textContent = tasks.length > 0 ? tasks.length : '--';
   if (runs.length > 0) {
-    document.getElementById('status-last-run').textContent = runs[0].timestamp ? formatDateShort(runs[0].timestamp) : '--';
+    var lastRunEl = document.getElementById('status-last-run');
+    lastRunEl.textContent = runs[0].timestamp ? formatDateShort(runs[0].timestamp) : '--';
+    lastRunEl.className = 'status-value ' + (runs[0].pass ? 'sv-lastrun-pass' : 'sv-lastrun-fail');
   } else {
     document.getElementById('status-last-run').textContent = '--';
   }
@@ -2108,6 +2767,73 @@ function renderView() {
 /* =========================================================================
    DASHBOARD VIEW
    ========================================================================= */
+function renderScoreTrendChart(recentRuns) {
+  if (!recentRuns || recentRuns.length < 2) return '';
+  var display = recentRuns.slice(0, 20).reverse();
+  var w = 600, h = 120, pad = 24;
+  var xStep = (w - pad * 2) / Math.max(display.length - 1, 1);
+  var points = display.map(function(r, i) {
+    var x = pad + i * xStep;
+    var y = h - pad - (Math.round(r.score * 100) / 100) * (h - pad * 2);
+    return { x: x, y: y, pass: r.pass };
+  });
+  var polyline = points.map(function(p) { return p.x + ',' + p.y; }).join(' ');
+  var gridLines = '';
+  for (var g = 0; g <= 4; g++) {
+    var gy = pad + (g / 4) * (h - pad * 2);
+    gridLines += '<line class="grid-line" x1="' + pad + '" y1="' + gy + '" x2="' + (w - pad) + '" y2="' + gy + '" />';
+  }
+  var dots = points.map(function(p) {
+    return '<circle class="dot-' + (p.pass ? 'pass' : 'fail') + '" cx="' + p.x + '" cy="' + p.y + '" r="4" />';
+  }).join('');
+  return '<div class="score-trend-section">' +
+    '<div class="score-trend-title">Score Trend</div>' +
+    '<svg class="score-trend-chart" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none">' +
+      gridLines +
+      '<polyline class="trend-line" points="' + polyline + '" />' +
+      dots +
+    '</svg>' +
+  '</div>';
+}
+
+function renderRunHeatmap(allRuns) {
+  if (!allRuns || allRuns.length === 0) return '';
+  var display = allRuns.slice(0, 60).reverse();
+  var cells = display.map(function(r) {
+    return '<div class="heatmap-cell cell-' + (r.pass ? 'pass' : 'fail') + '" title="' + esc(r.task_id || '--') + ' ' + Math.round(r.score * 100) + '%"></div>';
+  }).join('');
+  return '<div class="run-heatmap-section">' +
+    '<div class="heatmap-title">Run Heatmap</div>' +
+    '<div class="heatmap-grid">' + cells + '</div>' +
+  '</div>';
+}
+
+function taskFamilyPill(taskId, family) {
+  var fam = (family || '').toLowerCase();
+  if (!fam && taskId) {
+    if (taskId.match(/^poison/i)) fam = 'poison';
+    else if (taskId.match(/^spec/i)) fam = 'spec';
+    else if (taskId.match(/^coord|^orch/i)) fam = 'coord';
+  }
+  var cls = 'fam-general';
+  if (fam.indexOf('poison') !== -1) cls = 'fam-poison';
+  else if (fam.indexOf('spec') !== -1) cls = 'fam-spec';
+  else if (fam.indexOf('coord') !== -1 || fam.indexOf('orch') !== -1) cls = 'fam-coord';
+  return '<span class="task-pill ' + cls + '">' + esc(taskId || '--') + '</span>';
+}
+
+function scoreColorClass(val) {
+  if (val >= 70) return 'color-pass';
+  if (val >= 50) return 'color-warn';
+  return 'color-fail';
+}
+
+function scoreColumnClass(val) {
+  if (val >= 70) return 'score-high';
+  if (val >= 50) return 'score-mid';
+  return 'score-low';
+}
+
 function renderDashboard(el) {
   var lastRun = runs.length > 0 ? runs[0] : null;
 
@@ -2139,7 +2865,7 @@ function renderDashboard(el) {
         '<span class="meta-sep">&middot;</span>' +
         formatDateShort(lastRun.timestamp) +
       '</div>' +
-      '<div class="hero-meta-line" style="margin-top:-16px;font-size:13px;color:var(--accent-muted);">Judge: ' + esc((lastRun.judge && lastRun.judge.description) || 'deterministic oracle + tests + integrity checks') + '</div>' +
+      '<div class="hero-meta-line" style="margin-top:-16px;font-size:13px;color:var(--text-muted);">Judge: ' + esc((lastRun.judge && lastRun.judge.description) || 'deterministic oracle + tests + integrity checks') + '</div>' +
       renderTrustBadges() +
       '<div class="hero-breakdown-label">Score Breakdown</div>' +
       renderScoreBars(bd) +
@@ -2184,6 +2910,12 @@ function renderDashboard(el) {
       '</div>' +
     '</div>';
 
+  // Score Trend Chart
+  var trendHTML = renderScoreTrendChart(runs);
+
+  // Run Heatmap
+  var heatmapHTML = renderRunHeatmap(runs);
+
   // Recent Runs Table
   var recentTableHTML = '';
   if (runs.length > 0) {
@@ -2194,11 +2926,11 @@ function renderDashboard(el) {
       var badgeTxt = r.pass ? 'PASS' : 'FAIL';
       return '<tr onclick="openBundle(\'' + esc(r.bundle_id || '') + '\')">' +
         '<td class="mono-bright">' + esc(shortId(r.bundle_id)) + '</td>' +
-        '<td>' + esc(r.task_id || '--') + '</td>' +
+        '<td>' + taskFamilyPill(r.task_id, r.family) + '</td>' +
         '<td>' + esc(r.provider || r.adapter || '--') + '</td>' +
         '<td>' + esc(r.model || '--') + '</td>' +
-        '<td class="mono-bright">' + sc + '%</td>' +
-        '<td>' + formatDuration(r.duration_sec) + '</td>' +
+        '<td class="' + scoreColumnClass(sc) + '">' + sc + '%</td>' +
+        '<td class="col-time">' + formatDuration(r.duration_sec) + '</td>' +
         '<td><span class="badge ' + badgeCls + '">' + badgeTxt + '</span></td>' +
       '</tr>';
     }).join('');
@@ -2207,7 +2939,7 @@ function renderDashboard(el) {
     '<div class="data-table-wrap">' +
       '<div class="data-table-header">' +
         '<span class="data-table-title">Recent Runs</span>' +
-        '<span style="font-family:var(--font-mono);font-size:12px;color:var(--accent-muted);">' + runs.length + ' total</span>' +
+        '<span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);">' + runs.length + ' total</span>' +
       '</div>' +
       '<div class="table-scroll">' +
       '<table>' +
@@ -2245,14 +2977,10 @@ function renderDashboard(el) {
     '<div class="content-constrained">' +
       heroHTML +
       metricsHTML +
+      trendHTML +
+      heatmapHTML +
       recentTableHTML +
     '</div>';
-}
-
-function scoreColorClass(val) {
-  if (val >= 70) return 'color-pass';
-  if (val >= 50) return 'color-warn';
-  return 'color-fail';
 }
 
 function prAccent(val) {
@@ -2364,7 +3092,7 @@ function renderRunTask(el) {
       '<div class="run-config-panel">' +
         '<div class="run-config-scroll">' +
         '<div class="config-section">' +
-          '<div class="config-section-label">Task</div>' +
+          '<div class="config-section-label"><span class="section-num">01</span> TASK</div>' +
           '<div class="form-group">' +
             '<label for="run-task">Task</label>' +
             '<select id="run-task">' + taskOpts + '</select>' +
@@ -2373,7 +3101,7 @@ function renderRunTask(el) {
           '<div class="task-context-mini" id="task-context"></div>' +
         '</div>' +
         '<div class="config-section">' +
-          '<div class="config-section-label">Provider</div>' +
+          '<div class="config-section-label"><span class="section-num">02</span> PROVIDER</div>' +
           '<div class="form-group">' +
             '<label for="run-provider">Provider</label>' +
             '<select id="run-provider">' + providerOpts + '</select>' +
@@ -2381,7 +3109,7 @@ function renderRunTask(el) {
           '</div>' +
         '</div>' +
         '<div class="config-section">' +
-          '<div class="config-section-label">Model</div>' +
+          '<div class="config-section-label"><span class="section-num">03</span> MODEL</div>' +
           '<div class="form-group">' +
             '<label for="run-model">Model</label>' +
             '<input id="run-model" list="model-list" placeholder="e.g. gpt-4.1-mini" value="' + esc(savedModel) + '">' +
@@ -2390,18 +3118,18 @@ function renderRunTask(el) {
           '</div>' +
         '</div>' +
         '<div class="config-section">' +
-          '<div class="config-section-label">Judge</div>' +
+          '<div class="config-section-label"><span class="section-num">04</span> JUDGE</div>' +
           '<div class="pipeline-summary" id="judge-summary"></div>' +
         '</div>' +
         '<div class="config-section">' +
-          '<div class="config-section-label">Runs</div>' +
+          '<div class="config-section-label"><span class="section-num">05</span> RUNS</div>' +
           '<div class="form-group">' +
             '<label for="run-count">Runs</label>' +
             '<input id="run-count" type="number" min="1" max="10" value="1">' +
           '</div>' +
         '</div>' +
         '<div class="config-section">' +
-          '<div class="config-section-label">Review Layer</div>' +
+          '<div class="config-section-label"><span class="section-num">06</span> REVIEW LAYER</div>' +
           '<div style="margin-bottom:10px;">' +
             '<label style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:13px;color:var(--text-secondary);cursor:pointer;">' +
               '<input type="checkbox" id="review-so-enabled"> Second Opinion' +
@@ -2433,11 +3161,23 @@ function renderRunTask(el) {
           '<div class="availability-note" id="review-note" style="font-size:12px;color:var(--text-muted);">Deterministic judge is always on. Reviews are optional model-assisted layers.</div>' +
         '</div>' +
         '<div class="config-section">' +
-          '<div class="config-section-label">Evaluation Pipeline</div>' +
+          '<div class="config-section-label"><span class="section-num">07</span> Evaluation Pipeline</div>' +
           '<div class="pipeline-summary" id="pipeline-summary"></div>' +
+        '</div>' +
+        '<div class="config-section">' +
+          '<div class="config-section-label"><span class="section-num">08</span> COMPARE</div>' +
+          '<div class="compare-foundation">' +
+            '<div class="compare-foundation-title">Batch Model Runs</div>' +
+            '<div class="compare-foundation-copy">Single-run and full-suite execution are ready now. Compare multiple models is reserved as the next surface so the run screen does not hardcode single-model-only forever.</div>' +
+            '<span class="compare-entry" onclick="showToast(\'Compare multiple models surface reserved for the next pass.\')">Compare multiple models \u2192</span>' +
+          '</div>' +
         '</div>' +
         '</div>' +
         '<div class="run-btn-container">' +
+          '<div class="run-action-copy">' +
+            '<span class="run-action-title">Action Chamber</span>' +
+            '<span class="run-action-sub">Render a verdict on one task or the full suite.</span>' +
+          '</div>' +
           '<button class="' + btnClass + '" id="run-btn" onclick="startRun()" ' + (isRunning ? 'disabled' : '') + '>' + btnText + '</button>' +
           '<button class="run-btn-suite' + (isRunning ? ' running' : '') + '" id="run-suite-btn" onclick="startSuiteRun()" ' + (isRunning ? 'disabled' : '') + '>' +
             (isRunning ? '\u25C9 RUNNING...' : '\u25B6 RUN FULL SUITE') +
@@ -2445,6 +3185,30 @@ function renderRunTask(el) {
         '</div>' +
       '</div>' +
       '<div class="run-log-panel">' +
+        '<div id="verdict-chamber">' + renderVerdictChamber({
+          verdict: 'Pending',
+          stateTone: 'pending',
+          score: null,
+          confidence: 'Unavailable',
+          provider: defaultProvider || 'Unavailable',
+          model: savedModel || 'Unavailable',
+          adapter: defaultProvider || 'Unavailable',
+          runtime: 'Unavailable',
+          judge: 'Deterministic Judge (authoritative)',
+          secondOpinion: 'Disabled',
+          qcReview: 'Disabled',
+          usageLine: 'Tokens unavailable / Cost unavailable',
+          tokens: 'Unavailable',
+          cost: 'Unavailable',
+          bundle: 'Bundle Signed',
+          subcopy: 'Claim evaluated under controlled conditions.',
+          scoreBarWidth: 0,
+          trustBadges: '<div class="trust-badges">' +
+            '<span class="trust-badge"><span class="trust-check">\u2713</span> Deterministic Judge (authoritative)</span>' +
+            '<span class="trust-badge"><span class="trust-check">\u2713</span> Advisory Review Only</span>' +
+            '<span class="trust-badge"><span class="trust-check">\u2713</span> Bundle Signed</span>' +
+          '</div>',
+        }) + '</div>' +
         '<div class="run-log-header">' +
           '<span id="run-log-task">--</span>' +
           '<span id="run-log-model" class="log-meta-item">--</span>' +
@@ -2610,13 +3374,20 @@ function renderRunTask(el) {
     else if (qcOn) reviewLine = 'QC Review';
 
     if (pipelineSummary) {
-      pipelineSummary.innerHTML =
-        '<span class="ctx-label">Task:</span> ' + esc(taskId || 'not selected') + '<br>' +
-        '<span class="ctx-label">Provider:</span> ' + esc(providerEntry ? providerEntry.label + ' [' + providerKindLabel(providerEntry.kind) + ']' : '--') + '<br>' +
-        '<span class="ctx-label">Model:</span> ' + esc(currentModel || 'not entered') + '<br>' +
-        '<span class="ctx-label">Judge:</span> deterministic (authoritative)' + '<br>' +
-        '<span class="ctx-label">Review:</span> ' + esc(reviewLine) + ' (advisory only)' + '<br>' +
-        '<span class="ctx-label">Bundle:</span> signed evidence bundle';
+      pipelineSummary.innerHTML = renderPipelineChain({
+        task: taskId || 'Select task',
+        provider: providerEntry ? providerEntry.label + ' [' + providerKindLabel(providerEntry.kind) + ']' : 'Select provider',
+        model: currentModel || 'Enter model',
+        judge: 'Deterministic Judge',
+        review: reviewLine === 'none' ? 'Disabled' : reviewLine,
+        bundle: 'Signed',
+        taskState: taskId ? 'is-complete' : 'is-active',
+        providerState: providerEntry && providerEntry.available ? 'is-complete' : 'is-waiting',
+        modelState: currentModel ? 'is-complete' : 'is-waiting',
+        judgeState: 'is-complete',
+        reviewState: (soOn || qcOn) ? 'is-complete' : 'is-waiting',
+        bundleState: 'is-waiting',
+      });
     }
 
     var runBtn = document.getElementById('run-btn');
@@ -2649,6 +3420,18 @@ function renderRunTask(el) {
   updateRunFormState();
 }
 
+function setVerdictChamber(data) {
+  var chamber = document.getElementById('verdict-chamber');
+  if (!chamber) return;
+  chamber.innerHTML = renderVerdictChamber(data);
+}
+
+function setPipelineSummaryState(data) {
+  var pipelineSummary = document.getElementById('pipeline-summary');
+  if (!pipelineSummary) return;
+  pipelineSummary.innerHTML = renderPipelineChain(data);
+}
+
 async function startRun() {
   var taskId = document.getElementById('run-task') ? document.getElementById('run-task').value : '';
   var model = document.getElementById('run-model') ? document.getElementById('run-model').value : '';
@@ -2661,7 +3444,6 @@ async function startRun() {
   if (!taskId) { showToast('Select a task.'); return; }
   if (!providerId) { showToast('Select a provider.'); return; }
   if (!model) { showToast('Enter a model name.'); return; }
-  if (count > 1) { showToast('Multi-run API batching is not available yet. Use 1 run per request.'); return; }
   if (!providerEntry) { showToast('Unknown provider: ' + providerId); return; }
   if (!providerEntry.available) { showToast('Provider unavailable: ' + (providerEntry.reason || 'check configuration')); return; }
 
@@ -2674,6 +3456,8 @@ async function startRun() {
   var logTask = document.getElementById('run-log-task');
   var logModel = document.getElementById('run-log-model');
   var logTimer = document.getElementById('run-log-timer');
+  var soEnabledChk = document.getElementById('review-so-enabled');
+  var qcEnabledChk = document.getElementById('review-qc-enabled');
 
   btn.className = 'run-btn running';
   btn.innerHTML = '<span class="run-dot">\u25C9</span> EVALUATING...';
@@ -2682,6 +3466,53 @@ async function startRun() {
   progressBar.style.width = '5%';
   if (logTask) logTask.textContent = taskId;
   if (logModel) logModel.textContent = (providerEntry ? providerEntry.label : providerId) + ' \u2192 ' + model;
+  setPipelineSummaryState({
+    task: taskId || 'Select task',
+    provider: providerEntry ? providerEntry.label + ' [' + providerKindLabel(providerEntry.kind) + ']' : 'Select provider',
+    model: model || 'Enter model',
+    judge: 'Deterministic Judge',
+    review: ((soEnabledChk && soEnabledChk.checked) || (qcEnabledChk && qcEnabledChk.checked)) ? 'Advisory Review' : 'Disabled',
+    bundle: 'Pending',
+    taskState: 'is-complete',
+    providerState: 'is-complete',
+    modelState: 'is-complete',
+    judgeState: 'is-active',
+    reviewState: ((soEnabledChk && soEnabledChk.checked) || (qcEnabledChk && qcEnabledChk.checked)) ? 'is-active' : 'is-waiting',
+    bundleState: 'is-waiting',
+  });
+  setVerdictChamber({
+    verdict: 'Evaluating',
+    stateTone: 'pending',
+    score: null,
+    confidence: 'Unavailable',
+    provider: providerEntry ? providerEntry.label : providerId,
+    model: model,
+    adapter: adapter || 'Unavailable',
+    runtime: 'In progress',
+    judge: 'Deterministic Judge (authoritative)',
+    secondOpinion: reviewStatusLabel((soEnabledChk && soEnabledChk.checked) ? {
+      enabled: true,
+      provider: (document.getElementById('review-so-provider') || {}).value || 'Unavailable',
+      model: (document.getElementById('review-so-model') || {}).value || 'Unavailable',
+      status: 'configured',
+    } : null, 'Second Opinion'),
+    qcReview: reviewStatusLabel((qcEnabledChk && qcEnabledChk.checked) ? {
+      enabled: true,
+      provider: (document.getElementById('review-qc-provider') || {}).value || 'Unavailable',
+      model: (document.getElementById('review-qc-model') || {}).value || 'Unavailable',
+      status: 'configured',
+    } : null, 'QC Review'),
+    usageLine: 'Token usage unavailable while run is active',
+    tokens: 'Unavailable',
+    cost: 'Unavailable',
+    bundle: 'Pending signature',
+    subcopy: 'Decision pending. Controlled evaluation in progress.',
+    scoreBarWidth: 12,
+    trustBadges: '<div class="trust-badges">' +
+      '<span class="trust-badge"><span class="trust-check">\u2713</span> Deterministic Judge (authoritative)</span>' +
+      '<span class="trust-badge"><span class="trust-check">\u2713</span> Advisory Review Only</span>' +
+    '</div>',
+  });
 
   // Start elapsed timer
   runStartTime = Date.now();
@@ -2697,8 +3528,6 @@ async function startRun() {
 
   try {
     // Build review config from form state
-    var soEnabledChk = document.getElementById('review-so-enabled');
-    var qcEnabledChk = document.getElementById('review-qc-enabled');
     var payload = {
       task: taskId,
       model: model,
@@ -2731,6 +3560,26 @@ async function startRun() {
     connectSSE(runId, logBody, progressBar);
   } catch (e) {
     appendLog(logBody, 'error', 'Failed to start run: ' + e.message);
+    setVerdictChamber({
+      verdict: 'Error',
+      stateTone: 'error',
+      score: null,
+      confidence: 'Unavailable',
+      provider: providerEntry ? providerEntry.label : providerId,
+      model: model || 'Unavailable',
+      adapter: adapter || 'Unavailable',
+      runtime: 'Unavailable',
+      judge: 'Deterministic Judge (authoritative)',
+      secondOpinion: 'Second Opinion: Disabled',
+      qcReview: 'QC Review: Disabled',
+      usageLine: 'Unavailable',
+      tokens: 'Unavailable',
+      cost: 'Unavailable',
+      bundle: 'Not recorded',
+      subcopy: 'Evaluation failed before a verdict could be rendered.',
+      scoreBarWidth: 0,
+      trustBadges: '<div class="trust-badges"><span class="trust-badge"><span class="trust-check">\u2713</span> Deterministic Judge (authoritative)</span></div>',
+    });
     resetRunBtn();
   }
 }
@@ -2756,6 +3605,8 @@ async function startSuiteRun() {
   var logTask = document.getElementById('run-log-task');
   var logModel = document.getElementById('run-log-model');
   var logTimer = document.getElementById('run-log-timer');
+  var soEnabledChk = document.getElementById('review-so-enabled');
+  var qcEnabledChk = document.getElementById('review-qc-enabled');
 
   if (btn) { btn.disabled = true; }
   if (suiteBtn) { suiteBtn.className = 'run-btn-suite running'; suiteBtn.innerHTML = '\u25C9 RUNNING SUITE...'; suiteBtn.disabled = true; }
@@ -2765,6 +3616,53 @@ async function startSuiteRun() {
   progressBar.style.background = '';
   if (logTask) logTask.textContent = 'Full Suite';
   if (logModel) logModel.textContent = (providerEntry ? providerEntry.label : providerId) + ' \u2192 ' + model;
+  setPipelineSummaryState({
+    task: 'Full suite',
+    provider: providerEntry ? providerEntry.label + ' [' + providerKindLabel(providerEntry.kind) + ']' : 'Select provider',
+    model: model || 'Enter model',
+    judge: 'Deterministic Judge',
+    review: ((soEnabledChk && soEnabledChk.checked) || (qcEnabledChk && qcEnabledChk.checked)) ? 'Advisory Review' : 'Disabled',
+    bundle: 'Pending',
+    taskState: 'is-active',
+    providerState: 'is-complete',
+    modelState: 'is-complete',
+    judgeState: 'is-active',
+    reviewState: ((soEnabledChk && soEnabledChk.checked) || (qcEnabledChk && qcEnabledChk.checked)) ? 'is-active' : 'is-waiting',
+    bundleState: 'is-waiting',
+  });
+  setVerdictChamber({
+    verdict: 'Evaluating',
+    stateTone: 'pending',
+    score: null,
+    confidence: 'Unavailable',
+    provider: providerEntry ? providerEntry.label : providerId,
+    model: model,
+    adapter: adapter || 'Unavailable',
+    runtime: 'Suite in progress',
+    judge: 'Deterministic Judge (authoritative)',
+    secondOpinion: reviewStatusLabel((soEnabledChk && soEnabledChk.checked) ? {
+      enabled: true,
+      provider: (document.getElementById('review-so-provider') || {}).value || 'Unavailable',
+      model: (document.getElementById('review-so-model') || {}).value || 'Unavailable',
+      status: 'configured',
+    } : null, 'Second Opinion'),
+    qcReview: reviewStatusLabel((qcEnabledChk && qcEnabledChk.checked) ? {
+      enabled: true,
+      provider: (document.getElementById('review-qc-provider') || {}).value || 'Unavailable',
+      model: (document.getElementById('review-qc-model') || {}).value || 'Unavailable',
+      status: 'configured',
+    } : null, 'QC Review'),
+    usageLine: 'Suite totals unavailable while run is active',
+    tokens: 'Unavailable',
+    cost: 'Unavailable',
+    bundle: 'Bundle set pending',
+    subcopy: 'Full suite under controlled conditions.',
+    scoreBarWidth: 8,
+    trustBadges: '<div class="trust-badges">' +
+      '<span class="trust-badge"><span class="trust-check">\u2713</span> Deterministic Judge (authoritative)</span>' +
+      '<span class="trust-badge"><span class="trust-check">\u2713</span> Advisory Review Only</span>' +
+    '</div>',
+  });
 
   runStartTime = Date.now();
   if (runTimerInterval) clearInterval(runTimerInterval);
@@ -2778,8 +3676,6 @@ async function startSuiteRun() {
   }, 1000);
 
   // Build review config
-  var soEnabledChk = document.getElementById('review-so-enabled');
-  var qcEnabledChk = document.getElementById('review-qc-enabled');
   var reviewPayload = {};
   if (soEnabledChk && soEnabledChk.checked) {
     reviewPayload.secondOpinion = {
@@ -2802,6 +3698,7 @@ async function startSuiteRun() {
     var result = await api('POST', '/api/run-suite', {
       model: model,
       adapter: adapter,
+      provider: providerId,
       providerId: providerId,
       secondOpinion: reviewPayload.secondOpinion,
       qcReview: reviewPayload.qcReview,
@@ -2859,7 +3756,7 @@ async function startSuiteRun() {
           var scoreArea = document.createElement('div');
           scoreArea.className = 'run-score-result';
           scoreArea.innerHTML =
-            '<div style="font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent-muted);margin-bottom:12px;">Suite Results</div>' +
+            '<div style="font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;">Suite Results</div>' +
             '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">' +
               '<div style="text-align:center;">' +
                 '<div style="font-size:36px;font-weight:800;color:var(--pass);">' + (s.passed || 0) + '</div>' +
@@ -2875,13 +3772,52 @@ async function startSuiteRun() {
               '</div>' +
             '</div>' +
             '<div style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);line-height:1.8;">' +
-              '<span style="color:var(--accent-muted);">Tasks:</span> ' + (s.total || 0) + '<br>' +
-              '<span style="color:var(--accent-muted);">Avg score:</span> ' + (s.avg_score || 0) + '%<br>' +
-              '<span style="color:var(--accent-muted);">Total time:</span> ' + formatDuration(s.total_time_sec || 0) + '<br>' +
-              '<span style="color:var(--accent-muted);">Total tokens:</span> ' + ((s.total_tokens || 0)).toLocaleString() + '<br>' +
-              '<span style="color:var(--accent-muted);">Total cost:</span> $' + ((s.total_cost_usd || 0)).toFixed(4) +
+              '<span style="color:var(--text-muted);">Tasks:</span> ' + (s.total || 0) + '<br>' +
+              '<span style="color:var(--text-muted);">Avg score:</span> ' + (s.avg_score || 0) + '%<br>' +
+              '<span style="color:var(--text-muted);">Total time:</span> ' + formatDuration(s.total_time_sec || 0) + '<br>' +
+              '<span style="color:var(--text-muted);">Total tokens:</span> ' + ((s.total_tokens || 0)).toLocaleString() + '<br>' +
+              '<span style="color:var(--text-muted);">Total cost:</span> $' + ((s.total_cost_usd || 0)).toFixed(4) + '<br>' +
+              '<span class="compare-entry" onclick="navigate(\'history\')">View run history \u2192</span>' +
             '</div>';
           logBody.parentElement.appendChild(scoreArea);
+          setVerdictChamber({
+            verdict: 'Suite Complete',
+            stateTone: (s.failed || 0) > 0 ? 'fail' : 'pass',
+            score: s.avg_score != null ? s.avg_score : null,
+            confidence: 'Validated',
+            provider: providerEntry ? providerEntry.label : providerId,
+            model: model,
+            adapter: adapter || 'Unavailable',
+            runtime: formatDuration(s.total_time_sec || 0),
+            judge: 'Deterministic Judge (authoritative)',
+            secondOpinion: reviewPayload.secondOpinion ? 'Second Opinion: configured for suite' : 'Second Opinion: Disabled',
+            qcReview: reviewPayload.qcReview ? 'QC Review: configured for suite' : 'QC Review: Disabled',
+            usageLine: 'Tasks ' + (s.total || 0) + ' / Pass rate ' + (s.pass_rate || 0) + '%',
+            tokens: s.total_tokens != null ? (s.total_tokens || 0).toLocaleString() : 'Unavailable',
+            cost: s.total_cost_usd != null ? '$' + ((s.total_cost_usd || 0)).toFixed(4) : 'Unavailable',
+            bundle: 'Suite receipts recorded',
+            subcopy: 'Decision rendered across the full suite.',
+            scoreBarWidth: Math.max(6, Math.min(100, s.avg_score || 0)),
+            trustBadges: '<div class="trust-badges">' +
+              '<span class="trust-badge"><span class="trust-check">\u2713</span> Deterministic Judge (authoritative)</span>' +
+              '<span class="trust-badge"><span class="trust-check">\u2713</span> Advisory Review Only</span>' +
+              '<span class="trust-badge"><span class="trust-check">\u2713</span> Bundle Signed</span>' +
+            '</div>',
+          });
+          setPipelineSummaryState({
+            task: 'Full suite',
+            provider: providerEntry ? providerEntry.label + ' [' + providerKindLabel(providerEntry.kind) + ']' : providerId,
+            model: model,
+            judge: 'Deterministic Judge',
+            review: (reviewPayload.secondOpinion || reviewPayload.qcReview) ? 'Advisory Review' : 'Disabled',
+            bundle: 'Validated',
+            taskState: 'is-complete',
+            providerState: 'is-complete',
+            modelState: 'is-complete',
+            judgeState: 'is-complete',
+            reviewState: (reviewPayload.secondOpinion || reviewPayload.qcReview) ? 'is-complete' : 'is-waiting',
+            bundleState: 'is-complete',
+          });
 
           appendLog(logBody, 'complete', 'Suite complete: ' + (s.passed || 0) + '/' + (s.total || 0) + ' passed');
 
@@ -2902,6 +3838,26 @@ async function startSuiteRun() {
 
   } catch (e) {
     appendLog(logBody, 'error', 'Failed to start suite: ' + e.message);
+    setVerdictChamber({
+      verdict: 'Error',
+      stateTone: 'error',
+      score: null,
+      confidence: 'Unavailable',
+      provider: providerEntry ? providerEntry.label : providerId,
+      model: model || 'Unavailable',
+      adapter: adapter || 'Unavailable',
+      runtime: 'Unavailable',
+      judge: 'Deterministic Judge (authoritative)',
+      secondOpinion: 'Second Opinion: Disabled',
+      qcReview: 'QC Review: Disabled',
+      usageLine: 'Unavailable',
+      tokens: 'Unavailable',
+      cost: 'Unavailable',
+      bundle: 'Not recorded',
+      subcopy: 'Suite start failed before controlled execution began.',
+      scoreBarWidth: 0,
+      trustBadges: '<div class="trust-badges"><span class="trust-badge"><span class="trust-check">\u2713</span> Deterministic Judge (authoritative)</span></div>',
+    });
     resetRunBtn();
   }
 }
@@ -2976,20 +3932,73 @@ function connectSSE(runId, logBody, progressBar) {
       var data = JSON.parse(e.data);
       appendLog(logBody, 'complete', 'DONE     Task complete                    \u2713');
 
-      if (data.score) {
+      if (data.score || data.aggregate) {
         var scoreArea = document.createElement('div');
         scoreArea.className = 'run-score-result';
-        var total = typeof data.score === 'number' ? Math.round(data.score * 100) : Math.round((data.score.total || 0) * 100);
-        var pass = typeof data.pass === 'boolean' ? data.pass : (data.score.pass || false);
+        var aggregate = data.aggregate || null;
+        var total = aggregate ? Math.round((aggregate.avg_score || 0) * 100) : (typeof data.score === 'number' ? Math.round(data.score * 100) : Math.round((data.score.total || 0) * 100));
+        var pass = aggregate ? !!(aggregate.pass_at && aggregate.pass_at.pass_at_1) : (typeof data.pass === 'boolean' ? data.pass : (data.score.pass || false));
         var bd = (data.score && data.score.breakdown) || {};
+        var review = data.review || {};
+        var reviewSecurity = review.security || {};
+        var aggregateLine = aggregate
+          ? '<div style="margin-top:12px;font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);">Runs ' + aggregate.run_count +
+            '  PASS@1 ' + (((aggregate.pass_at || {}).pass_at_1) ? 'YES' : 'NO') +
+            '  PASS@3 ' + (((aggregate.pass_at || {}).pass_at_3) === null ? 'N/A' : (((aggregate.pass_at || {}).pass_at_3) ? 'YES' : 'NO')) +
+            '  PASS@5 ' + (((aggregate.pass_at || {}).pass_at_5) === null ? 'N/A' : (((aggregate.pass_at || {}).pass_at_5) ? 'YES' : 'NO')) +
+            '</div>'
+          : '';
+        var trustSurface = '<div class="trust-badges">' +
+          '<span class="trust-badge"><span class="trust-check">\u2713</span> Deterministic Judge (authoritative)</span>' +
+          '<span class="trust-badge"><span class="trust-check">\u2713</span> Advisory Review Only</span>' +
+          (reviewSecurity.review_input_sanitized ? '<span class="trust-badge"><span class="trust-check">\u2713</span> Review Input Sanitized</span>' : '') +
+          ((reviewSecurity.injection_flags_count || 0) > 0 ? '<span class="trust-badge"><span class="trust-check">\u2713</span> Injection Flags Detected</span>' : '') +
+          (reviewSecurity.review_blocked_reason ? '<span class="trust-badge"><span class="trust-check">\u2713</span> Review Blocked</span>' : '') +
+          '<span class="trust-badge"><span class="trust-check">\u2713</span> Bundle Signed</span>' +
+        '</div>';
         scoreArea.innerHTML =
           '<div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">' +
             '<span style="font-family:var(--font-mono);font-size:62px;font-weight:800;color:var(--' + (pass ? 'pass' : 'fail') + ');">' + total + '%</span>' +
-            '<span class="badge ' + (pass ? 'badge-pass' : 'badge-fail') + '">' + (pass ? 'PASS' : 'FAIL') + '</span>' +
+            '<span class="badge ' + (pass ? 'badge-pass' : 'badge-fail') + '">' + (aggregate ? ('PASS@1 ' + (pass ? 'PASS' : 'FAIL')) : (pass ? 'PASS' : 'FAIL')) + '</span>' +
           '</div>' +
-          renderTrustBadges() +
+          trustSurface +
+          aggregateLine +
           '<div style="margin-top:16px;">' + renderScoreBars(bd) + '</div>';
         logBody.parentElement.appendChild(scoreArea);
+        setVerdictChamber({
+          verdict: reviewSecurity.review_blocked_reason ? 'Blocked' : (pass ? 'Pass' : 'Fail'),
+          stateTone: reviewSecurity.review_blocked_reason ? 'blocked' : (pass ? 'pass' : 'fail'),
+          score: total,
+          confidence: aggregate ? (((aggregate.reliability || {}).assessment) || 'Unavailable') : ((((review.secondOpinion || {}).confidence) || ((review.qcReview || {}).confidence) || 'Unavailable')),
+          provider: ((data.target || {}).provider) || 'Unavailable',
+          model: ((data.target || {}).model) || 'Unavailable',
+          adapter: ((data.target || {}).adapter) || 'Unavailable',
+          runtime: document.getElementById('run-log-timer') ? document.getElementById('run-log-timer').textContent : 'Unavailable',
+          judge: 'Deterministic Judge (authoritative)',
+          secondOpinion: reviewStatusLabel(review.secondOpinion, 'Second Opinion'),
+          qcReview: reviewStatusLabel(review.qcReview, 'QC Review'),
+          usageLine: aggregate ? ('Tokens ' + (aggregate.total_tokens || 0) + ' / Cost $' + (((aggregate.total_cost_usd || 0).toFixed ? aggregate.total_cost_usd.toFixed(4) : aggregate.total_cost_usd))) : 'Tokens Unavailable / Cost Unavailable',
+          tokens: aggregate ? String(aggregate.total_tokens || 0) : 'Unavailable',
+          cost: aggregate ? ('$' + (((aggregate.total_cost_usd || 0).toFixed ? aggregate.total_cost_usd.toFixed(4) : aggregate.total_cost_usd))) : 'Unavailable',
+          bundle: 'Bundle Signed',
+          subcopy: reviewSecurity.review_blocked_reason ? 'Review blocked. Deterministic verdict stands.' : (aggregate ? ('Repeated runs complete. ' + (((aggregate.reliability || {}).assessment) || 'guarded') + ' reliability from stored evidence.') : 'Decision rendered under controlled conditions.'),
+          scoreBarWidth: total,
+          trustBadges: trustSurface,
+        });
+        setPipelineSummaryState({
+          task: document.getElementById('run-task') ? (document.getElementById('run-task').value || 'Selected task') : 'Selected task',
+          provider: ((data.target || {}).provider) || 'Unavailable',
+          model: ((data.target || {}).model) || 'Unavailable',
+          judge: 'Deterministic Judge',
+          review: (review.secondOpinion && review.secondOpinion.enabled) || (review.qcReview && review.qcReview.enabled) ? 'Advisory Review' : 'Disabled',
+          bundle: 'Validated',
+          taskState: 'is-complete',
+          providerState: 'is-complete',
+          modelState: 'is-complete',
+          judgeState: 'is-complete',
+          reviewState: (review.secondOpinion && review.secondOpinion.enabled) || (review.qcReview && review.qcReview.enabled) ? 'is-complete' : 'is-waiting',
+          bundleState: 'is-complete',
+        });
       }
     } catch (err) {
       appendLog(logBody, 'complete', 'DONE     Task complete                    \u2713');
@@ -3014,6 +4023,26 @@ function connectSSE(runId, logBody, progressBar) {
       try {
         var data = JSON.parse(e.data);
         appendLog(logBody, 'error', 'ERROR: ' + (data.message || data.error || 'Unknown error'));
+        setVerdictChamber({
+          verdict: 'Error',
+          stateTone: 'error',
+          score: null,
+          confidence: 'Unavailable',
+          provider: 'Unavailable',
+          model: 'Unavailable',
+          adapter: 'Unavailable',
+          runtime: document.getElementById('run-log-timer') ? document.getElementById('run-log-timer').textContent : 'Unavailable',
+          judge: 'Deterministic Judge (authoritative)',
+          secondOpinion: 'Second Opinion: Disabled',
+          qcReview: 'QC Review: Disabled',
+          usageLine: 'Unavailable',
+          tokens: 'Unavailable',
+          cost: 'Unavailable',
+          bundle: 'Not recorded',
+          subcopy: 'Execution stream reported an error.',
+          scoreBarWidth: 0,
+          trustBadges: '<div class="trust-badges"><span class="trust-badge"><span class="trust-check">\u2713</span> Deterministic Judge (authoritative)</span></div>',
+        });
       } catch (err) {
         appendLog(logBody, 'error', 'ERROR: ' + e.data);
       }
@@ -3122,11 +4151,11 @@ function renderHistory(el) {
       var date = formatDateShort(r.timestamp);
       return '<tr onclick="openBundle(\'' + esc(r.bundle_id || '') + '\')">' +
         '<td class="mono-bright">' + esc(shortId(r.bundle_id)) + '</td>' +
-        '<td>' + esc(r.task_id || '--') + '</td>' +
+        '<td>' + taskFamilyPill(r.task_id, r.family) + '</td>' +
         '<td>' + esc(r.provider || r.adapter || '--') + '</td>' +
         '<td>' + esc(r.model || '--') + '</td>' +
-        '<td class="mono-bright">' + sc + '%</td>' +
-        '<td>' + formatDuration(r.duration_sec) + '</td>' +
+        '<td class="' + scoreColumnClass(sc) + '">' + sc + '%</td>' +
+        '<td class="col-time">' + formatDuration(r.duration_sec) + '</td>' +
         '<td>' + date + '</td>' +
         '<td><span class="badge ' + badgeCls + '">' + badgeTxt + '</span></td>' +
       '</tr>';
@@ -3155,7 +4184,7 @@ function renderHistory(el) {
     '<div class="data-table-wrap">' +
       '<div class="data-table-header">' +
         '<span class="data-table-title">All Runs</span>' +
-        '<span style="font-family:var(--font-mono);font-size:12px;color:var(--accent-muted);">' + filtered.length + ' of ' + runs.length + '</span>' +
+        '<span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);">' + filtered.length + ' of ' + runs.length + '</span>' +
       '</div>' +
       (filtered.length > 0 ?
       '<div class="table-scroll">' +
@@ -3266,12 +4295,12 @@ async function renderReceipts(el) {
       var date = formatDateShort(r.timestamp || r.date || '');
       return '<tr>' +
         '<td>' + date + '</td>' +
-        '<td>' + esc(r.task_id || r.task || '--') + '</td>' +
+        '<td>' + taskFamilyPill(r.task_id || r.task, r.family) + '</td>' +
         '<td>' + esc(r.provider || r.adapter || '--') + '</td>' +
         '<td>' + esc(r.model || '--') + '</td>' +
-        '<td class="mono-bright">$' + cost.toFixed(4) + '</td>' +
+        '<td class="mono-bright" style="color:var(--orange);">$' + cost.toFixed(4) + '</td>' +
         '<td>' + (tokIn + tokOut).toLocaleString() + '</td>' +
-        '<td>' + formatDuration(timeSec) + '</td>' +
+        '<td class="col-time">' + formatDuration(timeSec) + '</td>' +
         '<td><span class="badge ' + badgeCls + '">' + badgeTxt + '</span></td>' +
       '</tr>';
     }).join('');
@@ -3468,7 +4497,7 @@ function renderBundleDrawer(bundle) {
       '</div>' +
       '<div class="bundle-meta-item">' +
         '<span class="bm-label">Judge</span>' +
-        '<span class="bm-value">' + esc((bundle.judge && bundle.judge.description) || 'deterministic oracle + tests + integrity checks') + ' <span style="color:var(--accent-soft);font-size:11px;">authoritative</span></span>' +
+        '<span class="bm-value">' + esc((bundle.judge && bundle.judge.description) || 'deterministic oracle + tests + integrity checks') + ' <span style="color:var(--active);font-size:11px;">authoritative</span></span>' +
       '</div>' +
       '<div class="bundle-meta-item">' +
         '<span class="bm-label">Timestamp</span>' +
@@ -3534,7 +4563,7 @@ function renderBundleDrawer(bundle) {
           '<span>' + esc(typeof path === 'string' ? path : JSON.stringify(path)) + '</span>' +
           (adds ? '<span class="diff-stat-add">+' + adds + '</span>' : '') +
           (dels ? '<span class="diff-stat-del">-' + dels + '</span>' : '') +
-          '<span style="color:var(--accent-muted);font-size:10px;margin-left:auto;letter-spacing:0.06em;text-transform:uppercase;">' + f.type + '</span>' +
+          '<span style="color:var(--text-muted);font-size:10px;margin-left:auto;letter-spacing:0.06em;text-transform:uppercase;">' + f.type + '</span>' +
         '</div>' +
         (patch ? '<div class="diff-patch">' + patchLines + '</div>' : '') +
       '</div>';
@@ -3641,8 +4670,9 @@ function buildReviewSection(bundle) {
 
   function renderReviewSecurity() {
     var lines = [
-      '<div><span style="color:var(--accent-muted);font-size:11px;text-transform:uppercase;">Authority:</span> Deterministic result authoritative</div>',
-      '<div><span style="color:var(--accent-muted);font-size:11px;text-transform:uppercase;">Review role:</span> Advisory only</div>'
+      '<div><span style="color:var(--text-muted);font-size:11px;text-transform:uppercase;">Authority:</span> deterministic (authoritative)</div>',
+      '<div><span style="color:var(--text-muted);font-size:11px;text-transform:uppercase;">Review role:</span> advisory only</div>',
+      '<div style="color:var(--active);font-size:12px;">Deterministic result authoritative</div>'
     ];
     if (reviewSecurity.review_input_scanned) {
       lines.push('<div style="color:var(--pass);font-size:12px;">Review input sanitized</div>');
@@ -3683,12 +4713,12 @@ function buildReviewSection(bundle) {
       ? '<div style="color:var(--fail);font-weight:600;font-size:12px;margin-top:4px;">\u26A0 Disagreement detected</div>'
       : '';
     return '<div style="font-size:13px;line-height:1.7;">' +
-      '<div><span style="color:var(--accent-muted);font-size:11px;text-transform:uppercase;">Provider:</span> ' + esc(r.provider || '--') + ' / ' + esc(r.model || '--') + '</div>' +
-      '<div><span style="color:var(--accent-muted);font-size:11px;text-transform:uppercase;">Confidence:</span> ' + esc(r.confidence || '--') + '</div>' +
-      '<div><span style="color:var(--accent-muted);font-size:11px;text-transform:uppercase;">Recommendation:</span> <span style="color:' + recColor + ';">' + esc(r.recommendation || '--') + '</span></div>' +
+      '<div><span style="color:var(--text-muted);font-size:11px;text-transform:uppercase;">Provider:</span> ' + esc(r.provider || '--') + ' / ' + esc(r.model || '--') + '</div>' +
+      '<div><span style="color:var(--text-muted);font-size:11px;text-transform:uppercase;">Confidence:</span> ' + esc(r.confidence || '--') + '</div>' +
+      '<div><span style="color:var(--text-muted);font-size:11px;text-transform:uppercase;">Recommendation:</span> <span style="color:' + recColor + ';">' + esc(r.recommendation || '--') + '</span></div>' +
       disagreeHtml +
       '<div style="margin-top:6px;">' + esc(r.summary || '') + '</div>' +
-      '<div style="margin-top:4px;"><span style="color:var(--accent-muted);font-size:11px;text-transform:uppercase;">Flags:</span></div>' +
+      '<div style="margin-top:4px;"><span style="color:var(--text-muted);font-size:11px;text-transform:uppercase;">Flags:</span></div>' +
       flagsHtml +
     '</div>';
   }
@@ -3697,11 +4727,11 @@ function buildReviewSection(bundle) {
     renderReviewSecurity() +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">' +
       '<div>' +
-        '<div style="font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent-muted);margin-bottom:8px;">Second Opinion</div>' +
+        '<div style="font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;">Second Opinion</div>' +
         renderReview('Second Opinion', review.secondOpinion) +
       '</div>' +
       '<div>' +
-        '<div style="font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent-muted);margin-bottom:8px;">QC Review</div>' +
+        '<div style="font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;">QC Review</div>' +
         renderReview('QC Review', review.qcReview) +
       '</div>' +
     '</div>';
