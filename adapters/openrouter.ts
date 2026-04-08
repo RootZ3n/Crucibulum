@@ -60,6 +60,10 @@ export class OpenRouterAdapter implements CrucibulumAdapter {
     return true;
   }
 
+  supportsChat(): boolean {
+    return false;
+  }
+
   async init(config: AdapterConfig): Promise<void> {
     const c = config as OpenRouterConfig;
     if (c.api_key) this.apiKey = c.api_key;

@@ -28,6 +28,7 @@ class MockAdapter implements CrucibulumAdapter {
   supportsToolCalls(): boolean {
     return false;
   }
+  supportsChat() { return false; }
 
   async init(_config: AdapterConfig): Promise<void> {
     // no-op

@@ -1136,9 +1136,11 @@ table tbody td.col-time { color: var(--orange); }
 }
 
 .pipeline-chain {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  display: flex;
   gap: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
 }
 
 .pipeline-stage {
@@ -1148,6 +1150,8 @@ table tbody td.col-time { color: var(--orange); }
   border-radius: 8px;
   padding: 12px 12px 10px;
   min-height: 92px;
+  min-width: 90px;
+  flex: 1 0 auto;
 }
 
 .pipeline-stage::after {
@@ -1186,6 +1190,7 @@ table tbody td.col-time { color: var(--orange); }
   text-transform: uppercase;
   color: var(--text-muted);
   margin-bottom: 6px;
+  white-space: nowrap;
 }
 
 .pipeline-stage .stage-value {
@@ -1193,7 +1198,9 @@ table tbody td.col-time { color: var(--orange); }
   color: var(--text-primary);
   font-size: 13px;
   line-height: 1.55;
-  word-break: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .pipeline-stage .stage-meta {
@@ -2202,7 +2209,7 @@ table tbody td.col-time { color: var(--orange); }
     min-height: 400px;
   }
   .pipeline-chain {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    flex-wrap: nowrap;
   }
   .verdict-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2286,10 +2293,12 @@ table tbody td.col-time { color: var(--orange); }
     height: 48px;
   }
   .pipeline-chain {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    overflow-x: visible;
   }
   .pipeline-stage {
     min-height: 0;
+    min-width: 0;
   }
   .pipeline-stage::after {
     content: "\2193";
@@ -2547,7 +2556,21 @@ async function loadProviders() {
 async function loadModels() {
   try {
     const data = await api('GET', '/api/models');
-    models = data.models || data || [];
+    var raw = data.models || data || [];
+    // Normalize API response: flatten metadata.size to size, kind to type
+    models = raw.map(function(m) {
+      return {
+        id: m.id || m.name || '',
+        name: m.name || m.id || '',
+        adapter: m.adapter || m.provider || '',
+        provider: m.provider || m.adapter || '',
+        type: m.kind || m.type || 'local',
+        size: (m.metadata && m.metadata.size) || m.size || '',
+        available: m.available !== false,
+        adapter_name: m.adapter_name || '',
+      };
+    });
+    console.log('Models loaded:', models.length);
   } catch (e) {
     console.warn('Failed to load models:', e.message);
     models = [];
@@ -3001,6 +3024,29 @@ function getModelsForAdapter(adapterId) {
   return models.filter(function(model) { return model.adapter === adapterId; });
 }
 
+// Extra cloud models always available as manual options
+var extraCloudModels = [
+  { id: 'arcee-ai/trinity-large-thinking', name: 'arcee-ai/trinity-large-thinking', adapter: 'openrouter', provider: 'openrouter', type: 'cloud', size: '' },
+  { id: 'xiaomi/mimo-v2-pro', name: 'xiaomi/mimo-v2-pro', adapter: 'openrouter', provider: 'openrouter', type: 'cloud', size: '' },
+  { id: 'claude-opus-4-6', name: 'claude-opus-4-6', adapter: 'anthropic', provider: 'anthropic', type: 'cloud', size: '' },
+  { id: 'claude-sonnet-4-6', name: 'claude-sonnet-4-6', adapter: 'anthropic', provider: 'anthropic', type: 'cloud', size: '' },
+];
+
+function getAllModelsGrouped() {
+  // Merge fetched models + extra cloud models (dedup by id+adapter)
+  var all = models.slice();
+  var seen = {};
+  all.forEach(function(m) { seen[(m.adapter || m.provider || '') + ':' + (m.id || m.name)] = true; });
+  extraCloudModels.forEach(function(m) {
+    var key = m.adapter + ':' + m.id;
+    if (!seen[key]) { all.push(m); seen[key] = true; }
+  });
+  // Sort: LOCAL first, then CLOUD
+  var local = all.filter(function(m) { return (m.type || '').toLowerCase() !== 'cloud' && (m.provider || m.adapter || '').toLowerCase() !== 'openrouter' && (m.provider || m.adapter || '').toLowerCase() !== 'anthropic'; });
+  var cloud = all.filter(function(m) { return (m.type || '').toLowerCase() === 'cloud' || (m.provider || m.adapter || '').toLowerCase() === 'openrouter' || (m.provider || m.adapter || '').toLowerCase() === 'anthropic'; });
+  return { local: local, cloud: cloud, all: local.concat(cloud) };
+}
+
 function getModelsForProvider(providerId) {
   // First try flattened models
   var providerModels = models.filter(function(model) { return model.adapter === providerId; });
@@ -3013,6 +3059,11 @@ function getModelsForProvider(providerId) {
       });
     }
   }
+  // Always include extra cloud models for matching provider
+  var extras = extraCloudModels.filter(function(m) { return m.adapter === providerId; });
+  var seen = {};
+  providerModels.forEach(function(m) { seen[m.id || m.name] = true; });
+  extras.forEach(function(m) { if (!seen[m.id]) providerModels.push(m); });
   return providerModels;
 }
 
@@ -3112,8 +3163,7 @@ function renderRunTask(el) {
           '<div class="config-section-label"><span class="section-num">03</span> MODEL</div>' +
           '<div class="form-group">' +
             '<label for="run-model">Model</label>' +
-            '<input id="run-model" list="model-list" placeholder="e.g. gpt-4.1-mini" value="' + esc(savedModel) + '">' +
-            '<datalist id="model-list"></datalist>' +
+            '<select id="run-model"><option value="">-- Loading models --</option></select>' +
             '<div class="availability-note" id="model-availability"></div>' +
           '</div>' +
         '</div>' +
@@ -3252,11 +3302,13 @@ function renderRunTask(el) {
   }
 
   var providerSel = document.getElementById('run-provider');
-  var modelInput = document.getElementById('run-model');
+  var modelInput = document.getElementById('run-model');  // now a <select>
 
   function updateRunFormState() {
     var providerId = providerSel ? providerSel.value : defaultProvider;
     var providerEntry = getProviderEntry(providerId);
+    // Re-acquire model select in case DOM was rebuilt
+    modelInput = document.getElementById('run-model');
     // Fallback to adapter catalog if provider catalog not loaded
     if (!providerEntry) {
       var adapterEntry = getAdapterEntry(providerId);
@@ -3276,8 +3328,6 @@ function renderRunTask(el) {
     }
 
     var providerAvailability = document.getElementById('provider-availability');
-    var modelAvailability = document.getElementById('model-availability');
-    var modelList = document.getElementById('model-list');
     var judgeSummary = document.getElementById('judge-summary');
     var pipelineSummary = document.getElementById('pipeline-summary');
 
@@ -3303,23 +3353,62 @@ function renderRunTask(el) {
       }
     }
 
-    // Model list for selected provider
-    var providerModels = getModelsForProvider(providerId);
-    if (modelList) {
-      modelList.innerHTML = providerModels.map(function(model) {
-        return '<option value="' + esc(model.id || model.name || '') + '">';
-      }).join('');
+    // Model select — build directly from the models global (all from /api/models)
+    // plus extra cloud models, grouped LOCAL first then CLOUD.
+    var allSelectModels = models.slice();
+    var seenIds = {};
+    allSelectModels.forEach(function(m) { seenIds[m.id || m.name] = true; });
+    extraCloudModels.forEach(function(m) {
+      if (!seenIds[m.id]) { allSelectModels.push(m); seenIds[m.id] = true; }
+    });
+
+    var localModels = allSelectModels.filter(function(m) { return (m.type || m.kind || '') !== 'cloud'; });
+    var cloudSelectModels = allSelectModels.filter(function(m) { return (m.type || m.kind || '') === 'cloud'; });
+
+    console.log('[model-select] providerId:', providerId, 'models global:', models.length, 'local:', localModels.length, 'cloud:', cloudSelectModels.length);
+
+    var modelSel = document.getElementById('run-model');
+    if (modelSel) {
+      var prevVal = modelSel.value || savedModel;
+      var opts = '<option value="">-- Select a model --</option>';
+      if (localModels.length > 0) {
+        opts += '<optgroup label="Local Models">';
+        localModels.forEach(function(m) {
+          var name = m.name || m.id || '';
+          var size = m.size || (m.metadata && m.metadata.size) || '';
+          var sizeBadge = size ? ' [' + size + ']' : '';
+          opts += '<option value="' + esc(name) + '">' + esc(name + sizeBadge) + '</option>';
+        });
+        opts += '</optgroup>';
+      }
+      if (cloudSelectModels.length > 0) {
+        opts += '<optgroup label="Cloud Models">';
+        cloudSelectModels.forEach(function(m) {
+          var name = m.name || m.id || '';
+          var size = m.size || (m.metadata && m.metadata.size) || '';
+          var sizeBadge = size ? ' [' + size + ']' : '';
+          var prov = m.provider || m.adapter || '';
+          opts += '<option value="' + esc(name) + '">' + esc(name + sizeBadge + (prov ? ' \u2014 ' + prov : '')) + '</option>';
+        });
+        opts += '</optgroup>';
+      }
+      modelSel.innerHTML = opts;
+      // Restore previous selection or auto-select first
+      if (prevVal && modelSel.querySelector('option[value="' + CSS.escape(prevVal) + '"]')) {
+        modelSel.value = prevVal;
+      } else if (allSelectModels.length > 0) {
+        modelSel.value = allSelectModels[0].name || allSelectModels[0].id || '';
+      }
     }
 
+    var modelAvailability = document.getElementById('model-availability');
     if (modelAvailability) {
       if (!providerEntry || !providerEntry.available) {
         modelAvailability.textContent = 'Provider unavailable. Select a different provider or fix configuration.';
-      } else if (providerModels.length > 0) {
-        modelAvailability.textContent = providerModels.length + ' discovered model' + (providerModels.length === 1 ? '' : 's') + '. Select from list or enter manually.';
-      } else if (providerEntry.manualModelAllowed) {
-        modelAvailability.textContent = 'No discovered models. Enter model name manually.';
+      } else if (allSelectModels.length > 0) {
+        modelAvailability.textContent = allSelectModels.length + ' model' + (allSelectModels.length === 1 ? '' : 's') + ' available.';
       } else {
-        modelAvailability.textContent = 'No models available for this provider.';
+        modelAvailability.textContent = 'No models available.';
       }
     }
 
@@ -3403,8 +3492,28 @@ function renderRunTask(el) {
     }
   }
 
-  if (providerSel) providerSel.addEventListener('change', updateRunFormState);
-  if (modelInput) modelInput.addEventListener('input', updateRunFormState);
+  // Provider change: fetch fresh models then update form
+  function onProviderChange() {
+    var pid = providerSel ? providerSel.value : '';
+    var needsFetch = /ollama|local/i.test(pid);
+    if (needsFetch) {
+      // Show loading state while fetching
+      if (modelInput) modelInput.innerHTML = '<option value="">-- Loading models... --</option>';
+      loadModels().then(function() {
+        console.log('Models after provider change:', models.length);
+        updateRunFormState();
+      }).catch(function() {
+        updateRunFormState();  // Fall back to cached models
+      });
+    } else {
+      // For cloud providers, clear model input so auto-select can fire
+      if (modelInput) modelInput.value = '';
+      updateRunFormState();
+    }
+  }
+
+  if (providerSel) providerSel.addEventListener('change', onProviderChange);
+  if (modelInput) modelInput.addEventListener('change', updateRunFormState);
   if (taskSel) taskSel.addEventListener('change', updateRunFormState);
 
   // Wire review toggles
@@ -3417,7 +3526,20 @@ function renderRunTask(el) {
   if (soProvSel) soProvSel.addEventListener('change', updateRunFormState);
   if (qcProvSel) qcProvSel.addEventListener('change', updateRunFormState);
 
-  updateRunFormState();
+  // Initial load: fetch models for default provider, then update form
+  (function() {
+    var initialPid = providerSel ? providerSel.value : defaultProvider;
+    if (/ollama|local/i.test(initialPid) && models.length === 0) {
+      loadModels().then(function() {
+        console.log('Models on initial load:', models.length);
+        updateRunFormState();
+      }).catch(function() {
+        updateRunFormState();
+      });
+    } else {
+      updateRunFormState();
+    }
+  })();
 }
 
 function setVerdictChamber(data) {

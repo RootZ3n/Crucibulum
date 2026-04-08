@@ -3,6 +3,14 @@ import { OllamaAdapter } from "./ollama.js";
 import { OpenRouterAdapter } from "./openrouter.js";
 import { OpenClawAdapter } from "./openclaw.js";
 import { ClaudeCodeAdapter } from "./claudecode.js";
+import { SquidleyAdapter } from "./squidley.js";
+import { GrimoireCCAdapter } from "./grimoire-cc.js";
+import { GrimoireCodexAdapter } from "./grimoire-codex.js";
+import { AnthropicAdapter } from "./anthropic.js";
+import { OpenAIAdapter } from "./openai.js";
+import { MiniMaxAdapter } from "./minimax.js";
+import { ZAIAdapter } from "./zai.js";
+import { GoogleAdapter } from "./google.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "../core/judge.js";
 
 export type AdapterRuntimeKind = "local" | "cloud" | "subprocess";
@@ -119,19 +127,33 @@ const REGISTRY: RegistryDefinition[] = [
     },
   },
   {
+    id: "anthropic",
+    name: "Anthropic Direct",
+    kind: "cloud",
+    provider_mode: "fixed",
+    fixed_provider: "anthropic",
+    supports_custom_model: true,
+    create: () => new AnthropicAdapter(),
+    provider_options: [{ id: "anthropic", name: "Anthropic", kind: "cloud", configurable: false }],
+    async listModels() {
+      const apiKey = process.env["ANTHROPIC_API_KEY"] ?? "";
+      if (!apiKey) return [];
+      return [
+        { id: "claude-opus-4-6", name: "Claude Opus 4.6", provider: "anthropic", kind: "cloud" as const, available: true, reason: null },
+        { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", provider: "anthropic", kind: "cloud" as const, available: true, reason: null },
+        { id: "claude-haiku-4-5-20251001", name: "Claude Haiku 4.5", provider: "anthropic", kind: "cloud" as const, available: true, reason: null },
+      ];
+    },
+    makeConfig(input) { return { model: input.model } as AdapterConfig; },
+  },
+  {
     id: "openai",
-    name: "OpenAI",
+    name: "OpenAI Direct",
     kind: "cloud",
     provider_mode: "fixed",
     fixed_provider: "openai",
     supports_custom_model: true,
-    create: () => new OpenRouterAdapter({
-      id: "openai",
-      name: "OpenAI",
-      baseUrl: OPENAI_BASE,
-      apiKeyEnv: "OPENAI_API_KEY",
-      defaultModel: "gpt-4.1-mini",
-    }),
+    create: () => new OpenAIAdapter(),
     provider_options: [{ id: "openai", name: "OpenAI", kind: "cloud", configurable: false }],
     async listModels() {
       const apiKey = process.env["OPENAI_API_KEY"] ?? "";
@@ -158,9 +180,7 @@ const REGISTRY: RegistryDefinition[] = [
         return [];
       }
     },
-    makeConfig(input) {
-      return { model: input.model, base_url: OPENAI_BASE } as AdapterConfig;
-    },
+    makeConfig(input) { return { model: input.model } as AdapterConfig; },
   },
   {
     id: "openrouter",
@@ -261,6 +281,136 @@ const REGISTRY: RegistryDefinition[] = [
       } as AdapterConfig;
     },
   },
+  {
+    id: "squidley",
+    name: "Squidley Gateway",
+    kind: "cloud",
+    provider_mode: "configurable",
+    fixed_provider: null,
+    supports_custom_model: true,
+    create: () => new SquidleyAdapter(),
+    provider_options: [{ id: "squidley", name: "Squidley (all providers)", kind: "cloud", configurable: true }],
+    async listModels() {
+      const squidleyUrl = process.env["SQUIDLEY_URL"] ?? "http://localhost:18791";
+      try {
+        const res = await fetch(`${squidleyUrl}/nous/models`, { signal: AbortSignal.timeout(5000) });
+        if (!res.ok) return [];
+        const data = await res.json() as Array<{ model?: string; name?: string; provider?: string; active?: boolean }>;
+        return data
+          .filter((m) => m.active !== false)
+          .map((m) => ({
+            id: m.model ?? m.name ?? "unknown",
+            name: m.name ?? m.model ?? "unknown",
+            provider: m.provider ?? "squidley",
+            kind: "cloud" as const,
+            available: true,
+            reason: null,
+          }));
+      } catch {
+        return [];
+      }
+    },
+    makeConfig(input) {
+      return {
+        model: input.model,
+        provider: input.provider || undefined,
+        squidley_url: process.env["SQUIDLEY_URL"] || undefined,
+      } as AdapterConfig;
+    },
+  },
+  {
+    id: "grimoire-cc",
+    name: "Grimoire CC",
+    kind: "cloud",
+    provider_mode: "configurable",
+    fixed_provider: null,
+    supports_custom_model: true,
+    create: () => new GrimoireCCAdapter(),
+    provider_options: [{ id: "grimoire-cc", name: "Grimoire CC (Squidley)", kind: "cloud", configurable: true }],
+    async listModels() { return []; },
+    makeConfig(input) {
+      return {
+        model: input.model,
+        squidley_url: process.env["SQUIDLEY_URL"] || undefined,
+      } as AdapterConfig;
+    },
+  },
+  {
+    id: "grimoire-codex",
+    name: "Grimoire Codex",
+    kind: "cloud",
+    provider_mode: "configurable",
+    fixed_provider: null,
+    supports_custom_model: true,
+    create: () => new GrimoireCodexAdapter(),
+    provider_options: [{ id: "grimoire-codex", name: "Grimoire Codex (Squidley)", kind: "cloud", configurable: true }],
+    async listModels() { return []; },
+    makeConfig(input) {
+      return {
+        model: input.model,
+        squidley_url: process.env["SQUIDLEY_URL"] || undefined,
+      } as AdapterConfig;
+    },
+  },
+  {
+    id: "minimax",
+    name: "MiniMax Direct",
+    kind: "cloud",
+    provider_mode: "fixed",
+    fixed_provider: "minimax",
+    supports_custom_model: true,
+    create: () => new MiniMaxAdapter(),
+    provider_options: [{ id: "minimax", name: "MiniMax", kind: "cloud", configurable: false }],
+    async listModels() {
+      const apiKey = process.env["MINIMAX_API_KEY"] ?? "";
+      if (!apiKey) return [];
+      return [
+        { id: "MiniMax-M2.7", name: "MiniMax M2.7", provider: "minimax", kind: "cloud" as const, available: true, reason: null },
+        { id: "abab6.5s-chat", name: "ABAB 6.5s Chat", provider: "minimax", kind: "cloud" as const, available: true, reason: null },
+      ];
+    },
+    makeConfig(input) { return { model: input.model } as AdapterConfig; },
+  },
+  {
+    id: "zai",
+    name: "Z.AI Direct (GLM)",
+    kind: "cloud",
+    provider_mode: "fixed",
+    fixed_provider: "zai",
+    supports_custom_model: true,
+    create: () => new ZAIAdapter(),
+    provider_options: [{ id: "zai", name: "Z.AI / Zhipu", kind: "cloud", configurable: false }],
+    async listModels() {
+      const apiKey = process.env["ZAI_API_KEY"] ?? "";
+      if (!apiKey) return [];
+      return [
+        { id: "glm-4-plus", name: "GLM-4 Plus", provider: "zai", kind: "cloud" as const, available: true, reason: null },
+        { id: "glm-z1-flash", name: "GLM-Z1 Flash", provider: "zai", kind: "cloud" as const, available: true, reason: null },
+        { id: "glm-4-air", name: "GLM-4 Air", provider: "zai", kind: "cloud" as const, available: true, reason: null },
+      ];
+    },
+    makeConfig(input) { return { model: input.model } as AdapterConfig; },
+  },
+  {
+    id: "google",
+    name: "Google AI Direct",
+    kind: "cloud",
+    provider_mode: "fixed",
+    fixed_provider: "google",
+    supports_custom_model: true,
+    create: () => new GoogleAdapter(),
+    provider_options: [{ id: "google", name: "Google AI", kind: "cloud", configurable: false }],
+    async listModels() {
+      const apiKey = process.env["GOOGLE_AI_API_KEY"] ?? "";
+      if (!apiKey) return [];
+      return [
+        { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash", provider: "google", kind: "cloud" as const, available: true, reason: null },
+        { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro", provider: "google", kind: "cloud" as const, available: true, reason: null },
+        { id: "gemini-3.1-pro", name: "Gemini 3.1 Pro", provider: "google", kind: "cloud" as const, available: true, reason: null },
+      ];
+    },
+    makeConfig(input) { return { model: input.model } as AdapterConfig; },
+  },
 ];
 
 export function listRegisteredAdapters(): RegistryDefinition[] {
@@ -358,38 +508,18 @@ export async function instantiateAdapterForRun(input: {
 
 const ENV_KEYS: Record<string, string> = {
   ollama: "OLLAMA_URL",
+  anthropic: "ANTHROPIC_API_KEY",
   openai: "OPENAI_API_KEY",
   openrouter: "OPENROUTER_API_KEY",
   openclaw: "OPENCLAW_BINARY",
   claudecode: "CLAUDE_CODE_BINARY",
+  squidley: "SQUIDLEY_URL",
+  minimax: "MINIMAX_API_KEY",
+  zai: "ZAI_API_KEY",
+  google: "GOOGLE_AI_API_KEY",
 };
 
-const NOT_IMPLEMENTED_PROVIDERS: NotImplementedProvider[] = [
-  {
-    id: "anthropic",
-    label: "Anthropic (direct)",
-    kind: "cloud",
-    implemented: false,
-    blocker: "Anthropic Messages API adapter not yet implemented. Use OpenRouter or Claude Code for Anthropic models.",
-    envKey: "ANTHROPIC_API_KEY",
-  },
-  {
-    id: "google",
-    label: "Google Gemini (direct)",
-    kind: "cloud",
-    implemented: false,
-    blocker: "Gemini API adapter not yet implemented. Use OpenRouter for Google models.",
-    envKey: "GOOGLE_API_KEY",
-  },
-  {
-    id: "zai",
-    label: "ZAI",
-    kind: "cloud",
-    implemented: false,
-    blocker: "ZAI adapter not yet implemented.",
-    envKey: "ZAI_API_KEY",
-  },
-];
+const NOT_IMPLEMENTED_PROVIDERS: NotImplementedProvider[] = [];
 
 export function getNotImplementedProviders(): NotImplementedProvider[] {
   return NOT_IMPLEMENTED_PROVIDERS.slice();

@@ -1,7 +1,16 @@
 /**
- * Crucibulum — Ollama Adapter
- * Direct Ollama API integration for local model evaluation.
- * Implements an agentic loop with lenient command parsing and structured logging.
+ * Crucibulum — Squidley Gateway Adapter
+ * Routes all model calls through the Squidley API, giving Crucibulum access
+ * to every model Squidley knows: ModelStudio (qwen3.5-plus, qwen3.6-plus),
+ * OpenRouter (MiMo, Trinity), Anthropic (Opus, Sonnet), MiniMax, Ollama, etc.
+ *
+ * Implements the same agentic loop as ollama.ts:
+ *   send task prompt → parse READ_FILE/WRITE_FILE/SHELL/DONE → execute tools → loop
+ *
+ * CLI usage:
+ *   --model squidley:qwen3.6-plus
+ *   --model squidley:claude-opus-4-6
+ *   --model squidley:mimo-v2-pro
  */
 
 import { execSync } from "node:child_process";
@@ -12,34 +21,30 @@ import type {
   AdapterConfig,
   ExecutionInput,
   ExecutionResult,
-  ChatMessage,
-  ChatResult,
 } from "./base.js";
 import { Observer } from "../core/observer.js";
 import { log } from "../utils/logger.js";
 
-const DEFAULT_OLLAMA_URL = process.env["OLLAMA_URL"] ?? "http://localhost:11434";
-const MODEL_TIMEOUT_MS = 600_000;   // 10 minutes — large models need time for first token
-const HEALTH_TIMEOUT_MS = 15_000;   // 15 seconds — loaded system may be slow
+const DEFAULT_SQUIDLEY_URL = process.env["SQUIDLEY_URL"] ?? "http://localhost:18791";
+const MODEL_TIMEOUT_MS = 120_000;
+const HEALTH_TIMEOUT_MS = 10_000;
 
-interface OllamaConfig extends AdapterConfig {
-  ollama_url?: string | undefined;
+interface SquidleyConfig extends AdapterConfig {
+  squidley_url?: string | undefined;
   model?: string | undefined;
+  provider?: string | undefined;
 }
 
-export class OllamaAdapter implements CrucibulumAdapter {
-  id = "ollama";
-  name = "Ollama";
+export class SquidleyAdapter implements CrucibulumAdapter {
+  id = "squidley";
+  name = "Squidley Gateway";
   version = "1.0.0";
 
-  private url: string = DEFAULT_OLLAMA_URL;
-  private model: string = "gemma3:27b";
+  private url: string = DEFAULT_SQUIDLEY_URL;
+  private model: string = "qwen3.6-plus";
+  private provider: string | undefined;
 
   supports(_family: "poison" | "spec" | "orchestration"): boolean {
-    return true;
-  }
-
-  supportsChat(): boolean {
     return true;
   }
 
@@ -47,36 +52,30 @@ export class OllamaAdapter implements CrucibulumAdapter {
     return true;
   }
 
+  supportsChat(): boolean {
+    return false;
+  }
+
   async init(config: AdapterConfig): Promise<void> {
-    const c = config as OllamaConfig;
-    if (c.ollama_url) this.url = c.ollama_url;
+    const c = config as SquidleyConfig;
+    if (c.squidley_url) this.url = c.squidley_url;
     if (c.model) this.model = c.model;
+    if (c.provider) this.provider = c.provider;
   }
 
   async healthCheck(): Promise<{ ok: boolean; reason?: string | undefined }> {
     try {
-      const res = await fetch(`${this.url}/api/tags`, {
+      const res = await fetch(`${this.url}/health`, {
         signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
       });
-      if (!res.ok) return { ok: false, reason: `Ollama returned ${res.status}` };
+      if (!res.ok) return { ok: false, reason: `Squidley returned ${res.status}` };
       return { ok: true };
     } catch (err) {
-      return { ok: false, reason: `Ollama unreachable: ${String(err).slice(0, 100)}` };
+      return { ok: false, reason: `Squidley unreachable: ${String(err).slice(0, 100)}` };
     }
   }
 
   async teardown(): Promise<void> { /* nothing to clean up */ }
-
-  async chat(messages: ChatMessage[]): Promise<ChatResult> {
-    const start = Date.now();
-    const result = await callOllama(this.url, this.model, messages);
-    return {
-      text: stripModelArtifacts(result.text),
-      tokens_in: result.tokensIn,
-      tokens_out: result.tokensOut,
-      duration_ms: Date.now() - start,
-    };
-  }
 
   async execute(input: ExecutionInput): Promise<ExecutionResult> {
     const observer = new Observer();
@@ -111,26 +110,24 @@ export class OllamaAdapter implements CrucibulumAdapter {
     const timeLimitMs = input.budget.time_limit_sec * 1000;
 
     for (let step = 0; step < maxSteps; step++) {
-      // Check time budget
       if (Date.now() - startMs > timeLimitMs) {
-        log("warn", "ollama", `[step ${step + 1}/${maxSteps}] Time budget exceeded (${Math.round((Date.now() - startMs) / 1000)}s)`);
+        log("warn", "squidley", `[step ${step + 1}/${maxSteps}] Time budget exceeded (${Math.round((Date.now() - startMs) / 1000)}s)`);
         observer.recordError("Time budget exceeded");
         exitReason = "timeout";
         break;
       }
 
-      log("info", "ollama", `[step ${step + 1}/${maxSteps}] Calling ${this.model}...`);
+      log("info", "squidley", `[step ${step + 1}/${maxSteps}] Calling ${this.model} via Squidley...`);
 
-      // Call model
       let response: string;
       try {
-        const result = await callOllama(this.url, this.model, messages);
+        const result = await callSquidley(this.url, this.model, this.provider, messages);
         response = stripModelArtifacts(result.text);
         totalTokensIn += result.tokensIn;
         totalTokensOut += result.tokensOut;
-        log("info", "ollama", `[step ${step + 1}/${maxSteps}] Response (${response.length} chars, ${result.tokensOut} tok): ${response.slice(0, 300).replace(/\n/g, "\\n")}${response.length > 300 ? "..." : ""}`);
+        log("info", "squidley", `[step ${step + 1}/${maxSteps}] Response (${response.length} chars, ${result.tokensOut} tok): ${response.slice(0, 300).replace(/\n/g, "\\n")}${response.length > 300 ? "..." : ""}`);
       } catch (err) {
-        log("error", "ollama", `[step ${step + 1}/${maxSteps}] Model call failed: ${String(err).slice(0, 200)}`);
+        log("error", "squidley", `[step ${step + 1}/${maxSteps}] Model call failed: ${String(err).slice(0, 200)}`);
         observer.recordError(`Model call failed: ${String(err).slice(0, 200)}`);
         exitReason = "error";
         break;
@@ -138,69 +135,63 @@ export class OllamaAdapter implements CrucibulumAdapter {
 
       messages.push({ role: "assistant", content: response });
 
-      // Context compression — keep conversation manageable for local models
+      // Context compression — keep conversation manageable
       const totalTokens = totalTokensIn + totalTokensOut;
-      if (totalTokens > 20_000 && messages.length > 8) {
-        const systemMsg = messages[0]!;   // system prompt
-        const taskMsg = messages[1]!;     // original task
-        const recentMsgs = messages.slice(-6); // last 3 exchanges
+      if (totalTokens > 40_000 && messages.length > 8) {
+        const systemMsg = messages[0]!;
+        const taskMsg = messages[1]!;
+        const recentMsgs = messages.slice(-6);
         messages.length = 0;
         messages.push(systemMsg, taskMsg);
         messages.push({ role: "user", content: "Previous steps summarized to save context. Continue with the task. You were investigating and fixing a bug." });
         messages.push(...recentMsgs);
-        log("info", "ollama", `[step ${step + 1}] Context compressed: ${totalTokens} tokens, kept ${messages.length} messages`);
+        log("info", "squidley", `[step ${step + 1}] Context compressed: ${totalTokens} tokens, kept ${messages.length} messages`);
       }
 
-      // Time pressure warning — prevent 19-minute runs that end in timeout
+      // Time pressure warning
       const elapsedMs = Date.now() - startMs;
       if (elapsedMs > 600_000 && !messages.some(m => m.content.includes("running low on time"))) {
         messages.push({
           role: "user",
           content: "You are running low on time. Make your fix now and signal DONE. Do not investigate further — apply your best fix, run the tests, and complete.",
         });
-        log("warn", "ollama", `[step ${step + 1}] Time pressure warning injected at ${Math.round(elapsedMs / 1000)}s`);
+        log("warn", "squidley", `[step ${step + 1}] Time pressure warning injected at ${Math.round(elapsedMs / 1000)}s`);
       }
 
       // Parse and execute tool calls
       const toolResult = executeToolCalls(response, input.workspace_path, observer, input.budget.max_file_edits);
 
       if (toolResult.done) {
-        log("info", "ollama", `[step ${step + 1}/${maxSteps}] Agent signaled DONE`);
+        log("info", "squidley", `[step ${step + 1}/${maxSteps}] Agent signaled DONE`);
         observer.taskComplete();
         break;
       }
 
       if (toolResult.commandsFound === 0) {
         consecutiveNoCommand++;
-        log("warn", "ollama", `[step ${step + 1}/${maxSteps}] No commands parsed (${consecutiveNoCommand} consecutive)`);
+        log("warn", "squidley", `[step ${step + 1}/${maxSteps}] No commands parsed (${consecutiveNoCommand} consecutive)`);
       } else {
         consecutiveNoCommand = 0;
-        log("info", "ollama", `[step ${step + 1}/${maxSteps}] Executed ${toolResult.commandsFound} commands`);
+        log("info", "squidley", `[step ${step + 1}/${maxSteps}] Executed ${toolResult.commandsFound} commands`);
       }
 
-      // After 3 consecutive no-command steps, inject strong re-anchor
       if (consecutiveNoCommand >= 3) {
-        log("warn", "ollama", `[step ${step + 1}/${maxSteps}] Re-anchoring — model not following protocol`);
-        messages.push({
-          role: "user",
-          content: RE_ANCHOR_MESSAGE,
-        });
+        log("warn", "squidley", `[step ${step + 1}/${maxSteps}] Re-anchoring — model not following protocol`);
+        messages.push({ role: "user", content: RE_ANCHOR_MESSAGE });
         consecutiveNoCommand = 0;
       } else if (toolResult.feedback) {
         messages.push({ role: "user", content: toolResult.feedback });
       }
 
-      // Check step budget on last iteration
       if (step === maxSteps - 1) {
-        log("warn", "ollama", `Step budget exhausted (${maxSteps} steps)`);
+        log("warn", "squidley", `Step budget exhausted (${maxSteps} steps)`);
         observer.recordError("Step budget exceeded");
         exitReason = "budget_exceeded";
       }
     }
 
-    const ollamaVersion = await getOllamaVersion(this.url);
     const totalDuration = Date.now() - startMs;
-    log("info", "ollama", `Run complete: ${exitReason} in ${Math.round(totalDuration / 1000)}s, ${observer.getStepCount()} steps, ${totalTokensIn}→${totalTokensOut} tokens`);
+    log("info", "squidley", `Run complete: ${exitReason} in ${Math.round(totalDuration / 1000)}s, ${observer.getStepCount()} steps, ${totalTokensIn}→${totalTokensOut} tokens`);
 
     return {
       exit_reason: exitReason,
@@ -214,9 +205,9 @@ export class OllamaAdapter implements CrucibulumAdapter {
       adapter_metadata: {
         adapter_id: this.id,
         adapter_version: this.version,
-        system_version: ollamaVersion,
+        system_version: "squidley-v2",
         model: this.model,
-        provider: "ollama",
+        provider: this.provider ?? "squidley-routed",
       },
     };
   }
@@ -242,53 +233,52 @@ DONE
 
 Issue one of these commands now.`;
 
-// ── Ollama API call ──────────────────────────────────────────────────────────
+// ── Squidley API call ──────────────────────────────────────────────────────
 
-async function callOllama(
+async function callSquidley(
   url: string,
   model: string,
+  provider: string | undefined,
   messages: Array<{ role: string; content: string }>,
-): Promise<{ text: string; tokensIn: number; tokensOut: number }> {
-  const res = await fetch(`${url}/api/chat`, {
+): Promise<{ text: string; tokensIn: number; tokensOut: number; costUsd: number }> {
+  const body: Record<string, unknown> = {
+    messages,
+    model,
+    stream: false,
+  };
+  if (provider) body.provider = provider;
+
+  const res = await fetch(`${url}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      messages,
-      stream: false,
-      options: { temperature: 0.1, num_predict: 8192 },
-    }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
   });
 
   if (!res.ok) {
-    throw new Error(`Ollama returned ${res.status}: ${await res.text().catch(() => "")}`);
+    throw new Error(`Squidley returned ${res.status}: ${await res.text().catch(() => "")}`);
   }
 
   const data = (await res.json()) as {
-    message?: { content?: string };
-    eval_count?: number;
-    prompt_eval_count?: number;
+    text?: string;
+    tokensIn?: number;
+    tokensOut?: number;
+    estimatedCostUsd?: number;
+    choices?: Array<{ message?: { content?: string } }>;
   };
+
+  // Squidley may return { text } or OpenAI-shaped { choices }
+  const text = data.text ?? data.choices?.[0]?.message?.content ?? "";
 
   return {
-    text: data.message?.content ?? "",
-    tokensIn: data.prompt_eval_count ?? 0,
-    tokensOut: data.eval_count ?? 0,
+    text,
+    tokensIn: data.tokensIn ?? 0,
+    tokensOut: data.tokensOut ?? 0,
+    costUsd: data.estimatedCostUsd ?? 0,
   };
 }
 
-async function getOllamaVersion(url: string): Promise<string> {
-  try {
-    const res = await fetch(`${url}/api/version`, { signal: AbortSignal.timeout(5000) });
-    const data = (await res.json()) as { version?: string };
-    return data.version ?? "unknown";
-  } catch {
-    return "unknown";
-  }
-}
-
-// ── System prompt builder ────────────────────────────────────────────────────
+// ── System prompt builder ──────────────────────────────────────────────────
 
 function buildSystemPrompt(input: ExecutionInput): string {
   const lines = [
@@ -340,7 +330,7 @@ function buildSystemPrompt(input: ExecutionInput): string {
   return lines.join("\n");
 }
 
-// ── Lenient command parser + executor ────────────────────────────────────────
+// ── Lenient command parser + executor ──────────────────────────────────────
 
 interface ToolExecResult {
   done: boolean;
@@ -348,7 +338,6 @@ interface ToolExecResult {
   commandsFound: number;
 }
 
-// Blocked shell patterns — network exfiltration and destructive ops
 const BLOCKED_SHELL_PATTERNS: RegExp[] = [
   /\bcurl\s+https?:/i,
   /\bwget\s+https?:/i,
@@ -372,7 +361,7 @@ function executeToolCalls(
   let fileEdits = 0;
   let commandsFound = 0;
 
-  // ── DONE detection (lenient) ──────────────────────────────────────────────
+  // ── DONE detection ───────────────────────────────────────────────────────
   const donePatterns = [
     /^DONE\s*$/m,
     /\bDONE\b/,
@@ -383,17 +372,14 @@ function executeToolCalls(
     /\bfinished\b.*\btask\b/i,
   ];
 
-  // DONE requires actual file changes — a model that does nothing cannot claim completion
   const hasWork = observer.getFilesWritten().length > 0;
   const isDone = donePatterns.some(p => p.test(response));
 
   if (isDone && hasWork) {
-    done = true;
-    return { done, feedback: "", commandsFound: 1 };
+    return { done: true, feedback: "", commandsFound: 1 };
   }
   if (isDone && !hasWork) {
-    // Reject DONE — model hasn't made any changes yet
-    log("warn", "ollama", "DONE rejected — no file changes made yet");
+    log("warn", "squidley", "DONE rejected — no file changes made yet");
     return {
       done: false,
       feedback: "You have signaled DONE but have not made any changes to the codebase. You must write a fix before completing. Use WRITE_FILE to modify the file containing the bug with your fix, then run the tests to verify.",
@@ -401,7 +387,7 @@ function executeToolCalls(
     };
   }
 
-  // ── READ_FILE parsing (lenient) ───────────────────────────────────────────
+  // ── READ_FILE parsing ────────────────────────────────────────────────────
   const readPatterns = [
     /READ_FILE\s+[`"']?(\S+?)[`"']?\s*$/gm,
     /(?:read|cat|view|show|look at)\s+(?:the\s+)?(?:file\s+)?[`"']?(\S+\.\w+)[`"']?/gi,
@@ -411,8 +397,8 @@ function executeToolCalls(
   const readPaths = new Set<string>();
   for (const pattern of readPatterns) {
     for (const match of response.matchAll(pattern)) {
-      const raw = match[1]!.replace(/[`"']/g, "").replace(/,$/,"");
-      if (raw && raw.includes("/") || raw.includes(".")) readPaths.add(raw);
+      const raw = match[1]!.replace(/[`"']/g, "").replace(/,$/, "");
+      if (raw && (raw.includes("/") || raw.includes("."))) readPaths.add(raw);
     }
   }
 
@@ -428,27 +414,24 @@ function executeToolCalls(
     try {
       if (!existsSync(absPath)) {
         feedback.push(`FILE NOT FOUND: ${filePath}`);
-        log("debug", "ollama", `READ_FILE ${filePath}: not found`);
       } else {
         const content = readFileSync(absPath, "utf-8");
         feedback.push(`--- ${filePath} ---\n${content}\n--- END ---`);
-        log("debug", "ollama", `READ_FILE ${filePath}: ${content.length} chars`);
       }
     } catch (err) {
       feedback.push(`ERROR reading ${filePath}: ${String(err).slice(0, 100)}`);
     }
   }
 
-  // ── WRITE_FILE parsing (multi-pattern, most specific first) ────────────────
+  // ── WRITE_FILE parsing ───────────────────────────────────────────────────
   const writtenPaths = new Set<string>();
 
-  // Pattern A: WRITE_FILE path\ncontent\nEND_FILE (strict — try first)
+  // Pattern A: WRITE_FILE path\ncontent\nEND_FILE
   const writeRegexA = /WRITE_FILE\s+[`"']?(\S+?)[`"']?\s*\n([\s\S]*?)END_FILE/g;
   let writeMatchA;
   while ((writeMatchA = writeRegexA.exec(response)) !== null) {
     const filePath = writeMatchA[1]!.replace(/[`"']/g, "");
     const content = writeMatchA[2]!;
-    log("info", "ollama", `WRITE pattern A matched: ${filePath} (${content.length} chars)`);
     if (doWriteFile(filePath, content, workspacePath, observer, feedback, maxFileEdits, fileEdits)) {
       fileEdits++;
       commandsFound++;
@@ -456,17 +439,15 @@ function executeToolCalls(
     }
   }
 
-  // Pattern B: WRITE_FILE path\ncontent (no END_FILE — content until next command or end)
+  // Pattern B: WRITE_FILE path\ncontent (no END_FILE)
   if (writtenPaths.size === 0) {
     const writeBlockRegex = /WRITE_FILE\s+[`"']?(\S+?)[`"']?\s*\n([\s\S]*?)(?=\n\s*(?:READ_FILE|WRITE_FILE|SHELL|DONE)\b|$)/g;
     let writeMatchB;
     while ((writeMatchB = writeBlockRegex.exec(response)) !== null) {
       const filePath = writeMatchB[1]!.replace(/[`"']/g, "");
-      let content = writeMatchB[2]!.trimEnd();
+      const content = writeMatchB[2]!.trimEnd();
       if (writtenPaths.has(filePath)) continue;
-      // Skip if content is empty or just whitespace
       if (!content.trim()) continue;
-      log("info", "ollama", `WRITE pattern B matched (no END_FILE): ${filePath} (${content.length} chars)`);
       if (doWriteFile(filePath, content, workspacePath, observer, feedback, maxFileEdits, fileEdits)) {
         fileEdits++;
         commandsFound++;
@@ -475,7 +456,7 @@ function executeToolCalls(
     }
   }
 
-  // Pattern C: markdown code block with filename — ```lang filename.ext\ncontent\n```
+  // Pattern C: markdown code block with filename
   const codeBlockRegex = /```(?:\w+)?\s+(\S+\.\w+)\s*\n([\s\S]*?)```/g;
   let cbMatch;
   while ((cbMatch = codeBlockRegex.exec(response)) !== null) {
@@ -483,7 +464,6 @@ function executeToolCalls(
     const content = cbMatch[2]!;
     if (writtenPaths.has(filePath)) continue;
     if (!observer.getFilesWritten().includes(filePath) && filePath.includes("/")) {
-      log("info", "ollama", `WRITE pattern C matched (code block): ${filePath} (${content.length} chars)`);
       if (doWriteFile(filePath, content, workspacePath, observer, feedback, maxFileEdits, fileEdits)) {
         fileEdits++;
         commandsFound++;
@@ -492,7 +472,7 @@ function executeToolCalls(
     }
   }
 
-  // Pattern D: model says "here is the updated/fixed file" with a code block after mentioning path
+  // Pattern D: natural language + code block
   if (writtenPaths.size === 0) {
     const updatePatternRegex = /(?:updated?|fixed|corrected|modified|new)\s+(?:version\s+of\s+)?[`"']?(\S+\.\w+)[`"']?\s*:?\s*\n\s*```\w*\s*\n([\s\S]*?)```/gi;
     let upMatch;
@@ -500,7 +480,6 @@ function executeToolCalls(
       const filePath = upMatch[1]!.replace(/[`"':]/g, "");
       const content = upMatch[2]!;
       if (filePath.includes("/") && !writtenPaths.has(filePath)) {
-        log("info", "ollama", `WRITE pattern D matched (natural language + code block): ${filePath}`);
         if (doWriteFile(filePath, content, workspacePath, observer, feedback, maxFileEdits, fileEdits)) {
           fileEdits++;
           commandsFound++;
@@ -510,7 +489,7 @@ function executeToolCalls(
     }
   }
 
-  // ── SHELL parsing (lenient) ───────────────────────────────────────────────
+  // ── SHELL parsing ────────────────────────────────────────────────────────
   const shellPatterns = [
     /SHELL\s+(.+)/g,
     /^(?:run|execute):\s*(.+)$/gim,
@@ -522,9 +501,7 @@ function executeToolCalls(
   for (const pattern of shellPatterns) {
     for (const match of response.matchAll(pattern)) {
       const cmd = match[1]!.trim();
-      // Filter out non-command strings (too short, markdown artifacts)
       if (cmd.length > 2 && cmd.length < 200 && !cmd.startsWith("#") && !cmd.startsWith("//")) {
-        // For multi-line bash blocks, take each line
         if (cmd.includes("\n")) {
           for (const line of cmd.split("\n")) {
             const trimmed = line.trim();
@@ -541,12 +518,9 @@ function executeToolCalls(
     if (isShellBlocked(command)) {
       observer.recordError(`Blocked command: ${command}`);
       feedback.push(`ERROR: Command blocked for security: ${command}`);
-      log("warn", "ollama", `SHELL blocked: ${command}`);
       continue;
     }
-
     commandsFound++;
-    log("info", "ollama", `SHELL: ${command}`);
     try {
       const output = execSync(command, {
         cwd: workspacePath,
@@ -557,7 +531,6 @@ function executeToolCalls(
       observer.shell(command, 0);
       const truncated = output.length > 2000 ? output.slice(0, 2000) + "\n[truncated]" : output;
       feedback.push(`$ ${command}\n${truncated}`);
-      log("debug", "ollama", `SHELL exit 0: ${output.slice(0, 200).replace(/\n/g, "\\n")}`);
     } catch (err) {
       const exitCode = (err as { status?: number }).status ?? 1;
       const stderr = (err as { stderr?: string }).stderr ?? "";
@@ -565,11 +538,9 @@ function executeToolCalls(
       const output = (stderr || stdout || String(err)).slice(0, 1000);
       observer.shell(command, exitCode);
       feedback.push(`$ ${command}\nExit code: ${exitCode}\n${output}`);
-      log("debug", "ollama", `SHELL exit ${exitCode}: ${output.slice(0, 200).replace(/\n/g, "\\n")}`);
     }
   }
 
-  // ── Build feedback ────────────────────────────────────────────────────────
   if (commandsFound === 0) {
     return {
       done: false,
@@ -584,19 +555,14 @@ function executeToolCalls(
 // ── Model artifact stripping ───────────────────────────────────────────────
 
 const ARTIFACT_PATTERNS: RegExp[] = [
-  /<\|[^|]*\|>/g,       // <|endoftext|>, <|im_end|>, <|eot_id|>, etc.
-  /<channel[^>]*>/g,     // <channel|>, <channel>, etc.
+  /<\|[^|]*\|>/g,
+  /<channel[^>]*>/g,
 ];
 
 function stripModelArtifacts(text: string): string {
   let cleaned = text;
-  let found = false;
   for (const pattern of ARTIFACT_PATTERNS) {
-    if (pattern.test(cleaned)) found = true;
     cleaned = cleaned.replace(pattern, "");
-  }
-  if (found) {
-    log("debug", "ollama", "Stripped model artifacts from response");
   }
   return cleaned;
 }
@@ -607,17 +573,8 @@ function stripMarkdownFences(content: string): string {
   const lines = content.split("\n");
   let start = 0;
   let end = lines.length;
-
-  // Strip leading fence: ```lang or ```
-  if (lines.length > 0 && /^\s*```\w*\s*$/.test(lines[0]!)) {
-    start = 1;
-  }
-
-  // Strip trailing fence: ```
-  if (end > start && /^\s*```\s*$/.test(lines[end - 1]!)) {
-    end = end - 1;
-  }
-
+  if (lines.length > 0 && /^\s*```\w*\s*$/.test(lines[0]!)) start = 1;
+  if (end > start && /^\s*```\s*$/.test(lines[end - 1]!)) end = end - 1;
   return lines.slice(start, end).join("\n");
 }
 
@@ -633,34 +590,26 @@ function doWriteFile(
   currentEdits: number,
 ): boolean {
   const absPath = resolve(workspacePath, filePath);
-
   if (!absPath.startsWith(resolve(workspacePath))) {
     observer.recordError(`Path escape attempt: ${filePath}`);
     feedback.push(`ERROR: ${filePath} is outside the workspace`);
     return false;
   }
-
   if (currentEdits >= maxFileEdits) {
     observer.recordError(`File edit limit reached: ${maxFileEdits}`);
     feedback.push(`ERROR: Maximum file edits (${maxFileEdits}) reached`);
     return false;
   }
-
-  // Strip markdown fences that models often wrap code in
   const content = stripMarkdownFences(rawContent);
-
   observer.fileWrite(filePath);
   try {
     mkdirSync(dirname(absPath), { recursive: true });
-    const bytes = Buffer.byteLength(content, "utf-8");
     writeFileSync(absPath, content, "utf-8");
     feedback.push(`WRITTEN: ${filePath}`);
-    log("info", "ollama", `WRITE_FILE ${filePath}: SUCCESS (${bytes} bytes written)`);
+    log("info", "squidley", `WRITE_FILE ${filePath}: SUCCESS (${Buffer.byteLength(content, "utf-8")} bytes)`);
     return true;
   } catch (err) {
-    const reason = String(err).slice(0, 150);
-    feedback.push(`ERROR writing ${filePath}: ${reason}`);
-    log("error", "ollama", `WRITE_FILE ${filePath}: FAILED — ${reason}`);
+    feedback.push(`ERROR writing ${filePath}: ${String(err).slice(0, 150)}`);
     return false;
   }
 }

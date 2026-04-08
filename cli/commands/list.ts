@@ -2,8 +2,39 @@
  * Crucibulum CLI — list command
  */
 import { listTasks } from "../../core/manifest.js";
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync, readFileSync, existsSync } from "node:fs";
+import { join, resolve } from "node:path";
+import type { ConversationalManifest } from "../../adapters/base.js";
+
+function listConversationalTasks(): Array<{ id: string; difficulty: string; family: string; description: string }> {
+  const tasksDir = resolve(process.env["CRUCIBULUM_TASKS_DIR"] ?? join(process.cwd(), "tasks"));
+  const convFamilies = ["identity", "truthfulness", "proactive", "personality", "adversarial_chat", "cost_efficiency"];
+  const results: Array<{ id: string; difficulty: string; family: string; description: string }> = [];
+
+  for (const family of convFamilies) {
+    const familyDir = join(tasksDir, family);
+    if (!existsSync(familyDir)) continue;
+    try {
+      const dirs = readdirSync(familyDir, { withFileTypes: true }).filter(d => d.isDirectory());
+      for (const dir of dirs) {
+        const manifestPath = join(familyDir, dir.name, "manifest.json");
+        if (!existsSync(manifestPath)) continue;
+        try {
+          const raw = JSON.parse(readFileSync(manifestPath, "utf-8")) as ConversationalManifest;
+          if (raw.execution_mode === "conversational") {
+            results.push({
+              id: raw.id,
+              difficulty: raw.difficulty,
+              family: raw.family,
+              description: raw.description.slice(0, 60),
+            });
+          }
+        } catch { /* skip invalid */ }
+      }
+    } catch { /* skip missing dirs */ }
+  }
+  return results;
+}
 
 export async function listCommand(args: string[]): Promise<void> {
   const subcommand = args[0];
@@ -12,17 +43,29 @@ export async function listCommand(args: string[]): Promise<void> {
     const familyArg = args.indexOf("--family");
     const family = familyArg >= 0 ? args[familyArg + 1] : undefined;
     const tasks = listTasks(family);
+    const convTasks = listConversationalTasks();
 
-    if (tasks.length === 0) {
+    if (tasks.length === 0 && convTasks.length === 0) {
       console.log("No tasks found.");
       return;
     }
 
-    console.log("\n  AVAILABLE TASKS");
-    console.log("  " + "-".repeat(56));
-    for (const t of tasks) {
-      const diff = t.difficulty.toUpperCase().padEnd(6);
-      console.log(`  ${t.id.padEnd(16)} ${diff} ${t.family.padEnd(22)} ${t.title}`);
+    if (tasks.length > 0) {
+      console.log("\n  CODE TASKS");
+      console.log("  " + "-".repeat(56));
+      for (const t of tasks) {
+        const diff = t.difficulty.toUpperCase().padEnd(6);
+        console.log(`  ${t.id.padEnd(16)} ${diff} ${t.family.padEnd(22)} ${t.title}`);
+      }
+    }
+
+    if (convTasks.length > 0) {
+      console.log("\n  CONVERSATIONAL TASKS");
+      console.log("  " + "-".repeat(56));
+      for (const t of convTasks) {
+        const diff = t.difficulty.toUpperCase().padEnd(6);
+        console.log(`  ${t.id.padEnd(28)} ${diff} ${t.family.padEnd(16)} ${t.description}`);
+      }
     }
     console.log("");
   } else if (subcommand === "runs") {

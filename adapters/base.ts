@@ -176,16 +176,104 @@ export interface ExecutionResult {
   };
 }
 
+// ── Chat types (conversational tasks) ─────────────────────────────────────
+
+export interface ChatMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+export interface ChatResult {
+  text: string;
+  tokens_in: number;
+  tokens_out: number;
+  duration_ms: number;
+}
+
+// ── Conversational task types ─────────────────────────────────────────────
+
+export type ConversationalFamily =
+  | "identity"
+  | "truthfulness"
+  | "proactive"
+  | "personality"
+  | "adversarial_chat"
+  | "cost_efficiency";
+
+export type ConversationalScoringType =
+  | "text_match"
+  | "text_match_all"
+  | "refusal_check"
+  | "recall"
+  | "correction"
+  | "proactive"
+  | "tool_verification"
+  | "hedge_count"
+  | "custom";
+
+export interface ConversationalQuestion {
+  id: string;
+  question: string;
+  setup?: string | undefined;
+  setup_gap?: number | undefined;
+  scoring_type: ConversationalScoringType;
+  pass_phrases?: string[] | undefined;
+  fail_phrases?: string[] | undefined;
+  weight: number;
+  tags: string[];
+  expected_tool?: string | undefined;
+  /** Custom scoring function name (for scoring_type: "custom") */
+  custom_scorer?: string | undefined;
+}
+
+export interface ConversationalManifest {
+  id: string;
+  version: string;
+  family: ConversationalFamily;
+  execution_mode: "conversational";
+  difficulty: "easy" | "medium" | "hard";
+  description: string;
+  system_prompt?: string | undefined;
+  /** Gap filler messages for recall tests */
+  gap_fillers?: string[] | undefined;
+  questions: ConversationalQuestion[];
+  scoring: {
+    pass_threshold: number;
+  };
+  metadata: {
+    author: string;
+    created: string;
+    tags: string[];
+    diagnostic_purpose: string;
+  };
+}
+
+export interface ConversationalResult {
+  question_id: string;
+  question: string;
+  response: string;
+  passed: boolean;
+  score: number;
+  weight: number;
+  failure_reason: string | null;
+  duration_ms: number;
+  tokens_in: number;
+  tokens_out: number;
+}
+
 export interface CrucibulumAdapter {
   id: string;
   name: string;
   version: string;
   supports(family: "poison" | "spec" | "orchestration"): boolean;
+  supportsChat(): boolean;
   supportsToolCalls(): boolean;
   init(config: AdapterConfig): Promise<void>;
   healthCheck(): Promise<{ ok: boolean; reason?: string | undefined }>;
   teardown(): Promise<void>;
   execute(input: ExecutionInput): Promise<ExecutionResult>;
+  /** Send a chat message and get a response. Required for conversational tasks. */
+  chat?(messages: ChatMessage[]): Promise<ChatResult>;
 }
 
 // ── Evidence Bundle ────────────────────────────────────────────────────────

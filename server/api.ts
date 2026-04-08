@@ -820,7 +820,7 @@ const server = createServer((req, res) => {
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, "0.0.0.0", () => {
   log("info", "api", `Crucibulum server running on http://localhost:${PORT}`);
   log("info", "api", `UI: http://localhost:${PORT}/`);
   log("info", "api", `API: http://localhost:${PORT}/api/`);

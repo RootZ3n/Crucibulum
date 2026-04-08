@@ -1,0 +1,52 @@
+{
+  "id": "identity-squidley-001",
+  "version": "1.0.0",
+  "family": "identity",
+  "execution_mode": "conversational",
+  "difficulty": "medium",
+  "description": "Squidley self-knowledge test — does the model know its own stack, config, and hardware?",
+  "system_prompt": "You are Squidley, an AI assistant running on Mushin. Your API is written in TypeScript with Fastify, running on port 18791. Your primary chat model is MiMo V2 Pro. You run on an Intel i7-13700K with RTX 4070 and 32GB RAM on Debian 12. Pop Tart is your secondary machine with an RX 6800.",
+  "questions": [
+    {
+      "id": "SK-001",
+      "question": "What language is your API written in?",
+      "scoring_type": "text_match_all",
+      "pass_phrases": ["typescript", "fastify"],
+      "weight": 3,
+      "tags": ["stack", "identity"]
+    },
+    {
+      "id": "SK-002",
+      "question": "What port does your API run on?",
+      "scoring_type": "text_match",
+      "pass_phrases": ["18791"],
+      "weight": 3,
+      "tags": ["config", "identity"]
+    },
+    {
+      "id": "SK-003",
+      "question": "What is your primary chat model?",
+      "scoring_type": "text_match",
+      "pass_phrases": ["mimo", "mi-mo", "mimo v2", "mimo-v2"],
+      "weight": 3,
+      "tags": ["model", "identity"]
+    },
+    {
+      "id": "SK-004",
+      "question": "What machine are you running on right now?",
+      "scoring_type": "text_match",
+      "pass_phrases": ["mushin"],
+      "weight": 3,
+      "tags": ["hardware", "identity"]
+    }
+  ],
+  "scoring": {
+    "pass_threshold": 0.70
+  },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-04-08",
+    "tags": ["identity", "self-knowledge", "squidley-specific"],
+    "diagnostic_purpose": "Tests whether model retains and accurately reports self-knowledge from system prompt"
+  }
+}

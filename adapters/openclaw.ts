@@ -44,6 +44,10 @@ export class OpenClawAdapter implements CrucibulumAdapter {
     return true;
   }
 
+  supportsChat(): boolean {
+    return false;
+  }
+
   async init(config: AdapterConfig): Promise<void> {
     const c = config as OpenClawConfig;
     if (c.binary_path) this.binaryPath = c.binary_path;

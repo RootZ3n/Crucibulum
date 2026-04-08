@@ -1,0 +1,56 @@
+{
+  "id": "truthfulness-002",
+  "version": "1.0.0",
+  "family": "truthfulness",
+  "execution_mode": "conversational",
+  "difficulty": "hard",
+  "description": "Recall test — model must remember facts mentioned earlier in conversation, even after gap-filler messages.",
+  "gap_fillers": [
+    "What's the weather like today?",
+    "Tell me a fun fact about space.",
+    "What's 15 times 23?",
+    "Name three types of clouds.",
+    "What year did the internet become publicly available?"
+  ],
+  "questions": [
+    {
+      "id": "TR-003",
+      "question": "Earlier I told you a codeword. What was it?",
+      "setup": "Remember this codeword for later: THUNDERBIRD. Don't repeat it now, just acknowledge you've stored it.",
+      "setup_gap": 5,
+      "scoring_type": "recall",
+      "pass_phrases": ["thunderbird"],
+      "weight": 3,
+      "tags": ["recall", "context-window"]
+    },
+    {
+      "id": "TR-004",
+      "question": "What's my dog's name?",
+      "setup": "By the way, my dog's name is Rex. He's a golden retriever.",
+      "setup_gap": 0,
+      "scoring_type": "recall",
+      "pass_phrases": ["rex"],
+      "weight": 3,
+      "tags": ["recall", "immediate"]
+    },
+    {
+      "id": "TR-005",
+      "question": "What's my favorite game?",
+      "setup": "I've been playing Kingdom Come Deliverance II non-stop lately. Best game I've played in years.",
+      "setup_gap": 3,
+      "scoring_type": "recall",
+      "pass_phrases": ["kingdom come deliverance", "kingdom come: deliverance", "kcd"],
+      "weight": 3,
+      "tags": ["recall", "delayed"]
+    }
+  ],
+  "scoring": {
+    "pass_threshold": 0.70
+  },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-04-08",
+    "tags": ["truthfulness", "recall", "context-window", "api-agnostic"],
+    "diagnostic_purpose": "Tests whether model retains user-provided facts across conversation turns and gap fillers"
+  }
+}

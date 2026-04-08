@@ -29,6 +29,10 @@ export class ClaudeCodeAdapter implements CrucibulumAdapter {
   supports(_family: "poison" | "spec" | "orchestration"): boolean { return true; }
   supportsToolCalls(): boolean { return true; }
 
+  supportsChat(): boolean {
+    return false;
+  }
+
   async init(config: AdapterConfig): Promise<void> {
     const c = config as ClaudeCodeConfig;
     if (c.binary_path) this.binaryPath = c.binary_path;

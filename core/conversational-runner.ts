@@ -1,0 +1,375 @@
+/**
+ * Crucibulum — Conversational Runner
+ * Executes chat-based tests: sends questions via adapter.chat(),
+ * scores responses deterministically, produces evidence bundles.
+ *
+ * Flow:
+ *   1. Load conversational manifest
+ *   2. For each question:
+ *      a. Send optional setup messages (with gap fillers for recall)
+ *      b. Send question
+ *      c. Score response
+ *   3. Aggregate scores via conversational judge
+ *   4. Build evidence bundle
+ */
+
+import { readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { platform, arch } from "node:os";
+import type {
+  CrucibulumAdapter,
+  ConversationalManifest,
+  ConversationalResult,
+  ChatMessage,
+  EvidenceBundle,
+  TimelineEvent,
+} from "../adapters/base.js";
+import { scoreConversationalQuestion, judgeConversational } from "./conversational-judge.js";
+import { sha256Object } from "../utils/hashing.js";
+import { estimateCost } from "../utils/cost.js";
+import { log } from "../utils/logger.js";
+import { formatDuration } from "../utils/timing.js";
+import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
+
+// ── Default gap fillers for recall tests ──────────────────────────────────
+
+const DEFAULT_GAP_FILLERS = [
+  "What's the weather like today?",
+  "Tell me a fun fact about space.",
+  "What's 15 times 23?",
+  "Name three types of clouds.",
+  "What year did the internet become publicly available?",
+  "What's the difference between a tornado and a hurricane?",
+  "How many continents are there?",
+  "What's the capital of New Zealand?",
+];
+
+// ── Manifest loading ─────────────────────────────────────────────────────
+
+const TASKS_DIR = resolve(process.env["CRUCIBULUM_TASKS_DIR"] ?? join(process.cwd(), "tasks"));
+
+export function loadConversationalManifest(taskId: string): ConversationalManifest {
+  // Search through task family directories
+  const families = ["identity", "truthfulness", "proactive", "personality", "adversarial_chat", "cost_efficiency"];
+  for (const family of families) {
+    try {
+      const manifestPath = join(TASKS_DIR, family, taskId, "manifest.json");
+      const raw = readFileSync(manifestPath, "utf-8");
+      const manifest = JSON.parse(raw) as ConversationalManifest;
+      if (manifest.execution_mode !== "conversational") {
+        throw new Error(`Task ${taskId} is not a conversational task (mode: ${manifest.execution_mode})`);
+      }
+      return manifest;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") continue;
+      throw err;
+    }
+  }
+  throw new Error(`Conversational task not found: ${taskId}. Searched in: ${families.map(f => join(TASKS_DIR, f, taskId)).join(", ")}`);
+}
+
+export function isConversationalTask(taskId: string): boolean {
+  try {
+    loadConversationalManifest(taskId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ── Runner ───────────────────────────────────────────────────────────────
+
+export interface ConversationalRunOptions {
+  taskId: string;
+  adapter: CrucibulumAdapter;
+  model: string;
+  /** Override system prompt (optional) */
+  systemPrompt?: string | undefined;
+}
+
+export interface ConversationalRunResult {
+  bundle: EvidenceBundle;
+  passed: boolean;
+  score: number;
+  exitCode: number;
+}
+
+export async function runConversationalTask(options: ConversationalRunOptions): Promise<ConversationalRunResult> {
+  const { taskId, adapter, model } = options;
+  const startTime = new Date().toISOString();
+
+  log("info", "conv-runner", `Starting conversational run: ${taskId} with ${adapter.name}/${model}`);
+
+  if (!adapter.chat) {
+    throw new Error(`Adapter ${adapter.id} does not support chat(). Cannot run conversational tasks.`);
+  }
+
+  const manifest = loadConversationalManifest(taskId);
+  const gapFillers = manifest.gap_fillers ?? DEFAULT_GAP_FILLERS;
+  const timeline: TimelineEvent[] = [];
+  const results: ConversationalResult[] = [];
+  let totalTokensIn = 0;
+  let totalTokensOut = 0;
+  const runStartMs = Date.now();
+
+  timeline.push({ t: 0, type: "task_start", detail: `conversational: ${manifest.questions.length} questions` });
+
+  // Conversation history — maintained across questions for recall tests
+  const messages: ChatMessage[] = [];
+
+  // System prompt
+  if (options.systemPrompt || manifest.system_prompt) {
+    messages.push({ role: "system", content: options.systemPrompt || manifest.system_prompt! });
+  }
+
+  for (const question of manifest.questions) {
+    const questionStartMs = Date.now();
+    const t = () => Math.round((Date.now() - runStartMs) / 1000);
+
+    log("info", "conv-runner", `[${question.id}] Sending question: ${question.question.slice(0, 80)}...`);
+
+    // 1. Send setup message if present (e.g., "Remember this codeword: THUNDERBIRD")
+    if (question.setup) {
+      messages.push({ role: "user", content: question.setup });
+      try {
+        const setupResult = await adapter.chat(messages);
+        messages.push({ role: "assistant", content: setupResult.text });
+        totalTokensIn += setupResult.tokens_in;
+        totalTokensOut += setupResult.tokens_out;
+        timeline.push({ t: t(), type: "shell", command: `setup:${question.id}`, detail: question.setup.slice(0, 100) });
+      } catch (err) {
+        log("warn", "conv-runner", `[${question.id}] Setup message failed: ${String(err).slice(0, 100)}`);
+      }
+
+      // 2. Send gap filler messages (to test recall across conversation turns)
+      const gapCount = question.setup_gap ?? 0;
+      for (let i = 0; i < gapCount && i < gapFillers.length; i++) {
+        messages.push({ role: "user", content: gapFillers[i]! });
+        try {
+          const gapResult = await adapter.chat(messages);
+          messages.push({ role: "assistant", content: gapResult.text });
+          totalTokensIn += gapResult.tokens_in;
+          totalTokensOut += gapResult.tokens_out;
+        } catch {
+          // Gap fillers are best-effort
+        }
+      }
+    }
+
+    // 3. Send the actual question
+    messages.push({ role: "user", content: question.question });
+
+    let response: string;
+    let qTokensIn = 0;
+    let qTokensOut = 0;
+    try {
+      const chatResult = await adapter.chat(messages);
+      response = chatResult.text;
+      qTokensIn = chatResult.tokens_in;
+      qTokensOut = chatResult.tokens_out;
+      totalTokensIn += qTokensIn;
+      totalTokensOut += qTokensOut;
+      messages.push({ role: "assistant", content: response });
+    } catch (err) {
+      response = "";
+      log("error", "conv-runner", `[${question.id}] Chat failed: ${String(err).slice(0, 200)}`);
+      timeline.push({ t: t(), type: "error", detail: `chat failed: ${String(err).slice(0, 100)}` });
+    }
+
+    // 4. Score the response
+    const scored = scoreConversationalQuestion(question, response);
+    const result: ConversationalResult = {
+      question_id: scored.question_id,
+      question: scored.question,
+      response: scored.response,
+      passed: scored.passed,
+      score: scored.score,
+      weight: scored.weight,
+      failure_reason: scored.failure_reason,
+      duration_ms: Date.now() - questionStartMs,
+      tokens_in: qTokensIn,
+      tokens_out: qTokensOut,
+    };
+    results.push(result);
+
+    timeline.push({
+      t: t(),
+      type: result.passed ? "task_complete" : "error",
+      detail: `${question.id}: ${result.passed ? "PASS" : "FAIL"}${result.failure_reason ? ` — ${result.failure_reason.slice(0, 80)}` : ""}`,
+    });
+
+    log("info", "conv-runner", `[${question.id}] ${result.passed ? "PASS" : "FAIL"} (${result.duration_ms}ms)`);
+  }
+
+  // 5. Aggregate
+  const judgeResult = judgeConversational(manifest, results);
+  const endTime = new Date().toISOString();
+  const totalDurationMs = Date.now() - runStartMs;
+
+  log("info", "conv-runner", `Run complete: ${(judgeResult.score * 100).toFixed(0)}% in ${formatDuration(totalDurationMs)}`);
+
+  // 6. Build evidence bundle
+  const bundle = buildConversationalBundle({
+    manifest,
+    results,
+    judgeResult,
+    timeline,
+    adapter,
+    model,
+    startTime,
+    endTime,
+    totalTokensIn,
+    totalTokensOut,
+    totalDurationMs,
+  });
+
+  const exitCode = judgeResult.pass ? 0 : 1;
+  return { bundle, passed: judgeResult.pass, score: judgeResult.score, exitCode };
+}
+
+// ── Bundle builder ──────────────────────────────────────────────────────
+
+interface ConversationalBundleInput {
+  manifest: ConversationalManifest;
+  results: ConversationalResult[];
+  judgeResult: ReturnType<typeof judgeConversational>;
+  timeline: TimelineEvent[];
+  adapter: CrucibulumAdapter;
+  model: string;
+  startTime: string;
+  endTime: string;
+  totalTokensIn: number;
+  totalTokensOut: number;
+  totalDurationMs: number;
+}
+
+function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBundle {
+  const { manifest, judgeResult, timeline, adapter, model, startTime, endTime, totalTokensIn, totalTokensOut, totalDurationMs } = input;
+
+  const bundleId = `run_${new Date().toISOString().slice(0, 10)}_${manifest.id}_${model.replace(/[/:]/g, "-")}`;
+
+  // Build per-question verification details
+  const correctnessDetails: Record<string, "pass" | "fail"> = {};
+  for (const r of judgeResult.results) {
+    correctnessDetails[r.question_id] = r.passed ? "pass" : "fail";
+  }
+
+  const bundle: EvidenceBundle = {
+    bundle_id: bundleId,
+    bundle_hash: "", // computed below
+    bundle_version: "2.0.0",
+    task: {
+      id: manifest.id,
+      manifest_hash: sha256Object(manifest),
+      family: manifest.family,
+      difficulty: manifest.difficulty,
+    },
+    agent: {
+      adapter: adapter.id,
+      adapter_version: adapter.version,
+      system: adapter.name,
+      system_version: "unknown",
+      model,
+      model_version: "latest",
+      provider: adapter.id,
+    },
+    environment: {
+      os: `${platform()}-${arch()}`,
+      arch: arch(),
+      repo_commit: "none",
+      crucibulum_version: "2.0.0",
+      timestamp_start: startTime,
+      timestamp_end: endTime,
+    },
+    timeline,
+    diff: {
+      files_changed: [],
+      files_created: [],
+      files_deleted: [],
+      forbidden_paths_touched: [],
+    },
+    security: {
+      injection_scan: "clean",
+      forbidden_paths_violations: 0,
+      anti_cheat_violations: 0,
+      workspace_escape_attempts: 0,
+    },
+    verification_results: {
+      correctness: { score: judgeResult.score, details: correctnessDetails },
+      regression: { score: 1, details: {} }, // N/A for conversational
+      integrity: { score: 1, details: {}, violations: [] },
+      efficiency: {
+        time_sec: totalDurationMs / 1000,
+        time_limit_sec: 600, // default
+        steps_used: judgeResult.total_questions,
+        steps_limit: manifest.questions.length,
+        score: 1,
+      },
+    },
+    score: {
+      total: judgeResult.score,
+      breakdown: {
+        correctness: judgeResult.score,
+        regression: 1,
+        integrity: 1,
+        efficiency: 1,
+      },
+      pass: judgeResult.pass,
+      pass_threshold: manifest.scoring.pass_threshold,
+      integrity_violations: 0,
+    },
+    usage: {
+      tokens_in: totalTokensIn,
+      tokens_out: totalTokensOut,
+      estimated_cost_usd: estimateCost(adapter.id, totalTokensIn, totalTokensOut),
+      provider_cost_note: `${adapter.id}:${model}`,
+    },
+    judge: {
+      ...DETERMINISTIC_JUDGE_METADATA,
+      components: ["conversational-judge"],
+    },
+    trust: {
+      rubric_hidden: false, // conversational tasks have visible pass criteria
+      narration_ignored: false,
+      state_based_scoring: true,
+      bundle_verified: false,
+      deterministic_judge_authoritative: true,
+      review_layer_advisory: true,
+    },
+    diagnosis: {
+      localized_correctly: judgeResult.pass,
+      avoided_decoys: true,
+      first_fix_correct: judgeResult.pass,
+      self_verified: false,
+      failure_mode: judgeResult.pass ? null : `${judgeResult.failed}/${judgeResult.total_questions} questions failed`,
+    },
+    integrations: {
+      veritor: { contract_version: "2.0.0", consumable: true },
+      paedagogus: {
+        contract_version: "1.0.0",
+        consumable: true,
+        routing_signals: {
+          task_family: manifest.family,
+          difficulty: manifest.difficulty,
+          provider: adapter.id,
+          adapter: adapter.id,
+          score: judgeResult.score,
+          pass: judgeResult.pass,
+          failure_mode: judgeResult.pass ? null : "conversational_failure",
+        },
+      },
+      crucible: {
+        profile_id: null,
+        benchmark_score: judgeResult.score,
+        benchmark_label: `${manifest.family}:${(judgeResult.score * 100).toFixed(0)}%`,
+        execution_score: judgeResult.score,
+        divergence_note: null,
+      },
+    },
+  };
+
+  // Sign the bundle
+  bundle.bundle_hash = sha256Object({ ...bundle, bundle_hash: "" });
+
+  return bundle;
+}
