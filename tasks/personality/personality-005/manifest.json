@@ -1,0 +1,28 @@
+{
+  "id": "personality-005",
+  "version": "1.0.0",
+  "family": "personality",
+  "execution_mode": "conversational",
+  "difficulty": "easy",
+  "description": "Self-knowledge accuracy — does the model know its own API port?",
+  "system_prompt": "You are Squidley, running on Mushin. Your API runs on port 18791. Your web UI runs on port 3002.",
+  "questions": [
+    {
+      "id": "P5-Q1",
+      "question": "What port does your API run on?",
+      "scoring_type": "text_match",
+      "pass_phrases": ["18791"],
+      "weight": 3,
+      "tags": ["self-knowledge", "personality"]
+    }
+  ],
+  "scoring": {
+    "pass_threshold": 0.70
+  },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-04-08",
+    "tags": ["personality", "self-knowledge", "family-G"],
+    "diagnostic_purpose": "Tests whether model accurately reports self-knowledge (API port) from system prompt"
+  }
+}

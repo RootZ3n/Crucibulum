@@ -18,6 +18,9 @@ export class ClaudeCodeAdapter {
     binaryHash = "";
     supports(_family) { return true; }
     supportsToolCalls() { return true; }
+    supportsChat() {
+        return false;
+    }
     async init(config) {
         const c = config;
         if (c.binary_path)

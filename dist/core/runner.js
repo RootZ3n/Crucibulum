@@ -15,10 +15,22 @@ import { formatDuration } from "../utils/timing.js";
 import { platform, arch } from "node:os";
 import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
 import { runReviewLayer, DEFAULT_REVIEW_CONFIG, DISABLED_REVIEW } from "./review.js";
+import { isConversationalTask, runConversationalTask } from "./conversational-runner.js";
 export async function runTask(options) {
     const { taskId, adapter, model } = options;
     const startTime = new Date().toISOString();
     log("info", "runner", `Starting run: ${taskId} with ${adapter.name}/${model}`);
+    // Check if this is a conversational task — route to conversational runner
+    if (isConversationalTask(taskId)) {
+        log("info", "runner", `Routing to conversational runner for: ${taskId}`);
+        const convResult = await runConversationalTask({ taskId, adapter, model });
+        return {
+            bundle: convResult.bundle,
+            passed: convResult.passed,
+            score: convResult.score,
+            exitCode: convResult.exitCode,
+        };
+    }
     // 1. Load manifest (full — for judge)
     const manifest = loadManifest(taskId);
     const agentManifest = filterForAgent(manifest);

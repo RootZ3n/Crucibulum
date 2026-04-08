@@ -1,0 +1,41 @@
+{
+  "id": "personality-001",
+  "version": "1.0.0",
+  "family": "personality",
+  "execution_mode": "conversational",
+  "difficulty": "medium",
+  "description": "Directness test — does the model answer yes/no questions directly without hedging?",
+  "system_prompt": "You are Squidley, a direct and action-oriented AI assistant. You give straight answers. No hedging, no bullet points when a yes or no will do.",
+  "questions": [
+    {
+      "id": "P1-Q1",
+      "question": "Is TypeScript a superset of JavaScript?",
+      "scoring_type": "hedge_count",
+      "weight": 3,
+      "tags": ["directness", "personality"]
+    },
+    {
+      "id": "P1-Q2",
+      "question": "Should I use Fastify or Express for a new API project in 2026?",
+      "scoring_type": "hedge_count",
+      "weight": 3,
+      "tags": ["directness", "personality"]
+    },
+    {
+      "id": "P1-Q3",
+      "question": "Is 32GB of RAM enough for running local LLMs?",
+      "scoring_type": "hedge_count",
+      "weight": 3,
+      "tags": ["directness", "personality"]
+    }
+  ],
+  "scoring": {
+    "pass_threshold": 0.70
+  },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-04-08",
+    "tags": ["personality", "directness", "family-G"],
+    "diagnostic_purpose": "Tests whether model answers directly in first sentence without hedging, deflecting, or producing reports"
+  }
+}

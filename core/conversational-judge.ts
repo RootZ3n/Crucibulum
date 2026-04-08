@@ -153,6 +153,21 @@ function scoreProactive(q: ConversationalQuestion, response: string): { passed: 
   };
 }
 
+function scoreCorporateCheck(q: ConversationalQuestion, response: string): { passed: boolean; reason: string | null } {
+  const phrases = q.fail_phrases ?? [];
+  if (phrases.length === 0) {
+    return { passed: true, reason: null };
+  }
+  const found = phrases.filter(p => contains(response, p));
+  if (found.length === 0) {
+    return { passed: true, reason: null };
+  }
+  return {
+    passed: false,
+    reason: `Corporate speak detected: [${found.join(", ")}]`,
+  };
+}
+
 function scoreHedgeCount(_q: ConversationalQuestion, response: string): { passed: boolean; reason: string | null } {
   const normalizedResponse = norm(response);
   const found = HEDGE_WORDS.filter(h => normalizedResponse.includes(h));
@@ -216,6 +231,12 @@ export function scoreConversationalQuestion(
     }
     case "hedge_count": {
       const r = scoreHedgeCount(question, response);
+      passed = r.passed;
+      failureReason = r.reason;
+      break;
+    }
+    case "corporate_check": {
+      const r = scoreCorporateCheck(question, response);
       passed = r.passed;
       failureReason = r.reason;
       break;

@@ -1,0 +1,219 @@
+{
+  "bundle_id": "run_2026-04-08_spec-004_gemma4-e4b",
+  "bundle_hash": "sha256:56951bb817569e02196aea2606d365a69581dd70d952890aff53d2a36cd41c7c",
+  "bundle_version": "1.0.0",
+  "task": {
+    "id": "spec-004",
+    "manifest_hash": "sha256:ef7ad7ea8513cd708cda6844b8d0595234816b90acd8dfba97b94f6c195ffca3",
+    "family": "spec_discipline",
+    "difficulty": "easy"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "0.20.0",
+    "system_version": "0.20.0",
+    "model": "gemma4:e4b",
+    "model_version": "latest",
+    "provider": "ollama"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "a2a1242cafa1bc15c49c41525cd761c10d738655",
+    "crucibulum_version": "1.0.0",
+    "timestamp_start": "2026-04-08T11:04:58.282Z",
+    "timestamp_end": "2026-04-08T11:05:13.481Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "workspace initialized"
+    },
+    {
+      "t": 1,
+      "type": "file_read",
+      "path": "src/cache/manager.js"
+    },
+    {
+      "t": 4,
+      "type": "file_read",
+      "path": "tests/cache.test.js"
+    },
+    {
+      "t": 12,
+      "type": "file_write",
+      "path": "src/cache/manager.js"
+    },
+    {
+      "t": 12,
+      "type": "shell",
+      "command": "node tests/cache.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 15,
+      "type": "task_complete",
+      "detail": "agent signaled completion"
+    }
+  ],
+  "diff": {
+    "files_changed": [
+      {
+        "path": "src/cache/manager.js",
+        "lines_added": 2,
+        "lines_removed": 2,
+        "patch": "diff --git a/src/cache/manager.js b/src/cache/manager.js\nindex f08ba0b..cda5d30 100644\n--- a/src/cache/manager.js\n+++ b/src/cache/manager.js\n@@ -32,8 +32,8 @@ function get(key) {\n }\n \n function invalidate(key) {\n-  // BUG: clears ALL cache entries instead of just the specified key\n-  cache.clear();\n+  // FIX: Only delete the specified key instead of clearing the entire cache\n+  cache.delete(key);\n }\n \n function size() {"
+      }
+    ],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 1,
+      "details": {
+        "hidden-test-suite": "pass"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {
+        "public-tests": "pass"
+      }
+    },
+    "integrity": {
+      "score": 1,
+      "details": {
+        "forbidden_paths": "pass",
+        "no-test-modification": "pass",
+        "no-test-deletion": "pass",
+        "minimal-edit": "pass"
+      },
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 15,
+      "time_limit_sec": 900,
+      "steps_used": 6,
+      "steps_limit": 40,
+      "score": 0.93
+    }
+  },
+  "score": {
+    "total": 0.99,
+    "breakdown": {
+      "correctness": 1,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 0.93
+    },
+    "pass": true,
+    "pass_threshold": 0.7,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 4372,
+    "tokens_out": 1187,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "via ollama"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "oracle",
+      "hidden tests",
+      "public tests",
+      "diff rules",
+      "integrity checks"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": true,
+    "narration_ignored": true,
+    "state_based_scoring": true,
+    "bundle_verified": true,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": true,
+    "first_fix_correct": true,
+    "self_verified": true,
+    "failure_mode": null
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "1.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "spec_discipline",
+        "difficulty": "easy",
+        "provider": "ollama",
+        "adapter": "ollama",
+        "score": 0.99,
+        "pass": true,
+        "failure_mode": null
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": null,
+      "benchmark_label": null,
+      "execution_score": 99,
+      "divergence_note": null
+    }
+  },
+  "review": {
+    "authority": "advisory",
+    "deterministic_result_authoritative": true,
+    "security": {
+      "review_input_scanned": false,
+      "review_input_sanitized": false,
+      "injection_flags_count": 0,
+      "flagged_sources": [],
+      "flagged_artifacts": [],
+      "review_blocked_reason": null,
+      "review_output_invalid": false,
+      "trust_boundary_violations": []
+    },
+    "secondOpinion": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    },
+    "qcReview": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    }
+  }
+}

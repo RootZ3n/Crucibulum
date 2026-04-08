@@ -15,6 +15,8 @@ import { DETERMINISTIC_JUDGE_METADATA } from "../core/judge.js";
 import { summarizeBundle, countRepeatRuns, getRelatedBundles, summarizeRunSet, type CrucibleLink } from "./contracts.js";
 import { readCrucibleLink, writeCrucibleLink } from "./validation-links.js";
 import { log } from "../utils/logger.js";
+import { storeScores, queryScores, getLeaderboard } from "../core/score-store.js";
+import type { ModelScore, ScoreFamily, ScoreSource } from "../types/scores.js";
 
 const PORT = parseInt(process.env["CRUCIBULUM_PORT"] ?? "18795", 10);
 const RUNS_DIR = process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs");
@@ -802,6 +804,72 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       };
       writeCrucibleLink(id, link);
       sendJSON(res, 200, { ok: true, link });
+      return;
+    }
+
+    // ── Score sync API ────────────────────────────────────────────────
+
+    if (path === "/api/scores/sync" && method === "POST") {
+      const body = JSON.parse(await readBody(req) || "{}") as {
+        scores?: ModelScore[];
+        source?: string;
+        runId?: string;
+      };
+
+      if (!body.scores || !Array.isArray(body.scores) || body.scores.length === 0) {
+        sendJSON(res, 400, { ok: false, stored: 0, errors: ["scores array is required and must be non-empty"] });
+        return;
+      }
+
+      const validSources: ScoreSource[] = ["crucible", "crucibulum", "veritor"];
+      const source = (validSources.includes(body.source as ScoreSource) ? body.source : "crucibulum") as ScoreSource;
+
+      // Validate each score
+      const validFamilies = new Set(["A", "B", "C", "D", "E", "F", "G", "H", "I"]);
+      const validationErrors: string[] = [];
+      const validScores: ModelScore[] = [];
+
+      for (let i = 0; i < body.scores.length; i++) {
+        const s = body.scores[i]!;
+        if (!s.modelId || !s.taskId || !s.family || !s.timestamp) {
+          validationErrors.push(`scores[${i}]: missing required fields (modelId, taskId, family, timestamp)`);
+          continue;
+        }
+        if (!validFamilies.has(s.family)) {
+          validationErrors.push(`scores[${i}]: invalid family '${s.family}'`);
+          continue;
+        }
+        if (typeof s.score !== "number" || s.score < 0 || s.score > 100) {
+          validationErrors.push(`scores[${i}]: score must be 0-100`);
+          continue;
+        }
+        validScores.push(s);
+      }
+
+      const result = storeScores(validScores, source, body.runId);
+      sendJSON(res, 200, {
+        ok: result.errors.length === 0 && validationErrors.length === 0,
+        stored: result.stored,
+        errors: [...validationErrors, ...result.errors],
+      });
+      return;
+    }
+
+    if (path === "/api/scores" && method === "GET") {
+      const modelId = url.searchParams.get("modelId") ?? undefined;
+      const family = url.searchParams.get("family") ?? undefined;
+      const taskId = url.searchParams.get("taskId") ?? undefined;
+      const source = url.searchParams.get("source") ?? undefined;
+      const limit = parseInt(url.searchParams.get("limit") ?? "100", 10);
+
+      const scores = queryScores({ modelId, family, taskId, source, limit });
+      sendJSON(res, 200, { scores, count: scores.length });
+      return;
+    }
+
+    if (path === "/api/scores/leaderboard" && method === "GET") {
+      const entries = getLeaderboard();
+      sendJSON(res, 200, { leaderboard: entries });
       return;
     }
 

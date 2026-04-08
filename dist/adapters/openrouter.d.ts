@@ -22,6 +22,7 @@ export declare class OpenRouterAdapter implements CrucibulumAdapter {
     constructor(opts?: OpenAICompatibleAdapterOpts);
     supports(_family: "poison" | "spec" | "orchestration"): boolean;
     supportsToolCalls(): boolean;
+    supportsChat(): boolean;
     init(config: AdapterConfig): Promise<void>;
     healthCheck(): Promise<{
         ok: boolean;

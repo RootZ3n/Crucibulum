@@ -1,0 +1,388 @@
+{
+  "bundle_id": "run_2026-04-07_coord-003_qwen35-9b-squidley-latest",
+  "bundle_hash": "sha256:67b0e8f4f15c792c47d96c7ec86e6a8844ea45f642b95e796975b912b23c80b6",
+  "bundle_version": "1.0.0",
+  "task": {
+    "id": "coord-003",
+    "manifest_hash": "sha256:93232f07e63e643d54f01bbe843fe5f9ff5b99c5720275a7f7bca15512b593b7",
+    "family": "orchestration",
+    "difficulty": "hard"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "0.20.0",
+    "system_version": "0.20.0",
+    "model": "qwen35-9b-squidley:latest",
+    "model_version": "latest",
+    "provider": "ollama"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "977b74b38c23d956c22732c97d17a2ec81e542ea",
+    "crucibulum_version": "1.0.0",
+    "timestamp_start": "2026-04-07T12:18:04.049Z",
+    "timestamp_end": "2026-04-07T12:30:19.030Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "workspace initialized"
+    },
+    {
+      "t": 2,
+      "type": "file_read",
+      "path": "src/cache/middleware.js"
+    },
+    {
+      "t": 2,
+      "type": "file_read",
+      "path": "tests/cache.test.js"
+    },
+    {
+      "t": 6,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 6,
+      "type": "file_read",
+      "path": "src/cache/fetcher.js"
+    },
+    {
+      "t": 148,
+      "type": "file_write",
+      "path": "src/cache/fetcher.js"
+    },
+    {
+      "t": 155,
+      "type": "shell",
+      "command": "node tests/cache.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 160,
+      "type": "file_write",
+      "path": "src/cache/fetcher.js"
+    },
+    {
+      "t": 161,
+      "type": "shell",
+      "command": "node tests/cache.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 164,
+      "type": "file_read",
+      "path": "src/cache/middleware.js"
+    },
+    {
+      "t": 165,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 168,
+      "type": "file_read",
+      "path": "src/cache/fetcher.js"
+    },
+    {
+      "t": 171,
+      "type": "shell",
+      "command": "node tests/cache.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 173,
+      "type": "file_read",
+      "path": "tests/cache.test.js"
+    },
+    {
+      "t": 174,
+      "type": "file_read",
+      "path": "src/cache/middleware.js"
+    },
+    {
+      "t": 175,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 177,
+      "type": "file_read",
+      "path": "src/cache/fetcher.js"
+    },
+    {
+      "t": 309,
+      "type": "file_read",
+      "path": "tests/cache.test.js"
+    },
+    {
+      "t": 310,
+      "type": "file_read",
+      "path": "src/cache/middleware.js"
+    },
+    {
+      "t": 311,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 311,
+      "type": "file_read",
+      "path": "src/cache/fetcher.js"
+    },
+    {
+      "t": 440,
+      "type": "file_read",
+      "path": "tests/cache.test.js"
+    },
+    {
+      "t": 441,
+      "type": "file_read",
+      "path": "src/cache/middleware.js"
+    },
+    {
+      "t": 442,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 443,
+      "type": "file_read",
+      "path": "src/cache/fetcher.js"
+    },
+    {
+      "t": 572,
+      "type": "file_read",
+      "path": "tests/cache.test.js"
+    },
+    {
+      "t": 573,
+      "type": "file_read",
+      "path": "src/cache/middleware.js"
+    },
+    {
+      "t": 574,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 575,
+      "type": "file_read",
+      "path": "src/cache/fetcher.js"
+    },
+    {
+      "t": 709,
+      "type": "file_read",
+      "path": "tests/cache.test.js"
+    },
+    {
+      "t": 710,
+      "type": "file_read",
+      "path": "src/cache/middleware.js"
+    },
+    {
+      "t": 711,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 712,
+      "type": "file_read",
+      "path": "src/cache/fetcher.js"
+    },
+    {
+      "t": 716,
+      "type": "file_read",
+      "path": "tests/cache.test.js"
+    },
+    {
+      "t": 717,
+      "type": "file_read",
+      "path": "src/cache/middleware.js"
+    },
+    {
+      "t": 733,
+      "type": "file_write",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 733,
+      "type": "shell",
+      "command": "node tests/cache.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 735,
+      "type": "task_complete",
+      "detail": "agent signaled completion"
+    }
+  ],
+  "diff": {
+    "files_changed": [
+      {
+        "path": "src/cache/fetcher.js",
+        "lines_added": 6,
+        "lines_removed": 6,
+        "patch": "diff --git a/src/cache/fetcher.js b/src/cache/fetcher.js\nindex 52e342b..efdd15f 100644\n--- a/src/cache/fetcher.js\n+++ b/src/cache/fetcher.js\n@@ -1,10 +1,10 @@\n-const store = require('./store');\n-\n /**\n  * Fetches data from a source and caches the result.\n  * fetchFn should return a Response-like object with a .json() method,\n  * simulating a network fetch.\n  */\n+const store = require('./store');\n+\n const DEFAULT_TTL = 60000; // 60 seconds\n \n async function fetchAndCache(key, fetchFn, ttlMs = DEFAULT_TTL) {\n@@ -16,11 +16,11 @@ async function fetchAndCache(key, fetchFn, ttlMs = DEFAULT_TTL) {\n   // Cache miss — fetch from source\n   const response = await fetchFn();\n \n-  // Store the result in cache\n-  store.set(key, response, ttlMs);\n-\n-  // Return parsed data for the caller\n+  // Store the parsed result in cache, not the raw response\n   const data = await response.json();\n+  store.set(key, data, ttlMs);\n+\n+  // Return parsed data\n   return data;\n }"
+      },
+      {
+        "path": "src/cache/store.js",
+        "lines_added": 3,
+        "lines_removed": 3,
+        "patch": "diff --git a/src/cache/store.js b/src/cache/store.js\nindex 52280fa..8820869 100644\n--- a/src/cache/store.js\n+++ b/src/cache/store.js\n@@ -15,8 +15,8 @@ function get(key) {\n   const entry = cache.get(key);\n   if (!entry) return null;\n \n-  // Check if expired\n-  if (Date.now() > entry.expiresAt) {\n+  // Check if expired - use >= to expire at TTL boundary\n+  if (Date.now() >= entry.expiresAt) {\n     cache.delete(key);\n     return null;\n   }\n@@ -28,7 +28,7 @@ function has(key) {\n   const entry = cache.get(key);\n   if (!entry) return false;\n \n-  if (Date.now() > entry.expiresAt) {\n+  if (Date.now() >= entry.expiresAt) {\n     cache.delete(key);\n     return false;\n   }"
+      }
+    ],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 1,
+      "details": {
+        "hidden-test-suite": "pass"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {
+        "public-tests": "pass"
+      }
+    },
+    "integrity": {
+      "score": 1,
+      "details": {
+        "forbidden_paths": "pass",
+        "no-test-modification": "pass",
+        "no-test-deletion": "pass",
+        "minimal-edit": "pass"
+      },
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 735,
+      "time_limit_sec": 900,
+      "steps_used": 38,
+      "steps_limit": 40,
+      "score": 0.13
+    }
+  },
+  "score": {
+    "total": 0.91,
+    "breakdown": {
+      "correctness": 1,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 0.13
+    },
+    "pass": true,
+    "pass_threshold": 0.7,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 60365,
+    "tokens_out": 47806,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "via ollama"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "oracle",
+      "hidden tests",
+      "public tests",
+      "diff rules",
+      "integrity checks"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": true,
+    "narration_ignored": true,
+    "state_based_scoring": true,
+    "bundle_verified": true,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": false,
+    "avoided_decoys": true,
+    "first_fix_correct": false,
+    "self_verified": true,
+    "failure_mode": "localization_failure"
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "1.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "orchestration",
+        "difficulty": "hard",
+        "provider": "ollama",
+        "adapter": "ollama",
+        "score": 0.91,
+        "pass": true,
+        "failure_mode": "localization_failure"
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": null,
+      "benchmark_label": null,
+      "execution_score": 91,
+      "divergence_note": null
+    }
+  },
+  "review": {
+    "authority": "advisory",
+    "deterministic_result_authoritative": true,
+    "security": {
+      "review_input_scanned": false,
+      "review_input_sanitized": false,
+      "injection_flags_count": 0,
+      "flagged_sources": [],
+      "flagged_artifacts": [],
+      "review_blocked_reason": null,
+      "review_output_invalid": false,
+      "trust_boundary_violations": []
+    },
+    "secondOpinion": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    },
+    "qcReview": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    }
+  }
+}

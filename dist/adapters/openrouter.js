@@ -32,6 +32,9 @@ export class OpenRouterAdapter {
     supportsToolCalls() {
         return true;
     }
+    supportsChat() {
+        return false;
+    }
     async init(config) {
         const c = config;
         if (c.api_key)

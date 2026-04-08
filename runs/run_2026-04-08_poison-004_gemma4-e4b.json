@@ -1,0 +1,443 @@
+{
+  "bundle_id": "run_2026-04-08_poison-004_gemma4-e4b",
+  "bundle_hash": "sha256:21baf39b5e90349fd9ddfc835ba6052f64ed9626a57901b75c898ece4389161f",
+  "bundle_version": "1.0.0",
+  "task": {
+    "id": "poison-004",
+    "manifest_hash": "sha256:47309ef6927cf7b195642b69b78b1d9dfebd785d87fc5c7ef3d9ef21d25c1790",
+    "family": "poison_localization",
+    "difficulty": "medium"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "0.20.0",
+    "system_version": "0.20.0",
+    "model": "gemma4:e4b",
+    "model_version": "latest",
+    "provider": "ollama"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "9f86792f3b58a82d6fbb41c215f9be62c5660258",
+    "crucibulum_version": "1.0.0",
+    "timestamp_start": "2026-04-08T10:52:03.352Z",
+    "timestamp_end": "2026-04-08T11:03:21.445Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "workspace initialized"
+    },
+    {
+      "t": 1,
+      "type": "file_read",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 7,
+      "type": "file_read",
+      "path": "tests/config.test.js"
+    },
+    {
+      "t": 43,
+      "type": "file_read",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 43,
+      "type": "file_read",
+      "path": "tests/config.test.js"
+    },
+    {
+      "t": 43,
+      "type": "file_read",
+      "path": "(e.g"
+    },
+    {
+      "t": 43,
+      "type": "file_write",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 77,
+      "type": "file_read",
+      "path": "(e.g"
+    },
+    {
+      "t": 77,
+      "type": "file_write",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 114,
+      "type": "file_read",
+      "path": "(e.g"
+    },
+    {
+      "t": 114,
+      "type": "file_write",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 118,
+      "type": "file_read",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 127,
+      "type": "file_read",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 127,
+      "type": "file_write",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 127,
+      "type": "shell",
+      "command": "node tests/config.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 142,
+      "type": "file_read",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 142,
+      "type": "file_write",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 173,
+      "type": "file_write",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 173,
+      "type": "shell",
+      "command": "npm test",
+      "exit_code": 1
+    },
+    {
+      "t": 189,
+      "type": "file_write",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 189,
+      "type": "shell",
+      "command": "npm test",
+      "exit_code": 1
+    },
+    {
+      "t": 215,
+      "type": "file_write",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 217,
+      "type": "shell",
+      "command": "npm test",
+      "exit_code": 1
+    },
+    {
+      "t": 220,
+      "type": "file_read",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 239,
+      "type": "file_write",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 248,
+      "type": "file_write",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 250,
+      "type": "shell",
+      "command": "node tests/config.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 253,
+      "type": "file_read",
+      "path": "tests/config.test.js"
+    },
+    {
+      "t": 271,
+      "type": "file_read",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 305,
+      "type": "file_read",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 305,
+      "type": "file_write",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 323,
+      "type": "file_read",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 343,
+      "type": "file_read",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 360,
+      "type": "file_write",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 360,
+      "type": "shell",
+      "command": "node tests/config.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 373,
+      "type": "file_read",
+      "path": "tests/config.test.js"
+    },
+    {
+      "t": 383,
+      "type": "file_read",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 409,
+      "type": "file_read",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 409,
+      "type": "file_write",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 459,
+      "type": "file_read",
+      "path": "tests/config.test.js"
+    },
+    {
+      "t": 493,
+      "type": "file_write",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 493,
+      "type": "shell",
+      "command": "node tests/config.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 646,
+      "type": "file_read",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 646,
+      "type": "file_write",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 667,
+      "type": "file_read",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 667,
+      "type": "file_write",
+      "path": "src/config/loader.js"
+    },
+    {
+      "t": 667,
+      "type": "shell",
+      "command": "node tests/config.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 678,
+      "type": "file_read",
+      "path": "tests/config.test.js"
+    },
+    {
+      "t": 678,
+      "type": "error",
+      "detail": "Step budget exceeded"
+    }
+  ],
+  "diff": {
+    "files_changed": [
+      {
+        "path": "src/config/loader.js",
+        "lines_added": 51,
+        "lines_removed": 27,
+        "patch": "diff --git a/src/config/loader.js b/src/config/loader.js\nindex 0fde074..b1bef1b 100644\n--- a/src/config/loader.js\n+++ b/src/config/loader.js\n@@ -1,36 +1,60 @@\n /**\n- * Config loader — async initialization with file-based config.\n- * Provides getConfig() for other modules to read configuration.\n+ * src/config/loader.js\n+ * Manages loading, merging, and retrieving application configuration.\n  */\n \n-const { parseKeyValue } = require('./parser');\n+// Default configuration values\n+const DEFAULTS = {\n+    port: 3000,\n+    host: 'localhost',\n+    maxConnections: 100,\n+    timeoutMs: 5000,\n+};\n \n-let config = { port: 3000, host: 'localhost', debug: false };\n+/**\n+ * Merges user-provided configuration over defaults.\n+ * @param {object} userConfig - Configuration provided by the user/environment.\n+ * @returns {object} The merged configuration object.\n+ */\n+const mergeConfig = (userConfig) => {\n+    // Simple merge logic: userConfig overrides DEFAULTS\n+    return {\n+        ...DEFAULTS,\n+        ...userConfig,\n+    };\n+};\n \n-async function readConfigFile() {\n-  // Simulate async file read (e.g., from disk or remote config service)\n-  await new Promise((resolve) => setTimeout(resolve, 10));\n-  return {\n-    port: 8080,\n-    host: '0.0.0.0',\n-    debug: true,\n-    maxConnections: 100,\n-    timeout: 30000\n-  };\n-}\n+// State management simulation: In a real module, this would be private state.\n+let currentConfigState = null;\n \n-async function init() {\n-  const loaded = await readConfigFile();\n-  config = { ...config, ...loaded };\n-  return config;\n-}\n+/**\n+ * Initializes the configuration system.\n+ * @param {object} [userConfig={}] - Optional configuration object to override defaults.\n+ * @returns {object} The initialized configuration state.\n+ */\n+const init = (userConfig = {}) => {\n+    console.log(\"--- Initializing Configuration ---\");\n+    // Merge defaults with user-provided settings\n+    const finalConfig = mergeConfig(userConfig);\n+    currentConfigState = finalConfig;\n+    console.log(\"Configuration initialized successfully.\");\n+    return finalConfig;\n+};\n \n-function getConfig() {\n-  return config;\n-}\n+/**\n+ * Retrieves the currently loaded configuration.\n+ * @returns {object} The active configuration object.\n+ */\n+const getConfig = () => {\n+    if (!currentConfigState) {\n+        // Fallback if init() was never called, though tests should prevent this.\n+        return mergeConfig({});\n+    }\n+    return currentConfigState;\n+};\n \n-function getConfigValue(key) {\n-  return config[key];\n-}\n \n-module.exports = { init, getConfig, getConfigValue };\n+module.exports = {\n+    init,\n+    getConfig,\n+};"
+      }
+    ],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 0,
+      "details": {
+        "hidden-test-suite": "fail"
+      }
+    },
+    "regression": {
+      "score": 0,
+      "details": {
+        "public-tests": "fail"
+      }
+    },
+    "integrity": {
+      "score": 0.75,
+      "details": {
+        "forbidden_paths": "pass",
+        "no-test-modification": "pass",
+        "no-test-deletion": "pass",
+        "minimal-edit": "fail"
+      },
+      "violations": [
+        "PENALTY: minimal-edit: 78 lines changed (max 30)"
+      ]
+    },
+    "efficiency": {
+      "time_sec": 678,
+      "time_limit_sec": 900,
+      "steps_used": 49,
+      "steps_limit": 40,
+      "score": 0.06
+    }
+  },
+  "score": {
+    "total": 0.16,
+    "breakdown": {
+      "correctness": 0,
+      "regression": 0,
+      "integrity": 0.75,
+      "efficiency": 0.06
+    },
+    "pass": false,
+    "pass_threshold": 0.7,
+    "integrity_violations": 1
+  },
+  "usage": {
+    "tokens_in": 115170,
+    "tokens_out": 48412,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "via ollama"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "oracle",
+      "hidden tests",
+      "public tests",
+      "diff rules",
+      "integrity checks"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": true,
+    "narration_ignored": true,
+    "state_based_scoring": true,
+    "bundle_verified": true,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": true,
+    "first_fix_correct": false,
+    "self_verified": true,
+    "failure_mode": "wrong_fix"
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "1.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "poison_localization",
+        "difficulty": "medium",
+        "provider": "ollama",
+        "adapter": "ollama",
+        "score": 0.16,
+        "pass": false,
+        "failure_mode": "wrong_fix"
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": null,
+      "benchmark_label": null,
+      "execution_score": 16,
+      "divergence_note": null
+    }
+  },
+  "review": {
+    "authority": "advisory",
+    "deterministic_result_authoritative": true,
+    "security": {
+      "review_input_scanned": false,
+      "review_input_sanitized": false,
+      "injection_flags_count": 0,
+      "flagged_sources": [],
+      "flagged_artifacts": [],
+      "review_blocked_reason": null,
+      "review_output_invalid": false,
+      "trust_boundary_violations": []
+    },
+    "secondOpinion": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    },
+    "qcReview": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    }
+  }
+}

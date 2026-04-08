@@ -25,6 +25,9 @@ export class OpenClawAdapter {
     supportsToolCalls() {
         return true;
     }
+    supportsChat() {
+        return false;
+    }
     async init(config) {
         const c = config;
         if (c.binary_path)

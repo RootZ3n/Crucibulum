@@ -15,11 +15,20 @@
     "lint": "tsc --noEmit",
     "serve": "node dist/server/api.js"
   },
-  "keywords": ["ai", "evaluation", "agent", "benchmark", "testing"],
+  "keywords": [
+    "ai",
+    "evaluation",
+    "agent",
+    "benchmark",
+    "testing"
+  ],
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+    "better-sqlite3": "^12.8.0"
+  },
   "devDependencies": {
-    "typescript": "^5.7.0",
-    "@types/node": "^22.0.0"
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
   }
 }

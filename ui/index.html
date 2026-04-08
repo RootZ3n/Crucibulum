@@ -2723,12 +2723,13 @@ let historyFilters = { task: '', model: '', status: '', date: '' };
 const API_BASE = window.location.origin;
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard',  key: '1' },
-  { id: 'run',       label: 'Run Task',   key: '2' },
-  { id: 'history',   label: 'History',    key: '3' },
-  { id: 'receipts',  label: 'Receipts',   key: '4' },
-  { id: 'compare',   label: 'Compare',    key: '5', disabled: true, badge: 'v1.1' },
-  { id: 'bundles',   label: 'Bundles',    key: '6', disabled: true, badge: 'v1.1' },
+  { id: 'dashboard',    label: 'Dashboard',    key: '1' },
+  { id: 'leaderboard',  label: 'Leaderboard',  key: '2' },
+  { id: 'run',          label: 'Run Task',     key: '3' },
+  { id: 'history',      label: 'History',      key: '4' },
+  { id: 'receipts',     label: 'Receipts',     key: '5' },
+  { id: 'compare',      label: 'Compare',      key: '6', disabled: true, badge: 'v1.1' },
+  { id: 'bundles',      label: 'Bundles',      key: '7', disabled: true, badge: 'v1.1' },
 ];
 
 /* =========================================================================
@@ -3061,6 +3062,10 @@ function renderView() {
     case 'dashboard':
       title.textContent = 'Dashboard';
       renderDashboard(content);
+      break;
+    case 'leaderboard':
+      title.textContent = 'Leaderboard';
+      renderLeaderboard(content);
       break;
     case 'run':
       title.textContent = 'Run Task';
@@ -5496,6 +5501,177 @@ async function init() {
   await loadStats();
   updateSidebarStatus();
   renderView();
+}
+
+/* =========================================================================
+   LEADERBOARD VIEW
+   ========================================================================= */
+
+var leaderboardData = [];
+var leaderboardScores = [];
+var leaderboardTab = 'global';
+var leaderboardFamily = 'G';
+
+async function loadLeaderboard() {
+  try {
+    var res = await api('GET', '/api/scores/leaderboard');
+    leaderboardData = res.leaderboard || [];
+  } catch (e) {
+    console.warn('Leaderboard load failed:', e.message);
+    leaderboardData = [];
+  }
+}
+
+function scoreCell(val) {
+  if (val === null || val === undefined) return '<td class="text-muted">—</td>';
+  var cls = val >= 80 ? 'color:var(--pass)' : val >= 60 ? 'color:var(--warn)' : 'color:var(--fail)';
+  return '<td style="' + cls + ';font-family:var(--font-mono)">' + Math.round(val) + '</td>';
+}
+
+function renderLeaderboard(el) {
+  loadLeaderboard().then(function() {
+    var tabs = '<div style="display:flex;gap:8px;margin-bottom:16px">' +
+      ['global','family','personality'].map(function(t) {
+        var active = leaderboardTab === t;
+        var label = t === 'global' ? 'Global Ranking' : t === 'family' ? 'Per-Family' : 'Personality (G)';
+        return '<button onclick="leaderboardTab=\'' + t + '\';renderView()" ' +
+          'style="padding:8px 16px;border-radius:6px;border:1px solid ' +
+          (active ? 'var(--active)' : 'var(--border-subtle)') + ';background:' +
+          (active ? 'var(--active)' : 'var(--surface)') + ';color:' +
+          (active ? '#fff' : 'var(--text-secondary)') + ';cursor:pointer;font-size:13px">' +
+          label + '</button>';
+      }).join('') + '</div>';
+
+    if (leaderboardData.length === 0) {
+      el.innerHTML = '<div class="content-constrained">' + tabs +
+        '<div class="empty-state"><div class="empty-icon"></div>' +
+        '<div class="empty-title">No scores yet</div>' +
+        '<div class="empty-subtitle">Run some tasks or sync scores from Veritor to see the leaderboard.</div></div></div>';
+      return;
+    }
+
+    var body = '';
+    if (leaderboardTab === 'global') {
+      body = renderGlobalRanking();
+    } else if (leaderboardTab === 'family') {
+      body = renderFamilyRanking();
+    } else {
+      body = renderPersonalityView();
+    }
+
+    el.innerHTML = '<div class="content-constrained">' + tabs + body + '</div>';
+  });
+}
+
+function renderGlobalRanking() {
+  var families = ['A','B','C','D','E','F','G','H','I'];
+  var header = '<tr><th>#</th><th>Model</th><th>Composite</th>' +
+    families.map(function(f) { return '<th>' + f + '</th>'; }).join('') +
+    '<th>Runs</th><th>Source</th></tr>';
+
+  var rows = leaderboardData.map(function(entry, i) {
+    var badge = '<span class="badge" style="background:var(--surface-raised);padding:2px 6px;border-radius:4px;font-size:11px">' +
+      esc(entry.source) + '</span>';
+    return '<tr><td>' + (i + 1) + '</td><td style="font-family:var(--font-mono)">' + esc(entry.modelId) + '</td>' +
+      scoreCell(entry.composite) +
+      families.map(function(f) { return scoreCell(entry.families[f]); }).join('') +
+      '<td>' + entry.totalRuns + '</td><td>' + badge + '</td></tr>';
+  }).join('');
+
+  return '<div class="panel" style="border-top:3px solid var(--teal)">' +
+    '<h3 style="margin:0 0 12px;font-size:15px">Global Model Ranking</h3>' +
+    '<p style="color:var(--text-muted);font-size:12px;margin-bottom:12px">Weighted composite: A(20%) B(25%) C(25%) D(10%) E(5%) F(5%) G(5%) H(5%) I(5%)</p>' +
+    '<div class="table-scroll"><table class="data-table"><thead>' + header + '</thead><tbody>' + rows + '</tbody></table></div></div>';
+}
+
+function renderFamilyRanking() {
+  var families = ['A','B','C','D','E','F','G','H','I'];
+  var familyNames = {A:'Adversarial',B:'Capability',C:'Coordination',D:'Self-Knowledge',E:'Truthfulness',F:'Proactive',G:'Personality',H:'SWE Benchmark',I:'Cost/Efficiency'};
+
+  var selector = '<div style="margin-bottom:12px"><select onchange="leaderboardFamily=this.value;renderView()" style="padding:6px 12px;background:var(--surface);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);font-size:13px">' +
+    families.map(function(f) {
+      return '<option value="' + f + '"' + (leaderboardFamily === f ? ' selected' : '') + '>' +
+        f + ' — ' + familyNames[f] + '</option>';
+    }).join('') + '</select></div>';
+
+  var filtered = leaderboardData.filter(function(e) { return e.families[leaderboardFamily] !== null; })
+    .sort(function(a, b) { return (b.families[leaderboardFamily] || 0) - (a.families[leaderboardFamily] || 0); });
+
+  if (filtered.length === 0) {
+    return selector + '<div class="empty-state"><div class="empty-title">No scores for Family ' + leaderboardFamily + '</div></div>';
+  }
+
+  var rows = filtered.map(function(entry, i) {
+    var score = entry.families[leaderboardFamily];
+    return '<tr><td>' + (i + 1) + '</td><td style="font-family:var(--font-mono)">' + esc(entry.modelId) + '</td>' +
+      scoreCell(score) + '<td>' + entry.totalRuns + '</td></tr>';
+  }).join('');
+
+  return selector +
+    '<div class="panel" style="border-top:3px solid var(--active)">' +
+    '<h3 style="margin:0 0 12px;font-size:15px">Family ' + leaderboardFamily + ' — ' + familyNames[leaderboardFamily] + '</h3>' +
+    '<div class="table-scroll"><table class="data-table"><thead><tr><th>#</th><th>Model</th><th>Score</th><th>Runs</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+}
+
+function renderPersonalityView() {
+  var filtered = leaderboardData.filter(function(e) { return e.families.G !== null; })
+    .sort(function(a, b) { return (b.families.G || 0) - (a.families.G || 0); });
+
+  if (filtered.length === 0) {
+    return '<div class="empty-state"><div class="empty-title">No personality scores yet</div>' +
+      '<div class="empty-subtitle">Run personality-001 through personality-005 to populate this view.</div></div>';
+  }
+
+  // Radar chart SVG for each model (simplified polar chart)
+  var dims = ['Directness','No Corporate','No Fabrication','Consistency','Self Knowledge'];
+  var cards = filtered.map(function(entry) {
+    var score = entry.families.G || 0;
+    var cls = score >= 80 ? 'var(--pass)' : score >= 60 ? 'var(--warn)' : 'var(--fail)';
+
+    // SVG radar chart
+    var cx = 80, cy = 80, r = 60;
+    var n = dims.length;
+    var points = [];
+    for (var j = 0; j < n; j++) {
+      // Use composite score as proxy for all dims (individual task scores need separate query)
+      var val = score / 100;
+      var angle = (Math.PI * 2 * j / n) - Math.PI / 2;
+      points.push((cx + r * val * Math.cos(angle)).toFixed(1) + ',' + (cy + r * val * Math.sin(angle)).toFixed(1));
+    }
+    var gridLines = '';
+    for (var ring = 0.25; ring <= 1; ring += 0.25) {
+      var gp = [];
+      for (var k = 0; k < n; k++) {
+        var ga = (Math.PI * 2 * k / n) - Math.PI / 2;
+        gp.push((cx + r * ring * Math.cos(ga)).toFixed(1) + ',' + (cy + r * ring * Math.sin(ga)).toFixed(1));
+      }
+      gridLines += '<polygon points="' + gp.join(' ') + '" fill="none" stroke="var(--border-subtle)" stroke-width="0.5"/>';
+    }
+    var labels = '';
+    for (var l = 0; l < n; l++) {
+      var la = (Math.PI * 2 * l / n) - Math.PI / 2;
+      var lx = cx + (r + 15) * Math.cos(la);
+      var ly = cy + (r + 15) * Math.sin(la);
+      labels += '<text x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" text-anchor="middle" fill="var(--text-muted)" font-size="8">' + dims[l] + '</text>';
+    }
+
+    var svg = '<svg width="160" height="160" viewBox="0 0 160 160">' +
+      gridLines + labels +
+      '<polygon points="' + points.join(' ') + '" fill="' + cls + '" fill-opacity="0.2" stroke="' + cls + '" stroke-width="1.5"/>' +
+      '</svg>';
+
+    return '<div class="panel" style="border-top:3px solid ' + cls + ';display:inline-block;width:280px;vertical-align:top;margin:8px">' +
+      '<h4 style="margin:0 0 8px;font-size:13px;font-family:var(--font-mono)">' + esc(entry.modelId) + '</h4>' +
+      '<div style="text-align:center">' + svg + '</div>' +
+      '<div style="text-align:center;margin-top:8px"><span style="font-size:24px;font-weight:600;color:' + cls + '">' + Math.round(score) + '%</span>' +
+      '<span style="color:var(--text-muted);font-size:12px;margin-left:6px">personality score</span></div></div>';
+  }).join('');
+
+  return '<div class="panel" style="border-top:3px solid var(--pink)">' +
+    '<h3 style="margin:0 0 12px;font-size:15px">Personality Profile — Family G</h3>' +
+    '<p style="color:var(--text-muted);font-size:12px;margin-bottom:12px">Sub-dimensions: Directness, No Corporate Speak, No Fabrication, Character Consistency, Self Knowledge</p>' +
+    '</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:0">' + cards + '</div>';
 }
 
 document.addEventListener('DOMContentLoaded', init);

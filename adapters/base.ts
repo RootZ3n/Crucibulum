@@ -209,6 +209,7 @@ export type ConversationalScoringType =
   | "proactive"
   | "tool_verification"
   | "hedge_count"
+  | "corporate_check"
   | "custom";
 
 export interface ConversationalQuestion {

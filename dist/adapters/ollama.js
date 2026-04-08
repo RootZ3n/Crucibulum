@@ -20,6 +20,9 @@ export class OllamaAdapter {
     supports(_family) {
         return true;
     }
+    supportsChat() {
+        return true;
+    }
     supportsToolCalls() {
         return true;
     }
@@ -44,6 +47,16 @@ export class OllamaAdapter {
         }
     }
     async teardown() { }
+    async chat(messages) {
+        const start = Date.now();
+        const result = await callOllama(this.url, this.model, messages);
+        return {
+            text: stripModelArtifacts(result.text),
+            tokens_in: result.tokensIn,
+            tokens_out: result.tokensOut,
+            duration_ms: Date.now() - start,
+        };
+    }
     async execute(input) {
         const observer = new Observer();
         observer.taskStart();

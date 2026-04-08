@@ -8,6 +8,14 @@ import { OllamaAdapter } from "../../adapters/ollama.js";
 import { OpenRouterAdapter } from "../../adapters/openrouter.js";
 import { OpenClawAdapter } from "../../adapters/openclaw.js";
 import { ClaudeCodeAdapter } from "../../adapters/claudecode.js";
+import { SquidleyAdapter } from "../../adapters/squidley.js";
+import { GrimoireCCAdapter } from "../../adapters/grimoire-cc.js";
+import { GrimoireCodexAdapter } from "../../adapters/grimoire-codex.js";
+import { AnthropicAdapter } from "../../adapters/anthropic.js";
+import { OpenAIAdapter } from "../../adapters/openai.js";
+import { MiniMaxAdapter } from "../../adapters/minimax.js";
+import { ZAIAdapter } from "../../adapters/zai.js";
+import { GoogleAdapter } from "../../adapters/google.js";
 import { log } from "../../utils/logger.js";
 import { formatDuration } from "../../utils/timing.js";
 function parseArgs(args) {
@@ -44,7 +52,7 @@ function parseArgs(args) {
         process.exit(5);
     }
     if (!task) {
-        console.error("Error: --task is required (e.g. --task poison-001)");
+        console.error("Error: --task is required (e.g. --task poison-001 or --task identity-squidley-001)");
         process.exit(5);
     }
     return { model, task, runs, output, keepWorkspace };
@@ -61,12 +69,10 @@ function resolveAdapter(modelSpec) {
     switch (adapterName) {
         case "ollama":
             return { adapter: new OllamaAdapter(), model, adapterConfig: { model } };
+        case "anthropic":
+            return { adapter: new AnthropicAdapter(), model, adapterConfig: { model } };
         case "openai":
-            return { adapter: new OpenRouterAdapter({
-                    id: "openai", name: "OpenAI",
-                    baseUrl: "https://api.openai.com/v1",
-                    apiKeyEnv: "OPENAI_API_KEY",
-                }), model, adapterConfig: { model } };
+            return { adapter: new OpenAIAdapter(), model, adapterConfig: { model } };
         case "openrouter":
             return { adapter: new OpenRouterAdapter(), model, adapterConfig: { model } };
         case "openclaw":
@@ -74,8 +80,20 @@ function resolveAdapter(modelSpec) {
         case "claudecode":
         case "claude":
             return { adapter: new ClaudeCodeAdapter(), model, adapterConfig: { model: model || undefined, binary_path: undefined } };
+        case "squidley":
+            return { adapter: new SquidleyAdapter(), model, adapterConfig: { model, squidley_url: process.env["SQUIDLEY_URL"] || undefined } };
+        case "grimoire-cc":
+            return { adapter: new GrimoireCCAdapter(), model, adapterConfig: { model, squidley_url: process.env["SQUIDLEY_URL"] || undefined } };
+        case "grimoire-codex":
+            return { adapter: new GrimoireCodexAdapter(), model, adapterConfig: { model, squidley_url: process.env["SQUIDLEY_URL"] || undefined } };
+        case "minimax":
+            return { adapter: new MiniMaxAdapter(), model, adapterConfig: { model } };
+        case "zai":
+            return { adapter: new ZAIAdapter(), model, adapterConfig: { model } };
+        case "google":
+            return { adapter: new GoogleAdapter(), model, adapterConfig: { model } };
         default:
-            console.error(`Unknown adapter: ${adapterName}. Available: ollama, openai, openrouter, openclaw, claudecode`);
+            console.error(`Unknown adapter: ${adapterName}. Available: ollama, anthropic, openai, openrouter, openclaw, claudecode, squidley, grimoire-cc, grimoire-codex, minimax, zai, google`);
             process.exit(5);
     }
 }

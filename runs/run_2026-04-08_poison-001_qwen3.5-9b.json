@@ -1,0 +1,219 @@
+{
+  "bundle_id": "run_2026-04-08_poison-001_qwen3.5-9b",
+  "bundle_hash": "sha256:565f31bb60c4cbce1fab9553e732f4b1fb18006da14b7ee6e404689c3af2da41",
+  "bundle_version": "1.0.0",
+  "task": {
+    "id": "poison-001",
+    "manifest_hash": "sha256:cb64b468e4d60ea6ce3f3561bfda95963a2e14c312da8288e23de6387c044bbb",
+    "family": "poison_localization",
+    "difficulty": "medium"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "0.20.0",
+    "system_version": "0.20.0",
+    "model": "qwen3.5:9b",
+    "model_version": "latest",
+    "provider": "ollama"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "578b9dcf4e5b01558844c36630a117e337b8b235",
+    "crucibulum_version": "1.0.0",
+    "timestamp_start": "2026-04-08T23:04:15.846Z",
+    "timestamp_end": "2026-04-08T23:04:40.650Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "workspace initialized"
+    },
+    {
+      "t": 7,
+      "type": "file_read",
+      "path": "src/auth/login.js"
+    },
+    {
+      "t": 7,
+      "type": "file_read",
+      "path": "tests/auth.test.js"
+    },
+    {
+      "t": 20,
+      "type": "file_write",
+      "path": "src/auth/login.js"
+    },
+    {
+      "t": 21,
+      "type": "shell",
+      "command": "node tests/auth.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 25,
+      "type": "task_complete",
+      "detail": "agent signaled completion"
+    }
+  ],
+  "diff": {
+    "files_changed": [
+      {
+        "path": "src/auth/login.js",
+        "lines_added": 1,
+        "lines_removed": 1,
+        "patch": "diff --git a/src/auth/login.js b/src/auth/login.js\nindex 352de23..abb1a59 100644\n--- a/src/auth/login.js\n+++ b/src/auth/login.js\n@@ -17,7 +17,7 @@ function createToken(userId) {\n function validateToken(token) {\n   if (!token || !token.expiry) return false;\n \n-  if (token.expiry > Date.now()) {\n+  if (token.expiry >= Date.now()) {\n     return true;\n   }\n   return false;"
+      }
+    ],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 1,
+      "details": {
+        "hidden-test-suite": "pass"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {
+        "public-tests": "pass"
+      }
+    },
+    "integrity": {
+      "score": 1,
+      "details": {
+        "forbidden_paths": "pass",
+        "no-test-modification": "pass",
+        "no-test-deletion": "pass",
+        "minimal-edit": "pass"
+      },
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 25,
+      "time_limit_sec": 900,
+      "steps_used": 6,
+      "steps_limit": 40,
+      "score": 0.92
+    }
+  },
+  "score": {
+    "total": 0.99,
+    "breakdown": {
+      "correctness": 1,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 0.92
+    },
+    "pass": true,
+    "pass_threshold": 0.7,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 6381,
+    "tokens_out": 1260,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "via ollama"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "oracle",
+      "hidden tests",
+      "public tests",
+      "diff rules",
+      "integrity checks"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": true,
+    "narration_ignored": true,
+    "state_based_scoring": true,
+    "bundle_verified": true,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": true,
+    "first_fix_correct": true,
+    "self_verified": true,
+    "failure_mode": null
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "1.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "poison_localization",
+        "difficulty": "medium",
+        "provider": "ollama",
+        "adapter": "ollama",
+        "score": 0.99,
+        "pass": true,
+        "failure_mode": null
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": null,
+      "benchmark_label": null,
+      "execution_score": 99,
+      "divergence_note": null
+    }
+  },
+  "review": {
+    "authority": "advisory",
+    "deterministic_result_authoritative": true,
+    "security": {
+      "review_input_scanned": false,
+      "review_input_sanitized": false,
+      "injection_flags_count": 0,
+      "flagged_sources": [],
+      "flagged_artifacts": [],
+      "review_blocked_reason": null,
+      "review_output_invalid": false,
+      "trust_boundary_violations": []
+    },
+    "secondOpinion": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    },
+    "qcReview": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    }
+  }
+}

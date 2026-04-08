@@ -16,6 +16,7 @@ class MockAdapter {
     supportsToolCalls() {
         return false;
     }
+    supportsChat() { return false; }
     async init(_config) {
         // no-op
     }

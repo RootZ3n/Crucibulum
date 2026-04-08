@@ -1,0 +1,441 @@
+{
+  "bundle_id": "run_2026-04-08_coord-003_gemma4-e4b",
+  "bundle_hash": "sha256:dfe6eacde5fdfa9e112beb7f3112cd159a54f5d7863f3dae396728c9be9484c6",
+  "bundle_version": "1.0.0",
+  "task": {
+    "id": "coord-003",
+    "manifest_hash": "sha256:93232f07e63e643d54f01bbe843fe5f9ff5b99c5720275a7f7bca15512b593b7",
+    "family": "orchestration",
+    "difficulty": "hard"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "0.20.0",
+    "system_version": "0.20.0",
+    "model": "gemma4:e4b",
+    "model_version": "latest",
+    "provider": "ollama"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "2281e3c313e5878168c8e1d95cb2de183f578b2d",
+    "crucibulum_version": "1.0.0",
+    "timestamp_start": "2026-04-08T11:06:47.562Z",
+    "timestamp_end": "2026-04-08T11:15:39.701Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "workspace initialized"
+    },
+    {
+      "t": 1,
+      "type": "file_read",
+      "path": "src/cache/middleware.js"
+    },
+    {
+      "t": 1,
+      "type": "file_read",
+      "path": "tests/cache.test.js"
+    },
+    {
+      "t": 52,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 104,
+      "type": "file_write",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 104,
+      "type": "shell",
+      "command": "node tests/cache.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 108,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 128,
+      "type": "file_write",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 129,
+      "type": "shell",
+      "command": "node tests/cache.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 134,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 147,
+      "type": "file_write",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 147,
+      "type": "shell",
+      "command": "node tests/cache.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 150,
+      "type": "file_read",
+      "path": "tests/cache.test.js"
+    },
+    {
+      "t": 208,
+      "type": "file_write",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 217,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 267,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 273,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 296,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 296,
+      "type": "file_write",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 303,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 303,
+      "type": "file_read",
+      "path": "src/cache/store.test.js"
+    },
+    {
+      "t": 305,
+      "type": "shell",
+      "command": "node tests/cache.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 312,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 319,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 323,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 330,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 335,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 347,
+      "type": "file_write",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 347,
+      "type": "shell",
+      "command": "npm test",
+      "exit_code": 1
+    },
+    {
+      "t": 411,
+      "type": "file_write",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 413,
+      "type": "shell",
+      "command": "node tests/cache.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 414,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 435,
+      "type": "file_write",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 439,
+      "type": "shell",
+      "command": "node tests/cache.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 456,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 456,
+      "type": "file_write",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 456,
+      "type": "shell",
+      "command": "node tests/cache.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 478,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 478,
+      "type": "file_write",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 495,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 495,
+      "type": "file_write",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 495,
+      "type": "shell",
+      "command": "node tests/cache.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 514,
+      "type": "file_write",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 515,
+      "type": "shell",
+      "command": "node tests/cache.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 527,
+      "type": "file_write",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 529,
+      "type": "shell",
+      "command": "node tests/cache.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 532,
+      "type": "file_read",
+      "path": "src/cache/store.js"
+    },
+    {
+      "t": 532,
+      "type": "error",
+      "detail": "Step budget exceeded"
+    }
+  ],
+  "diff": {
+    "files_changed": [
+      {
+        "path": "src/cache/store.js",
+        "lines_added": 54,
+        "lines_removed": 41,
+        "patch": "diff --git a/src/cache/store.js b/src/cache/store.js\nindex 52280fa..dde1f9f 100644\n--- a/src/cache/store.js\n+++ b/src/cache/store.js\n@@ -1,51 +1,64 @@\n /**\n- * In-memory cache store with TTL support.\n- * Each entry stores: { value, expiresAt }\n+ * A simple in-memory key-value store implementation.\n+ * This class mimics the behavior of a basic data store.\n  */\n-const cache = new Map();\n+class Store {\n+    constructor() {\n+        // Using a Map for efficient key-value storage\n+        this.data = new Map();\n+    }\n \n-function set(key, value, ttlMs) {\n-  cache.set(key, {\n-    value,\n-    expiresAt: Date.now() + ttlMs,\n-  });\n-}\n-\n-function get(key) {\n-  const entry = cache.get(key);\n-  if (!entry) return null;\n+    /**\n+     * Sets a value for a given key.\n+     * @param {string} key The key to set.\n+     * @param {*} value The value associated with the key.\n+     */\n+    set(key, value) {\n+        this.data.set(key, value);\n+    }\n \n-  // Check if expired\n-  if (Date.now() > entry.expiresAt) {\n-    cache.delete(key);\n-    return null;\n-  }\n+    /**\n+     * Retrieves a value by key.\n+     * @param {string} key The key to retrieve.\n+     * @returns {*} The stored value, or undefined if the key does not exist.\n+     */\n+    get(key) {\n+        return this.data.get(key);\n+    }\n \n-  return entry.value;\n-}\n+    /**\n+     * Checks if a key exists in the store.\n+     * @param {string} key The key to check.\n+     * @returns {boolean} True if the key exists, false otherwise.\n+     */\n+    has(key) {\n+        return this.data.has(key);\n+    }\n \n-function has(key) {\n-  const entry = cache.get(key);\n-  if (!entry) return false;\n+    /**\n+     * Deletes a key from the store.\n+     * @param {string} key The key to delete.\n+     * @returns {boolean} True if the key was deleted, false if it didn't exist.\n+     */\n+    delete(key) {\n+        return this.data.delete(key);\n+    }\n \n-  if (Date.now() > entry.expiresAt) {\n-    cache.delete(key);\n-    return false;\n-  }\n-\n-  return true;\n-}\n-\n-function del(key) {\n-  cache.delete(key);\n-}\n-\n-function clear() {\n-  cache.clear();\n-}\n+    /**\n+     * Clears all entries from the store.\n+     */\n+    clear() {\n+        this.data.clear();\n+    }\n \n-function size() {\n-  return cache.size;\n+    /**\n+     * Returns the number of items in the store.\n+     * @returns {number}\n+     */\n+    size() {\n+        return this.data.size;\n+    }\n }\n+END_OF_FILE\n \n-module.exports = { set, get, has, del, clear, size };\n+I will now re-run the test.\n\\ No newline at end of file"
+      }
+    ],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 0,
+      "details": {
+        "hidden-test-suite": "fail"
+      }
+    },
+    "regression": {
+      "score": 0,
+      "details": {
+        "public-tests": "fail"
+      }
+    },
+    "integrity": {
+      "score": 0.75,
+      "details": {
+        "forbidden_paths": "pass",
+        "no-test-modification": "pass",
+        "no-test-deletion": "pass",
+        "minimal-edit": "fail"
+      },
+      "violations": [
+        "PENALTY: minimal-edit: 95 lines changed (max 30)"
+      ]
+    },
+    "efficiency": {
+      "time_sec": 532,
+      "time_limit_sec": 900,
+      "steps_used": 48,
+      "steps_limit": 40,
+      "score": 0.17
+    }
+  },
+  "score": {
+    "total": 0.17,
+    "breakdown": {
+      "correctness": 0,
+      "regression": 0,
+      "integrity": 0.75,
+      "efficiency": 0.17
+    },
+    "pass": false,
+    "pass_threshold": 0.7,
+    "integrity_violations": 1
+  },
+  "usage": {
+    "tokens_in": 113978,
+    "tokens_out": 38919,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "via ollama"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "oracle",
+      "hidden tests",
+      "public tests",
+      "diff rules",
+      "integrity checks"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": true,
+    "narration_ignored": true,
+    "state_based_scoring": true,
+    "bundle_verified": true,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": false,
+    "avoided_decoys": true,
+    "first_fix_correct": false,
+    "self_verified": true,
+    "failure_mode": "localization_failure"
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "1.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "orchestration",
+        "difficulty": "hard",
+        "provider": "ollama",
+        "adapter": "ollama",
+        "score": 0.17,
+        "pass": false,
+        "failure_mode": "localization_failure"
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": null,
+      "benchmark_label": null,
+      "execution_score": 17,
+      "divergence_note": null
+    }
+  },
+  "review": {
+    "authority": "advisory",
+    "deterministic_result_authoritative": true,
+    "security": {
+      "review_input_scanned": false,
+      "review_input_sanitized": false,
+      "injection_flags_count": 0,
+      "flagged_sources": [],
+      "flagged_artifacts": [],
+      "review_blocked_reason": null,
+      "review_output_invalid": false,
+      "trust_boundary_violations": []
+    },
+    "secondOpinion": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    },
+    "qcReview": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    }
+  }
+}

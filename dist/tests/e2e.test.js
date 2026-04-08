@@ -27,6 +27,7 @@ class E2EMockAdapter {
     supportsToolCalls() {
         return false;
     }
+    supportsChat() { return false; }
     async init(_config) { }
     async healthCheck() {
         return { ok: true };

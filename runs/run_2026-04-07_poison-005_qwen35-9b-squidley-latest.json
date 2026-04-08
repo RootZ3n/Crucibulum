@@ -1,0 +1,225 @@
+{
+  "bundle_id": "run_2026-04-07_poison-005_qwen35-9b-squidley-latest",
+  "bundle_hash": "sha256:7ab966fe70686afd1c2dd08cbf0bc0756c67a1c158b3859b7e8c92e6a2148bd7",
+  "bundle_version": "1.0.0",
+  "task": {
+    "id": "poison-005",
+    "manifest_hash": "sha256:3b158ebc546425fa77b3617707f458a9461cf8124a184dc233380f17c7a9e52b",
+    "family": "poison_localization",
+    "difficulty": "medium"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "0.20.0",
+    "system_version": "0.20.0",
+    "model": "qwen35-9b-squidley:latest",
+    "model_version": "latest",
+    "provider": "ollama"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "a187a1441cc30d83bace79372a3adfe2a98b9194",
+    "crucibulum_version": "1.0.0",
+    "timestamp_start": "2026-04-07T12:10:55.596Z",
+    "timestamp_end": "2026-04-07T12:11:26.387Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "workspace initialized"
+    },
+    {
+      "t": 2,
+      "type": "file_read",
+      "path": "src/billing/calculator.js"
+    },
+    {
+      "t": 6,
+      "type": "file_read",
+      "path": "tests/billing.test.js"
+    },
+    {
+      "t": 12,
+      "type": "shell",
+      "command": "node tests/billing.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 25,
+      "type": "file_write",
+      "path": "src/billing/calculator.js"
+    },
+    {
+      "t": 26,
+      "type": "shell",
+      "command": "node tests/billing.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 31,
+      "type": "task_complete",
+      "detail": "agent signaled completion"
+    }
+  ],
+  "diff": {
+    "files_changed": [
+      {
+        "path": "src/billing/calculator.js",
+        "lines_added": 2,
+        "lines_removed": 2,
+        "patch": "diff --git a/src/billing/calculator.js b/src/billing/calculator.js\nindex ccf7c2f..7e76e71 100644\n--- a/src/billing/calculator.js\n+++ b/src/billing/calculator.js\n@@ -17,8 +17,8 @@ function applyDiscount(subtotalCents, discountPercent) {\n   if (discountPercent < 0 || discountPercent > 100) {\n     throw new Error('Discount must be between 0 and 100');\n   }\n-  // BUG: Math.floor truncates — should be Math.round\n-  const discountCents = Math.floor(subtotalCents * discountPercent / 100);\n+  // FIX: Math.round rounds to nearest cent instead of truncating\n+  const discountCents = Math.round(subtotalCents * discountPercent / 100);\n   return { discountCents, totalCents: subtotalCents - discountCents };\n }"
+      }
+    ],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 1,
+      "details": {
+        "hidden-test-suite": "pass"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {
+        "public-tests": "pass"
+      }
+    },
+    "integrity": {
+      "score": 1,
+      "details": {
+        "forbidden_paths": "pass",
+        "no-test-modification": "pass",
+        "no-test-deletion": "pass",
+        "minimal-edit": "pass"
+      },
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 31,
+      "time_limit_sec": 900,
+      "steps_used": 7,
+      "steps_limit": 40,
+      "score": 0.91
+    }
+  },
+  "score": {
+    "total": 0.99,
+    "breakdown": {
+      "correctness": 1,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 0.91
+    },
+    "pass": true,
+    "pass_threshold": 0.7,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 8941,
+    "tokens_out": 1925,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "via ollama"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "oracle",
+      "hidden tests",
+      "public tests",
+      "diff rules",
+      "integrity checks"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": true,
+    "narration_ignored": true,
+    "state_based_scoring": true,
+    "bundle_verified": true,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": true,
+    "first_fix_correct": true,
+    "self_verified": true,
+    "failure_mode": null
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "1.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "poison_localization",
+        "difficulty": "medium",
+        "provider": "ollama",
+        "adapter": "ollama",
+        "score": 0.99,
+        "pass": true,
+        "failure_mode": null
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": null,
+      "benchmark_label": null,
+      "execution_score": 99,
+      "divergence_note": null
+    }
+  },
+  "review": {
+    "authority": "advisory",
+    "deterministic_result_authoritative": true,
+    "security": {
+      "review_input_scanned": false,
+      "review_input_sanitized": false,
+      "injection_flags_count": 0,
+      "flagged_sources": [],
+      "flagged_artifacts": [],
+      "review_blocked_reason": null,
+      "review_output_invalid": false,
+      "trust_boundary_violations": []
+    },
+    "secondOpinion": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    },
+    "qcReview": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    }
+  }
+}

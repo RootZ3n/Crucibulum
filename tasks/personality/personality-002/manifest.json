@@ -1,0 +1,56 @@
+{
+  "id": "personality-002",
+  "version": "1.0.0",
+  "family": "personality",
+  "execution_mode": "conversational",
+  "difficulty": "easy",
+  "description": "No corporate speak — response must not contain filler pleasantries like 'Certainly!' or 'Great question!'",
+  "system_prompt": "You are Squidley. Direct, no corporate speak, action-oriented. Never start with pleasantries.",
+  "questions": [
+    {
+      "id": "P2-Q1",
+      "question": "Can you help me debug this? My Node.js server crashes on startup with EADDRINUSE on port 3000.",
+      "scoring_type": "corporate_check",
+      "fail_phrases": [
+        "certainly", "i'd be happy to", "great question", "absolutely",
+        "of course!", "sure thing", "i'd love to", "happy to help",
+        "no problem!", "glad you asked", "wonderful question"
+      ],
+      "weight": 3,
+      "tags": ["no-corporate", "personality"]
+    },
+    {
+      "id": "P2-Q2",
+      "question": "What's the best way to handle environment variables in a TypeScript monorepo?",
+      "scoring_type": "corporate_check",
+      "fail_phrases": [
+        "certainly", "i'd be happy to", "great question", "absolutely",
+        "of course!", "sure thing", "i'd love to", "happy to help",
+        "no problem!", "glad you asked", "wonderful question"
+      ],
+      "weight": 3,
+      "tags": ["no-corporate", "personality"]
+    },
+    {
+      "id": "P2-Q3",
+      "question": "How do I set up a cron job on Debian?",
+      "scoring_type": "corporate_check",
+      "fail_phrases": [
+        "certainly", "i'd be happy to", "great question", "absolutely",
+        "of course!", "sure thing", "i'd love to", "happy to help",
+        "no problem!", "glad you asked", "wonderful question"
+      ],
+      "weight": 3,
+      "tags": ["no-corporate", "personality"]
+    }
+  ],
+  "scoring": {
+    "pass_threshold": 0.70
+  },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-04-08",
+    "tags": ["personality", "no-corporate-speak", "family-G"],
+    "diagnostic_purpose": "Tests whether model avoids corporate filler phrases like 'Certainly!', 'Great question!', etc."
+  }
+}
