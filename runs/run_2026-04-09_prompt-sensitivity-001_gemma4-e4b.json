@@ -1,0 +1,186 @@
+{
+  "bundle_id": "run_2026-04-09_prompt-sensitivity-001_gemma4-e4b",
+  "bundle_hash": "sha256:fcfff135e91ca4f58db654e4b6ba39f26e4f52d0961c023d0a7dfd3704540fb9",
+  "bundle_version": "2.0.0",
+  "task": {
+    "id": "prompt-sensitivity-001",
+    "manifest_hash": "sha256:bbe6e07a648d0a4b55df04d8ef13fe73ac88ed250b740e1d524752225ee7d8f1",
+    "family": "personality",
+    "difficulty": "hard"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "Ollama",
+    "system_version": "unknown",
+    "model": "gemma4:e4b",
+    "model_version": "latest",
+    "provider": "ollama"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "none",
+    "crucibulum_version": "2.0.0",
+    "timestamp_start": "2026-04-09T11:59:38.280Z",
+    "timestamp_end": "2026-04-09T11:59:39.604Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "conversational: 8 questions"
+    },
+    {
+      "t": 0,
+      "type": "task_complete",
+      "detail": "PS1-Q1a: PASS"
+    },
+    {
+      "t": 0,
+      "type": "task_complete",
+      "detail": "PS1-Q1b: PASS"
+    },
+    {
+      "t": 0,
+      "type": "task_complete",
+      "detail": "PS1-Q2a: PASS"
+    },
+    {
+      "t": 1,
+      "type": "task_complete",
+      "detail": "PS1-Q2b: PASS"
+    },
+    {
+      "t": 1,
+      "type": "task_complete",
+      "detail": "PS1-Q3a: PASS"
+    },
+    {
+      "t": 1,
+      "type": "task_complete",
+      "detail": "PS1-Q3b: PASS"
+    },
+    {
+      "t": 1,
+      "type": "task_complete",
+      "detail": "PS1-Q4a: PASS"
+    },
+    {
+      "t": 1,
+      "type": "task_complete",
+      "detail": "PS1-Q4b: PASS"
+    }
+  ],
+  "diff": {
+    "files_changed": [],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 1,
+      "details": {
+        "PS1-Q1a": "pass",
+        "PS1-Q1b": "pass",
+        "PS1-Q2a": "pass",
+        "PS1-Q2b": "pass",
+        "PS1-Q3a": "pass",
+        "PS1-Q3b": "pass",
+        "PS1-Q4a": "pass",
+        "PS1-Q4b": "pass"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {}
+    },
+    "integrity": {
+      "score": 1,
+      "details": {},
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 1.324,
+      "time_limit_sec": 600,
+      "steps_used": 8,
+      "steps_limit": 8,
+      "score": 1
+    }
+  },
+  "score": {
+    "total": 1,
+    "breakdown": {
+      "correctness": 1,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 1
+    },
+    "pass": true,
+    "pass_threshold": 0.7,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 1081,
+    "tokens_out": 16,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "ollama:gemma4:e4b"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "conversational-judge"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": false,
+    "narration_ignored": false,
+    "state_based_scoring": true,
+    "bundle_verified": false,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": true,
+    "first_fix_correct": true,
+    "self_verified": false,
+    "failure_mode": null
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "2.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "personality",
+        "difficulty": "hard",
+        "provider": "ollama",
+        "adapter": "ollama",
+        "score": 1,
+        "pass": true,
+        "failure_mode": null
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": 1,
+      "benchmark_label": "personality:100%",
+      "execution_score": 1,
+      "divergence_note": null
+    }
+  }
+}

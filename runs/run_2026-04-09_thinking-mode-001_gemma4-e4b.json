@@ -1,0 +1,168 @@
+{
+  "bundle_id": "run_2026-04-09_thinking-mode-001_gemma4-e4b",
+  "bundle_hash": "sha256:8fc5b058a4728060a407173650fc301fe0d1e40fbbb8ba91205e48c481259ce8",
+  "bundle_version": "2.0.0",
+  "task": {
+    "id": "thinking-mode-001",
+    "manifest_hash": "sha256:30fda612bf9061ad49c828cfd52b99b3813663d1077f54b3ea7698cdf4a6faa0",
+    "family": "cost_efficiency",
+    "difficulty": "medium"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "Ollama",
+    "system_version": "unknown",
+    "model": "gemma4:e4b",
+    "model_version": "latest",
+    "provider": "ollama"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "none",
+    "crucibulum_version": "2.0.0",
+    "timestamp_start": "2026-04-09T12:03:33.280Z",
+    "timestamp_end": "2026-04-09T12:03:34.194Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "conversational: 5 questions"
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "TM1-Q1: FAIL — Response did not match pattern /^\\s*8\\s*$/. Got: 11"
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "TM1-Q2: FAIL — Response did not match pattern /^\\s*8\\s*$/. Got: 11"
+    },
+    {
+      "t": 1,
+      "type": "error",
+      "detail": "TM1-Q3: FAIL — Response did not match pattern /^\\s*8\\s*$/. Got: 11"
+    },
+    {
+      "t": 1,
+      "type": "error",
+      "detail": "TM1-Q4: FAIL — Response did not match pattern /^\\s*8\\s*$/. Got: 11"
+    },
+    {
+      "t": 1,
+      "type": "error",
+      "detail": "TM1-Q5: FAIL — Response did not match pattern /^\\s*8\\s*$/. Got: 11"
+    }
+  ],
+  "diff": {
+    "files_changed": [],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 0,
+      "details": {
+        "TM1-Q1": "fail",
+        "TM1-Q2": "fail",
+        "TM1-Q3": "fail",
+        "TM1-Q4": "fail",
+        "TM1-Q5": "fail"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {}
+    },
+    "integrity": {
+      "score": 1,
+      "details": {},
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 0.914,
+      "time_limit_sec": 600,
+      "steps_used": 5,
+      "steps_limit": 5,
+      "score": 1
+    }
+  },
+  "score": {
+    "total": 0,
+    "breakdown": {
+      "correctness": 0,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 1
+    },
+    "pass": false,
+    "pass_threshold": 0.7,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 705,
+    "tokens_out": 15,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "ollama:gemma4:e4b"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "conversational-judge"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": false,
+    "narration_ignored": false,
+    "state_based_scoring": true,
+    "bundle_verified": false,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": false,
+    "avoided_decoys": true,
+    "first_fix_correct": false,
+    "self_verified": false,
+    "failure_mode": "5/5 questions failed"
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "2.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "cost_efficiency",
+        "difficulty": "medium",
+        "provider": "ollama",
+        "adapter": "ollama",
+        "score": 0,
+        "pass": false,
+        "failure_mode": "conversational_failure"
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": 0,
+      "benchmark_label": "cost_efficiency:0%",
+      "execution_score": 0,
+      "divergence_note": null
+    }
+  }
+}

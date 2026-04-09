@@ -23,6 +23,18 @@ const PORT = parseInt(process.env["CRUCIBULUM_PORT"] ?? "18795", 10);
 const RUNS_DIR = process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs");
 const UI_PATH = join(import.meta.dirname, "..", "..", "ui", "index.html");
 
+const SCORE_FAMILY_TO_TASK_FAMILIES: Record<ScoreFamily, string[]> = {
+  A: ["poison_localization"],
+  B: ["spec_discipline"],
+  C: ["orchestration"],
+  D: ["identity"],
+  E: ["truthfulness"],
+  F: ["cost_efficiency"],
+  G: ["personality"],
+  H: [],
+  I: [],
+};
+
 interface ActiveRun {
   id: string;
   status: "running" | "complete" | "error";
@@ -84,9 +96,7 @@ function broadcastSSE(runId: string, event: string, data: unknown): void {
     try { res.write(msg); } catch { /* ignore */ }
   }
   const run = activeRuns.get(runId);
-  if (run) {
-    run.events.push(msg);
-  }
+  if (run) run.events.push(msg);
 }
 
 function sendJSON(res: ServerResponse, status: number, data: unknown): void {
@@ -123,23 +133,42 @@ function loadBundles(): EvidenceBundle[] {
 
 function getBundleById(id: string): EvidenceBundle | null {
   const filePath = join(RUNS_DIR, `${id}.json`);
-  if (!existsSync(filePath)) {
-    return null;
-  }
+  if (!existsSync(filePath)) return null;
   return JSON.parse(readFileSync(filePath, "utf-8")) as EvidenceBundle;
+}
+
+function parseFamiliesParam(url: URL): ScoreFamily[] | null {
+  const raw = (url.searchParams.get("families") ?? "").trim();
+  if (!raw) return null;
+  const valid = new Set<ScoreFamily>(["A", "B", "C", "D", "E", "F", "G", "H", "I"]);
+  const families = raw.split(",").map((item) => item.trim().toUpperCase()).filter((item): item is ScoreFamily => valid.has(item as ScoreFamily));
+  return families.length > 0 ? [...new Set(families)] : null;
+}
+
+function getTaskFamiliesForScoreFamilies(families: ScoreFamily[] | null): Set<string> | null {
+  if (!families || families.length === 0) return null;
+  return new Set(families.flatMap((family) => SCORE_FAMILY_TO_TASK_FAMILIES[family] ?? []));
+}
+
+function filterBundlesByFamilies(bundles: EvidenceBundle[], families: ScoreFamily[] | null): EvidenceBundle[] {
+  const taskFamilies = getTaskFamiliesForScoreFamilies(families);
+  if (!taskFamilies || taskFamilies.size === 0) return bundles;
+  return bundles.filter((bundle) => taskFamilies.has(bundle.task.family));
 }
 
 function getStats(bundles: EvidenceBundle[]): Record<string, unknown> {
   if (bundles.length === 0) {
     return { total_runs: 0, pass_rate: 0, avg_score: 0, avg_time_sec: 0, total_tokens: 0, total_cost_usd: 0 };
   }
-  const passed = bundles.filter((b) => b.score.pass).length;
-  const avgScore = bundles.reduce((s, b) => s + b.score.total, 0) / bundles.length;
-  const avgTime = bundles.reduce((s, b) => {
-    return s + (new Date(b.environment.timestamp_end).getTime() - new Date(b.environment.timestamp_start).getTime()) / 1000;
+
+  const passed = bundles.filter((bundle) => bundle.score.pass).length;
+  const avgScore = bundles.reduce((sum, bundle) => sum + bundle.score.total, 0) / bundles.length;
+  const avgTime = bundles.reduce((sum, bundle) => {
+    return sum + (new Date(bundle.environment.timestamp_end).getTime() - new Date(bundle.environment.timestamp_start).getTime()) / 1000;
   }, 0) / bundles.length;
-  const totalTokens = bundles.reduce((s, b) => s + b.usage.tokens_in + b.usage.tokens_out, 0);
-  const totalCost = bundles.reduce((s, b) => s + b.usage.estimated_cost_usd, 0);
+  const totalTokens = bundles.reduce((sum, bundle) => sum + bundle.usage.tokens_in + bundle.usage.tokens_out, 0);
+  const totalCost = bundles.reduce((sum, bundle) => sum + bundle.usage.estimated_cost_usd, 0);
+
   return {
     total_runs: bundles.length,
     pass_rate: Math.round((passed / bundles.length) * 100),
@@ -237,10 +266,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
     if (path === "/api/adapters" && method === "GET") {
       const adapters = await getAdapterCatalog();
-      sendJSON(res, 200, {
-        adapters,
-        judge: DETERMINISTIC_JUDGE_METADATA,
-      });
+      sendJSON(res, 200, { adapters, judge: DETERMINISTIC_JUDGE_METADATA });
       return;
     }
 
@@ -256,11 +282,13 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       return;
     }
 
-    if (path === "/api/runs" && method === "GET") {
-      const bundles = loadBundles();
+    if ((path === "/api/runs" || path === "/runs") && method === "GET") {
+      const families = parseFamiliesParam(url);
+      const allBundles = loadBundles();
+      const bundles = filterBundlesByFamilies(allBundles, families);
       bundles.sort((a, b) => new Date(b.environment.timestamp_start).getTime() - new Date(a.environment.timestamp_start).getTime());
       const runs = bundles.map((bundle) => {
-        const summary = bundleSummary(bundle, bundles);
+        const summary = bundleSummary(bundle, allBundles);
         return {
           bundle_id: bundle.bundle_id,
           bundle_hash: bundle.bundle_hash,
@@ -294,7 +322,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
           review_security: summary.review_security,
         };
       });
-      sendJSON(res, 200, { runs });
+      sendJSON(res, 200, { runs, families });
       return;
     }
 
@@ -322,17 +350,21 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       return;
     }
 
-    if (path === "/api/stats" && method === "GET") {
-      sendJSON(res, 200, getStats(loadBundles()));
+    if ((path === "/api/stats" || path === "/stats") && method === "GET") {
+      const families = parseFamiliesParam(url);
+      const bundles = filterBundlesByFamilies(loadBundles(), families);
+      sendJSON(res, 200, { ...getStats(bundles), families });
       return;
     }
 
     if (path === "/api/receipts" && method === "GET") {
-      const bundles = loadBundles();
+      const families = parseFamiliesParam(url);
+      const bundles = filterBundlesByFamilies(loadBundles(), families);
       bundles.sort((a, b) => new Date(b.environment.timestamp_start).getTime() - new Date(a.environment.timestamp_start).getTime());
       const receipts = bundles.map((bundle) => ({
         run_id: bundle.bundle_id,
         task_id: bundle.task.id,
+        family: bundle.task.family,
         model: bundle.agent.model,
         provider: bundle.agent.provider,
         adapter: bundle.agent.adapter,
@@ -358,8 +390,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
         score: bundle.score.total,
         timestamp: bundle.environment.timestamp_start,
       }));
-      const totalCost = receipts.reduce((s, r) => s + r.cost_usd, 0);
-      const totalTokens = receipts.reduce((s, r) => s + r.tokens_in + r.tokens_out, 0);
+      const totalCost = receipts.reduce((sum, receipt) => sum + receipt.cost_usd, 0);
+      const totalTokens = receipts.reduce((sum, receipt) => sum + receipt.tokens_in + receipt.tokens_out, 0);
       sendJSON(res, 200, {
         receipts,
         summary: {
@@ -375,7 +407,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     if (path === "/api/compare" && method === "GET") {
       const taskId = url.searchParams.get("task") ?? "";
       const suiteId = url.searchParams.get("suite") ?? "v1";
-      const bundles = loadBundles();
+      const families = parseFamiliesParam(url);
+      const bundles = filterBundlesByFamilies(loadBundles(), families);
       const filtered = taskId ? bundles.filter((bundle) => bundle.task.id === taskId) : bundles;
       const groups = new Map<string, EvidenceBundle[]>();
       for (const bundle of filtered) {
@@ -404,7 +437,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
           reliability: aggregate.reliability,
         };
       }).sort((a, b) => b.avg_score - a.avg_score);
-      sendJSON(res, 200, { comparisons, task_id: taskId || null, suite_id: suiteId });
+      sendJSON(res, 200, { comparisons, task_id: taskId || null, suite_id: suiteId, families });
       return;
     }
 
@@ -458,7 +491,6 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
         secondOpinion?: { enabled?: boolean; provider?: string; model?: string };
         qcReview?: { enabled?: boolean; provider?: string; model?: string };
       };
-      // Accept either adapter or providerId (provider-first flow sends providerId as the adapter key)
       const adapterId = body.adapter || body.providerId || "";
       if (!body.task || !body.model || !adapterId) {
         sendJSON(res, 400, { error: "task, model, and adapter (or providerId) are required" });
@@ -466,7 +498,6 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       }
       const requestedCount = Math.min(Math.max(Math.floor(body.count ?? 1), 1), 10);
 
-      // Build review config from request
       const reviewConfig = {
         secondOpinion: {
           enabled: !!(body.secondOpinion?.enabled),
@@ -495,11 +526,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
         },
       });
 
-      sendJSON(res, 202, {
-        ok: true,
-        run_id: runId,
-        judge: DETERMINISTIC_JUDGE_METADATA,
-      });
+      sendJSON(res, 202, { ok: true, run_id: runId, judge: DETERMINISTIC_JUDGE_METADATA });
 
       void (async () => {
         try {
@@ -509,9 +536,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
             provider: body.provider ?? null,
           });
           const health = await healthAdapter.adapter.healthCheck();
-          if (!health.ok) {
-            throw new Error(health.reason ?? `${adapterId} unavailable`);
-          }
+          if (!health.ok) throw new Error(health.reason ?? `${adapterId} unavailable`);
           await healthAdapter.adapter.teardown();
 
           broadcastSSE(runId, "step", {
@@ -527,11 +552,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
               provider: body.provider ?? null,
             });
             try {
-              broadcastSSE(runId, "step", {
-                type: "task_start",
-                detail: `Run ${index + 1}/${requestedCount} executing`,
-              });
-
+              broadcastSSE(runId, "step", { type: "task_start", detail: `Run ${index + 1}/${requestedCount} executing` });
               const result = await runTask({
                 taskId: body.task,
                 adapter: adapterInstance.adapter,
@@ -539,7 +560,6 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
                 keepWorkspace: false,
                 reviewConfig,
               });
-
               storeBundle(result.bundle);
               completedBundles.push(result.bundle);
             } finally {
@@ -549,7 +569,6 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
           const latestBundle = completedBundles[completedBundles.length - 1]!;
           const aggregate = summarizeRunSet(completedBundles);
-
           const active = activeRuns.get(runId);
           if (active) {
             active.status = "complete";
@@ -594,22 +613,18 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       res.writeHead(200, {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
+        Connection: "keep-alive",
         "Access-Control-Allow-Origin": "*",
       });
       const run = activeRuns.get(runId);
       if (run) {
-        for (const evt of run.events) {
-          res.write(evt);
-        }
+        for (const evt of run.events) res.write(evt);
         if (run.status === "complete") {
           res.end();
           return;
         }
       }
-      if (!sseClients.has(runId)) {
-        sseClients.set(runId, []);
-      }
+      if (!sseClients.has(runId)) sseClients.set(runId, []);
       sseClients.get(runId)!.push(res);
       req.on("close", () => {
         const clients = sseClients.get(runId);
@@ -619,8 +634,6 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       });
       return;
     }
-
-    // ── Suite run endpoints ────────────────────────────────────────────
 
     if (path === "/api/run-suite" && method === "POST") {
       const body = JSON.parse(await readBody(req) || "{}") as {
@@ -639,7 +652,6 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
       const allTasks = listTaskDetails();
       const suiteId = `suite_${Date.now().toString(36)}`;
-
       const reviewConfig = {
         secondOpinion: {
           enabled: !!(body.secondOpinion?.enabled),
@@ -662,14 +674,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
         summary: null,
       });
 
-      sendJSON(res, 202, {
-        ok: true,
-        suite_id: suiteId,
-        total_tasks: allTasks.length,
-        judge: DETERMINISTIC_JUDGE_METADATA,
-      });
+      sendJSON(res, 202, { ok: true, suite_id: suiteId, total_tasks: allTasks.length, judge: DETERMINISTIC_JUDGE_METADATA });
 
-      // Run tasks sequentially in background
       void (async () => {
         const suite = activeSuiteRuns.get(suiteId)!;
         let adapterInstance: Awaited<ReturnType<typeof instantiateAdapterForRun>> | null = null;
@@ -681,14 +687,11 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
             provider: body.provider ?? null,
           });
           const health = await adapterInstance.adapter.healthCheck();
-          if (!health.ok) {
-            throw new Error(health.reason ?? `${adapterId} unavailable`);
-          }
+          if (!health.ok) throw new Error(health.reason ?? `${adapterId} unavailable`);
 
           for (const task of allTasks) {
             const taskId = task.id as string;
             try {
-              // Create fresh adapter instance per task to avoid state leaks
               const taskAdapter = await instantiateAdapterForRun({
                 adapter: adapterId,
                 model: body.model,
@@ -704,12 +707,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
               });
 
               storeBundle(result.bundle);
-
-              const durationSec = Math.round(
-                (new Date(result.bundle.environment.timestamp_end).getTime() -
-                 new Date(result.bundle.environment.timestamp_start).getTime()) / 1000
-              );
-
+              const durationSec = Math.round((new Date(result.bundle.environment.timestamp_end).getTime() - new Date(result.bundle.environment.timestamp_start).getTime()) / 1000);
               suite.results.push({
                 task_id: taskId,
                 bundle_id: result.bundle.bundle_id,
@@ -738,15 +736,12 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
             suite.completed = suite.results.length;
           }
 
-          // Compute summary
-          const passed = suite.results.filter((r) => r.pass).length;
+          const passed = suite.results.filter((result) => result.pass).length;
           const failed = suite.results.length - passed;
-          const avgScore = suite.results.length > 0
-            ? Math.round(suite.results.reduce((s, r) => s + r.score, 0) / suite.results.length * 100)
-            : 0;
-          const totalTime = suite.results.reduce((s, r) => s + r.duration_sec, 0);
-          const totalTokens = suite.results.reduce((s, r) => s + r.tokens_in + r.tokens_out, 0);
-          const totalCost = suite.results.reduce((s, r) => s + r.cost_usd, 0);
+          const avgScore = suite.results.length > 0 ? Math.round((suite.results.reduce((sum, result) => sum + result.score, 0) / suite.results.length) * 100) : 0;
+          const totalTime = suite.results.reduce((sum, result) => sum + result.duration_sec, 0);
+          const totalTokens = suite.results.reduce((sum, result) => sum + result.tokens_in + result.tokens_out, 0);
+          const totalCost = suite.results.reduce((sum, result) => sum + result.cost_usd, 0);
 
           suite.summary = {
             total: suite.results.length,
@@ -759,16 +754,13 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
             total_cost_usd: Math.round(totalCost * 10000) / 10000,
           };
           suite.status = "complete";
-
           log("info", "api", `Suite ${suiteId} complete: ${passed}/${suite.results.length} passed`);
         } catch (err) {
           suite.status = "error";
           suite.error = String(err);
           log("error", "api", `Suite ${suiteId} failed: ${String(err)}`);
         } finally {
-          if (adapterInstance) {
-            await adapterInstance.adapter.teardown();
-          }
+          if (adapterInstance) await adapterInstance.adapter.teardown();
         }
       })();
       return;
@@ -811,8 +803,6 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       return;
     }
 
-    // ── Score sync API ────────────────────────────────────────────────
-
     if (path === "/api/scores/sync" && method === "POST") {
       const body = JSON.parse(await readBody(req) || "{}") as {
         scores?: ModelScore[];
@@ -827,27 +817,25 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
       const validSources: ScoreSource[] = ["crucible", "crucibulum", "veritor"];
       const source = (validSources.includes(body.source as ScoreSource) ? body.source : "crucibulum") as ScoreSource;
-
-      // Validate each score
       const validFamilies = new Set(["A", "B", "C", "D", "E", "F", "G", "H", "I"]);
       const validationErrors: string[] = [];
       const validScores: ModelScore[] = [];
 
-      for (let i = 0; i < body.scores.length; i++) {
-        const s = body.scores[i]!;
-        if (!s.modelId || !s.taskId || !s.family || !s.timestamp) {
-          validationErrors.push(`scores[${i}]: missing required fields (modelId, taskId, family, timestamp)`);
+      for (let index = 0; index < body.scores.length; index += 1) {
+        const score = body.scores[index]!;
+        if (!score.modelId || !score.taskId || !score.family || !score.timestamp) {
+          validationErrors.push(`scores[${index}]: missing required fields (modelId, taskId, family, timestamp)`);
           continue;
         }
-        if (!validFamilies.has(s.family)) {
-          validationErrors.push(`scores[${i}]: invalid family '${s.family}'`);
+        if (!validFamilies.has(score.family)) {
+          validationErrors.push(`scores[${index}]: invalid family '${score.family}'`);
           continue;
         }
-        if (typeof s.score !== "number" || s.score < 0 || s.score > 100) {
-          validationErrors.push(`scores[${i}]: score must be 0-100`);
+        if (typeof score.score !== "number" || score.score < 0 || score.score > 100) {
+          validationErrors.push(`scores[${index}]: score must be 0-100`);
           continue;
         }
-        validScores.push(s);
+        validScores.push(score);
       }
 
       const result = storeScores(validScores, source, body.runId);
@@ -865,30 +853,23 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       const taskId = url.searchParams.get("taskId") ?? undefined;
       const source = url.searchParams.get("source") ?? undefined;
       const limit = parseInt(url.searchParams.get("limit") ?? "100", 10);
-
       const scores = queryScores({ modelId, family, taskId, source, limit });
       sendJSON(res, 200, { scores, count: scores.length });
       return;
     }
 
-    if (path === "/api/scores/leaderboard" && method === "GET") {
-      const entries = getLeaderboard();
-      sendJSON(res, 200, { leaderboard: entries });
+    if ((path === "/api/scores/leaderboard" || path === "/api/leaderboard" || path === "/leaderboard") && method === "GET") {
+      const families = parseFamiliesParam(url);
+      const entries = getLeaderboard(families ?? undefined);
+      sendJSON(res, 200, { leaderboard: entries, families });
       return;
     }
 
-    // ── Synthesis endpoints ──────────────────────────────────────────────
-
     if (path === "/api/synthesis" && method === "POST") {
-      const body = JSON.parse(await readBody(req) || "{}") as {
-        run_ids?: string[];
-        task_id?: string;
-      };
-
+      const body = JSON.parse(await readBody(req) || "{}") as { run_ids?: string[]; task_id?: string };
       let bundles: EvidenceBundle[];
 
       if (body.run_ids && body.run_ids.length > 0) {
-        // Load specific bundles by ID
         bundles = [];
         for (const id of body.run_ids) {
           const bundle = getBundleById(id);
@@ -899,9 +880,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
           bundles.push(bundle);
         }
       } else if (body.task_id) {
-        // Load all bundles for a task
         const allBundles = loadBundles();
-        bundles = allBundles.filter(b => b.task.id === body.task_id);
+        bundles = allBundles.filter((bundle) => bundle.task.id === body.task_id);
         if (bundles.length === 0) {
           sendJSON(res, 404, { error: `No runs found for task: ${body.task_id}` });
           return;
@@ -911,8 +891,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
         return;
       }
 
-      // Validate same task
-      const taskIds = new Set(bundles.map(b => b.task.id));
+      const taskIds = new Set(bundles.map((bundle) => bundle.task.id));
       if (taskIds.size > 1) {
         sendJSON(res, 400, { error: `All runs must be for the same task. Found: ${Array.from(taskIds).join(", ")}` });
         return;
@@ -923,17 +902,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       return;
     }
 
-    // ── Batch multi-model run ────────────────────────────────────────────
-
     if (path === "/api/run-batch" && method === "POST") {
       const body = JSON.parse(await readBody(req) || "{}") as {
         task: string;
-        models: Array<{
-          adapter?: string;
-          providerId?: string;
-          provider?: string | null;
-          model: string;
-        }>;
+        models: Array<{ adapter?: string; providerId?: string; provider?: string | null; model: string }>;
         auto_synthesis?: boolean;
         secondOpinion?: { enabled?: boolean; provider?: string; model?: string };
         qcReview?: { enabled?: boolean; provider?: string; model?: string };
@@ -945,8 +917,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       }
 
       const batchId = `batch_${Date.now().toString(36)}`;
-      const autoSynthesis = body.auto_synthesis !== false; // default true
-
+      const autoSynthesis = body.auto_synthesis !== false;
       const reviewConfig = {
         secondOpinion: {
           enabled: !!(body.secondOpinion?.enabled),
@@ -960,7 +931,6 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
         },
       };
 
-      // Track batch in active runs
       activeRuns.set(batchId, {
         id: batchId,
         status: "running",
@@ -969,7 +939,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
           task: body.task,
           adapter: "batch",
           provider: null,
-          model: body.models.map(m => m.model).join(","),
+          model: body.models.map((model) => model.model).join(","),
           count: body.models.length,
           judge: DETERMINISTIC_JUDGE_METADATA,
         },
@@ -983,18 +953,17 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
         judge: DETERMINISTIC_JUDGE_METADATA,
       });
 
-      // Execute sequentially in background
       void (async () => {
         const completedBundles: EvidenceBundle[] = [];
         try {
-          for (let i = 0; i < body.models.length; i++) {
-            const modelSpec = body.models[i]!;
+          for (let index = 0; index < body.models.length; index += 1) {
+            const modelSpec = body.models[index]!;
             const adapterId = modelSpec.adapter || modelSpec.providerId || "";
             if (!adapterId) continue;
 
             broadcastSSE(batchId, "step", {
               type: "task_start",
-              detail: `Model ${i + 1}/${body.models.length}: ${adapterId}/${modelSpec.model}`,
+              detail: `Model ${index + 1}/${body.models.length}: ${adapterId}/${modelSpec.model}`,
             });
 
             try {
@@ -1006,10 +975,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
               const health = await adapterInstance.adapter.healthCheck();
               if (!health.ok) {
-                broadcastSSE(batchId, "step", {
-                  type: "error",
-                  detail: `${adapterId}/${modelSpec.model}: unavailable`,
-                });
+                broadcastSSE(batchId, "step", { type: "error", detail: `${adapterId}/${modelSpec.model}: unavailable` });
                 await adapterInstance.adapter.teardown();
                 continue;
               }
@@ -1024,7 +990,6 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
               storeBundle(result.bundle);
               completedBundles.push(result.bundle);
-
               broadcastSSE(batchId, "step", {
                 type: "task_complete",
                 detail: `${adapterId}/${modelSpec.model}: ${result.bundle.score.pass ? "PASS" : "FAIL"} (${Math.round(result.bundle.score.total * 100)}%)`,
@@ -1039,7 +1004,6 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
             }
           }
 
-          // Auto-synthesis if enabled and we have 2+ completed bundles
           let synthesis = null;
           if (autoSynthesis && completedBundles.length >= 2) {
             synthesis = runSynthesis(completedBundles);
@@ -1061,7 +1025,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
           broadcastSSE(batchId, "complete", {
             batch_id: batchId,
-            bundle_ids: completedBundles.map(b => b.bundle_id),
+            bundle_ids: completedBundles.map((bundle) => bundle.bundle_id),
             total: body.models.length,
             completed: completedBundles.length,
             synthesis,

@@ -6,7 +6,7 @@
 import Database from "better-sqlite3";
 import { resolve, join } from "node:path";
 import { mkdirSync } from "node:fs";
-import type { ModelScore, ScoreSource, ScoreFamily, LeaderboardEntry, FAMILY_WEIGHTS } from "../types/scores.js";
+import type { ModelScore, ScoreSource, ScoreFamily, LeaderboardEntry } from "../types/scores.js";
 import { log } from "../utils/logger.js";
 
 const STATE_DIR = resolve(process.env["CRUCIBULUM_STATE_DIR"] ?? join(process.cwd(), "state"));
@@ -51,8 +51,6 @@ function getDb(): InstanceType<typeof Database> {
   log("info", "score-store", `Score store initialized at ${DB_PATH}`);
   return db;
 }
-
-// ── Store scores ─────────────────────────────────────────────────────────
 
 export function storeScores(
   scores: ModelScore[],
@@ -101,8 +99,6 @@ export function storeScores(
   return { stored, errors };
 }
 
-// ── Query scores ─────────────────────────────────────────────────────────
-
 export interface ScoreQuery {
   modelId?: string | undefined;
   family?: string | undefined;
@@ -112,7 +108,6 @@ export interface ScoreQuery {
 }
 
 interface ScoreRow {
-  id: number;
   modelId: string;
   taskId: string;
   family: string;
@@ -126,9 +121,6 @@ interface ScoreRow {
   anomalyFlags: string | null;
   timestamp: string;
   metadata: string | null;
-  source: string;
-  runId: string | null;
-  created_at: string;
 }
 
 export function queryScores(query: ScoreQuery): ModelScore[] {
@@ -145,7 +137,7 @@ export function queryScores(query: ScoreQuery): ModelScore[] {
   const limit = Math.min(query.limit ?? 100, 1000);
 
   const rows = database.prepare(
-    `SELECT * FROM scores ${where} ORDER BY timestamp DESC LIMIT ?`
+    `SELECT modelId, taskId, family, category, passed, score, rawScore, duration_ms, tokensUsed, costEstimate, anomalyFlags, timestamp, metadata FROM scores ${where} ORDER BY timestamp DESC LIMIT ?`
   ).all(...params, limit) as ScoreRow[];
 
   return rows.map((r): ModelScore => ({
@@ -165,10 +157,16 @@ export function queryScores(query: ScoreQuery): ModelScore[] {
   }));
 }
 
-// ── Leaderboard ──────────────────────────────────────────────────────────
-
-const WEIGHTS: Record<string, number> = {
-  A: 0.20, B: 0.25, C: 0.25, D: 0.10, E: 0.05, F: 0.05, G: 0.05, H: 0.05, I: 0.05,
+const WEIGHTS: Record<ScoreFamily, number> = {
+  A: 0.20,
+  B: 0.25,
+  C: 0.25,
+  D: 0.10,
+  E: 0.05,
+  F: 0.05,
+  G: 0.05,
+  H: 0.05,
+  I: 0.05,
 };
 
 interface LeaderboardRow {
@@ -180,45 +178,51 @@ interface LeaderboardRow {
   source: string;
 }
 
-export function getLeaderboard(): LeaderboardEntry[] {
+export function getLeaderboard(families?: ScoreFamily[]): LeaderboardEntry[] {
   const database = getDb();
+  const filteredFamilies = Array.isArray(families) && families.length > 0
+    ? [...new Set(families)]
+    : null;
 
-  // Get average score per model per family
+  const placeholders = filteredFamilies?.map(() => "?").join(", ") ?? "";
+  const where = filteredFamilies ? `WHERE family IN (${placeholders})` : "";
+
   const rows = database.prepare(`
     SELECT modelId, family, AVG(score) as avg_score, COUNT(*) as total_runs,
-           MAX(timestamp) as last_run, source
+           MAX(timestamp) as last_run, MAX(source) as source
     FROM scores
+    ${where}
     GROUP BY modelId, family
     ORDER BY modelId, family
-  `).all() as LeaderboardRow[];
+  `).all(...(filteredFamilies ?? [])) as LeaderboardRow[];
 
-  // Group by model
-  const models = new Map<string, { families: Record<string, number>; totalRuns: number; lastRun: string; source: string }>();
+  const models = new Map<string, { families: Partial<Record<ScoreFamily, number>>; totalRuns: number; lastRun: string; source: string }>();
 
   for (const row of rows) {
     if (!models.has(row.modelId)) {
       models.set(row.modelId, { families: {}, totalRuns: 0, lastRun: "", source: row.source });
     }
     const model = models.get(row.modelId)!;
-    model.families[row.family] = Math.round(row.avg_score * 100) / 100;
+    model.families[row.family as ScoreFamily] = Math.round(row.avg_score * 100) / 100;
     model.totalRuns += row.total_runs;
     if (row.last_run > model.lastRun) model.lastRun = row.last_run;
     model.source = row.source;
   }
 
-  // Compute weighted composite
+  const activeFamilies = filteredFamilies ?? Object.keys(WEIGHTS) as ScoreFamily[];
   const entries: LeaderboardEntry[] = [];
+
   for (const [modelId, data] of models) {
     let weightedSum = 0;
     let weightTotal = 0;
     const familyScores: Record<ScoreFamily, number | null> = { A: null, B: null, C: null, D: null, E: null, F: null, G: null, H: null, I: null };
 
-    for (const [family, weight] of Object.entries(WEIGHTS)) {
+    for (const family of Object.keys(WEIGHTS) as ScoreFamily[]) {
       const score = data.families[family];
-      familyScores[family as ScoreFamily] = score ?? null;
-      if (score !== undefined) {
-        weightedSum += score * weight;
-        weightTotal += weight;
+      familyScores[family] = score ?? null;
+      if (score !== undefined && activeFamilies.includes(family)) {
+        weightedSum += score * WEIGHTS[family];
+        weightTotal += WEIGHTS[family];
       }
     }
 
@@ -236,11 +240,4 @@ export function getLeaderboard(): LeaderboardEntry[] {
 
   entries.sort((a, b) => b.composite - a.composite);
   return entries;
-}
-
-export function closeScoreStore(): void {
-  if (db) {
-    db.close();
-    db = null;
-  }
 }

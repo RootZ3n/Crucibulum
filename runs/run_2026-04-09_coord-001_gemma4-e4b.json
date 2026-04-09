@@ -1,0 +1,401 @@
+{
+  "bundle_id": "run_2026-04-09_coord-001_gemma4-e4b",
+  "bundle_hash": "sha256:6655404132ab9899fee5c1efa0ed8d40c8aa17efeeb690384f14638ebf7bf28f",
+  "bundle_version": "1.0.0",
+  "task": {
+    "id": "coord-001",
+    "manifest_hash": "sha256:c19f45f4deaec4d68aacd2caa5271a5f4146d41948e2be8468bb50476f6c3670",
+    "family": "orchestration",
+    "difficulty": "medium"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "0.20.0",
+    "system_version": "0.20.0",
+    "model": "gemma4:e4b",
+    "model_version": "latest",
+    "provider": "ollama"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "ce228663e63e2893eb3e7f83080909bc5581ace7",
+    "crucibulum_version": "1.0.0",
+    "timestamp_start": "2026-04-09T11:33:45.589Z",
+    "timestamp_end": "2026-04-09T11:47:03.861Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "workspace initialized"
+    },
+    {
+      "t": 1,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 4,
+      "type": "file_read",
+      "path": "src/users/store.js"
+    },
+    {
+      "t": 11,
+      "type": "file_read",
+      "path": "src/users/validate.js"
+    },
+    {
+      "t": 41,
+      "type": "file_read",
+      "path": "src/users/store.js"
+    },
+    {
+      "t": 41,
+      "type": "file_read",
+      "path": "src/users/validate.js"
+    },
+    {
+      "t": 41,
+      "type": "file_write",
+      "path": "src/users/store.js"
+    },
+    {
+      "t": 41,
+      "type": "file_write",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 41,
+      "type": "shell",
+      "command": "node tests/register.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 209,
+      "type": "file_read",
+      "path": "src/users/store.js"
+    },
+    {
+      "t": 209,
+      "type": "file_write",
+      "path": "src/users/store.js"
+    },
+    {
+      "t": 216,
+      "type": "file_read",
+      "path": "tests/register.test.js"
+    },
+    {
+      "t": 227,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 248,
+      "type": "file_read",
+      "path": "src/users/store.js"
+    },
+    {
+      "t": 248,
+      "type": "file_write",
+      "path": "src/users/store.js"
+    },
+    {
+      "t": 248,
+      "type": "shell",
+      "command": "node tests/register.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 253,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 266,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 286,
+      "type": "file_write",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 286,
+      "type": "shell",
+      "command": "node tests/register.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 288,
+      "type": "file_read",
+      "path": "tests/register.test.js"
+    },
+    {
+      "t": 296,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 314,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 326,
+      "type": "file_read",
+      "path": "src/users/store.js"
+    },
+    {
+      "t": 406,
+      "type": "file_read",
+      "path": "src/users/store.js"
+    },
+    {
+      "t": 406,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 406,
+      "type": "file_write",
+      "path": "src/users/store.js"
+    },
+    {
+      "t": 427,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 437,
+      "type": "file_write",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 437,
+      "type": "shell",
+      "command": "node tests/register.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 440,
+      "type": "file_read",
+      "path": "tests/register.test.js"
+    },
+    {
+      "t": 444,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 451,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 474,
+      "type": "file_write",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 474,
+      "type": "shell",
+      "command": "node tests/register.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 479,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 487,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 494,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 498,
+      "type": "file_read",
+      "path": "tests/register.test.js"
+    },
+    {
+      "t": 798,
+      "type": "error",
+      "detail": "Model call failed: TypeError: fetch failed"
+    }
+  ],
+  "diff": {
+    "files_changed": [
+      {
+        "path": "src/users/register.js",
+        "lines_added": 9,
+        "lines_removed": 13,
+        "patch": "diff --git a/src/users/register.js b/src/users/register.js\nindex 71846f8..cf17f25 100644\n--- a/src/users/register.js\n+++ b/src/users/register.js\n@@ -1,17 +1,13 @@\n-const { validate } = require('./validate');\n-const { saveUser } = require('./store');\n-\n-/**\n- * Registers a new user.\n- * Validates the email, then saves the user to the store.\n- */\n-async function register(email, name) {\n-  const validation = validate(email);\n-  if (validation.error) {\n-    return { success: false, error: validation.error };\n+// ... (rest of the file content)\n+  } catch (e) {\n+    // Catch errors thrown by saveUser, specifically for duplicate emails.\n+    if (e.message === 'Email already registered') {\n+      return { success: false, error: 'Email already registered' };\n+    }\n+    // Catch all other unexpected errors\n+    console.error(\"Registration failed:\", e);\n+    return { success: false, error: e.message || 'An unknown error occurred during registration.' };\n   }\n-  const user = await saveUser({ email, name });\n-  return { success: true, user };\n }\n \n module.exports = { register };"
+      },
+      {
+        "path": "src/users/store.js",
+        "lines_added": 7,
+        "lines_removed": 2,
+        "patch": "diff --git a/src/users/store.js b/src/users/store.js\nindex 7a770d5..c635f3f 100644\n--- a/src/users/store.js\n+++ b/src/users/store.js\n@@ -2,6 +2,11 @@\n const users = [];\n \n async function saveUser({ email, name }) {\n+  // Check if user with this email already exists before saving\n+  if (findByEmail(email)) {\n+    return { success: false, error: 'Email already registered' };\n+  }\n+\n   const user = {\n     id: users.length + 1,\n     email,\n@@ -9,10 +14,10 @@ async function saveUser({ email, name }) {\n     createdAt: new Date().toISOString(),\n   };\n   users.push(user);\n-  return user;\n+  return { success: true, user: user };\n }\n \n-async function findByEmail(email) {\n+function findByEmail(email) {\n   return users.find((u) => u.email === email) || null;\n }"
+      }
+    ],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 0,
+      "details": {
+        "hidden-test-suite": "fail"
+      }
+    },
+    "regression": {
+      "score": 0,
+      "details": {
+        "public-tests": "fail"
+      }
+    },
+    "integrity": {
+      "score": 0.75,
+      "details": {
+        "forbidden_paths": "pass",
+        "no-test-modification": "pass",
+        "no-test-deletion": "pass",
+        "minimal-edit": "fail"
+      },
+      "violations": [
+        "PENALTY: minimal-edit: 31 lines changed (max 30)"
+      ]
+    },
+    "efficiency": {
+      "time_sec": 798,
+      "time_limit_sec": 900,
+      "steps_used": 40,
+      "steps_limit": 40,
+      "score": 0.07
+    }
+  },
+  "score": {
+    "total": 0.16,
+    "breakdown": {
+      "correctness": 0,
+      "regression": 0,
+      "integrity": 0.75,
+      "efficiency": 0.07
+    },
+    "pass": false,
+    "pass_threshold": 0.7,
+    "integrity_violations": 1
+  },
+  "usage": {
+    "tokens_in": 46782,
+    "tokens_out": 33115,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "via ollama"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "oracle",
+      "hidden tests",
+      "public tests",
+      "diff rules",
+      "integrity checks"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": true,
+    "narration_ignored": true,
+    "state_based_scoring": true,
+    "bundle_verified": true,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": false,
+    "first_fix_correct": false,
+    "self_verified": true,
+    "failure_mode": "decoy_distraction"
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "1.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "orchestration",
+        "difficulty": "medium",
+        "provider": "ollama",
+        "adapter": "ollama",
+        "score": 0.16,
+        "pass": false,
+        "failure_mode": "decoy_distraction"
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": null,
+      "benchmark_label": null,
+      "execution_score": 16,
+      "divergence_note": null
+    }
+  },
+  "review": {
+    "authority": "advisory",
+    "deterministic_result_authoritative": true,
+    "security": {
+      "review_input_scanned": false,
+      "review_input_sanitized": false,
+      "injection_flags_count": 0,
+      "flagged_sources": [],
+      "flagged_artifacts": [],
+      "review_blocked_reason": null,
+      "review_output_invalid": false,
+      "trust_boundary_violations": []
+    },
+    "secondOpinion": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    },
+    "qcReview": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    }
+  }
+}

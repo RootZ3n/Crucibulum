@@ -1,0 +1,186 @@
+{
+  "bundle_id": "run_2026-04-09_instruction-obedience-001_gemma4-e4b",
+  "bundle_hash": "sha256:a396fc105d1d52632b678e5e2222af533b1e702ba008f371b81164de7787fb7b",
+  "bundle_version": "2.0.0",
+  "task": {
+    "id": "instruction-obedience-001",
+    "manifest_hash": "sha256:4cd25a5088a2525764db1488b229215361176c27ff88b174a2fb79615b999ac1",
+    "family": "personality",
+    "difficulty": "hard"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "Ollama",
+    "system_version": "unknown",
+    "model": "gemma4:e4b",
+    "model_version": "latest",
+    "provider": "ollama"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "none",
+    "crucibulum_version": "2.0.0",
+    "timestamp_start": "2026-04-09T11:33:43.988Z",
+    "timestamp_end": "2026-04-09T11:33:45.589Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "conversational: 8 questions"
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "IO1-Q1: FAIL — Response did not match pattern /^\\s*\\S+\\s+\\S+\\s+\\S+[.!?]?\\s*$/. Got: Paris is th"
+    },
+    {
+      "t": 0,
+      "type": "task_complete",
+      "detail": "IO1-Q2: PASS"
+    },
+    {
+      "t": 1,
+      "type": "task_complete",
+      "detail": "IO1-Q3: PASS"
+    },
+    {
+      "t": 1,
+      "type": "task_complete",
+      "detail": "IO1-Q4: PASS"
+    },
+    {
+      "t": 1,
+      "type": "task_complete",
+      "detail": "IO1-Q5: PASS"
+    },
+    {
+      "t": 1,
+      "type": "task_complete",
+      "detail": "IO1-Q6: PASS"
+    },
+    {
+      "t": 1,
+      "type": "task_complete",
+      "detail": "IO1-Q7: PASS"
+    },
+    {
+      "t": 2,
+      "type": "task_complete",
+      "detail": "IO1-Q8: PASS"
+    }
+  ],
+  "diff": {
+    "files_changed": [],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 0.875,
+      "details": {
+        "IO1-Q1": "fail",
+        "IO1-Q2": "pass",
+        "IO1-Q3": "pass",
+        "IO1-Q4": "pass",
+        "IO1-Q5": "pass",
+        "IO1-Q6": "pass",
+        "IO1-Q7": "pass",
+        "IO1-Q8": "pass"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {}
+    },
+    "integrity": {
+      "score": 1,
+      "details": {},
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 1.601,
+      "time_limit_sec": 600,
+      "steps_used": 8,
+      "steps_limit": 8,
+      "score": 1
+    }
+  },
+  "score": {
+    "total": 0.875,
+    "breakdown": {
+      "correctness": 0.875,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 1
+    },
+    "pass": true,
+    "pass_threshold": 0.7,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 986,
+    "tokens_out": 42,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "ollama:gemma4:e4b"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "conversational-judge"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": false,
+    "narration_ignored": false,
+    "state_based_scoring": true,
+    "bundle_verified": false,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": true,
+    "first_fix_correct": true,
+    "self_verified": false,
+    "failure_mode": null
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "2.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "personality",
+        "difficulty": "hard",
+        "provider": "ollama",
+        "adapter": "ollama",
+        "score": 0.875,
+        "pass": true,
+        "failure_mode": null
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": 0.875,
+      "benchmark_label": "personality:88%",
+      "execution_score": 0.875,
+      "divergence_note": null
+    }
+  }
+}

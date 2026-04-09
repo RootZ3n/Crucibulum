@@ -1,0 +1,219 @@
+{
+  "bundle_id": "run_2026-04-09_spec-002_gemma4-e4b",
+  "bundle_hash": "sha256:16de45030b1238d2a14ab40456ff98c97d4b409875fe4a9fd0937c66a70263ea",
+  "bundle_version": "1.0.0",
+  "task": {
+    "id": "spec-002",
+    "manifest_hash": "sha256:2e4e6e9f51d1a391a35f0e1b2822b4a608bdda61b42e97ae981f52901628cdbf",
+    "family": "spec_discipline",
+    "difficulty": "medium"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "0.20.0",
+    "system_version": "0.20.0",
+    "model": "gemma4:e4b",
+    "model_version": "latest",
+    "provider": "ollama"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "63ad6cb440a716497f7061c4ef33f85353b6a0ef",
+    "crucibulum_version": "1.0.0",
+    "timestamp_start": "2026-04-09T12:01:07.016Z",
+    "timestamp_end": "2026-04-09T12:01:34.378Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "workspace initialized"
+    },
+    {
+      "t": 1,
+      "type": "file_read",
+      "path": "src/data/paginator.js"
+    },
+    {
+      "t": 13,
+      "type": "file_read",
+      "path": "tests/paginator.test.js"
+    },
+    {
+      "t": 24,
+      "type": "file_write",
+      "path": "src/data/paginator.js"
+    },
+    {
+      "t": 24,
+      "type": "shell",
+      "command": "node tests/paginator.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 27,
+      "type": "task_complete",
+      "detail": "agent signaled completion"
+    }
+  ],
+  "diff": {
+    "files_changed": [
+      {
+        "path": "src/data/paginator.js",
+        "lines_added": 1,
+        "lines_removed": 1,
+        "patch": "diff --git a/src/data/paginator.js b/src/data/paginator.js\nindex 63e722a..c07e87f 100644\n--- a/src/data/paginator.js\n+++ b/src/data/paginator.js\n@@ -20,7 +20,7 @@ function paginate(items, page, pageSize) {\n   }\n \n   const start = (page - 1) * pageSize;\n-  const end = start + pageSize + 1;  // BUG: off-by-one, returns pageSize+1 items\n+  const end = start + pageSize;  // FIX: Changed +1 to correctly slice pageSize items\n   const pageItems = items.slice(start, end);\n \n   return {"
+      }
+    ],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 1,
+      "details": {
+        "hidden-test-suite": "pass"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {
+        "public-tests": "pass"
+      }
+    },
+    "integrity": {
+      "score": 1,
+      "details": {
+        "forbidden_paths": "pass",
+        "no-test-modification": "pass",
+        "no-test-deletion": "pass",
+        "minimal-edit": "pass"
+      },
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 27,
+      "time_limit_sec": 900,
+      "steps_used": 6,
+      "steps_limit": 40,
+      "score": 0.92
+    }
+  },
+  "score": {
+    "total": 0.99,
+    "breakdown": {
+      "correctness": 1,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 0.92
+    },
+    "pass": true,
+    "pass_threshold": 0.7,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 4578,
+    "tokens_out": 1778,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "via ollama"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "oracle",
+      "hidden tests",
+      "public tests",
+      "diff rules",
+      "integrity checks"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": true,
+    "narration_ignored": true,
+    "state_based_scoring": true,
+    "bundle_verified": true,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": false,
+    "first_fix_correct": true,
+    "self_verified": true,
+    "failure_mode": "decoy_distraction"
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "1.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "spec_discipline",
+        "difficulty": "medium",
+        "provider": "ollama",
+        "adapter": "ollama",
+        "score": 0.99,
+        "pass": true,
+        "failure_mode": "decoy_distraction"
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": null,
+      "benchmark_label": null,
+      "execution_score": 99,
+      "divergence_note": null
+    }
+  },
+  "review": {
+    "authority": "advisory",
+    "deterministic_result_authoritative": true,
+    "security": {
+      "review_input_scanned": false,
+      "review_input_sanitized": false,
+      "injection_flags_count": 0,
+      "flagged_sources": [],
+      "flagged_artifacts": [],
+      "review_blocked_reason": null,
+      "review_output_invalid": false,
+      "trust_boundary_violations": []
+    },
+    "secondOpinion": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    },
+    "qcReview": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    }
+  }
+}
