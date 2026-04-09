@@ -1,11 +1,16 @@
 /**
  * Crucibulum — Manifest Loader
  * Loads full manifest for judge, filters for agent-visible version.
+ * Supports both repo-based (task.title) and conversational (description) manifest schemas.
  */
 import type { TaskManifest, AgentVisibleManifest } from "../adapters/base.js";
 /**
- * Load a task manifest by task ID.
+ * Load a raw manifest by task ID (any schema).
  * Searches all family directories under tasks/.
+ */
+export declare function loadManifestRaw(taskId: string): any;
+/**
+ * Load a task manifest by task ID (typed as TaskManifest for repo-based tasks).
  */
 export declare function loadManifest(taskId: string): TaskManifest;
 /**
@@ -20,6 +25,7 @@ export declare function filterForAgent(manifest: TaskManifest): AgentVisibleMani
 /**
  * List all available task IDs.
  * Scans all family directories dynamically.
+ * Handles both repo-based and conversational manifest schemas.
  */
 export declare function listTasks(family?: string): Array<{
     id: string;

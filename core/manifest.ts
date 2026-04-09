@@ -1,6 +1,7 @@
 /**
  * Crucibulum — Manifest Loader
  * Loads full manifest for judge, filters for agent-visible version.
+ * Supports both repo-based (task.title) and conversational (description) manifest schemas.
  */
 
 import { readFileSync, readdirSync } from "node:fs";
@@ -10,6 +11,8 @@ import { sha256Hex } from "../utils/hashing.js";
 import { log } from "../utils/logger.js";
 
 const TASKS_DIR = join(process.cwd(), "tasks");
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
  * Discover all family directories under tasks/.
@@ -25,16 +28,16 @@ function discoverFamilies(): string[] {
 }
 
 /**
- * Load a task manifest by task ID.
+ * Load a raw manifest by task ID (any schema).
  * Searches all family directories under tasks/.
  */
-export function loadManifest(taskId: string): TaskManifest {
+export function loadManifestRaw(taskId: string): any {
   const families = discoverFamilies();
   for (const family of families) {
     const manifestPath = join(TASKS_DIR, family, taskId, "manifest.json");
     try {
       const raw = readFileSync(manifestPath, "utf-8");
-      const manifest = JSON.parse(raw) as TaskManifest;
+      const manifest = JSON.parse(raw);
       if (manifest.id !== taskId) {
         throw new Error(`Manifest ID mismatch: expected ${taskId}, got ${manifest.id}`);
       }
@@ -46,6 +49,20 @@ export function loadManifest(taskId: string): TaskManifest {
     }
   }
   throw new Error(`Task manifest not found: ${taskId}`);
+}
+
+/**
+ * Load a task manifest by task ID (typed as TaskManifest for repo-based tasks).
+ */
+export function loadManifest(taskId: string): TaskManifest {
+  return loadManifestRaw(taskId) as TaskManifest;
+}
+
+/**
+ * Extract a display title from any manifest schema.
+ */
+function manifestTitle(manifest: any): string {
+  return manifest.task?.title ?? manifest.description ?? manifest.id;
 }
 
 /**
@@ -93,6 +110,7 @@ export function filterForAgent(manifest: TaskManifest): AgentVisibleManifest {
 /**
  * List all available task IDs.
  * Scans all family directories dynamically.
+ * Handles both repo-based and conversational manifest schemas.
  */
 export function listTasks(
   family?: string,
@@ -106,11 +124,11 @@ export function listTasks(
       for (const entry of readdirSync(familyDir, { withFileTypes: true })) {
         if (!entry.isDirectory()) continue;
         try {
-          const manifest = loadManifest(entry.name);
+          const manifest = loadManifestRaw(entry.name);
           results.push({
             id: manifest.id,
             family: manifest.family,
-            title: manifest.task.title,
+            title: manifestTitle(manifest),
             difficulty: manifest.difficulty,
           });
         } catch {

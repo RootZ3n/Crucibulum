@@ -8,7 +8,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { EvidenceBundle } from "../adapters/base.js";
 import { instantiateAdapterForRun, getAdapterCatalog, listFlattenedModels, getProviderCatalog } from "../adapters/registry.js";
-import { loadManifest, listTasks } from "../core/manifest.js";
+import { loadManifest, loadManifestRaw, listTasks } from "../core/manifest.js";
 import { runTask } from "../core/runner.js";
 import { storeBundle } from "../core/bundle.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "../core/judge.js";
@@ -151,20 +151,23 @@ function getStats(bundles: EvidenceBundle[]): Record<string, unknown> {
 
 function listTaskDetails(): Array<Record<string, unknown>> {
   return listTasks().map((task) => {
-    const manifest = loadManifest(task.id);
+    const manifest = loadManifestRaw(task.id);
+    const isConversational = manifest.execution_mode === "conversational" || !manifest.task;
     return {
       id: manifest.id,
       suite_id: "v1",
       family: manifest.family,
-      title: manifest.task.title,
+      title: manifest.task?.title ?? manifest.description ?? manifest.id,
       difficulty: manifest.difficulty,
-      time_limit_sec: manifest.constraints.time_limit_sec,
-      max_steps: manifest.constraints.max_steps,
-      network_allowed: manifest.constraints.network_allowed,
-      public_tests_command: manifest.verification.public_tests_command,
-      build_command: manifest.verification.build_command,
-      diagnostic_purpose: manifest.metadata.diagnostic_purpose,
-      tags: manifest.metadata.tags,
+      execution_mode: manifest.execution_mode ?? "repo",
+      time_limit_sec: manifest.constraints?.time_limit_sec ?? null,
+      max_steps: manifest.constraints?.max_steps ?? null,
+      network_allowed: manifest.constraints?.network_allowed ?? false,
+      public_tests_command: manifest.verification?.public_tests_command ?? null,
+      build_command: manifest.verification?.build_command ?? null,
+      question_count: isConversational ? (manifest.questions?.length ?? 0) : null,
+      diagnostic_purpose: manifest.metadata?.diagnostic_purpose ?? null,
+      tags: manifest.metadata?.tags ?? [],
     };
   });
 }
