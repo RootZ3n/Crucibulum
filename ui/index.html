@@ -1292,6 +1292,38 @@ table tbody td.col-time { color: var(--orange); }
   letter-spacing: 0.08em;
 }
 
+.task-description-panel {
+  display: none;
+  margin-top: 10px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(88, 166, 255, 0.18);
+  background: linear-gradient(180deg, rgba(11, 18, 32, 0.96), rgba(8, 14, 26, 0.94));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+}
+
+.task-description-panel.visible {
+  display: block;
+}
+
+.task-description-label {
+  display: block;
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--active);
+}
+
+.task-description-text {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
 .availability-note {
   font-family: var(--font-body);
   font-size: 13px;
@@ -3493,6 +3525,60 @@ function adapterKindLabel(kind) {
   return providerKindLabel(kind);
 }
 
+var TASK_FAMILY_LABELS = {
+  poison: 'POISON',
+  poison_localization: 'POISON',
+  spec: 'SPEC',
+  spec_discipline: 'SPEC',
+  orchestration: 'ORCHESTRATION',
+  coordination: 'ORCHESTRATION',
+  coord: 'ORCHESTRATION',
+  personality: 'PERSONALITY',
+  identity: 'IDENTITY',
+  truthfulness: 'TRUTHFULNESS',
+  cost_efficiency: 'EFFICIENCY',
+  efficiency: 'EFFICIENCY',
+  swe: 'SWE',
+  general: 'GENERAL',
+};
+
+var TASK_FAMILY_ORDER = [
+  'POISON',
+  'SPEC',
+  'ORCHESTRATION',
+  'PERSONALITY',
+  'IDENTITY',
+  'TRUTHFULNESS',
+  'EFFICIENCY',
+  'SWE',
+  'GENERAL',
+];
+
+function taskFamilyGroup(task) {
+  var raw = (((task && task.family) || '') + '').trim().toLowerCase()
+    .replace(/[\s-]+/g, '_')
+    .replace(/[^a-z0-9_]/g, '');
+  var taskId = (((task && task.id) || '') + '').toLowerCase();
+
+  if (!raw) {
+    if (taskId.indexOf('poison-') === 0) raw = 'poison';
+    else if (taskId.indexOf('spec-') === 0) raw = 'spec';
+    else if (taskId.indexOf('orch-') === 0 || taskId.indexOf('coord-') === 0) raw = 'orchestration';
+    else if (taskId.indexOf('personality-') === 0) raw = 'personality';
+    else if (taskId.indexOf('identity-') === 0) raw = 'identity';
+    else if (taskId.indexOf('truth-') === 0 || taskId.indexOf('truthfulness-') === 0) raw = 'truthfulness';
+    else if (taskId.indexOf('cost-') === 0 || taskId.indexOf('efficiency-') === 0) raw = 'cost_efficiency';
+    else if (taskId.indexOf('swe-') === 0) raw = 'swe';
+    else raw = 'general';
+  }
+
+  return TASK_FAMILY_LABELS[raw] || raw.replace(/_/g, ' ').toUpperCase();
+}
+
+function taskDescriptionText(task) {
+  return (task && (task.description || task.prompt || task.summary || task.title || '')) || '';
+}
+
 /* =========================================================================
    RUN TASK VIEW
    ========================================================================= */
@@ -3503,17 +3589,26 @@ function renderRunTask(el) {
   // Task options grouped by family
   var families = {};
   tasks.forEach(function(t) {
-    var fam = t.family || 'general';
+    var fam = taskFamilyGroup(t);
     if (!families[fam]) families[fam] = [];
     families[fam].push(t);
   });
 
   var taskOpts = '<option value="">-- Select a task --</option>';
-  Object.keys(families).sort().forEach(function(fam) {
+  Object.keys(families).sort(function(a, b) {
+    var ai = TASK_FAMILY_ORDER.indexOf(a);
+    var bi = TASK_FAMILY_ORDER.indexOf(b);
+    if (ai === -1 && bi === -1) return a.localeCompare(b);
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  }).forEach(function(fam) {
     taskOpts += '<optgroup label="' + esc(fam) + '">';
-    families[fam].forEach(function(t) {
-      var diff = t.difficulty ? ' [' + t.difficulty + ']' : '';
-      var label = (t.title || t.id) + diff;
+    families[fam].sort(function(a, b) {
+      return String(a.id || '').localeCompare(String(b.id || ''));
+    }).forEach(function(t) {
+      var diff = t.difficulty ? ' [' + String(t.difficulty).toLowerCase() + ']' : '';
+      var label = String(t.id || t.title || '--') + diff;
       taskOpts += '<option value="' + esc(t.id) + '">' + esc(label) + '</option>';
     });
     taskOpts += '</optgroup>';
@@ -3564,6 +3659,10 @@ function renderRunTask(el) {
             '<label for="run-task">Task</label>' +
             '<select id="run-task">' + taskOpts + '</select>' +
             '<div class="form-hint" id="task-info"></div>' +
+          '</div>' +
+          '<div class="task-description-panel" id="task-description">' +
+            '<span class="task-description-label">Task Brief</span>' +
+            '<div class="task-description-text" id="task-description-text"></div>' +
           '</div>' +
           '<div class="task-context-mini" id="task-context"></div>' +
         '</div>' +
@@ -3696,14 +3795,23 @@ function renderRunTask(el) {
     taskSel.addEventListener('change', function() {
       var t = tasks.find(function(tk) { return tk.id === taskSel.value; });
       var infoEl = document.getElementById('task-info');
+      var descEl = document.getElementById('task-description');
+      var descTextEl = document.getElementById('task-description-text');
       var ctxEl = document.getElementById('task-context');
       if (t) {
         if (infoEl) {
-          infoEl.textContent = (t.family || '') + (t.difficulty ? ' / ' + t.difficulty : '') + (t.title ? ' \u2014 ' + t.title : '');
+          var meta = [taskFamilyGroup(t)];
+          if (t.difficulty) meta.push(String(t.difficulty).toUpperCase());
+          if (t.title) meta.push(t.title);
+          infoEl.textContent = meta.join(' / ');
+        }
+        if (descEl && descTextEl) {
+          descTextEl.textContent = taskDescriptionText(t);
+          descEl.classList.toggle('visible', !!taskDescriptionText(t));
         }
         if (ctxEl) {
           var ctxLines = [];
-          if (t.family) ctxLines.push('<span class="ctx-label">Family:</span> ' + esc(t.family));
+          ctxLines.push('<span class="ctx-label">Family:</span> ' + esc(taskFamilyGroup(t)));
           if (t.difficulty) ctxLines.push('<span class="ctx-label">Difficulty:</span> ' + esc(t.difficulty));
           if (t.time_limit_sec) ctxLines.push('<span class="ctx-label">Time limit:</span> ' + t.time_limit_sec + 's');
           if (t.max_steps) ctxLines.push('<span class="ctx-label">Max steps:</span> ' + t.max_steps);
@@ -3713,6 +3821,10 @@ function renderRunTask(el) {
         }
       } else {
         if (infoEl) infoEl.textContent = '';
+        if (descEl && descTextEl) {
+          descTextEl.textContent = '';
+          descEl.classList.remove('visible');
+        }
         if (ctxEl) { ctxEl.innerHTML = ''; ctxEl.classList.remove('visible'); }
       }
     });
