@@ -8,12 +8,24 @@ import { sha256Hex } from "../utils/hashing.js";
 import { log } from "../utils/logger.js";
 const TASKS_DIR = join(process.cwd(), "tasks");
 /**
+ * Discover all family directories under tasks/.
+ */
+function discoverFamilies() {
+    try {
+        return readdirSync(TASKS_DIR, { withFileTypes: true })
+            .filter((d) => d.isDirectory())
+            .map((d) => d.name);
+    }
+    catch {
+        return [];
+    }
+}
+/**
  * Load a task manifest by task ID.
- * Looks in tasks/{family}/{taskId}/manifest.json
+ * Searches all family directories under tasks/.
  */
 export function loadManifest(taskId) {
-    // Search all family directories
-    const families = ["poison", "spec", "orchestration"];
+    const families = discoverFamilies();
     for (const family of families) {
         const manifestPath = join(TASKS_DIR, family, taskId, "manifest.json");
         try {
@@ -37,7 +49,7 @@ export function loadManifest(taskId) {
  * Resolve the repo path for a manifest.
  */
 export function resolveRepoPath(manifest) {
-    const families = ["poison", "spec", "orchestration"];
+    const families = discoverFamilies();
     for (const family of families) {
         const taskDir = join(TASKS_DIR, family, manifest.id);
         const repoPath = join(taskDir, "repo");
@@ -76,10 +88,11 @@ export function filterForAgent(manifest) {
 }
 /**
  * List all available task IDs.
+ * Scans all family directories dynamically.
  */
 export function listTasks(family) {
     const results = [];
-    const families = family ? [family] : ["poison", "spec", "orchestration"];
+    const families = family ? [family] : discoverFamilies();
     for (const f of families) {
         const familyDir = join(TASKS_DIR, f);
         try {

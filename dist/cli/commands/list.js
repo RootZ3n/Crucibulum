@@ -6,7 +6,11 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 function listConversationalTasks() {
     const tasksDir = resolve(process.env["CRUCIBULUM_TASKS_DIR"] ?? join(process.cwd(), "tasks"));
-    const convFamilies = ["identity", "truthfulness", "proactive", "personality", "adversarial_chat", "cost_efficiency"];
+    const convFamilies = [
+        "identity", "truthfulness", "proactive", "personality", "adversarial_chat", "cost_efficiency",
+        "classification", "code", "workflow", "instruction-obedience", "prompt-sensitivity",
+        "role-stress", "context-degradation", "reasoning", "summarization", "token-efficiency", "thinking-mode",
+    ];
     const results = [];
     for (const family of convFamilies) {
         const familyDir = join(tasksDir, family);

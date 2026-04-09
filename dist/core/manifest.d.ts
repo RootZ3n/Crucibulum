@@ -5,7 +5,7 @@
 import type { TaskManifest, AgentVisibleManifest } from "../adapters/base.js";
 /**
  * Load a task manifest by task ID.
- * Looks in tasks/{family}/{taskId}/manifest.json
+ * Searches all family directories under tasks/.
  */
 export declare function loadManifest(taskId: string): TaskManifest;
 /**
@@ -19,6 +19,7 @@ export declare function resolveRepoPath(manifest: TaskManifest): string;
 export declare function filterForAgent(manifest: TaskManifest): AgentVisibleManifest;
 /**
  * List all available task IDs.
+ * Scans all family directories dynamically.
  */
 export declare function listTasks(family?: string): Array<{
     id: string;

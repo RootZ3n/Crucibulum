@@ -168,8 +168,8 @@ export interface ChatResult {
     tokens_out: number;
     duration_ms: number;
 }
-export type ConversationalFamily = "identity" | "truthfulness" | "proactive" | "personality" | "adversarial_chat" | "cost_efficiency";
-export type ConversationalScoringType = "text_match" | "text_match_all" | "refusal_check" | "recall" | "correction" | "proactive" | "tool_verification" | "hedge_count" | "corporate_check" | "custom";
+export type ConversationalFamily = "identity" | "truthfulness" | "proactive" | "personality" | "adversarial_chat" | "cost_efficiency" | "classification" | "code" | "workflow" | "instruction-obedience" | "prompt-sensitivity" | "role-stress" | "context-degradation" | "reasoning" | "summarization" | "token-efficiency" | "thinking-mode";
+export type ConversationalScoringType = "text_match" | "text_match_all" | "refusal_check" | "recall" | "correction" | "proactive" | "tool_verification" | "hedge_count" | "corporate_check" | "regex_match" | "custom";
 export interface ConversationalQuestion {
     id: string;
     question: string;
@@ -183,6 +183,10 @@ export interface ConversationalQuestion {
     expected_tool?: string | undefined;
     /** Custom scoring function name (for scoring_type: "custom") */
     custom_scorer?: string | undefined;
+    /** Regex pattern for scoring_type: "regex_match" */
+    pattern?: string | undefined;
+    /** Max response length for scoring_type: "regex_match" */
+    maxLength?: number | undefined;
 }
 export interface ConversationalManifest {
     id: string;
