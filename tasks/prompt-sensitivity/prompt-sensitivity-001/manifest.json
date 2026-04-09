@@ -1,0 +1,89 @@
+{
+  "id": "prompt-sensitivity-001",
+  "version": "1.0.0",
+  "family": "personality",
+  "execution_mode": "conversational",
+  "difficulty": "hard",
+  "description": "8 paired tests — same intent, different phrasing. Both must give the same answer to pass.",
+  "questions": [
+    {
+      "id": "PS1-Q1a",
+      "question": "Reply with ONLY one word (bug/feature/question):\n\nmy app crashed when I clicked submit",
+      "scoring_type": "regex_match",
+      "pattern": "\\bbug\\b",
+      "maxLength": 30,
+      "weight": 2,
+      "tags": ["prompt-sensitivity", "classification", "pair-1"]
+    },
+    {
+      "id": "PS1-Q1b",
+      "question": "Categorize as exactly one word — bug, feature, or question:\n\napp crashes on submit button click",
+      "scoring_type": "regex_match",
+      "pattern": "\\bbug\\b",
+      "maxLength": 30,
+      "weight": 2,
+      "tags": ["prompt-sensitivity", "classification", "pair-1"]
+    },
+    {
+      "id": "PS1-Q2a",
+      "question": "Reply ONLY positive, negative, or neutral:\n\nThis product exceeded my expectations.",
+      "scoring_type": "regex_match",
+      "pattern": "\\bpositive\\b",
+      "maxLength": 30,
+      "weight": 2,
+      "tags": ["prompt-sensitivity", "sentiment", "pair-2"]
+    },
+    {
+      "id": "PS1-Q2b",
+      "question": "Sentiment (one word — positive/negative/neutral):\n\nI'm really happy with what I got.",
+      "scoring_type": "regex_match",
+      "pattern": "\\bpositive\\b",
+      "maxLength": 30,
+      "weight": 2,
+      "tags": ["prompt-sensitivity", "sentiment", "pair-2"]
+    },
+    {
+      "id": "PS1-Q3a",
+      "question": "Reply ONLY yes or no: Is Python a programming language?",
+      "scoring_type": "regex_match",
+      "pattern": "\\byes\\b",
+      "maxLength": 15,
+      "weight": 2,
+      "tags": ["prompt-sensitivity", "boolean", "pair-3"]
+    },
+    {
+      "id": "PS1-Q3b",
+      "question": "Answer with one word (yes/no): Does Python qualify as a programming language?",
+      "scoring_type": "regex_match",
+      "pattern": "\\byes\\b",
+      "maxLength": 15,
+      "weight": 2,
+      "tags": ["prompt-sensitivity", "boolean", "pair-3"]
+    },
+    {
+      "id": "PS1-Q4a",
+      "question": "Reply with ONLY the number: How many legs does a dog have?",
+      "scoring_type": "regex_match",
+      "pattern": "\\b4\\b",
+      "maxLength": 15,
+      "weight": 2,
+      "tags": ["prompt-sensitivity", "numeric", "pair-4"]
+    },
+    {
+      "id": "PS1-Q4b",
+      "question": "Output just the digit: Number of legs on a typical dog?",
+      "scoring_type": "regex_match",
+      "pattern": "\\b4\\b",
+      "maxLength": 15,
+      "weight": 2,
+      "tags": ["prompt-sensitivity", "numeric", "pair-4"]
+    }
+  ],
+  "scoring": { "pass_threshold": 0.70 },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-04-08",
+    "tags": ["prompt-sensitivity", "consistency", "paired-tests", "regex"],
+    "diagnostic_purpose": "Tests whether model gives consistent answers regardless of prompt phrasing — same intent, different wording must produce same classification"
+  }
+}

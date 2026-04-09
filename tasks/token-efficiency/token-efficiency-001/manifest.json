@@ -1,0 +1,62 @@
+{
+  "id": "token-efficiency-001",
+  "version": "1.0.0",
+  "family": "cost_efficiency",
+  "execution_mode": "conversational",
+  "difficulty": "medium",
+  "description": "5 identical medium-complexity prompts — tracks correctness, token usage, and cost efficiency per model",
+  "questions": [
+    {
+      "id": "TE1-Q1",
+      "question": "Reply with ONLY the number.\nA team has 18 queued tickets. They close 7, reopen 2 of those, then 5 new tickets arrive, then they close 2 more. How many tickets remain?",
+      "scoring_type": "regex_match",
+      "pattern": "^\\s*16\\s*$",
+      "maxLength": 12,
+      "weight": 2,
+      "tags": ["token-efficiency", "math", "conciseness"]
+    },
+    {
+      "id": "TE1-Q2",
+      "question": "Reply with ONLY the number.\nA team has 18 queued tickets. They close 7, reopen 2 of those, then 5 new tickets arrive, then they close 2 more. How many tickets remain?",
+      "scoring_type": "regex_match",
+      "pattern": "^\\s*16\\s*$",
+      "maxLength": 12,
+      "weight": 2,
+      "tags": ["token-efficiency", "math", "conciseness"]
+    },
+    {
+      "id": "TE1-Q3",
+      "question": "Reply with ONLY the number.\nA team has 18 queued tickets. They close 7, reopen 2 of those, then 5 new tickets arrive, then they close 2 more. How many tickets remain?",
+      "scoring_type": "regex_match",
+      "pattern": "^\\s*16\\s*$",
+      "maxLength": 12,
+      "weight": 2,
+      "tags": ["token-efficiency", "math", "conciseness"]
+    },
+    {
+      "id": "TE1-Q4",
+      "question": "Reply with ONLY the number.\nA team has 18 queued tickets. They close 7, reopen 2 of those, then 5 new tickets arrive, then they close 2 more. How many tickets remain?",
+      "scoring_type": "regex_match",
+      "pattern": "^\\s*16\\s*$",
+      "maxLength": 12,
+      "weight": 2,
+      "tags": ["token-efficiency", "math", "conciseness"]
+    },
+    {
+      "id": "TE1-Q5",
+      "question": "Reply with ONLY the number.\nA team has 18 queued tickets. They close 7, reopen 2 of those, then 5 new tickets arrive, then they close 2 more. How many tickets remain?",
+      "scoring_type": "regex_match",
+      "pattern": "^\\s*16\\s*$",
+      "maxLength": 12,
+      "weight": 2,
+      "tags": ["token-efficiency", "math", "conciseness"]
+    }
+  ],
+  "scoring": { "pass_threshold": 0.70 },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-04-08",
+    "tags": ["token-efficiency", "cost", "conciseness"],
+    "diagnostic_purpose": "Measures token efficiency by running identical prompts — compares correctness rate and output token count across models"
+  }
+}

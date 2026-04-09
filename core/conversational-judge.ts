@@ -182,6 +182,54 @@ function scoreHedgeCount(_q: ConversationalQuestion, response: string): { passed
   };
 }
 
+// ── Regex match scorer ───────────────────────────────────────────────────
+
+/** Strip markdown formatting: bold, italic, code, headers */
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/_([^_]+)_/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/^#+\s*/gm, "")
+    .trim();
+}
+
+function scoreRegexMatch(q: ConversationalQuestion, response: string): { passed: boolean; reason: string | null } {
+  const pattern = q.pattern;
+  if (!pattern) {
+    return { passed: false, reason: "No pattern defined for regex_match" };
+  }
+
+  const stripped = stripMarkdown(response.trim());
+
+  // Check maxLength if set
+  if (q.maxLength != null && stripped.length > q.maxLength) {
+    return {
+      passed: false,
+      reason: `Response too long: ${stripped.length} chars (max ${q.maxLength}). Got: ${stripped.slice(0, 100)}`,
+    };
+  }
+
+  // Test regex
+  try {
+    const re = new RegExp(pattern, "iu");
+    if (re.test(stripped)) {
+      return { passed: true, reason: null };
+    }
+    return {
+      passed: false,
+      reason: `Response did not match pattern /${pattern}/. Got: ${stripped.slice(0, 200)}`,
+    };
+  } catch (e) {
+    return {
+      passed: false,
+      reason: `Invalid regex pattern: ${pattern}`,
+    };
+  }
+}
+
 // ── Main scoring dispatcher ───────────────────────────────────────────────
 
 export function scoreConversationalQuestion(
@@ -237,6 +285,12 @@ export function scoreConversationalQuestion(
     }
     case "corporate_check": {
       const r = scoreCorporateCheck(question, response);
+      passed = r.passed;
+      failureReason = r.reason;
+      break;
+    }
+    case "regex_match": {
+      const r = scoreRegexMatch(question, response);
       passed = r.passed;
       failureReason = r.reason;
       break;

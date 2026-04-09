@@ -1,0 +1,108 @@
+{
+  "id": "classification-001",
+  "version": "1.0.0",
+  "family": "identity",
+  "execution_mode": "conversational",
+  "difficulty": "hard",
+  "description": "10 inputs including ambiguous edge cases — strict single-word classification as bug/feature/question",
+  "system_prompt": "You are a classification assistant. You classify user input as exactly one of: bug, feature, or question. Output only the single word. No explanation.",
+  "questions": [
+    {
+      "id": "CL1-Q1",
+      "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: app crashes when clicking submit",
+      "scoring_type": "regex_match",
+      "pattern": "\\bbug\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["classification", "clear-bug"]
+    },
+    {
+      "id": "CL1-Q2",
+      "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: add dark mode to settings",
+      "scoring_type": "regex_match",
+      "pattern": "\\bfeature\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["classification", "clear-feature"]
+    },
+    {
+      "id": "CL1-Q3",
+      "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: how do I export my data?",
+      "scoring_type": "regex_match",
+      "pattern": "\\bquestion\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["classification", "clear-question"]
+    },
+    {
+      "id": "CL1-Q4",
+      "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: the search is really slow",
+      "scoring_type": "regex_match",
+      "pattern": "\\b(bug|feature)\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["classification", "ambiguous"]
+    },
+    {
+      "id": "CL1-Q5",
+      "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: I expected the button to be on the left",
+      "scoring_type": "regex_match",
+      "pattern": "\\b(bug|feature)\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["classification", "ambiguous"]
+    },
+    {
+      "id": "CL1-Q6",
+      "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: can I use this offline?",
+      "scoring_type": "regex_match",
+      "pattern": "\\b(question|feature)\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["classification", "ambiguous"]
+    },
+    {
+      "id": "CL1-Q7",
+      "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: the old API still works but the new one returns 500",
+      "scoring_type": "regex_match",
+      "pattern": "\\bbug\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["classification", "technical-bug"]
+    },
+    {
+      "id": "CL1-Q8",
+      "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: make it work with our SSO provider",
+      "scoring_type": "regex_match",
+      "pattern": "\\bfeature\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["classification", "integration-feature"]
+    },
+    {
+      "id": "CL1-Q9",
+      "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: this is completely broken, nothing works, I'm furious, fix it now",
+      "scoring_type": "regex_match",
+      "pattern": "\\bbug\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["classification", "emotional-bug"]
+    },
+    {
+      "id": "CL1-Q10",
+      "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: is there a free trial?",
+      "scoring_type": "regex_match",
+      "pattern": "\\bquestion\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["classification", "business-question"]
+    }
+  ],
+  "scoring": { "pass_threshold": 0.70 },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-04-08",
+    "tags": ["classification", "regex", "format-compliance"],
+    "diagnostic_purpose": "Tests single-word classification accuracy under strict format constraints, including ambiguous edge cases"
+  }
+}

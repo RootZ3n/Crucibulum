@@ -1,0 +1,89 @@
+{
+  "id": "instruction-obedience-001",
+  "version": "1.0.0",
+  "family": "personality",
+  "execution_mode": "conversational",
+  "difficulty": "hard",
+  "description": "8 format tests — validates output shape compliance including word count, case, emoji, JSON, and list formatting",
+  "questions": [
+    {
+      "id": "IO1-Q1",
+      "question": "Reply in EXACTLY 3 words. What is the capital of France?",
+      "scoring_type": "regex_match",
+      "pattern": "^\\s*\\S+\\s+\\S+\\s+\\S+[.!?]?\\s*$",
+      "maxLength": 50,
+      "weight": 2,
+      "tags": ["instruction-obedience", "word-count"]
+    },
+    {
+      "id": "IO1-Q2",
+      "question": "Reply with ONLY a number. How many days in a week?",
+      "scoring_type": "regex_match",
+      "pattern": "\\b7\\b",
+      "maxLength": 20,
+      "weight": 2,
+      "tags": ["instruction-obedience", "number-only"]
+    },
+    {
+      "id": "IO1-Q3",
+      "question": "Reply in ALL UPPERCASE. What is 2+2?",
+      "scoring_type": "regex_match",
+      "pattern": "[A-Z]{2,}",
+      "maxLength": 40,
+      "weight": 2,
+      "tags": ["instruction-obedience", "case"]
+    },
+    {
+      "id": "IO1-Q4",
+      "question": "Reply with a SINGLE emoji representing happiness. Nothing else.",
+      "scoring_type": "regex_match",
+      "pattern": "[\\p{Emoji_Presentation}\\p{Emoji}\\u200d]",
+      "maxLength": 20,
+      "weight": 2,
+      "tags": ["instruction-obedience", "emoji"]
+    },
+    {
+      "id": "IO1-Q5",
+      "question": "Reply with ONLY the word 'confirmed'. No period, no quotes, nothing else.",
+      "scoring_type": "regex_match",
+      "pattern": "confirmed",
+      "maxLength": 30,
+      "weight": 2,
+      "tags": ["instruction-obedience", "exact-word"]
+    },
+    {
+      "id": "IO1-Q6",
+      "question": "Reply ONLY 'yes' or 'no': Is the sky blue?",
+      "scoring_type": "regex_match",
+      "pattern": "^\\s*(yes|no)[.!]?\\s*$",
+      "maxLength": 15,
+      "weight": 2,
+      "tags": ["instruction-obedience", "yes-no"]
+    },
+    {
+      "id": "IO1-Q7",
+      "question": "List exactly 3 colors. Use numbered format (1. 2. 3.). No explanation.",
+      "scoring_type": "regex_match",
+      "pattern": "1\\.",
+      "maxLength": 250,
+      "weight": 2,
+      "tags": ["instruction-obedience", "list-format"]
+    },
+    {
+      "id": "IO1-Q8",
+      "question": "Output ONLY valid JSON: {\"name\": \"Jeff\", \"age\": 42}. No markdown, no explanation.",
+      "scoring_type": "regex_match",
+      "pattern": "\\{[^}]*name[^}]*\\}",
+      "maxLength": 150,
+      "weight": 2,
+      "tags": ["instruction-obedience", "json-format"]
+    }
+  ],
+  "scoring": { "pass_threshold": 0.70 },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-04-08",
+    "tags": ["instruction-obedience", "format-compliance", "regex"],
+    "diagnostic_purpose": "Tests whether model follows strict output format instructions including word count, casing, emoji, exact-word, yes/no, numbered lists, and JSON"
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "id": "role-stress-001",
+  "version": "1.0.0",
+  "family": "personality",
+  "execution_mode": "conversational",
+  "difficulty": "hard",
+  "description": "10 rapid-fire single-word classification under consistency pressure — tests format discipline across volume",
+  "system_prompt": "You are a classification assistant. Classify each input as exactly one word: bug, feature, or question. No explanation, no punctuation, just the word.",
+  "questions": [
+    {
+      "id": "RS1-Q1",
+      "question": "One word only (bug/feature/question): page crashes on mobile",
+      "scoring_type": "regex_match",
+      "pattern": "\\bbug\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["role-stress", "bug"]
+    },
+    {
+      "id": "RS1-Q2",
+      "question": "One word only (bug/feature/question): add multi-language support",
+      "scoring_type": "regex_match",
+      "pattern": "\\bfeature\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["role-stress", "feature"]
+    },
+    {
+      "id": "RS1-Q3",
+      "question": "One word only (bug/feature/question): what formats do you support?",
+      "scoring_type": "regex_match",
+      "pattern": "\\bquestion\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["role-stress", "question"]
+    },
+    {
+      "id": "RS1-Q4",
+      "question": "One word only (bug/feature/question): uploaded files disappear after save",
+      "scoring_type": "regex_match",
+      "pattern": "\\bbug\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["role-stress", "bug"]
+    },
+    {
+      "id": "RS1-Q5",
+      "question": "One word only (bug/feature/question): integrate with Slack",
+      "scoring_type": "regex_match",
+      "pattern": "\\bfeature\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["role-stress", "feature"]
+    },
+    {
+      "id": "RS1-Q6",
+      "question": "One word only (bug/feature/question): is there a public API?",
+      "scoring_type": "regex_match",
+      "pattern": "\\bquestion\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["role-stress", "question"]
+    },
+    {
+      "id": "RS1-Q7",
+      "question": "One word only (bug/feature/question): login button does not respond to clicks",
+      "scoring_type": "regex_match",
+      "pattern": "\\bbug\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["role-stress", "bug"]
+    },
+    {
+      "id": "RS1-Q8",
+      "question": "One word only (bug/feature/question): add PDF export capability",
+      "scoring_type": "regex_match",
+      "pattern": "\\bfeature\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["role-stress", "feature"]
+    },
+    {
+      "id": "RS1-Q9",
+      "question": "One word only (bug/feature/question): where is the settings page?",
+      "scoring_type": "regex_match",
+      "pattern": "\\bquestion\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["role-stress", "question"]
+    },
+    {
+      "id": "RS1-Q10",
+      "question": "One word only (bug/feature/question): app freezes during file upload",
+      "scoring_type": "regex_match",
+      "pattern": "\\bbug\\b",
+      "maxLength": 30,
+      "weight": 1,
+      "tags": ["role-stress", "bug"]
+    }
+  ],
+  "scoring": { "pass_threshold": 0.70 },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-04-08",
+    "tags": ["role-stress", "consistency", "rapid-fire", "regex"],
+    "diagnostic_purpose": "Tests format discipline under rapid-fire volume — 10 consecutive single-word classifications to detect drift or elaboration"
+  }
+}

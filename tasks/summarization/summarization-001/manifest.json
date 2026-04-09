@@ -1,0 +1,41 @@
+{
+  "id": "summarization-001",
+  "version": "1.0.0",
+  "family": "truthfulness",
+  "execution_mode": "conversational",
+  "difficulty": "easy",
+  "description": "Tests structured extraction from messy real-world input — tech voice notes, meeting notes, DNS migration",
+  "questions": [
+    {
+      "id": "SM1-Q1",
+      "question": "Summarize this technician's voice note into a structured 3-line report listing each part replaced and its status.\n\nAudio transcript: 'So I got to the site around 8, the condenser fan motor was seized up, replaced that. Then the compressor contactor was pitted pretty bad so I swapped it. Oh and the run capacitor tested weak at 32 out of 45 microfarads, replaced that too. System's running now, pressures look good, about 118 over 225 on the R-410A. Told the customer we should check the TXV next visit.'",
+      "scoring_type": "text_match",
+      "pass_phrases": ["condenser", "contactor", "capacitor", "replaced"],
+      "weight": 3,
+      "tags": ["summarization", "field-service"]
+    },
+    {
+      "id": "SM1-Q2",
+      "question": "Extract ONLY the action items from these meeting notes. Number them. Include who is responsible and the deadline for each.\n\nMeeting: Q4 planning sync. We talked about the new dashboard — Sarah said it needs more testing before launch. Jake wants to move the deadline to Nov 15. Action items: (1) Sarah to finish load testing by Oct 30, (2) Jake to update the project timeline, (3) Marketing to prepare launch assets by Nov 10. Also discussed the holiday party but no decisions made.",
+      "scoring_type": "text_match",
+      "pass_phrases": ["Sarah", "Jake", "Marketing", "Oct", "Nov"],
+      "weight": 3,
+      "tags": ["summarization", "meeting-notes"]
+    },
+    {
+      "id": "SM1-Q3",
+      "question": "Explain this to a non-technical customer in 2-3 sentences. Use simple language — avoid jargon like DNS or TTL. Focus on: what happened, when it will be fixed, and whether any data was lost.\n\nTechnical details: Client's domain migration failed due to DNS propagation delays. The TTL on the old A record was set to 86400 (24h) and the registrar's nameservers hadn't refreshed. We flushed the local resolver cache and reduced TTL to 300. Full propagation expected within 48 hours. No data loss, site intermittently accessible during transition.",
+      "scoring_type": "text_match",
+      "pass_phrases": ["48 hour", "no data", "website"],
+      "weight": 3,
+      "tags": ["summarization", "simplification"]
+    }
+  ],
+  "scoring": { "pass_threshold": 0.70 },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-04-08",
+    "tags": ["summarization", "extraction", "real-world"],
+    "diagnostic_purpose": "Tests ability to extract structured information from messy real-world input including technical jargon and conversational transcripts"
+  }
+}

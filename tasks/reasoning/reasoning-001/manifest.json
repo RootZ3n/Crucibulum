@@ -1,0 +1,82 @@
+{
+  "id": "reasoning-001",
+  "version": "1.0.0",
+  "family": "truthfulness",
+  "execution_mode": "conversational",
+  "difficulty": "hard",
+  "description": "8 tests with verifiable correct answers — math, logic, code analysis, architecture",
+  "questions": [
+    {
+      "id": "RSN1-Q1",
+      "question": "Solve step by step, then give the final answer on its own line.\n\nA company has 3 departments. Engineering has 10 people. Sales has 2x Engineering (20 people). Marketing has half of Sales (10 people). Each person costs $80,000/year. What is the total annual payroll? Show your math.",
+      "scoring_type": "text_match",
+      "pass_phrases": ["3,200,000", "3200000", "3.2 million"],
+      "weight": 2,
+      "tags": ["reasoning", "math", "payroll"]
+    },
+    {
+      "id": "RSN1-Q2",
+      "question": "Solve this logic chain step by step:\n\nRule 1: if X then Y\nRule 2: if Y then not Z\nRule 3: if not Z then W\n\nGiven: X is true.\n\nWhat is the value of W? Show each step.",
+      "scoring_type": "text_match",
+      "pass_phrases": ["W is true", "true"],
+      "fail_phrases": ["W is false", "cannot determine"],
+      "weight": 2,
+      "tags": ["reasoning", "logic"]
+    },
+    {
+      "id": "RSN1-Q3",
+      "question": "What is the ONE critical bug in this function? Answer in one sentence.\n\ndef calculate_average(numbers):\n    total = sum(numbers)\n    return total / len(numbers)",
+      "scoring_type": "text_match",
+      "pass_phrases": ["empty", "zero", "division"],
+      "weight": 2,
+      "tags": ["reasoning", "code-analysis", "bug"]
+    },
+    {
+      "id": "RSN1-Q4",
+      "question": "System must handle 10,000 req/sec with 99.9% uptime. Options:\nA) Single powerful server ($5k/mo)\nB) Load-balanced cluster of 4 servers ($8k/mo)\nC) Serverless (pay per request)\n\nWhich option and why? Consider cost, reliability, and latency tradeoffs.",
+      "scoring_type": "text_match",
+      "pass_phrases": ["redundan", "availab", "failover", "reliab"],
+      "weight": 2,
+      "tags": ["reasoning", "architecture"]
+    },
+    {
+      "id": "RSN1-Q5",
+      "question": "Name the specific logical fallacy in one sentence: \"Our product has 10,000 users. Zero security complaints. Therefore it is secure.\"",
+      "scoring_type": "text_match",
+      "pass_phrases": ["absence", "evidence", "proof"],
+      "weight": 2,
+      "tags": ["reasoning", "fallacy"]
+    },
+    {
+      "id": "RSN1-Q6",
+      "question": "A developer added an in-memory cache: `cache = {}` with no TTL and no max size. API responses are cached by URL key. List exactly 3 problems, one per line.",
+      "scoring_type": "text_match",
+      "pass_phrases": ["memory", "grow", "stale"],
+      "weight": 2,
+      "tags": ["reasoning", "cache-analysis"]
+    },
+    {
+      "id": "RSN1-Q7",
+      "question": "Table has 1M rows with 20 individual single-column indexes. Queries always filter on 2-3 columns together. In 2 sentences, what is wrong and how to fix it?",
+      "scoring_type": "text_match",
+      "pass_phrases": ["composite", "index"],
+      "weight": 2,
+      "tags": ["reasoning", "database"]
+    },
+    {
+      "id": "RSN1-Q8",
+      "question": "A farmer has chickens and cows. Total animals: 15. Total legs: 44. How many chickens? Show your work, then state the final answer clearly.",
+      "scoring_type": "text_match",
+      "pass_phrases": ["8 chicken", "chickens"],
+      "weight": 2,
+      "tags": ["reasoning", "math", "word-problem"]
+    }
+  ],
+  "scoring": { "pass_threshold": 0.70 },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-04-08",
+    "tags": ["reasoning", "math", "logic", "code-analysis", "architecture"],
+    "diagnostic_purpose": "Tests verifiable reasoning across math, logic chains, code bug detection, architecture decisions, and logical fallacies"
+  }
+}

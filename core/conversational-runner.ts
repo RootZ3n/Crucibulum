@@ -50,7 +50,11 @@ const TASKS_DIR = resolve(process.env["CRUCIBULUM_TASKS_DIR"] ?? join(process.cw
 
 export function loadConversationalManifest(taskId: string): ConversationalManifest {
   // Search through task family directories
-  const families = ["identity", "truthfulness", "proactive", "personality", "adversarial_chat", "cost_efficiency"];
+  const families = [
+    "identity", "truthfulness", "proactive", "personality", "adversarial_chat", "cost_efficiency",
+    "classification", "code", "workflow", "instruction-obedience", "prompt-sensitivity",
+    "role-stress", "context-degradation", "reasoning", "summarization", "token-efficiency", "thinking-mode",
+  ];
   for (const family of families) {
     try {
       const manifestPath = join(TASKS_DIR, family, taskId, "manifest.json");

@@ -198,7 +198,18 @@ export type ConversationalFamily =
   | "proactive"
   | "personality"
   | "adversarial_chat"
-  | "cost_efficiency";
+  | "cost_efficiency"
+  | "classification"
+  | "code"
+  | "workflow"
+  | "instruction-obedience"
+  | "prompt-sensitivity"
+  | "role-stress"
+  | "context-degradation"
+  | "reasoning"
+  | "summarization"
+  | "token-efficiency"
+  | "thinking-mode";
 
 export type ConversationalScoringType =
   | "text_match"
@@ -210,6 +221,7 @@ export type ConversationalScoringType =
   | "tool_verification"
   | "hedge_count"
   | "corporate_check"
+  | "regex_match"
   | "custom";
 
 export interface ConversationalQuestion {
@@ -225,6 +237,10 @@ export interface ConversationalQuestion {
   expected_tool?: string | undefined;
   /** Custom scoring function name (for scoring_type: "custom") */
   custom_scorer?: string | undefined;
+  /** Regex pattern for scoring_type: "regex_match" */
+  pattern?: string | undefined;
+  /** Max response length for scoring_type: "regex_match" */
+  maxLength?: number | undefined;
 }
 
 export interface ConversationalManifest {

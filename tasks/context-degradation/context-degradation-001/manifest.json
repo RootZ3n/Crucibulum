@@ -1,0 +1,41 @@
+{
+  "id": "context-degradation-001",
+  "version": "1.0.0",
+  "family": "truthfulness",
+  "execution_mode": "conversational",
+  "difficulty": "easy",
+  "description": "Extracts specific facts from increasing context length — verifiable answers with growing noise",
+  "questions": [
+    {
+      "id": "CTX1-Q1",
+      "question": "Answer these 3 questions from the text. Reply with ONLY the answers, numbered 1-3.\n\n1. What is the API launch deadline?\n2. How many engineers will be hired?\n3. What endpoint is being deprecated?\n\nText: The team met Monday for Q3 planning. Key decisions: launch new API by August 15, hire two more engineers, deprecate v1 endpoint by September. PM will draft timeline, engineering scopes API changes, HR posts listings. Cloud migration budget approved.",
+      "scoring_type": "text_match",
+      "pass_phrases": ["August", "15", "two", "engineer"],
+      "weight": 3,
+      "tags": ["context-degradation", "short-context"]
+    },
+    {
+      "id": "CTX1-Q2",
+      "question": "Answer these 4 questions from the text. Reply with ONLY the answers, numbered 1-4.\n\n1. How many clients does the v1 API serve?\n2. What is the required notice period?\n3. What query language does the new API support besides REST?\n4. What is the p99 latency target?\n\nText: The team met Monday for Q3 planning. Key decisions: launch new API by August 15, hire two more engineers, deprecate v1 endpoint by September. PM drafts timeline, engineering scopes changes, HR posts listings. Budget approved.\n\nThe v1 API currently serves 200 clients. Migration requires 60-day notice. New API supports GraphQL and REST. Performance target: sub-100ms p99 latency. Security audit before launch. Load test at 10x traffic. Update docs for all endpoints. SDK updates for Python, TypeScript, Go.",
+      "scoring_type": "text_match",
+      "pass_phrases": ["200", "60", "GraphQL", "100ms"],
+      "weight": 3,
+      "tags": ["context-degradation", "medium-context"]
+    },
+    {
+      "id": "CTX1-Q3",
+      "question": "Extract ALL of these specific facts from the text below. List each one. Do not add anything not in the text.\n\n- API launch date\n- Number of v1 clients\n- Latency target\n- SDK languages mentioned\n- Number of engineers to hire\n\nThe team met Monday for Q3 planning. Launch new API by August 15. Hire two more engineers. Deprecate v1 by September.\n\nThe team met Monday for Q3 planning. Launch new API by August 15. Hire two more engineers. Deprecate v1 by September.\n\nThe team met Monday for Q3 planning. Launch new API by August 15. Hire two more engineers. Deprecate v1 by September.\n\nThe team met Monday for Q3 planning. Launch new API by August 15. Hire two more engineers. Deprecate v1 by September.\n\nThe team met Monday for Q3 planning. Launch new API by August 15. Hire two more engineers. Deprecate v1 by September.\n\nV1 serves 200 clients. 60-day notice for migration. New API: GraphQL + REST. Target: sub-100ms p99. Security audit required. 10x load test. SDK updates: Python, TypeScript, Go.\n\nAdditional noise: The office kitchen needs restocking. Parking lot will be resurfaced in October. The vending machine on floor 3 is broken. Team offsite planned for Q4.",
+      "scoring_type": "text_match",
+      "pass_phrases": ["August 15", "200 client", "100ms", "Python", "TypeScript"],
+      "weight": 3,
+      "tags": ["context-degradation", "long-context", "noisy"]
+    }
+  ],
+  "scoring": { "pass_threshold": 0.70 },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-04-08",
+    "tags": ["context-degradation", "fact-extraction", "noise-resistance"],
+    "diagnostic_purpose": "Tests ability to extract specific facts as context length and noise increase — detects attention degradation"
+  }
+}

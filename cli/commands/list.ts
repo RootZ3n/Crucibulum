@@ -8,7 +8,11 @@ import type { ConversationalManifest } from "../../adapters/base.js";
 
 function listConversationalTasks(): Array<{ id: string; difficulty: string; family: string; description: string }> {
   const tasksDir = resolve(process.env["CRUCIBULUM_TASKS_DIR"] ?? join(process.cwd(), "tasks"));
-  const convFamilies = ["identity", "truthfulness", "proactive", "personality", "adversarial_chat", "cost_efficiency"];
+  const convFamilies = [
+    "identity", "truthfulness", "proactive", "personality", "adversarial_chat", "cost_efficiency",
+    "classification", "code", "workflow", "instruction-obedience", "prompt-sensitivity",
+    "role-stress", "context-degradation", "reasoning", "summarization", "token-efficiency", "thinking-mode",
+  ];
   const results: Array<{ id: string; difficulty: string; family: string; description: string }> = [];
 
   for (const family of convFamilies) {

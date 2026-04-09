@@ -1,0 +1,62 @@
+{
+  "id": "thinking-mode-001",
+  "version": "1.0.0",
+  "family": "cost_efficiency",
+  "execution_mode": "conversational",
+  "difficulty": "medium",
+  "description": "5 identical prompts for thinking-mode delta comparison — runs with thinking enabled and disabled to compare score, token, and latency deltas",
+  "questions": [
+    {
+      "id": "TM1-Q1",
+      "question": "Reply with ONLY the number.\nA farmer has chickens and cows. Total animals: 15. Total legs: 44. How many chickens are there?",
+      "scoring_type": "regex_match",
+      "pattern": "^\\s*8\\s*$",
+      "maxLength": 12,
+      "weight": 2,
+      "tags": ["thinking-mode", "math", "reasoning"]
+    },
+    {
+      "id": "TM1-Q2",
+      "question": "Reply with ONLY the number.\nA farmer has chickens and cows. Total animals: 15. Total legs: 44. How many chickens are there?",
+      "scoring_type": "regex_match",
+      "pattern": "^\\s*8\\s*$",
+      "maxLength": 12,
+      "weight": 2,
+      "tags": ["thinking-mode", "math", "reasoning"]
+    },
+    {
+      "id": "TM1-Q3",
+      "question": "Reply with ONLY the number.\nA farmer has chickens and cows. Total animals: 15. Total legs: 44. How many chickens are there?",
+      "scoring_type": "regex_match",
+      "pattern": "^\\s*8\\s*$",
+      "maxLength": 12,
+      "weight": 2,
+      "tags": ["thinking-mode", "math", "reasoning"]
+    },
+    {
+      "id": "TM1-Q4",
+      "question": "Reply with ONLY the number.\nA farmer has chickens and cows. Total animals: 15. Total legs: 44. How many chickens are there?",
+      "scoring_type": "regex_match",
+      "pattern": "^\\s*8\\s*$",
+      "maxLength": 12,
+      "weight": 2,
+      "tags": ["thinking-mode", "math", "reasoning"]
+    },
+    {
+      "id": "TM1-Q5",
+      "question": "Reply with ONLY the number.\nA farmer has chickens and cows. Total animals: 15. Total legs: 44. How many chickens are there?",
+      "scoring_type": "regex_match",
+      "pattern": "^\\s*8\\s*$",
+      "maxLength": 12,
+      "weight": 2,
+      "tags": ["thinking-mode", "math", "reasoning"]
+    }
+  ],
+  "scoring": { "pass_threshold": 0.70 },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-04-08",
+    "tags": ["thinking-mode", "delta", "cost-efficiency"],
+    "diagnostic_purpose": "Measures thinking-mode delta by comparing score, token usage, and latency between thinking-enabled and thinking-disabled runs"
+  }
+}
