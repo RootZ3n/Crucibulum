@@ -2760,8 +2760,9 @@ const NAV_ITEMS = [
   { id: 'run',          label: 'Run Task',     key: '3' },
   { id: 'history',      label: 'History',      key: '4' },
   { id: 'receipts',     label: 'Receipts',     key: '5' },
-  { id: 'compare',      label: 'Compare',      key: '6', disabled: true, badge: 'v1.1' },
-  { id: 'bundles',      label: 'Bundles',      key: '7', disabled: true, badge: 'v1.1' },
+  { id: 'synthesis',    label: 'Synthesis',    key: '6' },
+  { id: 'compare',      label: 'Compare',      key: '7', disabled: true, badge: 'v1.1' },
+  { id: 'bundles',      label: 'Bundles',      key: '8', disabled: true, badge: 'v1.1' },
 ];
 
 /* =========================================================================
@@ -3110,6 +3111,10 @@ function renderView() {
     case 'receipts':
       title.textContent = 'Receipts';
       renderReceipts(content);
+      break;
+    case 'synthesis':
+      title.textContent = 'Synthesis — Veritor Mode';
+      renderSynthesis(content);
       break;
     default:
       title.textContent = 'Dashboard';
@@ -5587,6 +5592,225 @@ document.addEventListener('keydown', function(e) {
     return;
   }
 });
+
+/* =========================================================================
+   SYNTHESIS VIEW (Veritor Mode)
+   ========================================================================= */
+
+var synthesisResult = null;
+var synthesisLoading = false;
+var synthesisSelectedTask = '';
+
+function renderSynthesis(el) {
+  // Build task selector from available tasks
+  var taskGroups = {};
+  for (var i = 0; i < runs.length; i++) {
+    var r = runs[i];
+    if (!taskGroups[r.task_id]) taskGroups[r.task_id] = [];
+    taskGroups[r.task_id].push(r);
+  }
+
+  var taskOptions = Object.keys(taskGroups).map(function(tid) {
+    var group = taskGroups[tid];
+    var models = [];
+    var seen = {};
+    for (var j = 0; j < group.length; j++) {
+      var key = group[j].provider + '/' + group[j].model;
+      if (!seen[key]) { models.push(key); seen[key] = true; }
+    }
+    var sel = synthesisSelectedTask === tid ? ' selected' : '';
+    return '<option value="' + esc(tid) + '"' + sel + '>' + esc(tid) + ' (' + models.length + ' models, ' + group.length + ' runs)</option>';
+  }).join('');
+
+  var html = '<div class="content-constrained">' +
+    '<div class="panel" style="border-top:3px solid var(--teal)">' +
+      '<h3 style="margin:0 0 12px;font-size:15px;color:var(--teal)">Synthesis — Veritor Mode</h3>' +
+      '<p style="color:var(--text-muted);font-size:12px;margin-bottom:16px">Multi-model comparative analysis. Extracts claims, identifies consensus, detects outliers, compares against deterministic truth. Advisory only — never overrides judge.</p>' +
+      '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">' +
+        '<select id="synthesis-task" onchange="synthesisSelectedTask=this.value" style="background:var(--surface);border:1px solid var(--border-subtle);color:var(--text);padding:6px 10px;border-radius:6px;font-size:13px;min-width:260px">' +
+          '<option value="">Select task...</option>' +
+          taskOptions +
+        '</select>' +
+        '<button onclick="runSynthesisUI()" style="background:var(--teal);color:#081019;border:none;padding:8px 18px;border-radius:6px;font-weight:600;font-size:13px;cursor:pointer">' +
+          (synthesisLoading ? 'Analyzing...' : 'Run Synthesis') +
+        '</button>' +
+      '</div>' +
+    '</div>';
+
+  if (synthesisResult) {
+    html += renderSynthesisResult(synthesisResult);
+  }
+
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+async function runSynthesisUI() {
+  var taskId = document.getElementById('synthesis-task').value;
+  if (!taskId) return;
+  synthesisSelectedTask = taskId;
+  synthesisLoading = true;
+  renderView();
+  try {
+    var res = await api('POST', '/api/synthesis', { task_id: taskId });
+    synthesisResult = res.synthesis;
+  } catch (e) {
+    synthesisResult = { status: 'error', error: e.message };
+  }
+  synthesisLoading = false;
+  renderView();
+}
+
+function renderSynthesisResult(syn) {
+  if (syn.status === 'error') {
+    return '<div class="panel" style="border-top:3px solid var(--fail);margin-top:16px">' +
+      '<h4 style="margin:0 0 8px;color:var(--fail)">Error</h4>' +
+      '<p style="color:var(--text-muted)">' + esc(syn.error || 'Unknown error') + '</p></div>';
+  }
+
+  var html = '';
+
+  // ── Security Banner ──
+  if (syn.security && syn.security.injection_flags_count > 0) {
+    html += '<div class="panel" style="border-top:3px solid var(--fail);margin-top:16px">' +
+      '<h4 style="margin:0 0 4px;color:var(--fail)">Security Flags</h4>' +
+      '<p style="color:var(--text-muted);font-size:12px">' + syn.security.injection_flags_count + ' injection pattern(s) detected in ' + syn.security.flagged_run_ids.length + ' run(s). Inputs were sanitized before analysis.</p>' +
+    '</div>';
+  }
+
+  // ── Model Comparison Table ──
+  html += '<div class="panel" style="border-top:3px solid var(--active);margin-top:16px">' +
+    '<h4 style="margin:0 0 12px;font-size:14px">Model Comparison</h4>' +
+    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+    '<thead><tr style="border-bottom:1px solid var(--border-subtle);text-align:left">' +
+      '<th style="padding:6px 8px">Model</th>' +
+      '<th style="padding:6px 8px">Provider</th>' +
+      '<th style="padding:6px 8px">Pass</th>' +
+      '<th style="padding:6px 8px">Score</th>' +
+      '<th style="padding:6px 8px">Claims</th>' +
+      '<th style="padding:6px 8px">Failure Mode</th>' +
+    '</tr></thead><tbody>';
+
+  for (var m = 0; m < syn.models.length; m++) {
+    var model = syn.models[m];
+    var passStyle = model.passed ? 'color:var(--pass)' : 'color:var(--fail)';
+    var scoreVal = Math.round(model.score * 100);
+    var scoreStyle = scoreVal >= 80 ? 'color:var(--pass)' : scoreVal >= 60 ? 'color:var(--warn)' : 'color:var(--fail)';
+    html += '<tr style="border-bottom:1px solid var(--border-subtle)">' +
+      '<td style="padding:6px 8px;font-family:var(--font-mono)">' + esc(model.model) + '</td>' +
+      '<td style="padding:6px 8px;color:var(--text-muted)">' + esc(model.provider) + '</td>' +
+      '<td style="padding:6px 8px;' + passStyle + '">' + (model.passed ? 'PASS' : 'FAIL') + '</td>' +
+      '<td style="padding:6px 8px;' + scoreStyle + ';font-family:var(--font-mono)">' + scoreVal + '%</td>' +
+      '<td style="padding:6px 8px;font-family:var(--font-mono)">' + model.claims.length + '</td>' +
+      '<td style="padding:6px 8px;color:var(--text-muted);font-size:11px">' + esc(model.failure_mode || 'none') + '</td>' +
+    '</tr>';
+  }
+  html += '</tbody></table></div></div>';
+
+  // ── Consensus Groups ──
+  if (syn.consensus.length > 0) {
+    html += '<div class="panel" style="border-top:3px solid var(--pass);margin-top:16px">' +
+      '<h4 style="margin:0 0 12px;font-size:14px;color:var(--pass)">Consensus</h4>';
+    for (var c = 0; c < syn.consensus.length; c++) {
+      var grp = syn.consensus[c];
+      html += '<div style="margin-bottom:8px;padding:6px 10px;background:var(--void);border-radius:6px;border-left:3px solid var(--pass)">' +
+        '<div style="font-family:var(--font-mono);font-size:12px;color:var(--text)">' + esc(grp.claim) + '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + grp.count + ' models: ' + grp.supporting_models.join(', ') + '</div>' +
+      '</div>';
+    }
+    html += '</div>';
+  }
+
+  // ── Outliers ──
+  if (syn.outliers.length > 0) {
+    html += '<div class="panel" style="border-top:3px solid var(--warn);margin-top:16px">' +
+      '<h4 style="margin:0 0 12px;font-size:14px;color:var(--warn)">Outliers</h4>';
+    for (var o = 0; o < syn.outliers.length; o++) {
+      var out = syn.outliers[o];
+      html += '<div style="margin-bottom:6px;padding:6px 10px;background:var(--void);border-radius:6px;border-left:3px solid var(--warn)">' +
+        '<div style="font-family:var(--font-mono);font-size:12px;color:var(--text)">' + esc(out.claim) + '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Model: ' + esc(out.model) + '</div>' +
+      '</div>';
+    }
+    html += '</div>';
+  }
+
+  // ── Disagreements ──
+  if (syn.disagreements.length > 0) {
+    html += '<div class="panel" style="border-top:3px solid var(--pink);margin-top:16px">' +
+      '<h4 style="margin:0 0 12px;font-size:14px;color:var(--pink)">Disagreements</h4>';
+    for (var d = 0; d < syn.disagreements.length; d++) {
+      var dis = syn.disagreements[d];
+      html += '<div style="margin-bottom:10px;padding:8px 10px;background:var(--void);border-radius:6px;border-left:3px solid var(--pink)">' +
+        '<div style="font-weight:600;font-size:12px;margin-bottom:4px">' + esc(dis.topic) + '</div>';
+      for (var p = 0; p < dis.positions.length; p++) {
+        var pos = dis.positions[p];
+        var posColor = pos.claim === 'pass' ? 'var(--pass)' : pos.claim === 'fail' ? 'var(--fail)' : 'var(--text-muted)';
+        html += '<div style="font-size:11px;margin-left:8px;color:' + posColor + '">' +
+          esc(pos.claim) + ' <span style="color:var(--text-muted)">(' + pos.models.join(', ') + ')</span></div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  // ── Truth Alignment ──
+  var ta = syn.truth_alignment;
+  var antiClass = ta.anti_consensus ? 'var(--fail)' : 'var(--teal)';
+  html += '<div class="panel" style="border-top:3px solid ' + antiClass + ';margin-top:16px">' +
+    '<h4 style="margin:0 0 12px;font-size:14px;color:' + antiClass + '">Truth Alignment</h4>' +
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px">' +
+      '<div style="text-align:center;padding:10px;background:var(--void);border-radius:6px">' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Consensus</div>' +
+        '<div style="font-size:18px;font-weight:600;color:' + (ta.consensus_correct ? 'var(--pass)' : 'var(--fail)') + '">' + (ta.consensus_correct ? 'Correct' : 'Incorrect') + '</div>' +
+      '</div>' +
+      '<div style="text-align:center;padding:10px;background:var(--void);border-radius:6px">' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Outlier</div>' +
+        '<div style="font-size:18px;font-weight:600;color:' + (ta.outlier_correct ? 'var(--pass)' : 'var(--fail)') + '">' + (ta.outlier_correct ? 'Correct' : 'Incorrect') + '</div>' +
+      '</div>' +
+      '<div style="text-align:center;padding:10px;background:var(--void);border-radius:6px">' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Anti-Consensus</div>' +
+        '<div style="font-size:18px;font-weight:600;color:' + (ta.anti_consensus ? 'var(--fail)' : 'var(--pass)') + '">' + (ta.anti_consensus ? 'DETECTED' : 'None') + '</div>' +
+      '</div>' +
+    '</div>';
+
+  if (ta.anti_consensus) {
+    html += '<div style="background:rgba(255,85,85,0.08);border:1px solid var(--fail);border-radius:6px;padding:10px;margin-bottom:12px">' +
+      '<div style="font-weight:600;font-size:12px;color:var(--fail);margin-bottom:4px">Anti-Consensus Alert</div>' +
+      '<div style="font-size:12px;color:var(--text-muted)">Majority agreed but was wrong. Minority/outlier model performed better against deterministic truth.</div>' +
+    '</div>';
+  }
+
+  html += '<div style="font-size:12px;color:var(--text-muted);white-space:pre-wrap">' + esc(ta.notes) + '</div></div>';
+
+  // ── Recommendation ──
+  if (syn.recommendation) {
+    var rec = syn.recommendation;
+    var confColor = rec.confidence >= 0.7 ? 'var(--pass)' : rec.confidence >= 0.5 ? 'var(--warn)' : 'var(--text-muted)';
+    html += '<div class="panel" style="border-top:3px solid var(--active);margin-top:16px">' +
+      '<h4 style="margin:0 0 12px;font-size:14px">Recommendation</h4>' +
+      '<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">' +
+        (rec.best_model ? '<div style="font-family:var(--font-mono);font-size:16px;font-weight:600;color:var(--active)">' + esc(rec.best_model) + '</div>' : '') +
+        '<div style="font-size:13px;color:' + confColor + ';font-weight:600">' + Math.round(rec.confidence * 100) + '% confidence</div>' +
+      '</div>' +
+      '<div style="margin-top:8px;font-size:12px;color:var(--text-muted)">' + esc(rec.reason) + '</div>' +
+    '</div>';
+  }
+
+  // ── Metadata ──
+  html += '<div class="panel" style="margin-top:16px;border-top:1px solid var(--border-subtle)">' +
+    '<div style="display:flex;gap:24px;font-size:11px;color:var(--text-muted);flex-wrap:wrap">' +
+      '<span>Task: ' + esc(syn.task_id) + '</span>' +
+      '<span>Models: ' + syn.models.length + '</span>' +
+      '<span>Runs: ' + syn.run_ids.length + '</span>' +
+      '<span>Consensus groups: ' + syn.consensus.length + '</span>' +
+      '<span>Outliers: ' + syn.outliers.length + '</span>' +
+      '<span>Disagreements: ' + syn.disagreements.length + '</span>' +
+      '<span>Timestamp: ' + esc(syn.timestamp || '') + '</span>' +
+    '</div></div>';
+
+  return html;
+}
 
 /* =========================================================================
    INIT

@@ -476,4 +476,76 @@ export interface EvidenceBundle {
       divergence_note: string | null;
     };
   };
+  synthesis?: SynthesisReport | undefined;
+}
+
+// ── Synthesis Layer (Veritor Mode) ────────────────────────────────────────
+
+export interface SynthesisClaim {
+  id: string;
+  text: string;
+  normalized: string;
+  source: "output" | "verification" | "diagnosis";
+}
+
+export interface SynthesisModelEntry {
+  provider: string;
+  model: string;
+  run_id: string;
+  claims: SynthesisClaim[];
+  passed: boolean;
+  score: number;
+  failure_mode: string | null;
+}
+
+export interface ConsensusGroup {
+  claim: string;
+  supporting_models: string[];
+  count: number;
+}
+
+export interface OutlierGroup {
+  claim: string;
+  model: string;
+  run_id: string;
+}
+
+export interface Disagreement {
+  topic: string;
+  positions: Array<{ claim: string; models: string[] }>;
+}
+
+export interface TruthAlignment {
+  consensus_correct: boolean;
+  outlier_correct: boolean;
+  anti_consensus: boolean;
+  notes: string;
+}
+
+export interface SynthesisRecommendation {
+  best_model: string | null;
+  reason: string;
+  confidence: number;
+}
+
+export interface SynthesisSecurityReport {
+  synthesis_input_scanned: boolean;
+  synthesis_input_sanitized: boolean;
+  injection_flags_count: number;
+  flagged_run_ids: string[];
+}
+
+export interface SynthesisReport {
+  status: "not_run" | "completed" | "error";
+  task_id: string;
+  run_ids: string[];
+  models: SynthesisModelEntry[];
+  consensus: ConsensusGroup[];
+  outliers: OutlierGroup[];
+  disagreements: Disagreement[];
+  truth_alignment: TruthAlignment;
+  recommendation: SynthesisRecommendation | null;
+  security: SynthesisSecurityReport;
+  timestamp: string;
+  error?: string | undefined;
 }

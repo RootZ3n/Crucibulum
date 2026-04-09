@@ -14,6 +14,7 @@ import { summarizeBundle, countRepeatRuns, getRelatedBundles, summarizeRunSet } 
 import { readCrucibleLink, writeCrucibleLink } from "./validation-links.js";
 import { log } from "../utils/logger.js";
 import { storeScores, queryScores, getLeaderboard } from "../core/score-store.js";
+import { runSynthesis } from "../core/synthesis.js";
 const PORT = parseInt(process.env["CRUCIBULUM_PORT"] ?? "18795", 10);
 const RUNS_DIR = process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs");
 const UI_PATH = join(import.meta.dirname, "..", "..", "ui", "index.html");
@@ -747,6 +748,184 @@ async function handleRequest(req, res) {
         if (path === "/api/scores/leaderboard" && method === "GET") {
             const entries = getLeaderboard();
             sendJSON(res, 200, { leaderboard: entries });
+            return;
+        }
+        // ── Synthesis endpoints ──────────────────────────────────────────────
+        if (path === "/api/synthesis" && method === "POST") {
+            const body = JSON.parse(await readBody(req) || "{}");
+            let bundles;
+            if (body.run_ids && body.run_ids.length > 0) {
+                // Load specific bundles by ID
+                bundles = [];
+                for (const id of body.run_ids) {
+                    const bundle = getBundleById(id);
+                    if (!bundle) {
+                        sendJSON(res, 404, { error: `Run not found: ${id}` });
+                        return;
+                    }
+                    bundles.push(bundle);
+                }
+            }
+            else if (body.task_id) {
+                // Load all bundles for a task
+                const allBundles = loadBundles();
+                bundles = allBundles.filter(b => b.task.id === body.task_id);
+                if (bundles.length === 0) {
+                    sendJSON(res, 404, { error: `No runs found for task: ${body.task_id}` });
+                    return;
+                }
+            }
+            else {
+                sendJSON(res, 400, { error: "run_ids or task_id is required" });
+                return;
+            }
+            // Validate same task
+            const taskIds = new Set(bundles.map(b => b.task.id));
+            if (taskIds.size > 1) {
+                sendJSON(res, 400, { error: `All runs must be for the same task. Found: ${Array.from(taskIds).join(", ")}` });
+                return;
+            }
+            const synthesis = runSynthesis(bundles);
+            sendJSON(res, 200, { synthesis });
+            return;
+        }
+        // ── Batch multi-model run ────────────────────────────────────────────
+        if (path === "/api/run-batch" && method === "POST") {
+            const body = JSON.parse(await readBody(req) || "{}");
+            if (!body.task || !body.models || body.models.length < 2) {
+                sendJSON(res, 400, { error: "task and at least 2 models are required" });
+                return;
+            }
+            const batchId = `batch_${Date.now().toString(36)}`;
+            const autoSynthesis = body.auto_synthesis !== false; // default true
+            const reviewConfig = {
+                secondOpinion: {
+                    enabled: !!(body.secondOpinion?.enabled),
+                    provider: body.secondOpinion?.provider ?? "",
+                    model: body.secondOpinion?.model ?? "",
+                },
+                qcReview: {
+                    enabled: !!(body.qcReview?.enabled),
+                    provider: body.qcReview?.provider ?? "",
+                    model: body.qcReview?.model ?? "",
+                },
+            };
+            // Track batch in active runs
+            activeRuns.set(batchId, {
+                id: batchId,
+                status: "running",
+                events: [],
+                request: {
+                    task: body.task,
+                    adapter: "batch",
+                    provider: null,
+                    model: body.models.map(m => m.model).join(","),
+                    count: body.models.length,
+                    judge: DETERMINISTIC_JUDGE_METADATA,
+                },
+            });
+            sendJSON(res, 202, {
+                ok: true,
+                batch_id: batchId,
+                total_models: body.models.length,
+                auto_synthesis: autoSynthesis,
+                judge: DETERMINISTIC_JUDGE_METADATA,
+            });
+            // Execute sequentially in background
+            void (async () => {
+                const completedBundles = [];
+                try {
+                    for (let i = 0; i < body.models.length; i++) {
+                        const modelSpec = body.models[i];
+                        const adapterId = modelSpec.adapter || modelSpec.providerId || "";
+                        if (!adapterId)
+                            continue;
+                        broadcastSSE(batchId, "step", {
+                            type: "task_start",
+                            detail: `Model ${i + 1}/${body.models.length}: ${adapterId}/${modelSpec.model}`,
+                        });
+                        try {
+                            const adapterInstance = await instantiateAdapterForRun({
+                                adapter: adapterId,
+                                model: modelSpec.model,
+                                provider: modelSpec.provider ?? null,
+                            });
+                            const health = await adapterInstance.adapter.healthCheck();
+                            if (!health.ok) {
+                                broadcastSSE(batchId, "step", {
+                                    type: "error",
+                                    detail: `${adapterId}/${modelSpec.model}: unavailable`,
+                                });
+                                await adapterInstance.adapter.teardown();
+                                continue;
+                            }
+                            const result = await runTask({
+                                taskId: body.task,
+                                adapter: adapterInstance.adapter,
+                                model: modelSpec.model,
+                                keepWorkspace: false,
+                                reviewConfig,
+                            });
+                            storeBundle(result.bundle);
+                            completedBundles.push(result.bundle);
+                            broadcastSSE(batchId, "step", {
+                                type: "task_complete",
+                                detail: `${adapterId}/${modelSpec.model}: ${result.bundle.score.pass ? "PASS" : "FAIL"} (${Math.round(result.bundle.score.total * 100)}%)`,
+                            });
+                            await adapterInstance.adapter.teardown();
+                        }
+                        catch (err) {
+                            broadcastSSE(batchId, "step", {
+                                type: "error",
+                                detail: `${adapterId}/${modelSpec.model}: ${String(err).slice(0, 200)}`,
+                            });
+                        }
+                    }
+                    // Auto-synthesis if enabled and we have 2+ completed bundles
+                    let synthesis = null;
+                    if (autoSynthesis && completedBundles.length >= 2) {
+                        synthesis = runSynthesis(completedBundles);
+                        broadcastSSE(batchId, "step", {
+                            type: "task_complete",
+                            detail: `Synthesis complete: ${synthesis.consensus.length} consensus, ${synthesis.outliers.length} outliers, anti-consensus: ${synthesis.truth_alignment.anti_consensus}`,
+                        });
+                    }
+                    const active = activeRuns.get(batchId);
+                    if (active) {
+                        active.status = "complete";
+                        active.bundles = completedBundles;
+                        if (completedBundles.length > 0) {
+                            active.bundle = completedBundles[completedBundles.length - 1];
+                            active.aggregate = summarizeRunSet(completedBundles);
+                        }
+                    }
+                    broadcastSSE(batchId, "complete", {
+                        batch_id: batchId,
+                        bundle_ids: completedBundles.map(b => b.bundle_id),
+                        total: body.models.length,
+                        completed: completedBundles.length,
+                        synthesis,
+                    });
+                }
+                catch (err) {
+                    const active = activeRuns.get(batchId);
+                    if (active) {
+                        active.status = "error";
+                        active.error = String(err);
+                    }
+                    broadcastSSE(batchId, "error", { error: String(err) });
+                }
+                finally {
+                    const clients = sseClients.get(batchId) ?? [];
+                    for (const client of clients) {
+                        try {
+                            client.end();
+                        }
+                        catch { /* ignore */ }
+                    }
+                    sseClients.delete(batchId);
+                }
+            })();
             return;
         }
         sendJSON(res, 404, { error: "Not found" });
