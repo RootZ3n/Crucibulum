@@ -45,7 +45,6 @@ function getDb() {
     log("info", "score-store", `Score store initialized at ${DB_PATH}`);
     return db;
 }
-// ── Store scores ─────────────────────────────────────────────────────────
 export function storeScores(scores, source, runId) {
     const database = getDb();
     const errors = [];
@@ -92,7 +91,7 @@ export function queryScores(query) {
     }
     const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const limit = Math.min(query.limit ?? 100, 1000);
-    const rows = database.prepare(`SELECT * FROM scores ${where} ORDER BY timestamp DESC LIMIT ?`).all(...params, limit);
+    const rows = database.prepare(`SELECT modelId, taskId, family, category, passed, score, rawScore, duration_ms, tokensUsed, costEstimate, anomalyFlags, timestamp, metadata FROM scores ${where} ORDER BY timestamp DESC LIMIT ?`).all(...params, limit);
     return rows.map((r) => ({
         modelId: r.modelId,
         taskId: r.taskId,
@@ -109,21 +108,32 @@ export function queryScores(query) {
         metadata: r.metadata ? JSON.parse(r.metadata) : undefined,
     }));
 }
-// ── Leaderboard ──────────────────────────────────────────────────────────
 const WEIGHTS = {
-    A: 0.20, B: 0.25, C: 0.25, D: 0.10, E: 0.05, F: 0.05, G: 0.05, H: 0.05, I: 0.05,
+    A: 0.20,
+    B: 0.25,
+    C: 0.25,
+    D: 0.10,
+    E: 0.05,
+    F: 0.05,
+    G: 0.05,
+    H: 0.05,
+    I: 0.05,
 };
-export function getLeaderboard() {
+export function getLeaderboard(families) {
     const database = getDb();
-    // Get average score per model per family
+    const filteredFamilies = Array.isArray(families) && families.length > 0
+        ? [...new Set(families)]
+        : null;
+    const placeholders = filteredFamilies?.map(() => "?").join(", ") ?? "";
+    const where = filteredFamilies ? `WHERE family IN (${placeholders})` : "";
     const rows = database.prepare(`
     SELECT modelId, family, AVG(score) as avg_score, COUNT(*) as total_runs,
-           MAX(timestamp) as last_run, source
+           MAX(timestamp) as last_run, MAX(source) as source
     FROM scores
+    ${where}
     GROUP BY modelId, family
     ORDER BY modelId, family
-  `).all();
-    // Group by model
+  `).all(...(filteredFamilies ?? []));
     const models = new Map();
     for (const row of rows) {
         if (!models.has(row.modelId)) {
@@ -136,18 +146,18 @@ export function getLeaderboard() {
             model.lastRun = row.last_run;
         model.source = row.source;
     }
-    // Compute weighted composite
+    const activeFamilies = filteredFamilies ?? Object.keys(WEIGHTS);
     const entries = [];
     for (const [modelId, data] of models) {
         let weightedSum = 0;
         let weightTotal = 0;
         const familyScores = { A: null, B: null, C: null, D: null, E: null, F: null, G: null, H: null, I: null };
-        for (const [family, weight] of Object.entries(WEIGHTS)) {
+        for (const family of Object.keys(WEIGHTS)) {
             const score = data.families[family];
             familyScores[family] = score ?? null;
-            if (score !== undefined) {
-                weightedSum += score * weight;
-                weightTotal += weight;
+            if (score !== undefined && activeFamilies.includes(family)) {
+                weightedSum += score * WEIGHTS[family];
+                weightTotal += WEIGHTS[family];
             }
         }
         const composite = weightTotal > 0 ? Math.round((weightedSum / weightTotal) * 100) / 100 : 0;
@@ -162,11 +172,5 @@ export function getLeaderboard() {
     }
     entries.sort((a, b) => b.composite - a.composite);
     return entries;
-}
-export function closeScoreStore() {
-    if (db) {
-        db.close();
-        db = null;
-    }
 }
 //# sourceMappingURL=score-store.js.map

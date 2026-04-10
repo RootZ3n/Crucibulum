@@ -1,3 +1,4 @@
+import 'dotenv/config';
 /**
  * Crucibulum — API Server
  * Serves the web UI and structured evaluation APIs.

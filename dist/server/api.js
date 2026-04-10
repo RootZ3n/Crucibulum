@@ -1,3 +1,4 @@
+import 'dotenv/config';
 /**
  * Crucibulum — API Server
  * Serves the web UI and structured evaluation APIs.
@@ -18,6 +19,17 @@ import { runSynthesis } from "../core/synthesis.js";
 const PORT = parseInt(process.env["CRUCIBULUM_PORT"] ?? "18795", 10);
 const RUNS_DIR = process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs");
 const UI_PATH = join(import.meta.dirname, "..", "..", "ui", "index.html");
+const SCORE_FAMILY_TO_TASK_FAMILIES = {
+    A: ["poison_localization"],
+    B: ["spec_discipline"],
+    C: ["orchestration"],
+    D: ["identity"],
+    E: ["truthfulness"],
+    F: ["cost_efficiency"],
+    G: ["personality"],
+    H: [],
+    I: [],
+};
 const activeRuns = new Map();
 const sseClients = new Map();
 const activeSuiteRuns = new Map();
@@ -31,9 +43,8 @@ function broadcastSSE(runId, event, data) {
         catch { /* ignore */ }
     }
     const run = activeRuns.get(runId);
-    if (run) {
+    if (run)
         run.events.push(msg);
-    }
 }
 function sendJSON(res, status, data) {
     res.writeHead(status, {
@@ -68,22 +79,40 @@ function loadBundles() {
 }
 function getBundleById(id) {
     const filePath = join(RUNS_DIR, `${id}.json`);
-    if (!existsSync(filePath)) {
+    if (!existsSync(filePath))
         return null;
-    }
     return JSON.parse(readFileSync(filePath, "utf-8"));
+}
+function parseFamiliesParam(url) {
+    const raw = (url.searchParams.get("families") ?? "").trim();
+    if (!raw)
+        return null;
+    const valid = new Set(["A", "B", "C", "D", "E", "F", "G", "H", "I"]);
+    const families = raw.split(",").map((item) => item.trim().toUpperCase()).filter((item) => valid.has(item));
+    return families.length > 0 ? [...new Set(families)] : null;
+}
+function getTaskFamiliesForScoreFamilies(families) {
+    if (!families || families.length === 0)
+        return null;
+    return new Set(families.flatMap((family) => SCORE_FAMILY_TO_TASK_FAMILIES[family] ?? []));
+}
+function filterBundlesByFamilies(bundles, families) {
+    const taskFamilies = getTaskFamiliesForScoreFamilies(families);
+    if (!taskFamilies || taskFamilies.size === 0)
+        return bundles;
+    return bundles.filter((bundle) => taskFamilies.has(bundle.task.family));
 }
 function getStats(bundles) {
     if (bundles.length === 0) {
         return { total_runs: 0, pass_rate: 0, avg_score: 0, avg_time_sec: 0, total_tokens: 0, total_cost_usd: 0 };
     }
-    const passed = bundles.filter((b) => b.score.pass).length;
-    const avgScore = bundles.reduce((s, b) => s + b.score.total, 0) / bundles.length;
-    const avgTime = bundles.reduce((s, b) => {
-        return s + (new Date(b.environment.timestamp_end).getTime() - new Date(b.environment.timestamp_start).getTime()) / 1000;
+    const passed = bundles.filter((bundle) => bundle.score.pass).length;
+    const avgScore = bundles.reduce((sum, bundle) => sum + bundle.score.total, 0) / bundles.length;
+    const avgTime = bundles.reduce((sum, bundle) => {
+        return sum + (new Date(bundle.environment.timestamp_end).getTime() - new Date(bundle.environment.timestamp_start).getTime()) / 1000;
     }, 0) / bundles.length;
-    const totalTokens = bundles.reduce((s, b) => s + b.usage.tokens_in + b.usage.tokens_out, 0);
-    const totalCost = bundles.reduce((s, b) => s + b.usage.estimated_cost_usd, 0);
+    const totalTokens = bundles.reduce((sum, bundle) => sum + bundle.usage.tokens_in + bundle.usage.tokens_out, 0);
+    const totalCost = bundles.reduce((sum, bundle) => sum + bundle.usage.estimated_cost_usd, 0);
     return {
         total_runs: bundles.length,
         pass_rate: Math.round((passed / bundles.length) * 100),
@@ -172,10 +201,7 @@ async function handleRequest(req, res) {
         }
         if (path === "/api/adapters" && method === "GET") {
             const adapters = await getAdapterCatalog();
-            sendJSON(res, 200, {
-                adapters,
-                judge: DETERMINISTIC_JUDGE_METADATA,
-            });
+            sendJSON(res, 200, { adapters, judge: DETERMINISTIC_JUDGE_METADATA });
             return;
         }
         if (path === "/api/models" && method === "GET") {
@@ -188,11 +214,13 @@ async function handleRequest(req, res) {
             sendJSON(res, 200, catalog);
             return;
         }
-        if (path === "/api/runs" && method === "GET") {
-            const bundles = loadBundles();
+        if ((path === "/api/runs" || path === "/runs") && method === "GET") {
+            const families = parseFamiliesParam(url);
+            const allBundles = loadBundles();
+            const bundles = filterBundlesByFamilies(allBundles, families);
             bundles.sort((a, b) => new Date(b.environment.timestamp_start).getTime() - new Date(a.environment.timestamp_start).getTime());
             const runs = bundles.map((bundle) => {
-                const summary = bundleSummary(bundle, bundles);
+                const summary = bundleSummary(bundle, allBundles);
                 return {
                     bundle_id: bundle.bundle_id,
                     bundle_hash: bundle.bundle_hash,
@@ -226,7 +254,7 @@ async function handleRequest(req, res) {
                     review_security: summary.review_security,
                 };
             });
-            sendJSON(res, 200, { runs });
+            sendJSON(res, 200, { runs, families });
             return;
         }
         if (path.startsWith("/api/runs/") && path.endsWith("/summary") && method === "GET") {
@@ -251,16 +279,20 @@ async function handleRequest(req, res) {
             sendJSON(res, 200, { bundle, summary: bundleSummary(bundle, bundles) });
             return;
         }
-        if (path === "/api/stats" && method === "GET") {
-            sendJSON(res, 200, getStats(loadBundles()));
+        if ((path === "/api/stats" || path === "/stats") && method === "GET") {
+            const families = parseFamiliesParam(url);
+            const bundles = filterBundlesByFamilies(loadBundles(), families);
+            sendJSON(res, 200, { ...getStats(bundles), families });
             return;
         }
         if (path === "/api/receipts" && method === "GET") {
-            const bundles = loadBundles();
+            const families = parseFamiliesParam(url);
+            const bundles = filterBundlesByFamilies(loadBundles(), families);
             bundles.sort((a, b) => new Date(b.environment.timestamp_start).getTime() - new Date(a.environment.timestamp_start).getTime());
             const receipts = bundles.map((bundle) => ({
                 run_id: bundle.bundle_id,
                 task_id: bundle.task.id,
+                family: bundle.task.family,
                 model: bundle.agent.model,
                 provider: bundle.agent.provider,
                 adapter: bundle.agent.adapter,
@@ -286,8 +318,8 @@ async function handleRequest(req, res) {
                 score: bundle.score.total,
                 timestamp: bundle.environment.timestamp_start,
             }));
-            const totalCost = receipts.reduce((s, r) => s + r.cost_usd, 0);
-            const totalTokens = receipts.reduce((s, r) => s + r.tokens_in + r.tokens_out, 0);
+            const totalCost = receipts.reduce((sum, receipt) => sum + receipt.cost_usd, 0);
+            const totalTokens = receipts.reduce((sum, receipt) => sum + receipt.tokens_in + receipt.tokens_out, 0);
             sendJSON(res, 200, {
                 receipts,
                 summary: {
@@ -302,7 +334,8 @@ async function handleRequest(req, res) {
         if (path === "/api/compare" && method === "GET") {
             const taskId = url.searchParams.get("task") ?? "";
             const suiteId = url.searchParams.get("suite") ?? "v1";
-            const bundles = loadBundles();
+            const families = parseFamiliesParam(url);
+            const bundles = filterBundlesByFamilies(loadBundles(), families);
             const filtered = taskId ? bundles.filter((bundle) => bundle.task.id === taskId) : bundles;
             const groups = new Map();
             for (const bundle of filtered) {
@@ -331,7 +364,7 @@ async function handleRequest(req, res) {
                     reliability: aggregate.reliability,
                 };
             }).sort((a, b) => b.avg_score - a.avg_score);
-            sendJSON(res, 200, { comparisons, task_id: taskId || null, suite_id: suiteId });
+            sendJSON(res, 200, { comparisons, task_id: taskId || null, suite_id: suiteId, families });
             return;
         }
         if (path.startsWith("/api/run/") && path.endsWith("/status") && method === "GET") {
@@ -374,14 +407,12 @@ async function handleRequest(req, res) {
         }
         if (path === "/api/run" && method === "POST") {
             const body = JSON.parse(await readBody(req) || "{}");
-            // Accept either adapter or providerId (provider-first flow sends providerId as the adapter key)
             const adapterId = body.adapter || body.providerId || "";
             if (!body.task || !body.model || !adapterId) {
                 sendJSON(res, 400, { error: "task, model, and adapter (or providerId) are required" });
                 return;
             }
             const requestedCount = Math.min(Math.max(Math.floor(body.count ?? 1), 1), 10);
-            // Build review config from request
             const reviewConfig = {
                 secondOpinion: {
                     enabled: !!(body.secondOpinion?.enabled),
@@ -408,11 +439,7 @@ async function handleRequest(req, res) {
                     judge: DETERMINISTIC_JUDGE_METADATA,
                 },
             });
-            sendJSON(res, 202, {
-                ok: true,
-                run_id: runId,
-                judge: DETERMINISTIC_JUDGE_METADATA,
-            });
+            sendJSON(res, 202, { ok: true, run_id: runId, judge: DETERMINISTIC_JUDGE_METADATA });
             void (async () => {
                 try {
                     const healthAdapter = await instantiateAdapterForRun({
@@ -421,9 +448,8 @@ async function handleRequest(req, res) {
                         provider: body.provider ?? null,
                     });
                     const health = await healthAdapter.adapter.healthCheck();
-                    if (!health.ok) {
+                    if (!health.ok)
                         throw new Error(health.reason ?? `${adapterId} unavailable`);
-                    }
                     await healthAdapter.adapter.teardown();
                     broadcastSSE(runId, "step", {
                         type: "task_start",
@@ -437,10 +463,7 @@ async function handleRequest(req, res) {
                             provider: body.provider ?? null,
                         });
                         try {
-                            broadcastSSE(runId, "step", {
-                                type: "task_start",
-                                detail: `Run ${index + 1}/${requestedCount} executing`,
-                            });
+                            broadcastSSE(runId, "step", { type: "task_start", detail: `Run ${index + 1}/${requestedCount} executing` });
                             const result = await runTask({
                                 taskId: body.task,
                                 adapter: adapterInstance.adapter,
@@ -505,22 +528,20 @@ async function handleRequest(req, res) {
             res.writeHead(200, {
                 "Content-Type": "text/event-stream",
                 "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
+                Connection: "keep-alive",
                 "Access-Control-Allow-Origin": "*",
             });
             const run = activeRuns.get(runId);
             if (run) {
-                for (const evt of run.events) {
+                for (const evt of run.events)
                     res.write(evt);
-                }
                 if (run.status === "complete") {
                     res.end();
                     return;
                 }
             }
-            if (!sseClients.has(runId)) {
+            if (!sseClients.has(runId))
                 sseClients.set(runId, []);
-            }
             sseClients.get(runId).push(res);
             req.on("close", () => {
                 const clients = sseClients.get(runId);
@@ -532,7 +553,6 @@ async function handleRequest(req, res) {
             });
             return;
         }
-        // ── Suite run endpoints ────────────────────────────────────────────
         if (path === "/api/run-suite" && method === "POST") {
             const body = JSON.parse(await readBody(req) || "{}");
             const adapterId = body.adapter || body.providerId || "";
@@ -562,13 +582,7 @@ async function handleRequest(req, res) {
                 results: [],
                 summary: null,
             });
-            sendJSON(res, 202, {
-                ok: true,
-                suite_id: suiteId,
-                total_tasks: allTasks.length,
-                judge: DETERMINISTIC_JUDGE_METADATA,
-            });
-            // Run tasks sequentially in background
+            sendJSON(res, 202, { ok: true, suite_id: suiteId, total_tasks: allTasks.length, judge: DETERMINISTIC_JUDGE_METADATA });
             void (async () => {
                 const suite = activeSuiteRuns.get(suiteId);
                 let adapterInstance = null;
@@ -579,13 +593,11 @@ async function handleRequest(req, res) {
                         provider: body.provider ?? null,
                     });
                     const health = await adapterInstance.adapter.healthCheck();
-                    if (!health.ok) {
+                    if (!health.ok)
                         throw new Error(health.reason ?? `${adapterId} unavailable`);
-                    }
                     for (const task of allTasks) {
                         const taskId = task.id;
                         try {
-                            // Create fresh adapter instance per task to avoid state leaks
                             const taskAdapter = await instantiateAdapterForRun({
                                 adapter: adapterId,
                                 model: body.model,
@@ -599,8 +611,7 @@ async function handleRequest(req, res) {
                                 reviewConfig,
                             });
                             storeBundle(result.bundle);
-                            const durationSec = Math.round((new Date(result.bundle.environment.timestamp_end).getTime() -
-                                new Date(result.bundle.environment.timestamp_start).getTime()) / 1000);
+                            const durationSec = Math.round((new Date(result.bundle.environment.timestamp_end).getTime() - new Date(result.bundle.environment.timestamp_start).getTime()) / 1000);
                             suite.results.push({
                                 task_id: taskId,
                                 bundle_id: result.bundle.bundle_id,
@@ -628,15 +639,12 @@ async function handleRequest(req, res) {
                         }
                         suite.completed = suite.results.length;
                     }
-                    // Compute summary
-                    const passed = suite.results.filter((r) => r.pass).length;
+                    const passed = suite.results.filter((result) => result.pass).length;
                     const failed = suite.results.length - passed;
-                    const avgScore = suite.results.length > 0
-                        ? Math.round(suite.results.reduce((s, r) => s + r.score, 0) / suite.results.length * 100)
-                        : 0;
-                    const totalTime = suite.results.reduce((s, r) => s + r.duration_sec, 0);
-                    const totalTokens = suite.results.reduce((s, r) => s + r.tokens_in + r.tokens_out, 0);
-                    const totalCost = suite.results.reduce((s, r) => s + r.cost_usd, 0);
+                    const avgScore = suite.results.length > 0 ? Math.round((suite.results.reduce((sum, result) => sum + result.score, 0) / suite.results.length) * 100) : 0;
+                    const totalTime = suite.results.reduce((sum, result) => sum + result.duration_sec, 0);
+                    const totalTokens = suite.results.reduce((sum, result) => sum + result.tokens_in + result.tokens_out, 0);
+                    const totalCost = suite.results.reduce((sum, result) => sum + result.cost_usd, 0);
                     suite.summary = {
                         total: suite.results.length,
                         passed,
@@ -656,9 +664,8 @@ async function handleRequest(req, res) {
                     log("error", "api", `Suite ${suiteId} failed: ${String(err)}`);
                 }
                 finally {
-                    if (adapterInstance) {
+                    if (adapterInstance)
                         await adapterInstance.adapter.teardown();
-                    }
                 }
             })();
             return;
@@ -698,7 +705,6 @@ async function handleRequest(req, res) {
             sendJSON(res, 200, { ok: true, link });
             return;
         }
-        // ── Score sync API ────────────────────────────────────────────────
         if (path === "/api/scores/sync" && method === "POST") {
             const body = JSON.parse(await readBody(req) || "{}");
             if (!body.scores || !Array.isArray(body.scores) || body.scores.length === 0) {
@@ -707,25 +713,24 @@ async function handleRequest(req, res) {
             }
             const validSources = ["crucible", "crucibulum", "veritor"];
             const source = (validSources.includes(body.source) ? body.source : "crucibulum");
-            // Validate each score
             const validFamilies = new Set(["A", "B", "C", "D", "E", "F", "G", "H", "I"]);
             const validationErrors = [];
             const validScores = [];
-            for (let i = 0; i < body.scores.length; i++) {
-                const s = body.scores[i];
-                if (!s.modelId || !s.taskId || !s.family || !s.timestamp) {
-                    validationErrors.push(`scores[${i}]: missing required fields (modelId, taskId, family, timestamp)`);
+            for (let index = 0; index < body.scores.length; index += 1) {
+                const score = body.scores[index];
+                if (!score.modelId || !score.taskId || !score.family || !score.timestamp) {
+                    validationErrors.push(`scores[${index}]: missing required fields (modelId, taskId, family, timestamp)`);
                     continue;
                 }
-                if (!validFamilies.has(s.family)) {
-                    validationErrors.push(`scores[${i}]: invalid family '${s.family}'`);
+                if (!validFamilies.has(score.family)) {
+                    validationErrors.push(`scores[${index}]: invalid family '${score.family}'`);
                     continue;
                 }
-                if (typeof s.score !== "number" || s.score < 0 || s.score > 100) {
-                    validationErrors.push(`scores[${i}]: score must be 0-100`);
+                if (typeof score.score !== "number" || score.score < 0 || score.score > 100) {
+                    validationErrors.push(`scores[${index}]: score must be 0-100`);
                     continue;
                 }
-                validScores.push(s);
+                validScores.push(score);
             }
             const result = storeScores(validScores, source, body.runId);
             sendJSON(res, 200, {
@@ -745,17 +750,16 @@ async function handleRequest(req, res) {
             sendJSON(res, 200, { scores, count: scores.length });
             return;
         }
-        if (path === "/api/scores/leaderboard" && method === "GET") {
-            const entries = getLeaderboard();
-            sendJSON(res, 200, { leaderboard: entries });
+        if ((path === "/api/scores/leaderboard" || path === "/api/leaderboard" || path === "/leaderboard") && method === "GET") {
+            const families = parseFamiliesParam(url);
+            const entries = getLeaderboard(families ?? undefined);
+            sendJSON(res, 200, { leaderboard: entries, families });
             return;
         }
-        // ── Synthesis endpoints ──────────────────────────────────────────────
         if (path === "/api/synthesis" && method === "POST") {
             const body = JSON.parse(await readBody(req) || "{}");
             let bundles;
             if (body.run_ids && body.run_ids.length > 0) {
-                // Load specific bundles by ID
                 bundles = [];
                 for (const id of body.run_ids) {
                     const bundle = getBundleById(id);
@@ -767,9 +771,8 @@ async function handleRequest(req, res) {
                 }
             }
             else if (body.task_id) {
-                // Load all bundles for a task
                 const allBundles = loadBundles();
-                bundles = allBundles.filter(b => b.task.id === body.task_id);
+                bundles = allBundles.filter((bundle) => bundle.task.id === body.task_id);
                 if (bundles.length === 0) {
                     sendJSON(res, 404, { error: `No runs found for task: ${body.task_id}` });
                     return;
@@ -779,8 +782,7 @@ async function handleRequest(req, res) {
                 sendJSON(res, 400, { error: "run_ids or task_id is required" });
                 return;
             }
-            // Validate same task
-            const taskIds = new Set(bundles.map(b => b.task.id));
+            const taskIds = new Set(bundles.map((bundle) => bundle.task.id));
             if (taskIds.size > 1) {
                 sendJSON(res, 400, { error: `All runs must be for the same task. Found: ${Array.from(taskIds).join(", ")}` });
                 return;
@@ -789,7 +791,6 @@ async function handleRequest(req, res) {
             sendJSON(res, 200, { synthesis });
             return;
         }
-        // ── Batch multi-model run ────────────────────────────────────────────
         if (path === "/api/run-batch" && method === "POST") {
             const body = JSON.parse(await readBody(req) || "{}");
             if (!body.task || !body.models || body.models.length < 2) {
@@ -797,7 +798,7 @@ async function handleRequest(req, res) {
                 return;
             }
             const batchId = `batch_${Date.now().toString(36)}`;
-            const autoSynthesis = body.auto_synthesis !== false; // default true
+            const autoSynthesis = body.auto_synthesis !== false;
             const reviewConfig = {
                 secondOpinion: {
                     enabled: !!(body.secondOpinion?.enabled),
@@ -810,7 +811,6 @@ async function handleRequest(req, res) {
                     model: body.qcReview?.model ?? "",
                 },
             };
-            // Track batch in active runs
             activeRuns.set(batchId, {
                 id: batchId,
                 status: "running",
@@ -819,7 +819,7 @@ async function handleRequest(req, res) {
                     task: body.task,
                     adapter: "batch",
                     provider: null,
-                    model: body.models.map(m => m.model).join(","),
+                    model: body.models.map((model) => model.model).join(","),
                     count: body.models.length,
                     judge: DETERMINISTIC_JUDGE_METADATA,
                 },
@@ -831,18 +831,17 @@ async function handleRequest(req, res) {
                 auto_synthesis: autoSynthesis,
                 judge: DETERMINISTIC_JUDGE_METADATA,
             });
-            // Execute sequentially in background
             void (async () => {
                 const completedBundles = [];
                 try {
-                    for (let i = 0; i < body.models.length; i++) {
-                        const modelSpec = body.models[i];
+                    for (let index = 0; index < body.models.length; index += 1) {
+                        const modelSpec = body.models[index];
                         const adapterId = modelSpec.adapter || modelSpec.providerId || "";
                         if (!adapterId)
                             continue;
                         broadcastSSE(batchId, "step", {
                             type: "task_start",
-                            detail: `Model ${i + 1}/${body.models.length}: ${adapterId}/${modelSpec.model}`,
+                            detail: `Model ${index + 1}/${body.models.length}: ${adapterId}/${modelSpec.model}`,
                         });
                         try {
                             const adapterInstance = await instantiateAdapterForRun({
@@ -852,10 +851,7 @@ async function handleRequest(req, res) {
                             });
                             const health = await adapterInstance.adapter.healthCheck();
                             if (!health.ok) {
-                                broadcastSSE(batchId, "step", {
-                                    type: "error",
-                                    detail: `${adapterId}/${modelSpec.model}: unavailable`,
-                                });
+                                broadcastSSE(batchId, "step", { type: "error", detail: `${adapterId}/${modelSpec.model}: unavailable` });
                                 await adapterInstance.adapter.teardown();
                                 continue;
                             }
@@ -881,7 +877,6 @@ async function handleRequest(req, res) {
                             });
                         }
                     }
-                    // Auto-synthesis if enabled and we have 2+ completed bundles
                     let synthesis = null;
                     if (autoSynthesis && completedBundles.length >= 2) {
                         synthesis = runSynthesis(completedBundles);
@@ -901,7 +896,7 @@ async function handleRequest(req, res) {
                     }
                     broadcastSSE(batchId, "complete", {
                         batch_id: batchId,
-                        bundle_ids: completedBundles.map(b => b.bundle_id),
+                        bundle_ids: completedBundles.map((bundle) => bundle.bundle_id),
                         total: body.models.length,
                         completed: completedBundles.length,
                         synthesis,

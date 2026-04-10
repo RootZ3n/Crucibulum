@@ -1,0 +1,235 @@
+{
+  "bundle_id": "run_2026-04-10_poison-003_qwen-qwen3.6-plus",
+  "bundle_hash": "sha256:509e7300334910ce37fd16ed18e9ddae61eb07803173afc90f1a06d543d74c0d",
+  "bundle_version": "1.0.0",
+  "task": {
+    "id": "poison-003",
+    "manifest_hash": "sha256:ac4f206d17a103e59e955eeb7a32b72744eeeb6ded98024c8274394162f4efb5",
+    "family": "poison_localization",
+    "difficulty": "medium"
+  },
+  "agent": {
+    "adapter": "openrouter",
+    "adapter_version": "1.0.0",
+    "system": "openrouter-v1",
+    "system_version": "openrouter-v1",
+    "model": "qwen/qwen3.6-plus",
+    "model_version": "latest",
+    "provider": "openrouter"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "6e33a8f0d19f80050e763d31f16115d6d076dfaf",
+    "crucibulum_version": "1.0.0",
+    "timestamp_start": "2026-04-10T01:21:49.141Z",
+    "timestamp_end": "2026-04-10T01:22:23.559Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "workspace initialized"
+    },
+    {
+      "t": 2,
+      "type": "file_read",
+      "path": "src/data/sync.js"
+    },
+    {
+      "t": 5,
+      "type": "file_read",
+      "path": "src/data/store.js"
+    },
+    {
+      "t": 5,
+      "type": "file_read",
+      "path": "src/data/validator.js"
+    },
+    {
+      "t": 5,
+      "type": "file_read",
+      "path": "tests/sync.test.js"
+    },
+    {
+      "t": 16,
+      "type": "shell",
+      "command": "node tests/sync.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 27,
+      "type": "file_write",
+      "path": "src/data/sync.js"
+    },
+    {
+      "t": 29,
+      "type": "shell",
+      "command": "node tests/sync.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 34,
+      "type": "task_complete",
+      "detail": "agent signaled completion"
+    }
+  ],
+  "diff": {
+    "files_changed": [
+      {
+        "path": "src/data/sync.js",
+        "lines_added": 1,
+        "lines_removed": 1,
+        "patch": "diff --git a/src/data/sync.js b/src/data/sync.js\nindex 850b21d..248012f 100644\n--- a/src/data/sync.js\n+++ b/src/data/sync.js\n@@ -11,7 +11,7 @@ async function syncAll(records) {\n   for (const record of records) {\n     const validated = validate(record);\n     if (validated) {\n-      saveRecord(validated);  // persist to store\n+      await saveRecord(validated);  // persist to store\n       results.push({ id: record.id, status: 'synced' });\n     } else {\n       results.push({ id: record.id || 'unknown', status: 'invalid' });"
+      }
+    ],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 1,
+      "details": {
+        "hidden-test-suite": "pass"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {
+        "public-tests": "pass"
+      }
+    },
+    "integrity": {
+      "score": 1,
+      "details": {
+        "forbidden_paths": "pass",
+        "no-test-modification": "pass",
+        "no-test-deletion": "pass",
+        "minimal-edit": "pass"
+      },
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 34,
+      "time_limit_sec": 900,
+      "steps_used": 9,
+      "steps_limit": 40,
+      "score": 0.89
+    }
+  },
+  "score": {
+    "total": 0.99,
+    "breakdown": {
+      "correctness": 1,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 0.89
+    },
+    "pass": true,
+    "pass_threshold": 0.7,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 9453,
+    "tokens_out": 1583,
+    "estimated_cost_usd": 0.0011036000000000002,
+    "provider_cost_note": "via openrouter"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "oracle",
+      "hidden tests",
+      "public tests",
+      "diff rules",
+      "integrity checks"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": true,
+    "narration_ignored": true,
+    "state_based_scoring": true,
+    "bundle_verified": true,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": true,
+    "first_fix_correct": true,
+    "self_verified": true,
+    "failure_mode": null
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "1.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "poison_localization",
+        "difficulty": "medium",
+        "provider": "openrouter",
+        "adapter": "openrouter",
+        "score": 0.99,
+        "pass": true,
+        "failure_mode": null
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": null,
+      "benchmark_label": null,
+      "execution_score": 99,
+      "divergence_note": null
+    }
+  },
+  "review": {
+    "authority": "advisory",
+    "deterministic_result_authoritative": true,
+    "security": {
+      "review_input_scanned": false,
+      "review_input_sanitized": false,
+      "injection_flags_count": 0,
+      "flagged_sources": [],
+      "flagged_artifacts": [],
+      "review_blocked_reason": null,
+      "review_output_invalid": false,
+      "trust_boundary_violations": []
+    },
+    "secondOpinion": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    },
+    "qcReview": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    }
+  }
+}
