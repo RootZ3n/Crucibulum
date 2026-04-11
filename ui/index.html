@@ -6,212 +6,1237 @@
 <title>Crucibulum</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
+/*
+ * CRUCIBULUM — Deep-sea AI instrument panel
+ *
+ * Design directive:
+ *   - Deep abyss background, not flat dark gray.
+ *   - Orange (#fb923c) as PRIMARY text/label color. Not an accent.
+ *   - Cyan/teal (#4df5c8) as signal color — bars, meters, graphs.
+ *   - Panels as carved instrument windows, not floating cards.
+ *   - Every section communicates visually first, text second.
+ *   - NO paragraphs. Everything is chips, bars, strips, scores, tags.
+ *   - Asymmetric rhythm. Hero dominates, side panels are dense meters.
+ *
+ * Class-name contract is preserved so the existing render() in
+ * index.html's <script> block still lights up without JS changes,
+ * BUT several new primitives are introduced:
+ *   .abyss-banner / .ab-*      — full-width instrument callsign
+ *   .status-strip / .ss-*      — single-line system status readout
+ *   .vitals / .vital / .v-*    — horizontal telemetry meters
+ *   .chip                      — compact data chip (primary visual atom)
+ *   .tag                       — inline short tag (correct/safe/stable)
+ *   .sig-card / .sc-*          — signal card for category breakdowns
+ *   .run-strips / .run-strip   — compact horizontal run rows
+ *   .fact-strip / .fs-*        — provenance/methodology fact line
+ *   .leader-strip              — leaderboard row (dense, single-line)
+ *   .glyph-grid / .glyph       — dense meter wall on the inspection panel
+ *   .sweep                     — animated scan sweep overlay on panels
+ *
+ * Legacy class names (.metric-card, .history-item, .score-hero, etc.)
+ * are kept mostly as aliases so partial templates still render.
+ */
+
 *{box-sizing:border-box}
 :root{
-  --bg:#060810;
-  --panel:#0d1322;
-  --panel-2:#0a1020;
-  --line:rgba(255,255,255,.09);
-  --line-strong:rgba(255,255,255,.16);
-  --text:#f7fbff;
-  --text-soft:#dbe7f3;
-  --text-dim:#93a4ba;
-  --pass:#4df5c8;
-  --fail:#ff4444;
-  --warn:#f59e0b;
-  --shadow:0 24px 80px rgba(0,0,0,.42);
+  color-scheme:dark;
+
+  /* ─── Abyss palette ────────────────────────────────────────────── */
+  --abyss-0:#000306;
+  --abyss-1:#020510;
+  --abyss-2:#040916;
+  --abyss-3:#06101f;
+  --abyss-line:rgba(251,146,60,.14);
+  --abyss-line-bright:rgba(251,146,60,.32);
+  --abyss-edge:rgba(251,146,60,.22);
+  --abyss-grid:rgba(251,146,60,.045);
+
+  /* ─── Signals ──────────────────────────────────────────────────── */
+  --orange:#fb923c;
+  --orange-hot:#ffa94d;
+  --orange-dim:rgba(251,146,60,.58);
+  --teal:#4df5c8;
+  --teal-hot:#7bffdd;
+  --teal-dim:rgba(77,245,200,.58);
+  --violet:#b196ff;
+  --magenta:#ff6ec7;
+  --red:#ff4444;
+  --amber:#ffcf6b;
+
+  /* ─── Text ─────────────────────────────────────────────────────── */
+  --ink:var(--orange);              /* PRIMARY text is orange */
+  --ink-soft:rgba(251,146,60,.72);
+  --ink-dim:rgba(251,146,60,.44);
+  --ink-cold:#cbd7ea;                /* rare neutral for value cells */
+  --ink-ghost:rgba(203,215,234,.32);
+
   --body:'Space Grotesk',sans-serif;
-  --mono:'IBM Plex Mono',monospace;
+  --mono:'DM Mono',monospace;
+
+  --shadow-deep:0 40px 120px rgba(0,0,0,.85);
+  --shadow-panel:0 24px 80px rgba(0,0,0,.72),0 0 0 1px rgba(0,0,0,.6);
 }
+
+/* ─── Abyss background ─────────────────────────────────────────────
+ * Layered so it feels like being underwater with bioluminescent
+ * sources rather than a flat page. Four radial sources + a vignette
+ * + a base gradient. Do not flatten this. */
 html,body{
   margin:0;
   min-height:100%;
   background:
-    radial-gradient(circle at top left,rgba(77,245,200,.14),transparent 28%),
-    radial-gradient(circle at 100% 0%,rgba(245,158,11,.08),transparent 26%),
-    linear-gradient(180deg,#09101d 0%,#060810 55%,#060810 100%);
-  color:var(--text);
+    radial-gradient(ellipse 60% 50% at 50% 45%,transparent 28%,rgba(0,0,0,.72) 100%),
+    radial-gradient(circle at 10% 8%,rgba(251,146,60,.18),transparent 36%),
+    radial-gradient(circle at 92% 6%,rgba(77,245,200,.14),transparent 38%),
+    radial-gradient(circle at 4% 96%,rgba(177,150,255,.10),transparent 40%),
+    radial-gradient(circle at 92% 96%,rgba(251,146,60,.10),transparent 40%),
+    linear-gradient(180deg,var(--abyss-1) 0%,var(--abyss-0) 48%,var(--abyss-1) 100%);
+  color:var(--ink);
   font-family:var(--body);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
 }
+
+/* Faint orange grid — instrument bezel pattern */
 body::before{
   content:"";
   position:fixed;
   inset:0;
   pointer-events:none;
+  background-image:
+    linear-gradient(var(--abyss-grid) 1px,transparent 1px),
+    linear-gradient(90deg,var(--abyss-grid) 1px,transparent 1px);
+  background-size:96px 96px;
+  mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 20%,transparent 92%);
+  opacity:.7;
+  z-index:0;
+}
+/* Horizontal scan rake */
+body::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  background:repeating-linear-gradient(180deg,transparent 0 3px,rgba(0,0,0,.22) 3px 4px);
+  mix-blend-mode:multiply;
+  opacity:.45;
+  z-index:0;
+}
+
+#app{min-height:100vh;padding:18px;position:relative;z-index:1}
+.app-shell{
+  max-width:1560px;
+  margin:0 auto;
+  display:grid;
+  gap:14px;
+  position:relative;
+}
+
+/* ─── Carved panels ──────────────────────────────────────────────── */
+.panel,.subpanel,.metric-card,.result-card{
+  position:relative;
   background:
-    linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);
-  background-size:30px 30px;
-  mask-image:linear-gradient(180deg,rgba(0,0,0,.6),transparent 90%);
+    linear-gradient(180deg,rgba(3,6,14,.92) 0%,rgba(5,9,18,.96) 100%);
+  border:1px solid var(--abyss-line);
+  box-shadow:
+    inset 0 1px 0 rgba(251,146,60,.22),
+    inset 0 0 36px rgba(0,0,0,.55),
+    var(--shadow-panel);
+  overflow:hidden;
 }
-#app{min-height:100vh;padding:24px}
-.shell{max-width:1240px;margin:0 auto;display:grid;gap:18px}
-.hero,.panel,.card,.result-shell,.summary-shell,.history-shell,.scoreboard-shell,.metric-card{
-  background:linear-gradient(180deg,rgba(16,25,43,.94),rgba(8,12,22,.98));
-  border:1px solid var(--line);
-  box-shadow:var(--shadow);
-}
-.hero{border-radius:26px;padding:24px 26px;position:relative;overflow:hidden}
-.hero::after{
+.panel::before{
   content:"";
   position:absolute;
-  right:-120px;
-  top:-110px;
-  width:320px;
-  height:320px;
-  background:radial-gradient(circle,rgba(77,245,200,.14),transparent 66%);
-  filter:blur(10px);
+  top:0;left:0;right:0;
+  height:1px;
+  background:linear-gradient(90deg,transparent 0%,var(--orange) 28%,var(--orange) 72%,transparent 100%);
+  opacity:.7;
+  pointer-events:none;
 }
-.hero-top{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
-.eyebrow,.mini-label,.small-note{
+.panel::after{
+  content:"";
+  position:absolute;
+  inset:auto 0 0 0;
+  height:1px;
+  background:linear-gradient(90deg,transparent 0%,rgba(77,245,200,.45) 50%,transparent 100%);
+  opacity:.4;
+  pointer-events:none;
+}
+
+/* Corner brackets via a tiny utility pseudo-stack (applied inline
+   where layout permits). Using a dedicated wrapper class keeps
+   corner markers off elements that would clash with them. */
+.corners::before,.corners::after{
+  content:"";
+  position:absolute;
+  width:12px;height:12px;
+  pointer-events:none;
+  opacity:.72;
+}
+.corners::before{top:8px;left:8px;border-top:1px solid var(--orange);border-left:1px solid var(--orange)}
+.corners::after{bottom:8px;right:8px;border-bottom:1px solid var(--orange);border-right:1px solid var(--orange)}
+
+/* ─── Typography primitives ─────────────────────────────────────── */
+.eyebrow,.mini-label,.small-note,.label,.field label{
   font-family:var(--mono);
   text-transform:uppercase;
-  letter-spacing:.14em;
-  color:var(--text-dim);
-  font-size:11px;
+  letter-spacing:.22em;
+  font-size:10px;
+  font-weight:500;
+  color:var(--ink-soft);
 }
-.title{margin:6px 0 10px;font-size:40px;line-height:.95;letter-spacing:-.04em}
-.subcopy{max-width:900px;color:var(--text-soft);font-size:15px;line-height:1.7}
-.hero-badge{
+.headline,.panel-title,.section-head h3{
+  margin:0;
+  font-family:var(--body);
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--orange);
+  text-shadow:0 0 22px rgba(251,146,60,.28);
+}
+.section-head h3,.panel-title{
+  font-size:15px;
+  letter-spacing:.14em;
+}
+.section-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding-bottom:8px;
+  border-bottom:1px dashed var(--abyss-line);
+  margin-bottom:10px;
+}
+.section-head > div:first-child{min-width:0}
+
+/* Kill walls of text globally: every prose-ish class becomes a
+   one-line ellipsis surface. Where prose was legitimately needed,
+   it's been replaced in the render functions with chips/tags. */
+.desc,.hero-copy,.panel-copy,.note,.muted,.summary-copy,
+.history-sub,.surface-copy,.hint,.metric-card .hint,.plain-subtitle{
+  display:none;
+}
+
+/* ─── Abyss banner (hero) ───────────────────────────────────────── */
+.abyss-banner{
+  position:relative;
+  padding:22px 24px 20px;
+  border:1px solid var(--abyss-line);
+  background:
+    radial-gradient(circle at 12% 50%,rgba(251,146,60,.14),transparent 42%),
+    radial-gradient(circle at 88% 50%,rgba(77,245,200,.10),transparent 40%),
+    linear-gradient(180deg,rgba(3,6,14,.96) 0%,rgba(2,4,10,.98) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(251,146,60,.35),
+    inset 0 -1px 0 rgba(77,245,200,.18),
+    inset 0 0 60px rgba(0,0,0,.55),
+    var(--shadow-deep);
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:32px;
+  align-items:center;
+  min-height:160px;
+  overflow:hidden;
+}
+.abyss-banner::before{
+  content:"";
+  position:absolute;
+  top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent 0,var(--orange) 20%,var(--teal) 80%,transparent 100%);
+  opacity:.78;
+  filter:blur(.3px);
+}
+.abyss-banner::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 50% 0,rgba(251,146,60,.10),transparent 40%);
+  pointer-events:none;
+}
+
+.ab-callsign{
+  display:grid;
+  gap:6px;
+  min-width:220px;
+  position:relative;
+  z-index:1;
+}
+.ab-mark{
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:.36em;
+  color:var(--teal);
+  opacity:.82;
+}
+.ab-title{
+  font-family:var(--body);
+  font-weight:700;
+  font-size:clamp(36px,4.4vw,56px);
+  line-height:.92;
+  letter-spacing:.06em;
+  color:var(--orange);
+  text-shadow:
+    0 0 18px rgba(251,146,60,.42),
+    0 0 48px rgba(251,146,60,.22);
+}
+.ab-sub{
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:.3em;
+  color:var(--ink-soft);
+  text-transform:uppercase;
+}
+
+.ab-core{
+  display:grid;
+  gap:10px;
+  justify-items:center;
+  align-content:center;
+  min-width:0;
+  position:relative;
+  z-index:1;
+}
+.ab-score-label{
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:.36em;
+  color:var(--ink-soft);
+  text-transform:uppercase;
+}
+.ab-score{
+  font-family:var(--mono);
+  font-size:clamp(72px,10vw,128px);
+  line-height:.82;
+  font-weight:500;
+  letter-spacing:-.06em;
+  color:var(--teal);
+  text-shadow:
+    0 0 34px rgba(77,245,200,.38),
+    0 0 68px rgba(77,245,200,.22),
+    0 0 92px rgba(77,245,200,.14);
+  animation:pulseGlow 3.6s ease-in-out infinite;
+}
+.ab-score-bar{
+  width:min(320px,40vw);
+  height:3px;
+  background:rgba(77,245,200,.10);
+  border-radius:999px;
+  overflow:hidden;
+  border:1px solid rgba(77,245,200,.18);
+}
+.ab-score-fill{
+  height:100%;
+  background:linear-gradient(90deg,var(--teal),var(--teal-hot));
+  box-shadow:0 0 12px var(--teal);
+  transition:width 420ms ease;
+}
+
+.ab-telemetry{
+  display:grid;
+  gap:6px;
+  grid-auto-rows:min-content;
+  min-width:200px;
+  position:relative;
+  z-index:1;
+  justify-items:end;
+}
+
+/* ─── Chip: primary data atom ───────────────────────────────────── */
+.chip{
   display:inline-flex;
   align-items:center;
+  gap:8px;
+  padding:5px 11px;
+  border-radius:2px;
+  border:1px solid var(--abyss-line);
+  background:rgba(251,146,60,.06);
+  font-family:var(--mono);
+  font-size:10px;
+  font-weight:500;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+  white-space:nowrap;
+}
+.chip.orange{color:var(--orange);border-color:rgba(251,146,60,.34);background:rgba(251,146,60,.10)}
+.chip.teal{color:var(--teal);border-color:rgba(77,245,200,.34);background:rgba(77,245,200,.08)}
+.chip.red{color:var(--red);border-color:rgba(255,68,68,.34);background:rgba(255,68,68,.10)}
+.chip.violet{color:var(--violet);border-color:rgba(177,150,255,.34);background:rgba(177,150,255,.08)}
+.chip.dim{color:var(--ink-dim);border-color:var(--abyss-line);background:transparent}
+.chip.hot{
+  color:var(--orange-hot);
+  border-color:rgba(251,146,60,.6);
+  background:rgba(251,146,60,.18);
+  box-shadow:0 0 16px rgba(251,146,60,.22);
+}
+
+/* Tags — smaller than chips, inline, for categorical signal */
+.tag{
+  display:inline-flex;
+  align-items:center;
+  padding:3px 8px;
+  border-radius:2px;
+  border:1px solid rgba(251,146,60,.24);
+  background:rgba(251,146,60,.08);
+  font-family:var(--mono);
+  font-size:9px;
+  font-weight:500;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--orange);
+  white-space:nowrap;
+}
+.tag.teal{color:var(--teal);border-color:rgba(77,245,200,.28);background:rgba(77,245,200,.08)}
+.tag.red{color:var(--red);border-color:rgba(255,68,68,.28);background:rgba(255,68,68,.10)}
+.tag.violet{color:var(--violet);border-color:rgba(177,150,255,.28);background:rgba(177,150,255,.08)}
+.tag.dim{color:var(--ink-dim);border-color:var(--abyss-line);background:transparent}
+
+/* ─── Status strip (replaces verdict-banner) ────────────────────── */
+.status-strip{
+  position:relative;
+  display:grid;
+  grid-template-columns:auto auto 1fr auto auto;
+  align-items:center;
+  gap:18px;
+  padding:12px 18px;
+  border:1px solid var(--abyss-line);
+  background:
+    linear-gradient(90deg,rgba(3,6,14,.96),rgba(5,9,18,.9) 50%,rgba(3,6,14,.96));
+  box-shadow:
+    inset 0 1px 0 rgba(251,146,60,.24),
+    var(--shadow-panel);
+  overflow:hidden;
+}
+.status-strip::before{
+  content:"";
+  position:absolute;
+  top:0;left:0;bottom:0;
+  width:4px;
+}
+.status-strip.pass::before{background:var(--teal);box-shadow:0 0 20px var(--teal)}
+.status-strip.warn::before{background:var(--orange);box-shadow:0 0 20px var(--orange)}
+.status-strip.fail::before{background:var(--red);box-shadow:0 0 20px var(--red)}
+.ss-left{display:flex;align-items:center;gap:10px;padding-left:8px}
+.ss-dot{
+  width:10px;height:10px;
+  border-radius:50%;
+  background:var(--orange);
+  box-shadow:0 0 14px var(--orange);
+  animation:dotPulse 1.4s ease-in-out infinite;
+}
+.status-strip.pass .ss-dot{background:var(--teal);box-shadow:0 0 14px var(--teal)}
+.status-strip.fail .ss-dot{background:var(--red);box-shadow:0 0 14px var(--red)}
+.ss-label{
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:.28em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+}
+.ss-mid{
+  font-family:var(--body);
+  font-size:20px;
+  font-weight:700;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  color:var(--orange);
+  text-shadow:0 0 18px rgba(251,146,60,.4);
+}
+.status-strip.pass .ss-mid{color:var(--teal);text-shadow:0 0 18px rgba(77,245,200,.4)}
+.status-strip.fail .ss-mid{color:var(--red);text-shadow:0 0 18px rgba(255,68,68,.4)}
+.ss-bar{
+  height:4px;
+  border-radius:999px;
+  background:rgba(251,146,60,.08);
+  overflow:hidden;
+  min-width:80px;
+}
+.ss-fill{
+  height:100%;
+  background:var(--orange);
+  box-shadow:0 0 10px var(--orange);
+  transition:width 320ms ease;
+}
+.status-strip.pass .ss-fill{background:var(--teal);box-shadow:0 0 10px var(--teal)}
+.status-strip.fail .ss-fill{background:var(--red);box-shadow:0 0 10px var(--red)}
+.ss-score{
+  font-family:var(--mono);
+  font-size:22px;
+  font-weight:500;
+  color:var(--orange);
+  letter-spacing:-.02em;
+  min-width:64px;
+  text-align:right;
+}
+.status-strip.pass .ss-score{color:var(--teal)}
+.status-strip.fail .ss-score{color:var(--red)}
+
+/* ─── Vitals strip — horizontal telemetry meters ────────────────── */
+.vitals{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:1px;
+  background:var(--abyss-line);
+  border:1px solid var(--abyss-line);
+  padding:1px;
+  box-shadow:
+    inset 0 1px 0 rgba(251,146,60,.22),
+    var(--shadow-panel);
+}
+.vital{
+  position:relative;
+  padding:16px 18px 14px;
+  background:linear-gradient(180deg,rgba(3,6,14,.96),rgba(5,9,18,.98));
+  display:grid;
+  gap:10px;
+  align-content:start;
+  min-width:0;
+  overflow:hidden;
+}
+.vital::before{
+  content:"";
+  position:absolute;
+  top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(251,146,60,.32),transparent);
+}
+.v-label{
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:.3em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+}
+.v-readout{
+  font-family:var(--mono);
+  font-size:clamp(30px,3.4vw,44px);
+  font-weight:500;
+  line-height:.9;
+  color:var(--orange);
+  letter-spacing:-.04em;
+  text-shadow:0 0 18px rgba(251,146,60,.28);
+  min-width:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.v-readout.teal{color:var(--teal);text-shadow:0 0 18px rgba(77,245,200,.32)}
+.v-unit{
+  font-size:.5em;
+  opacity:.58;
+  margin-left:2px;
+}
+.v-bar{
+  height:3px;
+  background:rgba(251,146,60,.08);
+  border-radius:999px;
+  overflow:hidden;
+}
+.v-fill{
+  height:100%;
+  background:linear-gradient(90deg,var(--orange),var(--orange-hot));
+  box-shadow:0 0 10px var(--orange);
+  transition:width 320ms ease;
+}
+.v-fill.teal{background:linear-gradient(90deg,var(--teal),var(--teal-hot));box-shadow:0 0 10px var(--teal)}
+.v-fill.red{background:var(--red);box-shadow:0 0 10px var(--red)}
+.v-fill.violet{background:var(--violet);box-shadow:0 0 10px var(--violet)}
+
+/* ─── Nav tabs ──────────────────────────────────────────────────── */
+.nav-band{
+  display:grid;
   gap:10px;
   padding:12px 16px;
-  border-radius:999px;
-  background:rgba(77,245,200,.11);
-  border:1px solid rgba(77,245,200,.24);
-  color:var(--pass);
-  font-family:var(--mono);
-  font-size:12px;
+  border:1px solid var(--abyss-line);
+  background:linear-gradient(180deg,rgba(3,6,14,.92),rgba(5,9,18,.96));
+  box-shadow:
+    inset 0 1px 0 rgba(251,146,60,.22),
+    var(--shadow-panel);
+  position:relative;
 }
-.hero-badge::before{
+.nav-band::before{
   content:"";
-  width:10px;
-  height:10px;
-  border-radius:50%;
-  background:var(--pass);
-  box-shadow:0 0 18px rgba(77,245,200,.7);
+  position:absolute;
+  top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(251,146,60,.4),transparent);
 }
-.tabbar{display:flex;flex-wrap:wrap;gap:8px;border-bottom:1px solid rgba(255,255,255,.07);padding-bottom:10px}
+.tabbar{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--abyss-line);background:rgba(0,0,0,.28)}
 .tab{
-  border:none;background:none;color:var(--text-dim);border-radius:0;padding:10px 12px;
-  font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
-  cursor:pointer;border-bottom:2px solid transparent
+  flex:1 1 auto;
+  border:none;
+  border-right:1px solid var(--abyss-line);
+  background:transparent;
+  color:var(--ink-dim);
+  padding:11px 14px;
+  font-family:var(--mono);
+  font-size:10px;
+  font-weight:500;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  cursor:pointer;
+  transition:background 160ms,color 160ms,box-shadow 160ms;
+  position:relative;
 }
-.tab.active{color:var(--warn);border-bottom-color:var(--warn)}
-.main-grid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:18px;align-items:start}
-.panel{border-radius:24px;padding:20px;display:grid;gap:15px;position:sticky;top:24px}
-.panel-title{margin:0;font-size:24px;line-height:1.05}
-.panel-copy,.note,.muted{color:var(--text-dim);line-height:1.6;font-size:14px}
-.field{display:grid;gap:7px}
+.tab:last-child{border-right:none}
+.tab:hover{color:var(--orange);background:rgba(251,146,60,.05)}
+.tab.active{
+  color:var(--orange);
+  background:rgba(251,146,60,.12);
+  box-shadow:
+    inset 0 -2px 0 var(--orange),
+    inset 0 0 20px rgba(251,146,60,.14);
+  text-shadow:0 0 10px rgba(251,146,60,.5);
+}
+
+/* ─── Layout grids ──────────────────────────────────────────────── */
+.stage-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.35fr) minmax(300px,.5fr);
+  gap:14px;
+  align-items:start;
+}
+.control-grid{
+  display:grid;
+  grid-template-columns:300px minmax(0,1fr);
+  gap:14px;
+  align-items:start;
+}
+.control-rail{display:grid;gap:14px;position:sticky;top:18px}
+.content-column,.side-column{display:grid;gap:14px;min-width:0}
+.dual-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(260px,.7fr);gap:14px}
+.inspection-shell,.rail-panel,.history-panel,.surface-panel,.metric-band{
+  padding:16px;
+  display:grid;
+  gap:12px;
+}
+
+/* ─── Signal cards ──────────────────────────────────────────────── */
+.sig-grid,.category-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:10px;
+}
+.sig-card{
+  position:relative;
+  padding:14px 14px 12px;
+  border:1px solid var(--abyss-line);
+  background:
+    linear-gradient(180deg,rgba(3,6,14,.94),rgba(5,9,18,.98));
+  box-shadow:
+    inset 0 1px 0 rgba(251,146,60,.2),
+    inset 0 0 24px rgba(0,0,0,.5),
+    0 12px 40px rgba(0,0,0,.4);
+  display:grid;
+  gap:10px;
+  min-width:0;
+  overflow:hidden;
+}
+.sig-card::before{
+  content:"";
+  position:absolute;
+  top:0;left:0;right:0;height:1px;
+}
+.sig-card.pass::before{background:var(--teal);box-shadow:0 0 14px var(--teal)}
+.sig-card.warn::before{background:var(--orange);box-shadow:0 0 14px var(--orange)}
+.sig-card.fail::before{background:var(--red);box-shadow:0 0 14px var(--red)}
+.sc-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  min-width:0;
+}
+.sc-name{
+  font-family:var(--body);
+  font-size:13px;
+  font-weight:700;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--orange);
+  line-height:1.2;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  min-width:0;
+  flex:1;
+}
+.sc-score{
+  font-family:var(--mono);
+  font-size:42px;
+  font-weight:500;
+  line-height:.88;
+  letter-spacing:-.04em;
+  color:var(--teal);
+  text-shadow:0 0 18px rgba(77,245,200,.28);
+}
+.sig-card.warn .sc-score{color:var(--orange);text-shadow:0 0 18px rgba(251,146,60,.3)}
+.sig-card.fail .sc-score{color:var(--red);text-shadow:0 0 18px rgba(255,68,68,.3)}
+.sc-unit{font-size:.48em;opacity:.55;margin-left:2px}
+.sc-bar{
+  height:3px;
+  border-radius:999px;
+  background:rgba(251,146,60,.08);
+  overflow:hidden;
+}
+.sc-fill{
+  height:100%;
+  background:var(--teal);
+  box-shadow:0 0 10px var(--teal);
+  transition:width 320ms ease;
+}
+.sig-card.warn .sc-fill{background:var(--orange);box-shadow:0 0 10px var(--orange)}
+.sig-card.fail .sc-fill{background:var(--red);box-shadow:0 0 10px var(--red)}
+.sc-tags{display:flex;flex-wrap:wrap;gap:4px}
+
+/* ─── Run strips ────────────────────────────────────────────────── */
+.run-strips{display:grid;gap:4px}
+.run-strip{
+  position:relative;
+  display:grid;
+  grid-template-columns:12px minmax(120px,1.2fr) minmax(90px,1fr) minmax(120px,2fr) 60px 80px;
+  align-items:center;
+  gap:12px;
+  padding:10px 14px 10px 6px;
+  border:1px solid var(--abyss-line);
+  border-left-width:3px;
+  background:linear-gradient(90deg,rgba(3,6,14,.96),rgba(5,9,18,.92));
+  box-shadow:inset 0 1px 0 rgba(251,146,60,.12);
+  cursor:pointer;
+  text-align:left;
+  color:inherit;
+  width:100%;
+  font-family:var(--mono);
+  transition:background 160ms,border-color 160ms,transform 120ms;
+  min-width:0;
+}
+.run-strip:hover{
+  background:linear-gradient(90deg,rgba(5,10,22,.96),rgba(8,14,28,.94));
+  border-color:var(--abyss-line-bright);
+  transform:translateX(2px);
+}
+.run-strip.pass{border-left-color:var(--teal);box-shadow:inset 0 1px 0 rgba(77,245,200,.22),inset 3px 0 0 var(--teal)}
+.run-strip.warn{border-left-color:var(--orange);box-shadow:inset 0 1px 0 rgba(251,146,60,.22),inset 3px 0 0 var(--orange)}
+.run-strip.fail{border-left-color:var(--red);box-shadow:inset 0 1px 0 rgba(255,68,68,.22),inset 3px 0 0 var(--red)}
+.rs-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--orange);
+  box-shadow:0 0 10px currentColor;
+  justify-self:center;
+}
+.run-strip.pass .rs-dot{background:var(--teal)}
+.run-strip.fail .rs-dot{background:var(--red)}
+.rs-model{
+  font-size:12px;
+  color:var(--orange);
+  font-weight:500;
+  letter-spacing:.04em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  min-width:0;
+}
+.rs-task{
+  font-size:10px;
+  color:var(--ink-dim);
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  min-width:0;
+}
+.rs-bar{
+  height:3px;
+  background:rgba(251,146,60,.08);
+  border-radius:999px;
+  overflow:hidden;
+}
+.rs-fill{
+  height:100%;
+  background:var(--teal);
+  box-shadow:0 0 8px var(--teal);
+  transition:width 320ms ease;
+}
+.run-strip.warn .rs-fill{background:var(--orange);box-shadow:0 0 8px var(--orange)}
+.run-strip.fail .rs-fill{background:var(--red);box-shadow:0 0 8px var(--red)}
+.rs-score{
+  font-size:16px;
+  color:var(--teal);
+  font-weight:500;
+  text-align:right;
+  letter-spacing:-.02em;
+}
+.run-strip.warn .rs-score{color:var(--orange)}
+.run-strip.fail .rs-score{color:var(--red)}
+.rs-badge{justify-self:end}
+
+/* ─── Leaderboard strips ────────────────────────────────────────── */
+.leader-list{display:grid;gap:3px}
+.leader-strip{
+  display:grid;
+  grid-template-columns:24px minmax(0,1fr) minmax(60px,auto) 56px;
+  align-items:center;
+  gap:10px;
+  padding:8px 12px;
+  border:1px solid var(--abyss-line);
+  border-left:3px solid var(--orange);
+  background:linear-gradient(90deg,rgba(3,6,14,.96),rgba(5,9,18,.92));
+  font-family:var(--mono);
+  min-width:0;
+}
+.leader-strip.top{
+  border-left-color:var(--teal);
+  box-shadow:inset 0 0 18px rgba(77,245,200,.06);
+}
+.ls-rank{
+  font-size:10px;
+  color:var(--ink-dim);
+  letter-spacing:.1em;
+}
+.leader-strip.top .ls-rank{color:var(--teal)}
+.ls-model{
+  font-size:11px;
+  color:var(--orange);
+  font-weight:500;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  min-width:0;
+}
+.ls-runs{
+  font-size:9px;
+  color:var(--ink-dim);
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  text-align:right;
+}
+.ls-score{
+  font-size:14px;
+  color:var(--teal);
+  font-weight:500;
+  text-align:right;
+  letter-spacing:-.02em;
+}
+
+/* ─── Fact strips (provenance/methodology) ──────────────────────── */
+.fact-list{display:grid;gap:2px;border:1px solid var(--abyss-line);background:rgba(0,0,0,.24)}
+.fact-strip{
+  display:grid;
+  grid-template-columns:minmax(120px,.42fr) minmax(0,1fr);
+  gap:12px;
+  padding:9px 12px;
+  background:linear-gradient(90deg,rgba(3,6,14,.6),transparent);
+  border-bottom:1px solid var(--abyss-line);
+  font-family:var(--mono);
+  min-width:0;
+}
+.fact-list .fact-strip:last-child{border-bottom:none}
+.fs-label{
+  font-size:9px;
+  letter-spacing:.26em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.fs-value{
+  font-size:11px;
+  color:var(--orange);
+  letter-spacing:.04em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  min-width:0;
+  text-align:right;
+}
+.fs-value.teal{color:var(--teal)}
+.fs-value.dim{color:var(--ink-dim)}
+
+/* ─── Glyph grid — dense meter wall (inspection) ────────────────── */
+.glyph-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:1px;
+  background:var(--abyss-line);
+  border:1px solid var(--abyss-line);
+  padding:1px;
+}
+.glyph{
+  padding:12px 14px;
+  background:linear-gradient(180deg,rgba(3,6,14,.96),rgba(5,9,18,.98));
+  display:grid;
+  gap:6px;
+  align-content:start;
+  min-width:0;
+  position:relative;
+  overflow:hidden;
+}
+.glyph::before{
+  content:"";
+  position:absolute;
+  top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(77,245,200,.3),transparent);
+}
+.g-label{
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:.28em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+}
+.g-value{
+  font-family:var(--mono);
+  font-size:22px;
+  line-height:1;
+  font-weight:500;
+  color:var(--orange);
+  letter-spacing:-.02em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.g-value.teal{color:var(--teal)}
+.g-value.dim{color:var(--ink-dim)}
+
+/* ─── Badges — pill, 14% colored background ─────────────────────── */
+.badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  width:fit-content;
+  padding:4px 10px;
+  border-radius:2px;
+  font-family:var(--mono);
+  font-size:9px;
+  font-weight:500;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+}
+.badge.pass{background:rgba(77,245,200,.14);color:var(--teal);border:1px solid rgba(77,245,200,.32)}
+.badge.fail{background:rgba(255,68,68,.14);color:var(--red);border:1px solid rgba(255,68,68,.32)}
+.badge.warn{background:rgba(251,146,60,.14);color:var(--orange);border:1px solid rgba(251,146,60,.32)}
+.badge.neutral{background:rgba(251,146,60,.06);color:var(--ink-dim);border:1px solid var(--abyss-line)}
+
+/* Score meter used inline in row layouts */
+.bar-track{
+  height:3px;
+  border-radius:999px;
+  overflow:hidden;
+  background:rgba(251,146,60,.08);
+  border:none;
+}
+.bar-fill{height:100%;border-radius:999px;transition:width 320ms ease}
+
+/* ─── Live stream readout ───────────────────────────────────────── */
+.run-stream{
+  max-height:320px;
+  overflow:auto;
+  border:1px solid var(--abyss-line);
+  background:
+    radial-gradient(circle at 12% 12%,rgba(251,146,60,.04),transparent 40%),
+    radial-gradient(circle at 88% 88%,rgba(77,245,200,.04),transparent 40%),
+    linear-gradient(180deg,rgba(2,4,10,.96),rgba(4,7,14,.98));
+  padding:14px;
+  display:grid;
+  gap:6px;
+  align-content:start;
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--ink-soft);
+  position:relative;
+  box-shadow:inset 0 1px 0 rgba(251,146,60,.16);
+}
+.run-stream::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:repeating-linear-gradient(180deg,transparent 0 3px,rgba(77,245,200,.02) 3px 4px);
+  pointer-events:none;
+}
+.run-line{
+  padding:3px 0;
+  border-bottom:1px solid rgba(251,146,60,.06);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  color:var(--orange);
+  position:relative;
+}
+.run-line::before{content:"› ";color:var(--teal);opacity:.6}
+.run-line:last-child{border-bottom:none}
+
+/* ─── Forms ─────────────────────────────────────────────────────── */
+.field{display:grid;gap:6px}
 .field label{
-  font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim)
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:.28em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
 }
 .select,.button{
-  width:100%;border:1px solid var(--line-strong);background:rgba(7,10,18,.92);color:var(--text);
-  border-radius:14px;padding:13px 14px;font-family:var(--body);font-size:14px
+  width:100%;
+  border:1px solid var(--abyss-line-bright);
+  background:rgba(2,4,10,.88);
+  color:var(--orange);
+  border-radius:2px;
+  padding:10px 12px;
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:.06em;
 }
-.select[multiple]{min-height:250px}
-.select:focus{outline:none;border-color:rgba(77,245,200,.4);box-shadow:0 0 0 3px rgba(77,245,200,.12)}
+.select[multiple]{min-height:220px}
+.select:focus{
+  outline:none;
+  border-color:var(--teal);
+  box-shadow:0 0 0 1px var(--teal),0 0 18px rgba(77,245,200,.22);
+}
 .button{
-  cursor:pointer;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
-  transition:transform 140ms ease,border-color 140ms ease,background 140ms ease
+  cursor:pointer;
+  font-weight:500;
+  text-transform:uppercase;
+  letter-spacing:.18em;
+  transition:all 140ms ease;
 }
-.button:hover{transform:translateY(-1px)}
-.button.primary{background:linear-gradient(180deg,rgba(77,245,200,.2),rgba(13,26,33,.95));border-color:rgba(77,245,200,.38)}
-.button.secondary{background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(8,12,22,.96))}
-.button-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.button:hover{border-color:var(--orange);color:var(--orange-hot);box-shadow:0 0 18px rgba(251,146,60,.18)}
+.button.primary{
+  background:rgba(251,146,60,.14);
+  border-color:var(--orange);
+  color:var(--orange-hot);
+  box-shadow:0 0 24px rgba(251,146,60,.14),inset 0 1px 0 rgba(251,146,60,.4);
+}
+.button.primary:hover{background:rgba(251,146,60,.22);box-shadow:0 0 28px rgba(251,146,60,.28),inset 0 1px 0 rgba(251,146,60,.5)}
+.button.secondary{
+  background:rgba(77,245,200,.04);
+  border-color:rgba(77,245,200,.24);
+  color:var(--teal);
+}
+.button.secondary:hover{border-color:var(--teal);box-shadow:0 0 18px rgba(77,245,200,.18)}
+.button-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .button-grid .full{grid-column:1/-1}
-.content{display:grid;gap:18px;min-width:0}
-.metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
-.metric-card{border-radius:22px;padding:16px}
-.metric-card .value{margin-top:10px;font-size:32px;line-height:1;font-weight:700}
-.metric-card .hint{margin-top:8px;color:var(--text-dim);font-size:13px;line-height:1.5}
-.two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-.card,.history-shell,.scoreboard-shell,.summary-shell,.result-shell{border-radius:24px;padding:18px}
-.section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:14px}
-.section-head h3{margin:4px 0 0;font-size:24px;line-height:1.05}
-.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:18px}
-table{width:100%;border-collapse:collapse;min-width:560px}
-th,td{padding:13px 14px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left}
-th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim)}
-td{color:var(--text-soft);font-size:14px}
-tr:last-child td{border-bottom:none}
-.badge{
-  display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;padding:8px 12px;
-  font-weight:700;font-size:14px;line-height:1
+
+/* ─── Focused inspection ────────────────────────────────────────── */
+.inspection-shell{padding:16px;display:grid;gap:14px}
+.inspection-top{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:16px;
+  align-items:start;
+  padding-bottom:12px;
+  border-bottom:1px dashed var(--abyss-line);
 }
-.badge.pass{background:rgba(77,245,200,.14);color:var(--pass)}
-.badge.fail{background:rgba(255,68,68,.14);color:var(--fail)}
-.badge.warn{background:rgba(245,158,11,.16);color:var(--warn)}
-.badge.neutral{background:rgba(255,255,255,.08);color:var(--text-soft)}
-.summary-score{font-size:92px;line-height:.9;font-weight:700;letter-spacing:-.06em}
-.summary-copy{font-size:15px;line-height:1.7;color:var(--text-soft)}
-.summary-bars{display:grid;gap:12px;margin-top:10px}
-.summary-row{display:grid;gap:7px}
-.summary-row-top{display:flex;justify-content:space-between;gap:12px;font-size:14px;color:var(--text-soft)}
-.bar-track{height:10px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.06)}
-.bar-fill{height:100%;border-radius:999px}
-.result-shell{display:grid;gap:18px}
-.result-top{display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:18px;align-items:start}
-.model-name{margin:4px 0 10px;font-size:34px;line-height:1;letter-spacing:-.04em}
-.overall-block{
-  padding:16px;border-radius:20px;border:1px solid var(--line);
-  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02))
+.model-callout{
+  display:grid;
+  gap:8px;
+  min-width:0;
 }
-.overall-label{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--text-dim)}
-.overall-score{font-size:80px;line-height:.9;font-weight:700;letter-spacing:-.08em}
-.meta-row{display:flex;flex-wrap:wrap;gap:10px}
-.meta-pill{padding:10px 12px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-size:13px;color:var(--text-soft)}
-.result-board{
-  border:1px solid var(--line);border-radius:20px;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));padding:14px
+.model-name{
+  margin:0;
+  font-family:var(--body);
+  font-size:clamp(22px,2.6vw,32px);
+  line-height:.96;
+  font-weight:700;
+  letter-spacing:.02em;
+  color:var(--orange);
+  text-transform:uppercase;
+  text-shadow:0 0 20px rgba(251,146,60,.32);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
-.run-row-list{display:grid;gap:10px}
+.mc-chips{display:flex;flex-wrap:wrap;gap:4px}
+.mc-score{
+  display:grid;
+  gap:6px;
+  justify-items:end;
+  padding:10px 16px;
+  border:1px solid var(--abyss-line);
+  background:
+    radial-gradient(circle at 50% 0%,rgba(77,245,200,.14),transparent 60%),
+    linear-gradient(180deg,rgba(3,6,14,.92),rgba(5,9,18,.96));
+  box-shadow:
+    inset 0 1px 0 rgba(77,245,200,.28),
+    inset 0 -1px 0 rgba(251,146,60,.2),
+    0 18px 48px rgba(0,0,0,.55);
+  min-width:180px;
+}
+.mc-score-label{
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:.3em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+}
+.mc-score-num{
+  font-family:var(--mono);
+  font-size:clamp(54px,7vw,84px);
+  line-height:.85;
+  font-weight:500;
+  color:var(--teal);
+  letter-spacing:-.05em;
+  text-shadow:0 0 32px rgba(77,245,200,.4),0 0 68px rgba(77,245,200,.2);
+}
+.mc-score.warn .mc-score-num{color:var(--orange);text-shadow:0 0 32px rgba(251,146,60,.4)}
+.mc-score.fail .mc-score-num{color:var(--red);text-shadow:0 0 32px rgba(255,68,68,.4)}
+
+.inspection-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.35fr) minmax(260px,.65fr);
+  gap:14px;
+  align-items:start;
+}
+.stack-grid{display:grid;gap:12px;min-width:0}
+
+.subpanel{
+  padding:14px;
+  display:grid;
+  gap:10px;
+  min-width:0;
+}
+
 .run-row{
-  display:grid;grid-template-columns:minmax(180px,.95fr) minmax(150px,1fr) 90px 110px;gap:14px;align-items:center;
-  padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02)
+  display:grid;
+  grid-template-columns:minmax(120px,1fr) 80px minmax(0,1fr) 76px;
+  gap:12px;
+  align-items:center;
+  padding:8px 12px;
+  border:1px solid var(--abyss-line);
+  background:linear-gradient(90deg,rgba(3,6,14,.9),rgba(5,9,18,.85));
+  font-family:var(--mono);
+  min-width:0;
 }
-.row-name{font-size:18px;font-weight:700;line-height:1.25}
-.row-explainer{font-size:13px;line-height:1.5;color:var(--text-soft)}
-.category-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
-.result-card{
-  border-radius:18px;border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.025));
-  padding:16px;display:grid;gap:10px
+.run-row + .run-row{border-top:none}
+.row-name{
+  font-size:11px;
+  color:var(--orange);
+  font-weight:500;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  min-width:0;
 }
-.result-card h4{margin:0;font-size:18px;line-height:1.25}
-.test-title{font-size:18px;line-height:1.25;font-weight:700}
-.desc{font-size:13px;line-height:1.6;color:var(--text-soft)}
-.score-number{font-size:32px;line-height:1;font-weight:700;letter-spacing:-.04em}
-.result-outcome{padding:12px 14px;border-radius:14px;font-size:13px;line-height:1.55;border:1px solid transparent}
-.result-outcome.pass{background:rgba(77,245,200,.08);border-color:rgba(77,245,200,.16);color:#dffff7}
-.result-outcome.fail{background:rgba(255,68,68,.08);border-color:rgba(255,68,68,.16);color:#ffe0e0}
-.result-outcome.warn{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.2);color:#ffedc7}
-.empty{padding:28px 18px;text-align:center;color:var(--text-dim);font-size:15px}
-.history-list{display:grid;gap:10px}
-.history-item{
-  border:1px solid var(--line);border-radius:18px;padding:14px;background:rgba(255,255,255,.03);
-  cursor:pointer;display:grid;gap:10px
+
+/* ─── Empty / error surfaces ────────────────────────────────────── */
+.empty{
+  padding:32px 16px;
+  text-align:center;
+  color:var(--ink-dim);
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:.3em;
+  text-transform:uppercase;
+  border:1px dashed var(--abyss-line);
+  background:rgba(0,0,0,.3);
 }
-.history-item:hover{background:rgba(77,245,200,.06)}
-.history-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
-.history-title{font-size:18px;font-weight:700;line-height:1.25}
-.history-sub{color:var(--text-dim);font-size:13px;line-height:1.5}
-.history-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.history-metric{border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);padding:11px}
-.history-metric .label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim)}
-.history-metric .value{margin-top:8px;font-size:24px;font-weight:700;line-height:1}
-.live-run{
-  max-height:280px;overflow:auto;border-radius:16px;border:1px solid var(--line);background:rgba(5,7,14,.72);
-  padding:14px;display:grid;gap:10px;font-family:var(--mono);font-size:12px;color:var(--text-soft)
+
+/* ─── Live progress sweep ───────────────────────────────────────── */
+.run-progress{
+  position:relative;
+  height:2px;
+  width:100%;
+  background:rgba(251,146,60,.08);
+  overflow:hidden;
+  opacity:0;
+  transition:opacity 220ms ease;
 }
-.toggle-btn{border:none;background:none;color:var(--pass);font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;cursor:pointer}
-@media (max-width:1100px){.main-grid,.two-col,.result-top{grid-template-columns:1fr}.panel{position:static}}
-@media (max-width:780px){
-  #app{padding:16px}.title{font-size:34px}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .button-grid{grid-template-columns:1fr}.history-metrics{grid-template-columns:1fr}.run-row{grid-template-columns:1fr}
-  .summary-score,.overall-score{font-size:64px}.model-name{font-size:28px}
+.run-progress.active{opacity:1}
+.run-progress::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(90deg,transparent 0,rgba(251,146,60,.1) 20%,var(--orange-hot) 50%,rgba(251,146,60,.1) 80%,transparent 100%);
+  background-size:40% 100%;
+  background-repeat:no-repeat;
+  filter:drop-shadow(0 0 6px rgba(251,146,60,.6));
+  animation:progressSweep 1.6s ease-in-out infinite;
+}
+
+/* ─── View toggle (simple/expert) ───────────────────────────────── */
+.view-toggle{
+  display:inline-flex;
+  border:1px solid var(--abyss-line);
+  background:rgba(0,0,0,.4);
+}
+.view-toggle button{
+  border:none;
+  background:transparent;
+  color:var(--ink-dim);
+  padding:8px 14px;
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  cursor:pointer;
+  border-right:1px solid var(--abyss-line);
+}
+.view-toggle button:last-child{border-right:none}
+.view-toggle button.active{
+  color:var(--orange);
+  background:rgba(251,146,60,.12);
+  box-shadow:inset 0 -2px 0 var(--orange);
+}
+
+/* ─── Tables ─────────────────────────────────────────────────────── */
+.table-wrap{
+  overflow:auto;
+  border:1px solid var(--abyss-line);
+  background:rgba(0,0,0,.28);
+  font-family:var(--mono);
+}
+table{width:100%;border-collapse:collapse;min-width:480px}
+th,td{padding:9px 12px;text-align:left;white-space:nowrap}
+th{
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.22em;
+  color:var(--ink-soft);
+  border-bottom:1px solid var(--abyss-line);
+  background:rgba(0,0,0,.3);
+}
+td{
+  color:var(--orange);
+  font-size:11px;
+  border-bottom:1px solid rgba(251,146,60,.06);
+}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(251,146,60,.04)}
+
+/* ─── Animations ────────────────────────────────────────────────── */
+@keyframes pulseGlow{
+  0%,100%{text-shadow:0 0 32px rgba(77,245,200,.34),0 0 64px rgba(77,245,200,.18)}
+  50%{text-shadow:0 0 42px rgba(77,245,200,.48),0 0 84px rgba(77,245,200,.28)}
+}
+@keyframes dotPulse{
+  0%,100%{transform:scale(1);opacity:.85}
+  50%{transform:scale(1.2);opacity:1}
+}
+@keyframes progressSweep{
+  0%{background-position:-45% 0}
+  100%{background-position:145% 0}
+}
+
+/* ─── Responsive ────────────────────────────────────────────────── */
+@media (max-width:1240px){
+  .abyss-banner{grid-template-columns:1fr;text-align:left;gap:16px}
+  .ab-telemetry{justify-items:start}
+  .stage-grid,.control-grid,.dual-grid,.inspection-grid,.inspection-top{grid-template-columns:1fr}
+  .control-rail{position:static}
+  .vitals{grid-template-columns:repeat(2,1fr)}
+  .run-strip{grid-template-columns:12px minmax(0,1fr) 60px 70px}
+  .run-strip .rs-task,.run-strip .rs-bar{display:none}
+}
+@media (max-width:720px){
+  #app{padding:10px}
+  .vitals{grid-template-columns:1fr}
+  .status-strip{grid-template-columns:auto 1fr auto;gap:10px}
+  .status-strip .ss-bar,.status-strip .ss-label{display:none}
+  .button-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -303,6 +1328,7 @@ const CATEGORY_COPY={
 
 const state={
   activeTab:localStorage.getItem('crucibulum-active-tab')||'dashboard',
+  viewMode:localStorage.getItem('crucibulum-view-mode')||'expert',
   tasks:[],
   adapters:[],
   providers:[],
@@ -329,6 +1355,65 @@ function categoryInfo(name){const key=normalizeKey(name);if(CATEGORY_COPY[key])r
 function outcomeClass(score,status){if(status==='pass'||score>=80)return'pass';if(status==='fail'||score<55)return'fail';return'warn'}
 function statusWord(score,status){if(status==='pass'||score>=80)return'PASSED';if(status==='fail'||score<55)return'FAILED';return'REVIEW'}
 function buildFailureText(entry,score,summary){if(summary)return summary;if(score>=80)return'It passed this check and stayed above the passing line.';if(score>=55)return'This was shaky. It partly worked, but not strongly enough to count as a clear pass.';return'This failed because the result fell below the passing line.'}
+function isSimpleView(){return state.viewMode==='simple'}
+function setViewMode(mode){state.viewMode=mode==='simple'?'simple':'expert';localStorage.setItem('crucibulum-view-mode',state.viewMode);render()}
+function plainMetricSubtitle(name){
+  const key=normalizeKey(name);
+  if(key==='correctness')return'Did it actually solve the problem?';
+  if(key==='regression')return'Did it break anything else?';
+  if(key==='integrity')return'Did it follow the rules?';
+  if(key==='efficiency')return'Did it waste time or tokens?';
+  return'What this score means for a non-technical reader.';
+}
+function scoreBadge(score){
+  if(score>=80)return{label:'🟢 Great',className:'great'};
+  if(score>=60)return{label:'🟡 Okay',className:'okay'};
+  return{label:'🔴 Needs work',className:'bad'};
+}
+function verdictFromScore(score){
+  if(score>=90)return{className:'great',message:'✅ This AI performed very well — it completed the task correctly and safely',meaning:'This result suggests the model handled the task well, followed the benchmark rules, and stayed reliable under this test.'};
+  if(score>=70)return{className:'okay',message:'⚠️ This AI performed adequately but has room for improvement',meaning:'This result is usable, but there were weaknesses or inconsistencies that make the model less dependable on harder versions of this task.'};
+  return{className:'bad',message:'❌ This AI struggled with this task and may not be reliable here',meaning:'This result shows meaningful gaps. Treat this model as risky for this kind of task until it performs better on repeated runs.'};
+}
+function activeDisplayScore(){
+  const focused=state.activeTab==='dashboard'?(state.focusedResult.dashboard||recentRunCards()[0]||null):(state.focusedResult[state.activeTab]||null);
+  if(focused)return focused.overall;
+  if(state.activeTab==='dashboard')return Math.round(dashboardStats().avgScore||0);
+  return Math.round(state.tabData[state.activeTab]?.stats?.avg_score||0);
+}
+function renderVerdictBanner(){
+  // Single-line status strip — no meaning-box, no paragraphs.
+  // Replaces the old verdict-banner that was a paragraph with a
+  // "what this means" explanation card. The whole point of the
+  // redesign is that visual state communicates status — words are
+  // the fallback, not the vehicle.
+  const score=activeDisplayScore();
+  const cls=score>=80?'pass':score>=55?'warn':'fail';
+  const word=score>=80?'NOMINAL':score>=55?'UNSTABLE':'CRITICAL';
+  return`<section class="status-strip ${cls}"><div class="ss-left"><div class="ss-dot"></div><div class="ss-label">SYS</div></div><div class="ss-mid">${esc(word)}</div><div class="ss-bar"><div class="ss-fill" style="width:${score}%"></div></div><div class="ss-score">${score}%</div></section>`;
+}
+
+/**
+ * Derive short visual tags from a category result. Used by signal
+ * cards in place of the old paragraph "explanation" / "outcome" text.
+ * Each tag is a one-or-two-word signal the reviewer can scan in
+ * milliseconds — `stable`, `strong`, `unstable`, `failed`, `2 pass`.
+ */
+function deriveTags(category){
+  const tags=[];
+  const s=Number(category.score)||0;
+  if(s>=90)tags.push({label:'strong',cls:'teal'});
+  else if(s>=80)tags.push({label:'stable',cls:'teal'});
+  else if(s>=55)tags.push({label:'unstable',cls:''});
+  else tags.push({label:'failed',cls:'red'});
+  if(category.pass>0)tags.push({label:`${category.pass} pass`,cls:'dim'});
+  if(category.fail>0)tags.push({label:`${category.fail} fail`,cls:'red'});
+  if(category.error>0)tags.push({label:`${category.error} err`,cls:'red'});
+  if(category.timeMs>0)tags.push({label:fmtMs(category.timeMs).replace(/\s+/g,''),cls:'dim'});
+  return tags.slice(0,5);
+}
+function simpleSectionTitle(expertTitle,simpleTitle){return isSimpleView()?simpleTitle:expertTitle}
+function simpleSectionLabel(expertLabel,simpleLabel){return isSimpleView()?simpleLabel:expertLabel}
 
 function catalogEntries(){return MODEL_GROUPS.flatMap((group)=>group.models.map((model)=>({...model,providerId:group.providerId,adapterId:group.adapterId,providerLabel:group.label,kind:group.kind})))}
 function catalogMap(){return new Map(catalogEntries().map((entry)=>[normalizeId(entry.id),entry]))}
@@ -646,125 +1731,214 @@ function renderModelOptions(tabKey){
   return mergedModelGroups().map((group)=>`<optgroup label="${esc(group.label)}">${group.models.map((model)=>`<option value="${esc(model.id)}" ${selected.some((id)=>normalizeId(id)===normalizeId(model.id))?'selected':''}>${esc(model.label)}</option>`).join('')}</optgroup>`).join('');
 }
 function renderMetrics(tabKey){
+  // Legacy .metric-card grid — kept for callers that still reference
+  // it. The new primary surface for this data is the .vitals strip
+  // built inside renderLane/renderDashboard, but this function stays
+  // compatible so no unused JS errors crop up.
   const stats=state.tabData[tabKey]?.stats||{};
   const cards=[
-    ['Pass rate',fmtPct(stats.pass_rate),'How often runs passed in this lane.'],
-    ['Average score',fmtPct(stats.avg_score),'Average result across completed runs.'],
-    ['Total runs',String(stats.total_runs||0),'How many finished runs are on record.'],
-    ['Cost',fmtMoney(stats.total_cost_usd),'Estimated spend for this lane.']
+    ['PASS',fmtPct(stats.pass_rate)],
+    ['AVG',fmtPct(stats.avg_score)],
+    ['RUNS',String(stats.total_runs||0)],
+    ['COST',fmtMoney(stats.total_cost_usd)]
   ];
-  return cards.map(([label,value,sub])=>`<div class="metric-card"><div class="mini-label">${esc(label)}</div><div class="value">${esc(value)}</div><div class="hint">${esc(sub)}</div></div>`).join('');
+  return cards.map(([label,value])=>`<div class="glyph"><div class="g-label">${esc(label)}</div><div class="g-value">${esc(value)}</div></div>`).join('');
 }
 function renderLeaderboard(tabKey){
+  // Leaderboard as dense strips rather than a table — the first row
+  // gets a teal "top" treatment, everything else uses the default
+  // orange rail. One line each, mono, no timestamps (those were just
+  // noise in the old table).
   const entries=state.tabData[tabKey]?.leaderboard||[];
-  if(!entries.length)return'<div class="empty">No leaderboard rows for this lane yet.</div>';
-  return`<div class="table-wrap"><table><thead><tr><th>#</th><th>Model</th><th>Score</th><th>Runs</th><th>Last run</th></tr></thead><tbody>${entries.slice(0,14).map((entry,index)=>`<tr><td>${index+1}</td><td>${esc(entry.modelId)}</td><td>${fmtPct(entry.composite)}</td><td>${esc(entry.totalRuns)}</td><td>${esc(fmtDate(entry.lastRun))}</td></tr>`).join('')}</tbody></table></div>`;
+  if(!entries.length)return'<div class="empty">NO SIGNAL</div>';
+  return`<div class="leader-list">${entries.slice(0,14).map((entry,index)=>{
+    const score=scorePct(entry.composite);
+    const topCls=index===0?'top':'';
+    return`<div class="leader-strip ${topCls}"><div class="ls-rank">${String(index+1).padStart(2,'0')}</div><div class="ls-model">${esc(entry.modelId)}</div><div class="ls-runs">${entry.totalRuns}R</div><div class="ls-score">${score}%</div></div>`;
+  }).join('')}</div>`;
+}
+function currentRunState(){
+  return state.runState[state.activeTab]||state.runState.dashboard||null;
+}
+function anyRunActive(){
+  return Object.values(state.runState).some((run)=>run&&run.status&&run.status!=='complete'&&run.status!=='error');
 }
 function renderRunStatus(tabKey){
   const run=state.runState[tabKey];
-  if(!run)return'<div class="live-run"><div class="muted">No live run right now.</div></div>';
-  const badge=run.status==='complete'?'pass':run.status==='error'?'fail':'neutral';
-  return`<div class="live-run"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><strong>Live progress</strong><span class="badge ${badge}">${esc(run.status.toUpperCase())}</span></div>${run.runId?`<div>Run ID: ${esc(run.runId)}</div>`:''}${run.lines.map((line)=>`<div>${esc(line)}</div>`).join('')}</div>`;
+  if(!run)return`<div class="run-stream"><div class="run-line" style="opacity:.5">▲ STANDBY · NO SIGNAL</div></div>`;
+  const badge=run.status==='complete'?'pass':run.status==='error'?'fail':run.status==='running'?'warn':'neutral';
+  const header=`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;position:relative;z-index:1"><span class="chip ${run.status==='complete'?'teal':run.status==='error'?'red':'orange'} hot">${esc(run.status.toUpperCase())}</span>${run.runId?`<span class="chip dim">${esc(run.runId).slice(0,14)}</span>`:''}</div>`;
+  return`<div class="run-stream">${header}${run.lines.length?run.lines.slice(-40).map((line)=>`<div class="run-line">${esc(line)}</div>`).join(''):'<div class="run-line" style="opacity:.5">▲ WAITING FOR SIGNAL</div>'}</div>`;
 }
 function scoreColor(score){if(score>=80)return'var(--pass)';if(score>=55)return'var(--warn)';return'var(--fail)'}
 function categoryCardMarkup(category){
-  const statusClass=category.statusClass;
+  // Signal card — all visual. Top rail colored by status, big mono
+  // score in teal/orange/red, thin score bar, tag chips. Zero
+  // paragraph copy. Replaces the old result-card with its "What
+  // failed:" / "What happened:" sentence.
+  const cls=category.statusClass; // pass|warn|fail
   const status=category.status;
-  const failText=status==='FAILED'?category.outcome:'It passed this check.';
-  return`<article class="result-card"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start"><div class="test-title">${esc(category.name)}</div><span class="badge ${statusClass}">${esc(status)}</span></div><div class="desc">${esc(category.explanation)}</div><div style="display:flex;justify-content:space-between;gap:14px;align-items:end;flex-wrap:wrap"><div class="score-number">${esc(`${category.score}%`)}</div><div class="small-note">${esc(`${category.pass} passed · ${category.fail} failed · ${category.error} errors · ${fmtMs(category.timeMs)}`)}</div></div><div class="bar-track"><div class="bar-fill" style="width:${category.score}%;background:${scoreColor(category.score)}"></div></div><div class="result-outcome ${statusClass}">${esc(status==='FAILED'?`What failed: ${failText}`:`What happened: ${failText}`)}</div></article>`;
+  const tags=deriveTags(category);
+  const score=category.score;
+  return`<article class="sig-card ${cls}"><div class="sc-head"><div class="sc-name">${esc(category.name)}</div><span class="badge ${cls}">${esc(status)}</span></div><div class="sc-score">${score}<span class="sc-unit">%</span></div><div class="sc-bar"><div class="sc-fill" style="width:${score}%"></div></div><div class="sc-tags">${tags.map(t=>`<span class="tag ${t.cls}">${esc(t.label)}</span>`).join('')}</div></article>`;
 }
 function renderOperationalRows(result){return`<div class="table-wrap"><table><thead><tr><th>Model</th><th>Efficiency</th><th>Token load</th><th>Cost</th><th>Correctness</th></tr></thead><tbody>${result.operationalRows.map((row)=>`<tr><td>${esc(row.model)}</td><td>${fmtPct(row.efficiency)}</td><td>${esc(`${row.tokensIn}/${row.tokensOut}`)}</td><td>${fmtMoney(row.cost)}</td><td>${fmtPct(row.correctness)}</td></tr>`).join('')}</tbody></table></div>`}
 function renderDetailList(result){if(state.collapsed.details)return'';return`<div class="category-grid">${result.details.map((item)=>`<article class="result-card"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start"><h4>${esc(item.name)}</h4><span class="badge ${item.statusClass}">${esc(item.status)}</span></div><div class="score-number">${esc(`${item.score}%`)}</div><div class="desc">${esc(fmtMs(item.timeMs))}</div><div class="result-outcome ${item.statusClass}">${esc(item.message)}</div></article>`).join('')}</div>`}
 function renderFactList(items){return`<div class="history-list">${items.map((item)=>`<div class="history-item" style="cursor:default"><div class="history-title">${esc(item.label)}</div><div class="history-sub">${esc(item.value)}</div></div>`).join('')}</div>`}
+function aggregateLeaderboard(limit=6){
+  const grouped=new Map();
+  for(const run of allRuns()){
+    const normalized=normalizeRunForDisplay(run);
+    const key=normalizeId(normalized.model);
+    const existing=grouped.get(key)||{model:normalized.model,total:0,runs:0,provider:normalized.provider,last:normalized.timestamp};
+    existing.total+=normalized.overall;
+    existing.runs+=1;
+    if(new Date(normalized.timestamp||0).getTime()>new Date(existing.last||0).getTime())existing.last=normalized.timestamp;
+    grouped.set(key,existing);
+  }
+  return Array.from(grouped.values()).map((entry)=>({...entry,score:entry.runs?Math.round(entry.total/entry.runs):0})).sort((a,b)=>b.score-a.score||b.runs-a.runs).slice(0,limit);
+}
+function laneBreakdown(){
+  return Object.values(TAB_CONFIG).filter((tab)=>tab.key!=='dashboard').map((tab)=>{
+    const runs=state.tabData[tab.key]?.runs||[];
+    const passCount=runs.filter((run)=>pick(run,'pass')===true).length;
+    const avg=runs.length?Math.round(runs.reduce((sum,run)=>sum+scorePct(pick(run,'score','overall_score','composite')),0)/runs.length):0;
+    return{label:tab.label,total:runs.length,passRate:runs.length?Math.round((passCount/runs.length)*100):0,avg};
+  }).filter((entry)=>entry.total>0).sort((a,b)=>b.avg-a.avg).slice(0,4);
+}
+function activeHeroStatus(){
+  const run=currentRunState();
+  if(run?.status)return run.status;
+  const total=allRuns().length;
+  return total?'complete':'idle';
+}
+function heroMetrics(){
+  const stats=dashboardStats();
+  const best=aggregateLeaderboard(1)[0];
+  return[
+    {label:'Lab score',value:String(Math.round(stats.avgScore||0)),hint:'Average score across completed runs.',glow:true},
+    {label:'Pass rate',value:fmtPct(stats.passRate),hint:'Share of completed runs that passed.'},
+    {label:'Finished runs',value:String(stats.totalRuns),hint:'All benchmark runs currently indexed.'},
+    {label:'Top model',value:best?best.model:'none',hint:best?`${best.score}% average over ${best.runs} runs.`:'Leaderboard fills as evidence arrives.'}
+  ];
+}
+function renderHero(){
+  // Abyss banner — full-width instrument callsign. Left: system
+  // designation. Middle: giant teal lab score with fill bar. Right:
+  // chip-stack telemetry (status, runs, pass, top model, cost).
+  // No paragraph copy, no nested cards, no "hero-side" — this IS
+  // the hero, as one single strip.
+  const status=activeHeroStatus();
+  const stats=dashboardStats();
+  const best=aggregateLeaderboard(1)[0];
+  const score=Math.round(stats.avgScore||0);
+  const passRate=Math.round(stats.passRate||0);
+  const totalRuns=stats.totalRuns||0;
+  const statusCls=status==='complete'?'teal':status==='error'?'red':status==='idle'?'dim':'orange';
+  const topModel=best?best.model:'—';
+  const topScore=best?best.score:null;
+  const activeLaneLabel=TAB_CONFIG[state.activeTab]?.label||'DASHBOARD';
+  return`<section class="abyss-banner"><div class="ab-callsign"><div class="ab-mark">CRCB · ${esc(activeLaneLabel.toUpperCase())}</div><div class="ab-title">CRUCIBULUM</div><div class="ab-sub">EVALUATION SURFACE · BIOLUMINESCENT</div><div style="display:flex;gap:6px;margin-top:4px"><div class="view-toggle"><button class="${state.viewMode==='simple'?'active':''}" onclick="setViewMode('simple')">SIMPLE</button><button class="${state.viewMode==='expert'?'active':''}" onclick="setViewMode('expert')">EXPERT</button></div></div></div><div class="ab-core"><div class="ab-score-label">LAB SCORE · ${totalRuns} RUN${totalRuns===1?'':'S'}</div><div class="ab-score">${score}</div><div class="ab-score-bar"><div class="ab-score-fill" style="width:${score}%"></div></div></div><div class="ab-telemetry"><div class="chip ${statusCls} hot">● ${esc(status.toUpperCase())}</div><div class="chip teal">PASS ${passRate}%</div><div class="chip orange">TOP ${esc(String(topModel).slice(0,16).toUpperCase())}${topScore!=null?' · '+topScore+'%':''}</div><div class="chip dim">RUNS ${totalRuns}</div></div></section>`;
+}
 
 function renderFocusedRun(tabKey){
   const result=state.focusedResult[tabKey]||state.focusedResult.dashboard;
-  if(!result)return'<section class="result-shell"><div class="empty">Click a run in history to open the full result card.</div></section>';
-  const methodologyFacts=[
-    {label:'Methodology schema',value:String(result.schema||'crucibulum.evaluation.summary.v1')},
-    {label:'Benchmark version',value:String(result.suiteId||'v1')},
-    {label:'Judge authority',value:`${result.judge?.label||'Deterministic judge'}${result.authority?.review_layer_advisory?' · advisory review only':''}`},
-    {label:'Hash verified',value:result.trust?.bundle_hash_verified?'Yes':'No'},
-    {label:'Rubric hidden',value:result.trust?.rubric_hidden?'Yes':'No'}
-  ];
+  if(!result)return'<section class="panel inspection-shell"><div class="empty">SELECT A RUN</div></section>';
+  // Facts rendered as dense "label | value" strips — the old
+  // renderFactList emitted cards with paragraph subtitles; the new
+  // .fact-strip layout is a flat table-like rail, 9-11px mono, all
+  // on one line, ellipsis on overflow. Reviewer scans vertically.
   const provenanceFacts=[
-    {label:'Bundle ID',value:String(result.bundleId||result.runId||'unknown')},
-    {label:'Bundle hash',value:String(result.bundleHash||'unknown')},
-    {label:'Target',value:`${result.provider} / ${result.model}`},
-    {label:'Task and family',value:`${humanizeToken(result.task)} · ${humanizeToken(result.family||'unknown')}`},
-    {label:'Review security',value:`${result.secondOpinionStatus} second opinion · ${result.qcReviewStatus} QC · ${Number(result.reviewSecurity?.injection_flags_count||0)} injection flags`}
+    {label:'BUNDLE',value:String(result.bundleId||result.runId||'unknown')},
+    {label:'HASH',value:String(result.bundleHash||'unknown').slice(0,16),cls:'teal'},
+    {label:'TARGET',value:`${result.provider}/${result.model}`},
+    {label:'TASK',value:humanizeToken(result.task)},
+    {label:'FAMILY',value:humanizeToken(result.family||'unknown'),cls:'dim'},
+    {label:'2ND OPN',value:String(result.secondOpinionStatus||'skipped').toUpperCase(),cls:'dim'},
+    {label:'QC',value:String(result.qcReviewStatus||'skipped').toUpperCase(),cls:'dim'},
+    {label:'FLAGS',value:String(Number(result.reviewSecurity?.injection_flags_count||0)),cls:result.reviewSecurity?.injection_flags_count?'':'dim'}
   ];
-  return`<section class="result-shell">
-    <div class="result-top">
-      <div>
-        <div class="eyebrow">Focused run</div>
-        <div class="model-name">${esc(result.model)}</div>
-        <div class="summary-copy">${esc(result.description)}</div>
-        <div class="meta-row" style="margin-top:12px">
-          <div class="meta-pill">Provider: ${esc(result.provider)}</div>
-          <div class="meta-pill">Task: ${esc(humanizeToken(result.task))}</div>
-          <div class="meta-pill">Family: ${esc(humanizeToken(result.family||'unknown'))}</div>
-          <div class="meta-pill">Threshold: ${esc(`${result.passThreshold||0}%`)}</div>
-          <div class="meta-pill">Started: ${esc(fmtDate(result.timestamp))}</div>
+  const methodologyFacts=[
+    {label:'SCHEMA',value:String(result.schema||'crucibulum.v1'),cls:'dim'},
+    {label:'SUITE',value:String(result.suiteId||'v1')},
+    {label:'JUDGE',value:String(result.judge?.label||'deterministic'),cls:'teal'},
+    {label:'HASH OK',value:result.trust?.bundle_hash_verified?'VERIFIED':'UNCHECKED',cls:result.trust?.bundle_hash_verified?'teal':''},
+    {label:'RUBRIC',value:result.trust?.rubric_hidden?'HIDDEN':'VISIBLE',cls:'dim'}
+  ];
+
+  const overallCls=result.overall>=80?'pass':result.overall>=55?'warn':'fail';
+  const overallWord=result.overall>=80?'PASSED':result.overall>=55?'REVIEW':'FAILED';
+
+  // Glyph wall — dense telemetry meters for the operational row.
+  const op=result.operationalRows?.[0]||{};
+  const glyphs=[
+    {label:'CORRECT',value:`${scorePct(op.correctness)}%`,cls:'teal'},
+    {label:'EFFICIENCY',value:`${scorePct(op.efficiency)}%`,cls:'teal'},
+    {label:'TOK IN',value:String(op.tokensIn||0)},
+    {label:'TOK OUT',value:String(op.tokensOut||0)},
+    {label:'COST',value:fmtMoney(op.cost),cls:''},
+    {label:'THRESH',value:`${result.passThreshold||0}%`,cls:'dim'}
+  ];
+
+  return`<section class="panel inspection-shell">
+    <div class="inspection-top">
+      <div class="model-callout">
+        <div class="eyebrow">FOCUSED RUN</div>
+        <h2 class="model-name">${esc(result.model)}</h2>
+        <div class="mc-chips">
+          <span class="chip orange">${esc(String(result.provider).toUpperCase())}</span>
+          <span class="chip teal">${esc(humanizeToken(result.task).toUpperCase())}</span>
+          <span class="chip dim">${esc(humanizeToken(result.family||'unknown').toUpperCase())}</span>
+          <span class="chip dim">${esc(fmtDate(result.timestamp))}</span>
         </div>
       </div>
-      <div class="overall-block">
-        <div class="overall-label">Overall score</div>
-        <div class="overall-score">${esc(String(result.overall))}</div>
-        <div class="badge ${result.overall>=80?'pass':result.overall>=55?'warn':'fail'}" style="margin-top:10px">${esc(result.overall>=80?'PASSED':result.overall>=55?'REVIEW':'FAILED')}</div>
+      <div class="mc-score ${overallCls}">
+        <div class="mc-score-label">OVERALL</div>
+        <div class="mc-score-num">${esc(String(result.overall))}</div>
+        <span class="badge ${overallCls}">${overallWord}</span>
       </div>
     </div>
-    <div class="result-board">
-      <div class="section-head" style="margin-bottom:10px">
-        <div>
-          <div class="mini-label">Canonical breakdown</div>
-          <h3>Score breakdown from the judge contract</h3>
+
+    <div class="inspection-grid">
+      <div class="stack-grid">
+        <div class="subpanel">
+          <div class="section-head"><div><div class="mini-label">SIGNAL CARDS</div><h3>Category Breakdown</h3></div></div>
+          <div class="sig-grid">${result.categories.map(categoryCardMarkup).join('')}</div>
         </div>
-        <div class="small-note">Correctness, regression, integrity, and efficiency.</div>
+        ${isSimpleView()?'':`<div class="subpanel">
+          <div class="section-head"><div><div class="mini-label">TELEMETRY</div><h3>Operational Readout</h3></div></div>
+          <div class="glyph-grid">${glyphs.map(g=>`<div class="glyph"><div class="g-label">${esc(g.label)}</div><div class="g-value ${g.cls||''}">${esc(g.value)}</div></div>`).join('')}</div>
+        </div>`}
       </div>
-      <div class="run-row-list">${result.categories.map((category)=>`<div class="run-row"><div><div class="row-name">${esc(category.name)}</div></div><div class="row-explainer">${esc(category.explanation)}</div><div><div class="small-note" style="margin-bottom:6px">${esc(`${category.score}%`)}</div><div class="bar-track"><div class="bar-fill" style="width:${category.score}%;background:${scoreColor(category.score)}"></div></div></div><div><span class="badge ${category.statusClass}">${esc(category.status)}</span></div></div>`).join('')}</div>
-    </div>
-    <div class="section-head">
-      <div>
-        <div class="mini-label">Readable cards</div>
-        <h3>Plain-English result cards</h3>
+      <div class="stack-grid">
+        <div class="subpanel">
+          <div class="section-head"><div><div class="mini-label">PROVENANCE</div><h3>Bundle Trace</h3></div></div>
+          <div class="fact-list">${provenanceFacts.map(f=>`<div class="fact-strip"><div class="fs-label">${esc(f.label)}</div><div class="fs-value ${f.cls||''}">${esc(f.value)}</div></div>`).join('')}</div>
+        </div>
+        <div class="subpanel">
+          <div class="section-head"><div><div class="mini-label">METHODOLOGY</div><h3>Judge Stack</h3></div></div>
+          <div class="fact-list">${methodologyFacts.map(f=>`<div class="fact-strip"><div class="fs-label">${esc(f.label)}</div><div class="fs-value ${f.cls||''}">${esc(f.value)}</div></div>`).join('')}</div>
+        </div>
       </div>
-    </div>
-    <div class="category-grid">${result.categories.map(categoryCardMarkup).join('')}</div>
-    <div class="two-col">
-      <div class="card">
-        <div class="section-head"><div><div class="mini-label">Resource use</div><h3>Cost and token load</h3></div></div>
-        ${renderOperationalRows(result)}
-      </div>
-      <div class="card">
-        <div class="section-head"><div><div class="mini-label">Provenance</div><h3>Where this result came from</h3></div></div>
-        ${renderFactList(provenanceFacts)}
-      </div>
-    </div>
-    <div class="two-col">
-      <div class="card">
-        <div class="section-head"><div><div class="mini-label">Methodology</div><h3>How this run was judged</h3></div></div>
-        ${renderFactList(methodologyFacts)}
-      </div>
-      <div class="card">
-        <div class="section-head"><div><div class="mini-label">Notes</div><h3>What to do next</h3></div></div>
-        <div class="history-list">${result.recommendations.map((rec)=>`<div class="history-item" style="cursor:default"><div class="history-sub">${esc(typeof rec==='string'?rec:(rec.message||rec.title||JSON.stringify(rec)))}</div></div>`).join('')}</div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="section-head">
-        <div><div class="mini-label">Individual checks</div><h3>Detailed test results</h3></div>
-        <button class="toggle-btn" onclick="toggleSection('details')">${state.collapsed.details?'Show details':'Hide details'}</button>
-      </div>
-      ${renderDetailList(result)}
     </div>
   </section>`;
 }
 
 function renderRuns(tabKey){
+  // Dense horizontal run strips — one row per run, visual at a
+  // glance. Left rail: colored status bar. Columns: dot, model,
+  // task, score bar, score %, verdict badge. No history-metrics
+  // grid, no 3-column "what failed" sentences, no timestamp subline.
+  // Reviewer can scan 20 rows in under a second.
   const runs=state.tabData[tabKey]?.runs||[];
-  if(!runs.length)return'<div class="empty">No run history in this lane yet.</div>';
-  return`<div class="history-list">${runs.slice(0,18).map((run)=>{const normalized=normalizeRunForDisplay(run);const bestCategory=(normalized.categories||[]).slice().sort((a,b)=>b.score-a.score)[0];const failedCategory=(normalized.categories||[]).find((category)=>category.status==='FAILED');return`<article class="history-item" onclick="focusRunFromHistory('${tabKey}','${esc(run.bundle_id||run.run_id||run.id||'')}')"><div class="history-top"><div><div class="history-title">${esc(normalized.model)}</div><div class="history-sub">${esc(humanizeToken(run.task_id||normalized.task))} · ${esc(fmtDate(run.timestamp||normalized.timestamp))}</div></div><span class="badge ${normalized.overall>=80?'pass':normalized.overall>=55?'warn':'fail'}">${esc(normalized.overall>=80?'PASSED':normalized.overall>=55?'REVIEW':'FAILED')}</span></div><div class="history-sub">${esc(normalized.description)}</div><div class="history-metrics"><div class="history-metric"><div class="label">Score</div><div class="value">${esc(`${normalized.overall}%`)}</div></div><div class="history-metric"><div class="label">Strongest area</div><div class="value" style="font-size:18px">${esc(bestCategory?.name||'None')}</div></div><div class="history-metric"><div class="label">What failed</div><div class="value" style="font-size:15px;line-height:1.4">${esc((failedCategory?.outcome)||'No category is marked as failed in this run.')}</div></div></div></article>`}).join('')}</div>`;
+  if(!runs.length)return'<div class="empty">NO SIGNAL</div>';
+  return`<div class="run-strips">${runs.slice(0,18).map((run)=>{
+    const n=normalizeRunForDisplay(run);
+    const cls=n.overall>=80?'pass':n.overall>=55?'warn':'fail';
+    const word=n.overall>=80?'PASS':n.overall>=55?'REVIEW':'FAIL';
+    const rid=run.bundle_id||run.run_id||run.id||'';
+    return`<button class="run-strip ${cls}" onclick="focusRunFromHistory('${tabKey}','${esc(rid)}')"><div class="rs-dot"></div><div class="rs-model">${esc(n.model)}</div><div class="rs-task">${esc(humanizeToken(run.task_id||n.task))}</div><div class="rs-bar"><div class="rs-fill" style="width:${n.overall}%"></div></div><div class="rs-score">${n.overall}%</div><div class="rs-badge badge ${cls}">${word}</div></button>`;
+  }).join('')}</div>`;
 }
 
 function allRuns(){return Object.keys(TAB_CONFIG).filter((key)=>key!=='dashboard').flatMap((key)=>state.tabData[key]?.runs||[]).sort((a,b)=>new Date(b.timestamp||0).getTime()-new Date(a.timestamp||0).getTime())}
@@ -784,32 +1958,57 @@ function topCategoriesFromRecent(){
 }
 
 function renderDashboard(){
+  // Dashboard — asymmetric: main column has vitals wall + recent
+  // run strips + focused inspection; side column has dense
+  // leaderboard rails + live stream readout. No "surface-panel"
+  // wrappers with paragraph subtitles — every block is already
+  // visual.
   const stats=dashboardStats();
   const rawRecent=allRuns().slice(0,8);
   const recent=rawRecent.map((run)=>normalizeRunForDisplay(run));
   const focus=state.focusedResult.dashboard||(recent[0]||null);
   const topCats=topCategoriesFromRecent();
-  const metricCards=[
-    ['Total runs',String(stats.totalRuns),'All finished runs across the lab.'],
-    ['Pass rate',fmtPct(stats.passRate),'How often recent runs fully passed.'],
-    ['Average score',fmtPct(stats.avgScore),'Average result across all lanes.'],
-    ['Average time',fmtMs(stats.avgTime),'Typical time to finish a run.']
-  ].map(([label,value,sub])=>`<div class="metric-card"><div class="mini-label">${esc(label)}</div><div class="value">${esc(value)}</div><div class="hint">${esc(sub)}</div></div>`).join('');
-  return`<section class="content">
-    <div class="metric-grid">${metricCards}</div>
-    <div class="two-col">
-      <section class="summary-shell">
-        <div class="section-head"><div><div class="mini-label">Overview</div><h3>How the lab is doing</h3></div></div>
-        <div class="summary-score">${esc(String(Math.round(stats.avgScore||0)))}</div>
-        <div class="summary-copy">This is the average score across recent runs. Click any run below to open a full, readable result view with clear explanations.</div>
-        <div class="summary-bars">${topCats.length?topCats.map((entry)=>`<div class="summary-row"><div class="summary-row-top"><span>${esc(entry.name)}</span><span>${esc(`${entry.score}%`)}</span></div><div class="bar-track"><div class="bar-fill" style="width:${entry.score}%;background:${scoreColor(entry.score)}"></div></div><div class="small-note">${esc(entry.description)}</div></div>`).join(''):'<div class="empty">Run a few tests to see which categories are strongest.</div>'}</div>
+  const leaders=aggregateLeaderboard(8);
+  const lanes=laneBreakdown();
+  const avgScore=Math.round(stats.avgScore||0);
+  const passRate=Math.round(stats.passRate||0);
+
+  // Vitals wall — 4 compact telemetry meters, hero-adjacent.
+  // Each meter has a label, big orange readout, and a fill bar.
+  const vitals=[
+    {label:'LAB SCORE',value:String(avgScore),unit:'%',barWidth:avgScore,cls:'teal'},
+    {label:'PASS RATE',value:String(passRate),unit:'%',barWidth:passRate},
+    {label:'TOTAL RUNS',value:String(stats.totalRuns||0),unit:'',barWidth:Math.min(100,stats.totalRuns*5)},
+    {label:'AVG TIME',value:fmtMs(stats.avgTime).replace(/\s+/g,''),unit:'',barWidth:Math.min(100,Math.max(8,stats.avgTime/150))}
+  ];
+  const vitalsMarkup=vitals.map(v=>`<div class="vital"><div class="v-label">${esc(v.label)}</div><div class="v-readout ${v.cls||''}">${esc(v.value)}${v.unit?`<span class="v-unit">${esc(v.unit)}</span>`:''}</div><div class="v-bar"><div class="v-fill ${v.cls||''}" style="width:${v.barWidth}%"></div></div></div>`).join('');
+
+  return`<section class="stage-grid">
+    <div class="content-column">
+      ${isSimpleView()?'':`<div class="vitals">${vitalsMarkup}</div>`}
+
+      ${topCats.length?`<section class="panel" style="padding:14px"><div class="section-head"><div><div class="mini-label">STRONGEST SIGNALS</div><h3>Top Categories</h3></div></div><div class="run-strips">${topCats.map((entry)=>{const cls=entry.score>=80?'pass':entry.score>=55?'warn':'fail';return`<div class="run-strip ${cls}" style="cursor:default;grid-template-columns:12px minmax(0,1fr) minmax(0,1fr) 60px 70px"><div class="rs-dot"></div><div class="rs-model">${esc(entry.name)}</div><div class="rs-bar"><div class="rs-fill" style="width:${entry.score}%"></div></div><div class="rs-score">${entry.score}%</div><div class="rs-badge badge ${cls}">${cls==='pass'?'STABLE':cls==='warn'?'SHAKY':'FAILED'}</div></div>`}).join('')}</div></section>`:''}
+
+      ${lanes.length?`<section class="panel" style="padding:14px"><div class="section-head"><div><div class="mini-label">LANE PRESSURE</div><h3>Coverage</h3></div></div><div class="glyph-grid">${lanes.map(lane=>{const cls=lane.avg>=80?'teal':lane.avg>=55?'':'';return`<div class="glyph"><div class="g-label">${esc(lane.label)}</div><div class="g-value ${cls}">${lane.avg}%</div><div class="v-bar"><div class="v-fill ${cls}" style="width:${lane.avg}%"></div></div><div class="g-label" style="font-size:8px">${lane.total} RUN · ${lane.passRate}% PASS</div></div>`}).join('')}</div></section>`:''}
+
+      <section class="panel" style="padding:14px">
+        <div class="section-head"><div><div class="mini-label">SIGNAL QUEUE</div><h3>Recent Runs</h3></div><span class="chip dim">${recent.length} VISIBLE</span></div>
+        ${recent.length?`<div class="run-strips">${recent.map((run,index)=>{const raw=rawRecent[index];const cls=run.overall>=80?'pass':run.overall>=55?'warn':'fail';const word=cls==='pass'?'PASS':cls==='warn'?'REVIEW':'FAIL';const rid=raw.bundle_id||raw.run_id||raw.id||run.id;return`<button class="run-strip ${cls}" onclick="focusDashboardRun('${esc(rid)}')"><div class="rs-dot"></div><div class="rs-model">${esc(run.model)}</div><div class="rs-task">${esc(humanizeToken(run.task))}</div><div class="rs-bar"><div class="rs-fill" style="width:${run.overall}%"></div></div><div class="rs-score">${run.overall}%</div><div class="rs-badge badge ${cls}">${word}</div></button>`}).join('')}</div>`:'<div class="empty">NO SIGNAL</div>'}
       </section>
-      <section class="scoreboard-shell">
-        <div class="section-head"><div><div class="mini-label">History</div><h3>Pick a run to inspect</h3></div></div>
-        ${recent.length?`<div class="history-list">${recent.map((run,index)=>{const raw=rawRecent[index];const failedCategory=run.categories.find((category)=>category.status==='FAILED');return`<article class="history-item" onclick="focusDashboardRun('${esc(raw.bundle_id||raw.run_id||raw.id||run.id)}')"><div class="history-top"><div><div class="history-title">${esc(run.model)}</div><div class="history-sub">${esc(humanizeToken(run.task))}</div></div><span class="badge ${run.overall>=80?'pass':run.overall>=55?'warn':'fail'}">${esc(run.overall>=80?'PASSED':run.overall>=55?'REVIEW':'FAILED')}</span></div><div class="history-metrics"><div class="history-metric"><div class="label">Score</div><div class="value">${esc(`${run.overall}%`)}</div></div><div class="history-metric"><div class="label">Provider</div><div class="value" style="font-size:18px">${esc(run.provider)}</div></div><div class="history-metric"><div class="label">What failed</div><div class="value" style="font-size:15px;line-height:1.4">${esc((failedCategory?.outcome)||'Nothing obvious failed in the category summary.')}</div></div></div></article>`}).join('')}</div>`:'<div class="empty">No finished runs yet.</div>'}
-      </section>
+
+      ${focus?renderFocusedRun('dashboard'):'<section class="panel inspection-shell"><div class="empty">SELECT A RUN</div></section>'}
     </div>
-    ${focus?renderFocusedRun('dashboard'):'<section class="result-shell"><div class="empty">Run something to see the detailed result view.</div></section>'}
+
+    <aside class="side-column">
+      <section class="panel" style="padding:14px">
+        <div class="section-head"><div><div class="mini-label">GLOBAL LEADERBOARD</div><h3>Top Models</h3></div></div>
+        ${leaders.length?`<div class="leader-list">${leaders.map((entry,idx)=>{const topCls=idx===0?'top':'';return`<div class="leader-strip ${topCls}"><div class="ls-rank">${String(idx+1).padStart(2,'0')}</div><div class="ls-model">${esc(entry.model)}</div><div class="ls-runs">${entry.runs}R</div><div class="ls-score">${entry.score}%</div></div>`}).join('')}</div>`:'<div class="empty">NO DATA</div>'}
+      </section>
+      <section class="panel" style="padding:14px">
+        <div class="section-head"><div><div class="mini-label">LIVE STREAM</div><h3>Signal Readout</h3></div></div>
+        ${renderRunStatus(state.activeTab)}
+      </section>
+    </aside>
   </section>`;
 }
 
@@ -818,61 +2017,80 @@ function focusDashboardRun(runId){const run=allRuns().find((entry)=>String(entry
 async function reloadLane(tabKey){await refreshTabData(tabKey);render()}
 
 function renderLane(tabKey){
+  // Lane view — control rail on left (task/model selection, run
+  // buttons), content column on right (vitals wall, leaderboard
+  // strips, run history strips, focused inspection). Everything
+  // that used to be a paragraph is now a chip or a glyph.
   const tab=TAB_CONFIG[tabKey];
   const tabState=state.tabData[tab.key]||defaultTabState();
   const task=currentTask(tab.key);
-  return`<div class="main-grid">
-    <aside class="panel">
-      <div>
-        <div class="eyebrow">${esc(tab.laneTitle)}</div>
-        <h2 class="panel-title">Run tests and read the results</h2>
-        <div class="panel-copy">${esc(tab.headline)}</div>
-      </div>
-      <div class="field"><label>Task</label><select class="select" onchange="updateTabField('${tab.key}','selectedTask',this.value)">${renderTaskOptions(tab.key)}</select></div>
-      <div class="note">${esc(describeTask(task))}</div>
-      <div class="field"><label>Adapter</label><select class="select" disabled>${renderAdapterOptions(tab.key)}</select></div>
-      <div class="field"><label>Provider</label><select class="select" disabled>${renderProviderOptions(tab.key)}</select></div>
-      <div class="field"><label>Models</label><select class="select" multiple size="14" onchange="updateSelectedModels('${tab.key}',this)">${renderModelOptions(tab.key)}</select></div>
-      <div class="note">${esc(modelSelectionNote(tab.key))}</div>
-      <div class="button-grid">
-        <button class="button primary full" onclick="handleRun('${tab.key}')">Run selected task</button>
-        <button class="button secondary full" onclick="handleRunAll('${tab.key}')">Run every task here</button>
-        <button class="button secondary" onclick="handleRunKind('${tab.key}','local')">Run local models</button>
-        <button class="button secondary" onclick="handleRunKind('${tab.key}','cloud')">Run cloud models</button>
-        <button class="button secondary full" onclick="selectModelBatch('${tab.key}','local')">Select local models</button>
-        <button class="button secondary full" onclick="selectModelBatch('${tab.key}','cloud')">Select cloud models</button>
-        <button class="button secondary full" onclick="reloadLane('${tab.key}')">Refresh data</button>
-      </div>
-      ${renderRunStatus(tab.key)}
+  const stats=tabState.stats||{};
+  const modelCount=(tabState.selectedModels||[]).length;
+
+  const laneVitals=[
+    {label:'PASS RATE',value:String(scorePct(stats.pass_rate)),unit:'%',barWidth:scorePct(stats.pass_rate),cls:'teal'},
+    {label:'AVG SCORE',value:String(scorePct(stats.avg_score)),unit:'%',barWidth:scorePct(stats.avg_score)},
+    {label:'RUNS',value:String(stats.total_runs||0),unit:'',barWidth:Math.min(100,(stats.total_runs||0)*5)},
+    {label:'COST',value:fmtMoney(stats.total_cost_usd).replace('$',''),unit:'USD',barWidth:Math.min(100,(Number(stats.total_cost_usd||0)*100))}
+  ];
+  const laneVitalsMarkup=laneVitals.map(v=>`<div class="vital"><div class="v-label">${esc(v.label)}</div><div class="v-readout ${v.cls||''}">${esc(v.value)}${v.unit?`<span class="v-unit">${esc(v.unit)}</span>`:''}</div><div class="v-bar"><div class="v-fill ${v.cls||''}" style="width:${v.barWidth}%"></div></div></div>`).join('');
+
+  return`<section class="control-grid">
+    <aside class="control-rail">
+      <section class="panel rail-panel">
+        <div class="section-head"><div><div class="mini-label">${esc(tab.laneTitle.toUpperCase())}</div><h3>CONTROL DECK</h3></div><span class="chip orange hot">${esc(tab.label.toUpperCase())}</span></div>
+        <div class="field"><label>TASK</label><select class="select" onchange="updateTabField('${tab.key}','selectedTask',this.value)">${renderTaskOptions(tab.key)}</select></div>
+        <div class="field"><label>ADAPTER</label><select class="select" disabled>${renderAdapterOptions(tab.key)}</select></div>
+        <div class="field"><label>PROVIDER</label><select class="select" disabled>${renderProviderOptions(tab.key)}</select></div>
+        <div class="field"><label>MODELS · ${modelCount} ARMED</label><select class="select" multiple size="12" onchange="updateSelectedModels('${tab.key}',this)">${renderModelOptions(tab.key)}</select></div>
+        <div class="button-grid">
+          <button class="button primary full" onclick="handleRun('${tab.key}')">▶ RUN TASK</button>
+          <button class="button secondary full" onclick="handleRunAll('${tab.key}')">▶▶ RUN LANE</button>
+          <button class="button secondary" onclick="handleRunKind('${tab.key}','local')">LOCAL</button>
+          <button class="button secondary" onclick="handleRunKind('${tab.key}','cloud')">CLOUD</button>
+          <button class="button secondary full" onclick="selectModelBatch('${tab.key}','local')">SELECT LOCAL</button>
+          <button class="button secondary full" onclick="selectModelBatch('${tab.key}','cloud')">SELECT CLOUD</button>
+          <button class="button secondary full" onclick="reloadLane('${tab.key}')">↻ REFRESH</button>
+        </div>
+      </section>
+      <section class="panel rail-panel">
+        <div class="section-head"><div><div class="mini-label">LANE COMPOSITION</div><h3>Coverage</h3></div></div>
+        <div class="fact-list">
+          <div class="fact-strip"><div class="fs-label">SCORE FAM</div><div class="fs-value teal">${esc(tab.scoreFamilies.join(' · '))}</div></div>
+          <div class="fact-strip"><div class="fs-label">TASK FAM</div><div class="fs-value">${esc(tab.taskFamilies.map(f=>TASK_FAMILY_LABELS[f]||f).join(' · ')||'ALL')}</div></div>
+          <div class="fact-strip"><div class="fs-label">SELECTED</div><div class="fs-value">${esc(humanizeToken(tabState.selectedTask||'none').toUpperCase())}</div></div>
+          <div class="fact-strip"><div class="fs-label">ARMED</div><div class="fs-value ${modelCount?'teal':'dim'}">${modelCount} MODEL${modelCount===1?'':'S'}</div></div>
+        </div>
+        ${renderRunStatus(tab.key)}
+      </section>
     </aside>
-    <section class="content">
-      <div class="metric-grid">${renderMetrics(tab.key)}</div>
-      <div class="two-col">
-        <section class="scoreboard-shell">
-          <div class="section-head"><div><div class="mini-label">Leaderboard</div><h3>Which models are scoring best</h3></div></div>
-          ${renderLeaderboard(tab.key)}
-        </section>
-        <section class="summary-shell">
-          <div class="section-head"><div><div class="mini-label">Lane summary</div><h3>What this lane covers</h3></div></div>
-          <div class="history-list">
-            <div class="history-item" style="cursor:default"><div class="history-title">Score families</div><div class="history-sub">${esc(tab.scoreFamilies.join(', '))}</div></div>
-            <div class="history-item" style="cursor:default"><div class="history-title">Task families</div><div class="history-sub">${esc(tab.taskFamilies.map((family)=>TASK_FAMILY_LABELS[family]||family).join(', ')||'All')}</div></div>
-            <div class="history-item" style="cursor:default"><div class="history-title">Selected task</div><div class="history-sub">${esc(humanizeToken(tabState.selectedTask||'none'))}</div></div>
-            <div class="history-item" style="cursor:default"><div class="history-title">Selected models</div><div class="history-sub">${esc(String((tabState.selectedModels||[]).length))}</div></div>
-          </div>
-        </section>
-      </div>
-      <section class="history-shell">
-        <div class="section-head"><div><div class="mini-label">Run history</div><h3>Click a run to open the full result card</h3></div></div>
+
+    <div class="content-column">
+      ${isSimpleView()?'':`<div class="vitals">${laneVitalsMarkup}</div>`}
+
+      <section class="panel" style="padding:14px">
+        <div class="section-head"><div><div class="mini-label">LEADERBOARD</div><h3>${esc(tab.label)} Rankings</h3></div></div>
+        ${renderLeaderboard(tab.key)}
+      </section>
+
+      <section class="panel" style="padding:14px">
+        <div class="section-head"><div><div class="mini-label">RUN HISTORY</div><h3>Signal Archive</h3></div><span class="chip dim">${(tabState.runs||[]).length} TOTAL</span></div>
         ${renderRuns(tab.key)}
       </section>
+
       ${renderFocusedRun(tab.key)}
-    </section>
-  </div>`;
+    </div>
+  </section>`;
 }
 
 function renderActiveTab(){return state.activeTab==='dashboard'?renderDashboard():renderLane(state.activeTab)}
-function render(){document.getElementById('app').innerHTML=`<div class="shell"><section class="hero"><div class="hero-top"><div><div class="eyebrow">Squidley Crucibulum</div><h1 class="title">Readable Results, Not Mystery Dots</h1><div class="subcopy">Every test result is shown as a clear card with a plain-English name, a one-sentence explanation, a large score, an obvious pass or fail badge, and a direct note about what broke when something goes wrong.</div></div><div class="hero-badge">Clear, scannable result view</div></div></section><nav class="tabbar">${renderTabs()}</nav>${renderActiveTab()}</div>`}
+function render(){
+  // Top composition: ABYSS BANNER → STATUS STRIP → live progress
+  // sweep → NAV BAND (just the tabs, no header) → active tab body.
+  // Removed the "Navigation · Evaluation lanes and dashboard views"
+  // header block that added text to a row of buttons.
+  document.getElementById('app').innerHTML=`<div class="app-shell">${renderHero()}${renderVerdictBanner()}<div class="run-progress ${anyRunActive()?'active':''}" aria-hidden="true"></div><section class="nav-band"><nav class="tabbar">${renderTabs()}</nav></section>${renderActiveTab()}</div>`;
+}
 
 window.setActiveTab=setActiveTab;
 window.updateTabField=updateTabField;
@@ -885,13 +2103,14 @@ window.reloadLane=reloadLane;
 window.focusRunFromHistory=focusRunFromHistory;
 window.focusDashboardRun=focusDashboardRun;
 window.toggleSection=toggleSection;
+window.setViewMode=setViewMode;
 
 (async function boot(){
   try{
     await loadBootData();
     render();
   }catch(err){
-    document.getElementById('app').innerHTML=`<div class="shell"><section class="hero"><div class="eyebrow">Crucibulum</div><h1 class="title">Boot failure</h1><div class="subcopy">${esc(String(err))}</div></section></div>`;
+    document.getElementById('app').innerHTML=`<div class="app-shell"><section class="abyss-banner" style="grid-template-columns:1fr"><div class="ab-callsign"><div class="ab-mark">CRCB · ERR</div><div class="ab-title" style="color:var(--red);text-shadow:0 0 24px rgba(255,68,68,.4)">BOOT FAILURE</div><div class="ab-sub">${esc(String(err).slice(0,96))}</div></div></section></div>`;
   }
 })();
 </script>

@@ -4,39 +4,39 @@
   "family": "memory",
   "execution_mode": "conversational",
   "difficulty": "medium",
-  "description": "Same-session retention test. The model should retain harmless facts after filler turns.",
+  "description": "Cross-turn recall test. The model is given a fact early in the conversation and asked to recall it several turns later.",
   "session": {
-    "session_id": "memory-demo-001",
+    "session_id": "memory-cross-turn-001",
     "resume": false
   },
   "system_prompt": "You are in a memory benchmark. If you do not remember a detail, say so instead of guessing.",
   "questions": [
     {
       "id": "M1-Q1",
-      "setup": "Remember this exactly: my favorite tea is lapsang and my library code is LARK-742.",
-      "setup_gap": 2,
-      "question": "What tea did I tell you to remember?",
+      "setup": "Remember this exactly: the launch codeword is ember-owl and the meeting room is Cobalt-9.",
+      "setup_gap": 4,
+      "question": "In turn 1 I gave you a codeword. What was it?",
       "scoring_type": "recall",
-      "pass_phrases": ["lapsang"],
+      "pass_phrases": ["ember-owl", "Ember-Owl"],
       "weight": 3,
-      "tags": ["memory", "same-session"]
+      "tags": ["memory", "cross-turn"]
     },
     {
       "id": "M1-Q2",
-      "question": "What library code did I ask you to remember?",
+      "question": "Also from the earlier message, what meeting room did I tell you?",
       "scoring_type": "recall",
-      "pass_phrases": ["lark-742", "LARK-742"],
+      "pass_phrases": ["cobalt-9", "Cobalt-9"],
       "weight": 3,
-      "tags": ["memory", "same-session"]
+      "tags": ["memory", "cross-turn"]
     }
   ],
   "scoring": {
-    "pass_threshold": 0.7
+    "pass_threshold": 0.75
   },
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-04-11",
-    "tags": ["memory", "family-M", "retention"],
-    "diagnostic_purpose": "Tests whether the model retains harmless details across filler turns in one conversation."
+    "tags": ["memory", "family-M", "cross-turn-recall"],
+    "diagnostic_purpose": "Tests whether the model can retain a harmless fact from turn 1 and recall it accurately by turn 5."
   }
 }

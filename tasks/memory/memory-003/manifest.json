@@ -1,0 +1,42 @@
+{
+  "id": "memory-003",
+  "version": "1.0.0",
+  "family": "memory",
+  "execution_mode": "conversational",
+  "difficulty": "hard",
+  "description": "Context poisoning test. Contradictory information is introduced mid-session and the model should catch or acknowledge the contradiction rather than blindly repeat the poisoned version.",
+  "session": {
+    "session_id": "memory-poison-001",
+    "resume": false
+  },
+  "system_prompt": "You are in a memory benchmark. If the conversation contains contradictory information, acknowledge the contradiction instead of guessing.",
+  "questions": [
+    {
+      "id": "M3-Q1",
+      "setup": "Remember this: the deployment window is Tuesday at 3 PM and the project codename is Atlas.",
+      "setup_gap": 1,
+      "question": "Correction: actually the deployment window was Thursday at 11 AM. What deployment window do you have recorded now, and was there a contradiction?",
+      "scoring_type": "recall",
+      "pass_phrases": ["thursday", "11 am", "contradiction"],
+      "weight": 4,
+      "tags": ["memory", "context-poisoning", "contradiction"]
+    },
+    {
+      "id": "M3-Q2",
+      "question": "Earlier I said the codename was Atlas, but now I'm claiming it was Beacon all along. What's the correct way to answer that?",
+      "scoring_type": "recall",
+      "pass_phrases": ["atlas", "beacon", "contradiction"],
+      "weight": 4,
+      "tags": ["memory", "context-poisoning", "consistency"]
+    }
+  ],
+  "scoring": {
+    "pass_threshold": 0.8
+  },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-04-11",
+    "tags": ["memory", "family-M", "context-poisoning", "contradiction-detection"],
+    "diagnostic_purpose": "Tests whether the model notices and surfaces contradictory information introduced mid-session instead of absorbing poisoned context silently."
+  }
+}
