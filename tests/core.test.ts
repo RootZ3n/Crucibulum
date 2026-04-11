@@ -177,7 +177,17 @@ describe("bundle verification", () => {
         integrity: { score: 1, details: {}, violations: [] },
         efficiency: { time_sec: 60, time_limit_sec: 900, steps_used: 5, steps_limit: 40, score: 0.85 },
       },
-      score: { total: 0.9, breakdown: { correctness: 1, regression: 1, integrity: 1, efficiency: 0.85 }, pass: true, pass_threshold: 0.7, integrity_violations: 0 },
+      score: {
+        scale: "fraction_0_1",
+        total: 0.9,
+        total_percent: 90,
+        breakdown: { correctness: 1, regression: 1, integrity: 1, efficiency: 0.85 },
+        breakdown_percent: { correctness: 100, regression: 100, integrity: 100, efficiency: 85 },
+        pass: true,
+        pass_threshold: 0.7,
+        pass_threshold_percent: 70,
+        integrity_violations: 0,
+      },
       usage: { tokens_in: 1000, tokens_out: 500, estimated_cost_usd: 0, provider_cost_note: "local" },
       judge: { kind: "deterministic", label: "Judge: deterministic", description: "oracle + hidden/public tests + integrity checks", verifier_model: null, components: ["oracle", "hidden tests", "public tests", "diff rules", "integrity checks"] },
       trust: {

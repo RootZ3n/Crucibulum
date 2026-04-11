@@ -1,6 +1,7 @@
 import type { EvidenceBundle } from "../adapters/base.js";
 import { verifyBundle } from "../core/bundle.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "../core/judge.js";
+import { canonicalPercent } from "../types/scores.js";
 
 export interface CrucibleLink {
   profile_id: string | null;
@@ -122,7 +123,7 @@ export function summarizeRunSet(bundles: EvidenceBundle[]): RunSetSummary {
   const runCount = sorted.length;
   const passes = sorted.filter((bundle) => bundle.score.pass).length;
   const failures = runCount - passes;
-  const passRate = runCount > 0 ? round4(passes / runCount) : 0;
+  const passRate = runCount > 0 ? round4((passes / runCount) * 100) : 0;
   const passAt: PassAtSummary = {
     pass_at_1: sorted[0]?.score.pass ?? false,
     pass_at_3: runCount >= 3 ? sorted.slice(0, 3).some((bundle) => bundle.score.pass) : null,
@@ -135,7 +136,9 @@ export function summarizeRunSet(bundles: EvidenceBundle[]): RunSetSummary {
     const ended = new Date(bundle.environment.timestamp_end).getTime();
     return sum + Math.max(0, Math.round((ended - started) / 1000));
   }, 0);
-  const avgScore = runCount > 0 ? round4(sorted.reduce((sum, bundle) => sum + bundle.score.total, 0) / runCount) : 0;
+  const avgScore = runCount > 0
+    ? round4(canonicalPercent(sorted.reduce((sum, bundle) => sum + bundle.score.total, 0) / runCount))
+    : 0;
   const disagreementCount = sorted.filter((bundle) => bundle.review?.secondOpinion?.disagreement || bundle.review?.qcReview?.disagreement).length;
   const qcDisagreementCount = sorted.filter((bundle) => bundle.review?.qcReview?.disagreement).length;
   const reviewBlockedCount = sorted.filter((bundle) => !!bundle.review?.security.review_blocked_reason).length;
@@ -194,7 +197,7 @@ export function summarizeBundle(
 ): EvaluationSummary {
   const validity = verifyBundle(bundle);
   const durationSec = Math.round((new Date(bundle.environment.timestamp_end).getTime() - new Date(bundle.environment.timestamp_start).getTime()) / 1000);
-  const executionScore = Math.round(bundle.score.total * 100);
+  const executionScore = Math.round(canonicalPercent(bundle.score.total));
   const benchmarkScore = crucible?.benchmark_score ?? null;
   const runSet = summarizeRunSet(relatedBundles && relatedBundles.length > 0 ? relatedBundles : [bundle]);
   const divergence = benchmarkScore === null
@@ -216,7 +219,7 @@ export function summarizeBundle(
         difficulty: bundle.task.difficulty,
         provider: bundle.agent.provider,
         adapter: bundle.agent.adapter,
-        score: bundle.score.total,
+        score: canonicalPercent(bundle.score.total),
         pass: bundle.score.pass,
         failure_mode: bundle.diagnosis.failure_mode,
       },
@@ -262,9 +265,14 @@ export function summarizeBundle(
     },
     outcome: {
       pass: bundle.score.pass,
-      score: bundle.score.total,
-      score_breakdown: bundle.score.breakdown,
-      pass_threshold: bundle.score.pass_threshold,
+      score: canonicalPercent(bundle.score.total),
+      score_breakdown: {
+        correctness: canonicalPercent(bundle.score.breakdown.correctness),
+        regression: canonicalPercent(bundle.score.breakdown.regression),
+        integrity: canonicalPercent(bundle.score.breakdown.integrity),
+        efficiency: canonicalPercent(bundle.score.breakdown.efficiency),
+      },
+      pass_threshold: canonicalPercent(bundle.score.pass_threshold),
       integrity_violations: bundle.score.integrity_violations,
       failure_taxonomy: {
         failure_mode: bundle.diagnosis.failure_mode,

@@ -2,7 +2,7 @@
  * Crucibulum — Score Store
  * SQLite-backed score storage with query and leaderboard support.
  */
-import type { ModelScore, ScoreSource, ScoreFamily, LeaderboardEntry } from "../types/scores.js";
+import { type ModelScore, type ScoreSource, type ScoreFamily, type LeaderboardEntry } from "../types/scores.js";
 export declare function storeScores(scores: ModelScore[], source: ScoreSource, runId?: string): {
     stored: number;
     errors: string[];

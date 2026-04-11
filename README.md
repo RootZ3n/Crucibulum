@@ -76,21 +76,34 @@ The principle behind the system is explicit in the code:
 - narration is not trusted
 - the deterministic judge is the source of truth
 
-## Task Families
+## Benchmark Coverage
 
-The current repo includes task families aimed at different failure modes:
+The current repo contains both repo-execution tasks and conversational tasks.
 
-- `poison`: prompt-injection and poisoned-context style tasks
-- `spec`: specification discipline and instruction-following tasks
-- `orchestration`: multi-file or pipeline-tracing coordination tasks
+Repo task families:
 
-At the time of writing, the repository includes:
+- `poison_localization`
+- `spec_discipline`
+- `orchestration`
 
-- 6 `poison` tasks
-- 5 `spec` tasks
-- 4 `orchestration` tasks
+Conversational task families currently present in the corpus:
 
-These tasks are meant to test execution behavior, not just code generation quality in the abstract.
+- `identity`
+- `truthfulness`
+- `classification`
+- `code`
+- `workflow`
+- `instruction-obedience`
+- `personality`
+- `prompt-sensitivity`
+- `role-stress`
+- `context-degradation`
+- `reasoning`
+- `summarization`
+- `thinking-mode`
+- `token-efficiency`
+
+This means Crucibulum is already evaluating both execution behavior and chat behavior, but the long-term benchmark taxonomy is still being consolidated.
 
 ## Scoring Model
 
@@ -119,6 +132,10 @@ The result is a structured score with:
 - pass threshold
 - integrity violation count
 - failure taxonomy
+
+Public API and leaderboard scores are expressed as `0-100` percentages.
+
+Internal bundles currently retain `0-1` fractional totals for backward compatibility, but they now also include explicit percent mirrors and a score-scale marker. That distinction is temporary and documented in [docs/scoring.md](docs/scoring.md).
 
 ## Evidence and Bundles
 
@@ -213,7 +230,22 @@ Review inputs are sanitized and structured before model calls. Review outputs ar
 
 Crucibulum is meant to evaluate models through adapters rather than binding itself to a single provider.
 
-The repo already supports a provider-first flow through adapters and exposes provider/model metadata in the bundle and API. That means you can compare:
+The repo already supports a provider-first flow through adapters and exposes provider/model metadata in the bundle and API. Supported adapters/providers currently include:
+
+- `ollama`
+- `anthropic`
+- `openai`
+- `openrouter`
+- `openclaw`
+- `claudecode`
+- `squidley`
+- `grimoire-cc`
+- `grimoire-codex`
+- `minimax`
+- `zai`
+- `google`
+
+That means you can compare:
 
 - local setups
 - hosted APIs
@@ -221,6 +253,15 @@ The repo already supports a provider-first flow through adapters and exposes pro
 - different execution systems
 
 without losing track of who actually ran the task and under what identity.
+
+## Methodology and Trust Docs
+
+The benchmark is being documented as a public-audit system rather than only a codebase. Start here:
+
+- [docs/methodology.md](docs/methodology.md)
+- [docs/scoring.md](docs/scoring.md)
+- [docs/versioning.md](docs/versioning.md)
+- [docs/reproducibility.md](docs/reproducibility.md)
 
 ## UI and API
 
@@ -308,41 +349,6 @@ It is less useful if what you want is:
 - subjective style reviews
 - broad chat benchmark scoring
 - a benchmark that depends on trusting the model's own explanation
-
-## Reddit Post Draft
-
-Title:
-
-`I built Crucibulum: an execution-based evaluation harness for AI coding agents`
-
-Body:
-
-> I’ve been working on a project called Crucibulum.
->
-> The idea is simple: most AI coding evals still trust narration too much. A model says it fixed something, or explains the right approach, and the benchmark gives it credit. That’s not the same thing as actually solving a task in a repo under constraints.
->
-> Crucibulum is built around deterministic, execution-based evaluation.
->
-> It runs a model or agent against a real software task in an isolated workspace, records what changed, runs hidden/public checks, applies integrity rules, and then scores the result from observable state. The agent never sees the oracle. The judge never trusts the narration.
->
-> A few design choices I cared about:
->
-> - deterministic judge is authoritative
-> - evidence bundles are hash-verified and auditable
-> - provider/adapter identity is preserved end to end
-> - integrity and anti-cheat checks run before downstream scoring
-> - review models are advisory only and cannot override pass/fail
-> - review inputs are sanitized to reduce prompt-injection risk
->
-> Right now the repo includes task families for poisoned-context tasks, spec-discipline tasks, and orchestration/debugging tasks.
->
-> The goal is not to produce a flashy leaderboard. The goal is to answer: can this system actually do the work, and can we prove what happened?
->
-> If you’re interested in execution-based evals, coding agents, benchmark trust models, or prompt-injection containment, I’d be interested in feedback.
-
-Short version:
-
-> Crucibulum is an execution-based AI coding benchmark harness that scores models from real workspace state changes, hidden/public checks, and integrity rules instead of trusting model narration.
 
 ## Repository Summary
 

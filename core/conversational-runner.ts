@@ -13,7 +13,7 @@
  *   4. Build evidence bundle
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { platform, arch } from "node:os";
 import type {
@@ -30,6 +30,7 @@ import { estimateCost } from "../utils/cost.js";
 import { log } from "../utils/logger.js";
 import { formatDuration } from "../utils/timing.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
+import { canonicalPercent } from "../types/scores.js";
 
 // ── Default gap fillers for recall tests ──────────────────────────────────
 
@@ -47,11 +48,30 @@ const DEFAULT_GAP_FILLERS = [
 // ── Manifest loading ─────────────────────────────────────────────────────
 
 const TASKS_DIR = resolve(process.env["CRUCIBULUM_TASKS_DIR"] ?? join(process.cwd(), "tasks"));
+const MEMORY_DIR = resolve(process.env["CRUCIBULUM_MEMORY_DIR"] ?? join(process.cwd(), "state", "memory-sessions"));
+
+function sessionPath(sessionId: string): string {
+  return join(MEMORY_DIR, `${sessionId}.json`);
+}
+
+export function loadPersistedConversation(sessionId: string): ChatMessage[] {
+  const path = sessionPath(sessionId);
+  if (!existsSync(path)) {
+    return [];
+  }
+  const raw = JSON.parse(readFileSync(path, "utf-8")) as { messages?: ChatMessage[] };
+  return Array.isArray(raw.messages) ? raw.messages : [];
+}
+
+export function persistConversation(sessionId: string, messages: ChatMessage[]): void {
+  mkdirSync(MEMORY_DIR, { recursive: true });
+  writeFileSync(sessionPath(sessionId), JSON.stringify({ session_id: sessionId, messages }, null, 2));
+}
 
 export function loadConversationalManifest(taskId: string): ConversationalManifest {
   // Search through task family directories
   const families = [
-    "identity", "truthfulness", "proactive", "personality", "adversarial_chat", "cost_efficiency",
+    "identity", "truthfulness", "safety", "memory", "proactive", "personality", "adversarial_chat", "cost_efficiency",
     "classification", "code", "workflow", "instruction-obedience", "prompt-sensitivity",
     "role-stress", "context-degradation", "reasoning", "summarization", "token-efficiency", "thinking-mode",
   ];
@@ -98,6 +118,65 @@ export interface ConversationalRunResult {
   exitCode: number;
 }
 
+export interface ConversationalEfficiencyResult {
+  time_sec: number;
+  time_limit_sec: number;
+  steps_used: number;
+  steps_limit: number;
+  score: number;
+}
+
+function conversationalTimeBudgetSec(manifest: ConversationalManifest): number {
+  if (manifest.constraints?.time_limit_sec != null) {
+    return manifest.constraints.time_limit_sec;
+  }
+  if (manifest.family === "cost_efficiency") {
+    return Math.max(90, manifest.questions.length * 18);
+  }
+  if (manifest.metadata.tags.includes("reasoning") || manifest.metadata.tags.includes("architecture")) {
+    return Math.max(300, manifest.questions.length * 75);
+  }
+  return Math.max(120, manifest.questions.length * 45);
+}
+
+function conversationalTokenBudget(manifest: ConversationalManifest): number {
+  if (manifest.constraints?.max_total_tokens != null) {
+    return manifest.constraints.max_total_tokens;
+  }
+  if (manifest.family === "cost_efficiency") {
+    return Math.max(1500, manifest.questions.length * 300);
+  }
+  if (manifest.metadata.tags.includes("reasoning") || manifest.metadata.tags.includes("long-context")) {
+    return Math.max(8000, manifest.questions.length * 1500);
+  }
+  return Math.max(3000, manifest.questions.length * 700);
+}
+
+export function computeConversationalEfficiency(
+  manifest: ConversationalManifest,
+  totalDurationMs: number,
+  totalTokensIn: number,
+  totalTokensOut: number,
+): ConversationalEfficiencyResult {
+  const timeLimitSec = conversationalTimeBudgetSec(manifest);
+  const tokenLimit = conversationalTokenBudget(manifest);
+  const totalTokens = totalTokensIn + totalTokensOut;
+  const timeRatio = timeLimitSec > 0 ? (totalDurationMs / 1000) / timeLimitSec : 1;
+  const tokenRatio = tokenLimit > 0 ? totalTokens / tokenLimit : 1;
+  const tokenWeight = manifest.family === "cost_efficiency" ? 0.5 : 0.25;
+  const timeWeight = 1 - tokenWeight;
+  const weightedPressure = (timeRatio * timeWeight) + (tokenRatio * tokenWeight);
+  const score = Math.max(0, Math.min(1, 1 - Math.max(0, weightedPressure - 0.35)));
+
+  return {
+    time_sec: Math.round((totalDurationMs / 1000) * 100) / 100,
+    time_limit_sec: timeLimitSec,
+    steps_used: manifest.questions.length,
+    steps_limit: manifest.questions.length,
+    score: Math.round(score * 100) / 100,
+  };
+}
+
 export async function runConversationalTask(options: ConversationalRunOptions): Promise<ConversationalRunResult> {
   const { taskId, adapter, model } = options;
   const startTime = new Date().toISOString();
@@ -118,12 +197,26 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
 
   timeline.push({ t: 0, type: "task_start", detail: `conversational: ${manifest.questions.length} questions` });
 
-  // Conversation history — maintained across questions for recall tests
+  // Conversation history — maintained across questions for recall tests,
+  // and optionally resumed from persisted prior transcripts for memory tasks.
   const messages: ChatMessage[] = [];
-
-  // System prompt
-  if (options.systemPrompt || manifest.system_prompt) {
-    messages.push({ role: "system", content: options.systemPrompt || manifest.system_prompt! });
+  const systemPrompt = options.systemPrompt || manifest.system_prompt;
+  if (systemPrompt) {
+    messages.push({ role: "system", content: systemPrompt });
+  }
+  if (manifest.session?.resume) {
+    const persistedMessages = loadPersistedConversation(manifest.session.session_id);
+    for (const message of persistedMessages) {
+      if (message.role === "system" && systemPrompt) {
+        continue;
+      }
+      messages.push(message);
+    }
+    timeline.push({
+      t: 0,
+      type: "task_start",
+      detail: `session_resume:${manifest.session.session_id}:${persistedMessages.length} messages`,
+    });
   }
 
   for (const question of manifest.questions) {
@@ -228,6 +321,9 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
   });
 
   const exitCode = judgeResult.pass ? 0 : 1;
+  if (manifest.session?.session_id) {
+    persistConversation(manifest.session.session_id, messages);
+  }
   return { bundle, passed: judgeResult.pass, score: judgeResult.score, exitCode };
 }
 
@@ -257,6 +353,10 @@ function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBu
   for (const r of judgeResult.results) {
     correctnessDetails[r.question_id] = r.passed ? "pass" : "fail";
   }
+
+  const efficiency = computeConversationalEfficiency(manifest, totalDurationMs, totalTokensIn, totalTokensOut);
+  const totalScore = Math.round(((judgeResult.score * 0.85) + (efficiency.score * 0.15)) * 100) / 100;
+  const passed = totalScore >= manifest.scoring.pass_threshold;
 
   const bundle: EvidenceBundle = {
     bundle_id: bundleId,
@@ -302,24 +402,27 @@ function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBu
       correctness: { score: judgeResult.score, details: correctnessDetails },
       regression: { score: 1, details: {} }, // N/A for conversational
       integrity: { score: 1, details: {}, violations: [] },
-      efficiency: {
-        time_sec: totalDurationMs / 1000,
-        time_limit_sec: 600, // default
-        steps_used: judgeResult.total_questions,
-        steps_limit: manifest.questions.length,
-        score: 1,
-      },
+      efficiency,
     },
     score: {
-      total: judgeResult.score,
+      scale: "fraction_0_1",
+      total: totalScore,
+      total_percent: canonicalPercent(totalScore),
       breakdown: {
         correctness: judgeResult.score,
         regression: 1,
         integrity: 1,
-        efficiency: 1,
+        efficiency: efficiency.score,
       },
-      pass: judgeResult.pass,
+      breakdown_percent: {
+        correctness: canonicalPercent(judgeResult.score),
+        regression: 100,
+        integrity: 100,
+        efficiency: canonicalPercent(efficiency.score),
+      },
+      pass: passed,
       pass_threshold: manifest.scoring.pass_threshold,
+      pass_threshold_percent: canonicalPercent(manifest.scoring.pass_threshold),
       integrity_violations: 0,
     },
     usage: {
@@ -341,11 +444,11 @@ function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBu
       review_layer_advisory: true,
     },
     diagnosis: {
-      localized_correctly: judgeResult.pass,
+      localized_correctly: passed,
       avoided_decoys: true,
-      first_fix_correct: judgeResult.pass,
+      first_fix_correct: passed,
       self_verified: false,
-      failure_mode: judgeResult.pass ? null : `${judgeResult.failed}/${judgeResult.total_questions} questions failed`,
+      failure_mode: passed ? null : `${judgeResult.failed}/${judgeResult.total_questions} questions failed`,
     },
     integrations: {
       veritor: { contract_version: "2.0.0", consumable: true },
@@ -357,16 +460,16 @@ function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBu
           difficulty: manifest.difficulty,
           provider: adapter.id,
           adapter: adapter.id,
-          score: judgeResult.score,
-          pass: judgeResult.pass,
-          failure_mode: judgeResult.pass ? null : "conversational_failure",
+          score: totalScore,
+          pass: passed,
+          failure_mode: passed ? null : "conversational_failure",
         },
       },
       crucible: {
         profile_id: null,
-        benchmark_score: judgeResult.score,
-        benchmark_label: `${manifest.family}:${(judgeResult.score * 100).toFixed(0)}%`,
-        execution_score: judgeResult.score,
+        benchmark_score: totalScore,
+        benchmark_label: `${manifest.family}:${Math.round(totalScore * 100)}%`,
+        execution_score: totalScore,
         divergence_note: null,
       },
     },

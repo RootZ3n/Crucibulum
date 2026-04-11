@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crucibulum.local/schemas/conversational_manifest.schema.json",
+  "title": "Crucibulum Conversational Manifest",
+  "description": "Validates conversational benchmark task manifests.",
+  "type": "object",
+  "required": ["id", "version", "family", "execution_mode", "difficulty", "description", "questions", "scoring", "metadata"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string" },
+    "version": { "type": "string" },
+    "family": { "type": "string" },
+    "execution_mode": { "type": "string", "const": "conversational" },
+    "difficulty": {
+      "type": "string",
+      "enum": ["easy", "medium", "hard"]
+    },
+    "description": { "type": "string" },
+    "system_prompt": { "type": "string" },
+    "gap_fillers": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "time_limit_sec": { "type": "number", "minimum": 1 },
+        "max_total_tokens": { "type": "number", "minimum": 1 }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "question", "scoring_type", "weight", "tags"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "question": { "type": "string" },
+          "setup": { "type": "string" },
+          "setup_gap": { "type": "number", "minimum": 0 },
+          "scoring_type": { "type": "string" },
+          "pass_phrases": { "type": "array", "items": { "type": "string" } },
+          "fail_phrases": { "type": "array", "items": { "type": "string" } },
+          "weight": { "type": "number", "exclusiveMinimum": 0 },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "expected_tool": { "type": "string" },
+          "custom_scorer": { "type": "string" },
+          "pattern": { "type": "string" },
+          "maxLength": { "type": "number", "minimum": 1 }
+        }
+      }
+    },
+    "scoring": {
+      "type": "object",
+      "required": ["pass_threshold"],
+      "additionalProperties": false,
+      "properties": {
+        "pass_threshold": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["author", "created", "tags", "diagnostic_purpose"],
+      "additionalProperties": false,
+      "properties": {
+        "author": { "type": "string" },
+        "created": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "diagnostic_purpose": { "type": "string" }
+      }
+    }
+  }
+}

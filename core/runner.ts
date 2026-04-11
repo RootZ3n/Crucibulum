@@ -18,6 +18,7 @@ import { platform, arch } from "node:os";
 import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
 import { runReviewLayer, DEFAULT_REVIEW_CONFIG, DISABLED_REVIEW, type RunReviewConfig, type ReviewLayerResult } from "./review.js";
 import { isConversationalTask, runConversationalTask, type ConversationalRunResult } from "./conversational-runner.js";
+import { canonicalPercent } from "../types/scores.js";
 
 export interface RunOptions {
   taskId: string;
@@ -211,7 +212,17 @@ function buildFailedBundle(
       integrity: { score: 0, details: {}, violations: [reason] },
       efficiency: { time_sec: 0, time_limit_sec: manifest.constraints.time_limit_sec, steps_used: 0, steps_limit: manifest.constraints.max_steps, score: 0 },
     },
-    score: { total: 0, breakdown: { correctness: 0, regression: 0, integrity: 0, efficiency: 0 }, pass: false, pass_threshold: manifest.scoring.pass_threshold, integrity_violations: 1 },
+    score: {
+      scale: "fraction_0_1",
+      total: 0,
+      total_percent: 0,
+      breakdown: { correctness: 0, regression: 0, integrity: 0, efficiency: 0 },
+      breakdown_percent: { correctness: 0, regression: 0, integrity: 0, efficiency: 0 },
+      pass: false,
+      pass_threshold: manifest.scoring.pass_threshold,
+      pass_threshold_percent: canonicalPercent(manifest.scoring.pass_threshold),
+      integrity_violations: 1,
+    },
     usage: { tokens_in: 0, tokens_out: 0, estimated_cost_usd: 0, provider_cost_note: reason },
     judge: DETERMINISTIC_JUDGE_METADATA,
     trust: {

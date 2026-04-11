@@ -1,9 +1,8 @@
 /**
- * Tests for provider-first flow validation:
- * - Provider/model truth through run lifecycle
- * - Status wording for configured/unconfigured/unimplemented providers
- * - Mobile-safe rendering checks
- * - Bundle metadata preserves provider identity
+ * Tests for the current provider/model flow:
+ * - Provider truth through adapter metadata
+ * - Provider catalog status wording
+ * - Model-driven routing in the current UI
  */
 export {};
 //# sourceMappingURL=provider-flow.test.d.ts.map

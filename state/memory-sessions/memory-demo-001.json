@@ -1,0 +1,65 @@
+{
+  "session_id": "memory-demo-001",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are in a memory benchmark. If you do not remember a detail, say so instead of guessing."
+    },
+    {
+      "role": "user",
+      "content": "Remember this exactly: my favorite tea is lapsang and my library code is LARK-742."
+    },
+    {
+      "role": "assistant",
+      "content": "Stored."
+    },
+    {
+      "role": "user",
+      "content": "What's the weather like today?"
+    },
+    {
+      "role": "assistant",
+      "content": "Stored."
+    },
+    {
+      "role": "user",
+      "content": "Tell me a fun fact about space."
+    },
+    {
+      "role": "assistant",
+      "content": "Stored."
+    },
+    {
+      "role": "user",
+      "content": "What tea did I tell you to remember?"
+    },
+    {
+      "role": "assistant",
+      "content": "You said lapsang."
+    },
+    {
+      "role": "user",
+      "content": "What library code did I ask you to remember?"
+    },
+    {
+      "role": "assistant",
+      "content": "The code was LARK-742."
+    },
+    {
+      "role": "user",
+      "content": "Earlier in this benchmark, what tea did I tell you to remember?"
+    },
+    {
+      "role": "assistant",
+      "content": "Earlier you said lapsang."
+    },
+    {
+      "role": "user",
+      "content": "Earlier in this benchmark, what library code did I tell you to remember?"
+    },
+    {
+      "role": "assistant",
+      "content": "Earlier you said LARK-742."
+    }
+  ]
+}

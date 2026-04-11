@@ -6,7 +6,14 @@
 import Database from "better-sqlite3";
 import { resolve, join } from "node:path";
 import { mkdirSync } from "node:fs";
-import type { ModelScore, ScoreSource, ScoreFamily, LeaderboardEntry } from "../types/scores.js";
+import {
+  type ModelScore,
+  type ScoreSource,
+  type ScoreFamily,
+  type LeaderboardEntry,
+  FAMILY_WEIGHTS,
+  SCORE_FAMILIES,
+} from "../types/scores.js";
 import { log } from "../utils/logger.js";
 
 const STATE_DIR = resolve(process.env["CRUCIBULUM_STATE_DIR"] ?? join(process.cwd(), "state"));
@@ -157,18 +164,6 @@ export function queryScores(query: ScoreQuery): ModelScore[] {
   }));
 }
 
-const WEIGHTS: Record<ScoreFamily, number> = {
-  A: 0.20,
-  B: 0.25,
-  C: 0.25,
-  D: 0.10,
-  E: 0.05,
-  F: 0.05,
-  G: 0.05,
-  H: 0.05,
-  I: 0.05,
-};
-
 interface LeaderboardRow {
   modelId: string;
   family: string;
@@ -209,7 +204,7 @@ export function getLeaderboard(families?: ScoreFamily[]): LeaderboardEntry[] {
     model.source = row.source;
   }
 
-  const activeFamilies = filteredFamilies ?? Object.keys(WEIGHTS) as ScoreFamily[];
+  const activeFamilies = filteredFamilies ?? SCORE_FAMILIES;
   const entries: LeaderboardEntry[] = [];
 
   for (const [modelId, data] of models) {
@@ -217,12 +212,12 @@ export function getLeaderboard(families?: ScoreFamily[]): LeaderboardEntry[] {
     let weightTotal = 0;
     const familyScores: Record<ScoreFamily, number | null> = { A: null, B: null, C: null, D: null, E: null, F: null, G: null, H: null, I: null };
 
-    for (const family of Object.keys(WEIGHTS) as ScoreFamily[]) {
+    for (const family of SCORE_FAMILIES) {
       const score = data.families[family];
       familyScores[family] = score ?? null;
       if (score !== undefined && activeFamilies.includes(family)) {
-        weightedSum += score * WEIGHTS[family];
-        weightTotal += WEIGHTS[family];
+        weightedSum += score * FAMILY_WEIGHTS[family];
+        weightTotal += FAMILY_WEIGHTS[family];
       }
     }
 

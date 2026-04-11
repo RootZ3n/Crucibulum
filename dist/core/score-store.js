@@ -5,6 +5,7 @@
 import Database from "better-sqlite3";
 import { resolve, join } from "node:path";
 import { mkdirSync } from "node:fs";
+import { FAMILY_WEIGHTS, SCORE_FAMILIES, } from "../types/scores.js";
 import { log } from "../utils/logger.js";
 const STATE_DIR = resolve(process.env["CRUCIBULUM_STATE_DIR"] ?? join(process.cwd(), "state"));
 const DB_PATH = join(STATE_DIR, "scores.db");
@@ -108,17 +109,6 @@ export function queryScores(query) {
         metadata: r.metadata ? JSON.parse(r.metadata) : undefined,
     }));
 }
-const WEIGHTS = {
-    A: 0.20,
-    B: 0.25,
-    C: 0.25,
-    D: 0.10,
-    E: 0.05,
-    F: 0.05,
-    G: 0.05,
-    H: 0.05,
-    I: 0.05,
-};
 export function getLeaderboard(families) {
     const database = getDb();
     const filteredFamilies = Array.isArray(families) && families.length > 0
@@ -146,18 +136,18 @@ export function getLeaderboard(families) {
             model.lastRun = row.last_run;
         model.source = row.source;
     }
-    const activeFamilies = filteredFamilies ?? Object.keys(WEIGHTS);
+    const activeFamilies = filteredFamilies ?? SCORE_FAMILIES;
     const entries = [];
     for (const [modelId, data] of models) {
         let weightedSum = 0;
         let weightTotal = 0;
         const familyScores = { A: null, B: null, C: null, D: null, E: null, F: null, G: null, H: null, I: null };
-        for (const family of Object.keys(WEIGHTS)) {
+        for (const family of SCORE_FAMILIES) {
             const score = data.families[family];
             familyScores[family] = score ?? null;
             if (score !== undefined && activeFamilies.includes(family)) {
-                weightedSum += score * WEIGHTS[family];
-                weightTotal += WEIGHTS[family];
+                weightedSum += score * FAMILY_WEIGHTS[family];
+                weightTotal += FAMILY_WEIGHTS[family];
             }
         }
         const composite = weightTotal > 0 ? Math.round((weightedSum / weightTotal) * 100) / 100 : 0;

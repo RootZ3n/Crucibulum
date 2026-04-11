@@ -1,0 +1,186 @@
+{
+  "bundle_id": "run_2026-04-10_reasoning-001_qwen3.5-9b",
+  "bundle_hash": "sha256:8b8cb77f83448c0b1fa560616d40469116aba2f83cc94ed71c7d1fefdd64057c",
+  "bundle_version": "2.0.0",
+  "task": {
+    "id": "reasoning-001",
+    "manifest_hash": "sha256:19a6e254abe6eedcddf17f3e8ec12969af9e110fb149613cdb2754adf0355ec4",
+    "family": "truthfulness",
+    "difficulty": "hard"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "Ollama",
+    "system_version": "unknown",
+    "model": "qwen3.5:9b",
+    "model_version": "latest",
+    "provider": "ollama"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "none",
+    "crucibulum_version": "2.0.0",
+    "timestamp_start": "2026-04-10T02:43:47.782Z",
+    "timestamp_end": "2026-04-10T02:54:06.123Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "conversational: 8 questions"
+    },
+    {
+      "t": 24,
+      "type": "task_complete",
+      "detail": "RSN1-Q1: PASS"
+    },
+    {
+      "t": 44,
+      "type": "task_complete",
+      "detail": "RSN1-Q2: PASS"
+    },
+    {
+      "t": 81,
+      "type": "task_complete",
+      "detail": "RSN1-Q3: PASS"
+    },
+    {
+      "t": 228,
+      "type": "error",
+      "detail": "RSN1-Q4: FAIL — Response did not contain any of: [redundan, availab, failover, reliab]. Got: "
+    },
+    {
+      "t": 267,
+      "type": "task_complete",
+      "detail": "RSN1-Q5: PASS"
+    },
+    {
+      "t": 392,
+      "type": "error",
+      "detail": "RSN1-Q6: FAIL — Response did not contain any of: [memory, grow, stale]. Got: "
+    },
+    {
+      "t": 459,
+      "type": "error",
+      "detail": "RSN1-Q7: FAIL — Response did not contain any of: [composite, index]. Got: "
+    },
+    {
+      "t": 618,
+      "type": "error",
+      "detail": "RSN1-Q8: FAIL — Response did not contain any of: [8 chicken, chickens]. Got: "
+    }
+  ],
+  "diff": {
+    "files_changed": [],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 0.5,
+      "details": {
+        "RSN1-Q1": "pass",
+        "RSN1-Q2": "pass",
+        "RSN1-Q3": "pass",
+        "RSN1-Q4": "fail",
+        "RSN1-Q5": "pass",
+        "RSN1-Q6": "fail",
+        "RSN1-Q7": "fail",
+        "RSN1-Q8": "fail"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {}
+    },
+    "integrity": {
+      "score": 1,
+      "details": {},
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 618.34,
+      "time_limit_sec": 600,
+      "steps_used": 8,
+      "steps_limit": 8,
+      "score": 1
+    }
+  },
+  "score": {
+    "total": 0.5,
+    "breakdown": {
+      "correctness": 0.5,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 1
+    },
+    "pass": false,
+    "pass_threshold": 0.7,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 5060,
+    "tokens_out": 30754,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "ollama:qwen3.5:9b"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "conversational-judge"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": false,
+    "narration_ignored": false,
+    "state_based_scoring": true,
+    "bundle_verified": false,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": false,
+    "avoided_decoys": true,
+    "first_fix_correct": false,
+    "self_verified": false,
+    "failure_mode": "4/8 questions failed"
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "2.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "truthfulness",
+        "difficulty": "hard",
+        "provider": "ollama",
+        "adapter": "ollama",
+        "score": 0.5,
+        "pass": false,
+        "failure_mode": "conversational_failure"
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": 0.5,
+      "benchmark_label": "truthfulness:50%",
+      "execution_score": 0.5,
+      "divergence_note": null
+    }
+  }
+}

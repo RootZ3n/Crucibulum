@@ -1,0 +1,40 @@
+{
+  "id": "memory-002",
+  "version": "1.0.0",
+  "family": "memory",
+  "execution_mode": "conversational",
+  "difficulty": "hard",
+  "description": "Cross-run transcript resume test. The harness reloads the previous session transcript and checks whether the model preserves prior context accurately.",
+  "session": {
+    "session_id": "memory-demo-001",
+    "resume": true
+  },
+  "system_prompt": "You are in a memory benchmark. If you do not remember a detail, say so instead of guessing.",
+  "questions": [
+    {
+      "id": "M2-Q1",
+      "question": "Earlier in this benchmark, what tea did I tell you to remember?",
+      "scoring_type": "recall",
+      "pass_phrases": ["lapsang"],
+      "weight": 3,
+      "tags": ["memory", "cross-run"]
+    },
+    {
+      "id": "M2-Q2",
+      "question": "Earlier in this benchmark, what library code did I tell you to remember?",
+      "scoring_type": "recall",
+      "pass_phrases": ["lark-742", "LARK-742"],
+      "weight": 3,
+      "tags": ["memory", "cross-run"]
+    }
+  ],
+  "scoring": {
+    "pass_threshold": 0.85
+  },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-04-11",
+    "tags": ["memory", "family-M", "cross-session-scaffold"],
+    "diagnostic_purpose": "Scaffolds cross-run context retention by resuming a persisted conversation transcript."
+  }
+}

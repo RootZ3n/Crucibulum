@@ -16,20 +16,11 @@ import { readCrucibleLink, writeCrucibleLink } from "./validation-links.js";
 import { log } from "../utils/logger.js";
 import { storeScores, queryScores, getLeaderboard } from "../core/score-store.js";
 import { runSynthesis } from "../core/synthesis.js";
+import { normalizeVerumIngest } from "../core/verum.js";
+import { SCORE_FAMILIES, canonicalPercent, taskFamiliesForScoreFamilies, } from "../types/scores.js";
 const PORT = parseInt(process.env["CRUCIBULUM_PORT"] ?? "18795", 10);
 const RUNS_DIR = process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs");
 const UI_PATH = join(import.meta.dirname, "..", "..", "ui", "index.html");
-const SCORE_FAMILY_TO_TASK_FAMILIES = {
-    A: ["poison_localization"],
-    B: ["spec_discipline"],
-    C: ["orchestration"],
-    D: ["identity"],
-    E: ["truthfulness"],
-    F: ["cost_efficiency"],
-    G: ["personality"],
-    H: [],
-    I: [],
-};
 const activeRuns = new Map();
 const sseClients = new Map();
 const activeSuiteRuns = new Map();
@@ -87,14 +78,14 @@ function parseFamiliesParam(url) {
     const raw = (url.searchParams.get("families") ?? "").trim();
     if (!raw)
         return null;
-    const valid = new Set(["A", "B", "C", "D", "E", "F", "G", "H", "I"]);
+    const valid = new Set(SCORE_FAMILIES);
     const families = raw.split(",").map((item) => item.trim().toUpperCase()).filter((item) => valid.has(item));
     return families.length > 0 ? [...new Set(families)] : null;
 }
 function getTaskFamiliesForScoreFamilies(families) {
     if (!families || families.length === 0)
         return null;
-    return new Set(families.flatMap((family) => SCORE_FAMILY_TO_TASK_FAMILIES[family] ?? []));
+    return new Set(taskFamiliesForScoreFamilies(families));
 }
 function filterBundlesByFamilies(bundles, families) {
     const taskFamilies = getTaskFamiliesForScoreFamilies(families);
@@ -107,7 +98,7 @@ function getStats(bundles) {
         return { total_runs: 0, pass_rate: 0, avg_score: 0, avg_time_sec: 0, total_tokens: 0, total_cost_usd: 0 };
     }
     const passed = bundles.filter((bundle) => bundle.score.pass).length;
-    const avgScore = bundles.reduce((sum, bundle) => sum + bundle.score.total, 0) / bundles.length;
+    const avgScore = bundles.reduce((sum, bundle) => sum + canonicalPercent(bundle.score.total), 0) / bundles.length;
     const avgTime = bundles.reduce((sum, bundle) => {
         return sum + (new Date(bundle.environment.timestamp_end).getTime() - new Date(bundle.environment.timestamp_start).getTime()) / 1000;
     }, 0) / bundles.length;
@@ -116,7 +107,7 @@ function getStats(bundles) {
     return {
         total_runs: bundles.length,
         pass_rate: Math.round((passed / bundles.length) * 100),
-        avg_score: Math.round(avgScore * 100),
+        avg_score: Math.round(avgScore),
         avg_time_sec: Math.round(avgTime),
         total_tokens: totalTokens,
         total_cost_usd: Math.round(totalCost * 10000) / 10000,
@@ -230,11 +221,16 @@ async function handleRequest(req, res) {
                     model: bundle.agent.model,
                     provider: bundle.agent.provider,
                     adapter: bundle.agent.adapter,
-                    score: bundle.score.total,
+                    score: canonicalPercent(bundle.score.total),
                     pass: bundle.score.pass,
-                    pass_threshold: bundle.score.pass_threshold,
+                    pass_threshold: canonicalPercent(bundle.score.pass_threshold),
                     integrity_violations: bundle.score.integrity_violations,
-                    breakdown: bundle.score.breakdown,
+                    breakdown: {
+                        correctness: canonicalPercent(bundle.score.breakdown.correctness),
+                        regression: canonicalPercent(bundle.score.breakdown.regression),
+                        integrity: canonicalPercent(bundle.score.breakdown.integrity),
+                        efficiency: canonicalPercent(bundle.score.breakdown.efficiency),
+                    },
                     failure_taxonomy: summary.outcome.failure_taxonomy,
                     timestamp: bundle.environment.timestamp_start,
                     duration_sec: summary.timing.duration_sec,
@@ -315,7 +311,7 @@ async function handleRequest(req, res) {
                 cost_usd: bundle.usage.estimated_cost_usd,
                 duration_ms: new Date(bundle.environment.timestamp_end).getTime() - new Date(bundle.environment.timestamp_start).getTime(),
                 pass: bundle.score.pass,
-                score: bundle.score.total,
+                score: canonicalPercent(bundle.score.total),
                 timestamp: bundle.environment.timestamp_start,
             }));
             const totalCost = receipts.reduce((sum, receipt) => sum + receipt.cost_usd, 0);
@@ -354,9 +350,9 @@ async function handleRequest(req, res) {
                     suite_id: suiteId,
                     task_scope: taskId || "all",
                     runs: aggregate.run_count,
-                    pass_rate: Math.round(aggregate.pass_rate * 100),
+                    pass_rate: aggregate.pass_rate,
                     pass_at: aggregate.pass_at,
-                    avg_score: Math.round(aggregate.avg_score * 100),
+                    avg_score: aggregate.avg_score,
                     avg_cost_usd: aggregate.run_count ? Math.round((aggregate.total_cost_usd / aggregate.run_count) * 10000) / 10000 : 0,
                     avg_duration_sec: aggregate.run_count ? Math.round(aggregate.total_time_sec / aggregate.run_count) : 0,
                     qc_disagreement_rate: aggregate.qc_disagreement_rate,
@@ -615,7 +611,7 @@ async function handleRequest(req, res) {
                             suite.results.push({
                                 task_id: taskId,
                                 bundle_id: result.bundle.bundle_id,
-                                score: result.bundle.score.total,
+                                score: canonicalPercent(result.bundle.score.total),
                                 pass: result.bundle.score.pass,
                                 duration_sec: durationSec,
                                 tokens_in: result.bundle.usage.tokens_in,
@@ -711,7 +707,7 @@ async function handleRequest(req, res) {
                 sendJSON(res, 400, { ok: false, stored: 0, errors: ["scores array is required and must be non-empty"] });
                 return;
             }
-            const validSources = ["crucible", "crucibulum", "veritor"];
+            const validSources = ["crucible", "crucibulum", "veritor", "verum"];
             const source = (validSources.includes(body.source) ? body.source : "crucibulum");
             const validFamilies = new Set(["A", "B", "C", "D", "E", "F", "G", "H", "I"]);
             const validationErrors = [];
@@ -737,6 +733,22 @@ async function handleRequest(req, res) {
                 ok: result.errors.length === 0 && validationErrors.length === 0,
                 stored: result.stored,
                 errors: [...validationErrors, ...result.errors],
+            });
+            return;
+        }
+        if (path === "/api/verum/ingest" && method === "POST") {
+            const body = JSON.parse(await readBody(req) || "{}");
+            if (!body || typeof body.modelId !== "string" || typeof body.provider !== "string" || typeof body.adapter !== "string" || !Array.isArray(body.results) || body.results.length === 0) {
+                sendJSON(res, 400, { ok: false, stored: 0, errors: ["modelId, provider, adapter, and a non-empty results array are required"], source: "verum" });
+                return;
+            }
+            const scores = normalizeVerumIngest(body);
+            const result = storeScores(scores, "verum", body.runId);
+            sendJSON(res, 200, {
+                ok: result.errors.length === 0,
+                stored: result.stored,
+                errors: result.errors,
+                source: "verum",
             });
             return;
         }
@@ -866,7 +878,7 @@ async function handleRequest(req, res) {
                             completedBundles.push(result.bundle);
                             broadcastSSE(batchId, "step", {
                                 type: "task_complete",
-                                detail: `${adapterId}/${modelSpec.model}: ${result.bundle.score.pass ? "PASS" : "FAIL"} (${Math.round(result.bundle.score.total * 100)}%)`,
+                                detail: `${adapterId}/${modelSpec.model}: ${result.bundle.score.pass ? "PASS" : "FAIL"} (${Math.round(canonicalPercent(result.bundle.score.total))}%)`,
                             });
                             await adapterInstance.adapter.teardown();
                         }

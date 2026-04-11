@@ -10,6 +10,7 @@ import { hashManifest } from "./manifest.js";
 import { estimateCost } from "../utils/cost.js";
 import { log } from "../utils/logger.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
+import { canonicalPercent } from "../types/scores.js";
 export function buildBundle(input) {
     const { manifest, executionResult, diff, judgeResult, security, startTime, endTime, workspace, adapter, model } = input;
     const weights = manifest.scoring.weights;
@@ -55,15 +56,24 @@ export function buildBundle(input) {
         security,
         verification_results: v,
         score: {
+            scale: "fraction_0_1",
             total: Math.round(totalScore * 100) / 100,
+            total_percent: canonicalPercent(totalScore),
             breakdown: {
                 correctness: v.correctness.score,
                 regression: v.regression.score,
                 integrity: v.integrity.score,
                 efficiency: v.efficiency.score,
             },
+            breakdown_percent: {
+                correctness: canonicalPercent(v.correctness.score),
+                regression: canonicalPercent(v.regression.score),
+                integrity: canonicalPercent(v.integrity.score),
+                efficiency: canonicalPercent(v.efficiency.score),
+            },
             pass: passed,
             pass_threshold: manifest.scoring.pass_threshold,
+            pass_threshold_percent: canonicalPercent(manifest.scoring.pass_threshold),
             integrity_violations: v.integrity.violations.length,
         },
         usage: {

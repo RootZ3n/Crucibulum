@@ -25,7 +25,17 @@ function makeBundle(overrides: Partial<EvidenceBundle> = {}): EvidenceBundle {
       integrity: { score: 1, details: { integrity: "pass" }, violations: [] },
       efficiency: { time_sec: 120, time_limit_sec: 900, steps_used: 8, steps_limit: 40, score: 0.75 },
     },
-    score: { total: 0.95, breakdown: { correctness: 1, regression: 1, integrity: 1, efficiency: 0.75 }, pass: true, pass_threshold: 0.7, integrity_violations: 0 },
+    score: {
+      scale: "fraction_0_1",
+      total: 0.95,
+      total_percent: 95,
+      breakdown: { correctness: 1, regression: 1, integrity: 1, efficiency: 0.75 },
+      breakdown_percent: { correctness: 100, regression: 100, integrity: 100, efficiency: 75 },
+      pass: true,
+      pass_threshold: 0.7,
+      pass_threshold_percent: 70,
+      integrity_violations: 0,
+    },
     usage: { tokens_in: 123, tokens_out: 456, estimated_cost_usd: 0.1234, provider_cost_note: "via openrouter" },
     judge: { kind: "deterministic", label: "Judge: deterministic", description: "oracle + hidden/public tests + integrity checks", verifier_model: null, components: ["oracle", "hidden tests", "public tests", "diff rules", "integrity checks"] },
     trust: {
@@ -139,7 +149,17 @@ describe("evaluation contracts", () => {
     const runSet = summarizeRunSet([
       makeBundle({
         bundle_id: "run_a",
-        score: { total: 0.2, breakdown: { correctness: 0, regression: 0.5, integrity: 1, efficiency: 0.5 }, pass: false, pass_threshold: 0.7, integrity_violations: 0 },
+        score: {
+          scale: "fraction_0_1",
+          total: 0.2,
+          total_percent: 20,
+          breakdown: { correctness: 0, regression: 0.5, integrity: 1, efficiency: 0.5 },
+          breakdown_percent: { correctness: 0, regression: 50, integrity: 100, efficiency: 50 },
+          pass: false,
+          pass_threshold: 0.7,
+          pass_threshold_percent: 70,
+          integrity_violations: 0,
+        },
         diagnosis: { localized_correctly: false, avoided_decoys: true, first_fix_correct: false, self_verified: false, failure_mode: "wrong_fix" },
         environment: { os: "linux-x64", arch: "x64", repo_commit: "abc123", crucibulum_version: "1.0.0", timestamp_start: "2026-04-05T00:00:00Z", timestamp_end: "2026-04-05T00:01:00Z" },
       }),

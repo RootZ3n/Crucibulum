@@ -5,6 +5,7 @@
  */
 import { readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { canonicalPercent } from "../types/scores.js";
 const RUNS_DIR = process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs");
 const SUBMISSIONS_DIR = join(process.cwd(), "leaderboard", "submissions");
 export function loadBundles() {
@@ -72,11 +73,11 @@ export function buildLeaderboardEntry(modelKey, bundles) {
         }
     }
     // Scores
-    const avgTotal = bundles.reduce((s, b) => s + b.score.total, 0) / bundles.length;
-    const avgCorrectness = bundles.reduce((s, b) => s + b.score.breakdown.correctness, 0) / bundles.length;
-    const avgRegression = bundles.reduce((s, b) => s + b.score.breakdown.regression, 0) / bundles.length;
-    const avgIntegrity = bundles.reduce((s, b) => s + b.score.breakdown.integrity, 0) / bundles.length;
-    const avgEfficiency = bundles.reduce((s, b) => s + b.score.breakdown.efficiency, 0) / bundles.length;
+    const avgTotal = bundles.reduce((s, b) => s + canonicalPercent(b.score.total), 0) / bundles.length;
+    const avgCorrectness = bundles.reduce((s, b) => s + canonicalPercent(b.score.breakdown.correctness), 0) / bundles.length;
+    const avgRegression = bundles.reduce((s, b) => s + canonicalPercent(b.score.breakdown.regression), 0) / bundles.length;
+    const avgIntegrity = bundles.reduce((s, b) => s + canonicalPercent(b.score.breakdown.integrity), 0) / bundles.length;
+    const avgEfficiency = bundles.reduce((s, b) => s + canonicalPercent(b.score.breakdown.efficiency), 0) / bundles.length;
     // Performance metrics
     const durations = bundles.map(b => {
         const s = new Date(b.environment.timestamp_start).getTime();

@@ -18,7 +18,20 @@ describe("adapter registry", () => {
 
   it("lists all implemented adapters", () => {
     const ids = listRegisteredAdapters().map((entry) => entry.id).sort();
-    assert.deepEqual(ids, ["claudecode", "ollama", "openai", "openclaw", "openrouter"]);
+    assert.deepEqual(ids, [
+      "anthropic",
+      "claudecode",
+      "google",
+      "grimoire-cc",
+      "grimoire-codex",
+      "minimax",
+      "ollama",
+      "openai",
+      "openclaw",
+      "openrouter",
+      "squidley",
+      "zai",
+    ]);
   });
 
   it("surfaces explicit unavailable state for openrouter when api key is missing", async () => {

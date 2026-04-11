@@ -1,0 +1,156 @@
+{
+  "bundle_id": "run_2026-04-10_context-degradation-001_qwen3.5-9b",
+  "bundle_hash": "sha256:6d6ff8c87b2ab5e7e7b58b8c57dee7c4b6fcd62ab9db6e7d0e6538b1be9b8b63",
+  "bundle_version": "2.0.0",
+  "task": {
+    "id": "context-degradation-001",
+    "manifest_hash": "sha256:484dd32b9e706c738fad1a2416fb5e1e3ec5dfc444a5b50cebaa27c79ecf85e2",
+    "family": "truthfulness",
+    "difficulty": "easy"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "Ollama",
+    "system_version": "unknown",
+    "model": "qwen3.5:9b",
+    "model_version": "latest",
+    "provider": "ollama"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "none",
+    "crucibulum_version": "2.0.0",
+    "timestamp_start": "2026-04-10T02:40:51.145Z",
+    "timestamp_end": "2026-04-10T02:43:13.279Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "conversational: 3 questions"
+    },
+    {
+      "t": 11,
+      "type": "task_complete",
+      "detail": "CTX1-Q1: PASS"
+    },
+    {
+      "t": 35,
+      "type": "task_complete",
+      "detail": "CTX1-Q2: PASS"
+    },
+    {
+      "t": 142,
+      "type": "error",
+      "detail": "CTX1-Q3: FAIL — Response did not contain any of: [August 15, 200 client, 100ms, Python, TypeScri"
+    }
+  ],
+  "diff": {
+    "files_changed": [],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 0.6666666666666666,
+      "details": {
+        "CTX1-Q1": "pass",
+        "CTX1-Q2": "pass",
+        "CTX1-Q3": "fail"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {}
+    },
+    "integrity": {
+      "score": 1,
+      "details": {},
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 142.134,
+      "time_limit_sec": 600,
+      "steps_used": 3,
+      "steps_limit": 3,
+      "score": 1
+    }
+  },
+  "score": {
+    "total": 0.6666666666666666,
+    "breakdown": {
+      "correctness": 0.6666666666666666,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 1
+    },
+    "pass": false,
+    "pass_threshold": 0.7,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 1138,
+    "tokens_out": 7324,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "ollama:qwen3.5:9b"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "conversational-judge"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": false,
+    "narration_ignored": false,
+    "state_based_scoring": true,
+    "bundle_verified": false,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": false,
+    "avoided_decoys": true,
+    "first_fix_correct": false,
+    "self_verified": false,
+    "failure_mode": "1/3 questions failed"
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "2.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "truthfulness",
+        "difficulty": "easy",
+        "provider": "ollama",
+        "adapter": "ollama",
+        "score": 0.6666666666666666,
+        "pass": false,
+        "failure_mode": "conversational_failure"
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": 0.6666666666666666,
+      "benchmark_label": "truthfulness:67%",
+      "execution_score": 0.6666666666666666,
+      "divergence_note": null
+    }
+  }
+}

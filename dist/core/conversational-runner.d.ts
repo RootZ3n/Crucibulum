@@ -12,7 +12,9 @@
  *   3. Aggregate scores via conversational judge
  *   4. Build evidence bundle
  */
-import type { CrucibulumAdapter, ConversationalManifest, EvidenceBundle } from "../adapters/base.js";
+import type { CrucibulumAdapter, ConversationalManifest, ChatMessage, EvidenceBundle } from "../adapters/base.js";
+export declare function loadPersistedConversation(sessionId: string): ChatMessage[];
+export declare function persistConversation(sessionId: string, messages: ChatMessage[]): void;
 export declare function loadConversationalManifest(taskId: string): ConversationalManifest;
 export declare function isConversationalTask(taskId: string): boolean;
 export interface ConversationalRunOptions {
@@ -28,5 +30,13 @@ export interface ConversationalRunResult {
     score: number;
     exitCode: number;
 }
+export interface ConversationalEfficiencyResult {
+    time_sec: number;
+    time_limit_sec: number;
+    steps_used: number;
+    steps_limit: number;
+    score: number;
+}
+export declare function computeConversationalEfficiency(manifest: ConversationalManifest, totalDurationMs: number, totalTokensIn: number, totalTokensOut: number): ConversationalEfficiencyResult;
 export declare function runConversationalTask(options: ConversationalRunOptions): Promise<ConversationalRunResult>;
 //# sourceMappingURL=conversational-runner.d.ts.map

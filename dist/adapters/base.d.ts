@@ -168,8 +168,8 @@ export interface ChatResult {
     tokens_out: number;
     duration_ms: number;
 }
-export type ConversationalFamily = "identity" | "truthfulness" | "proactive" | "personality" | "adversarial_chat" | "cost_efficiency" | "classification" | "code" | "workflow" | "instruction-obedience" | "prompt-sensitivity" | "role-stress" | "context-degradation" | "reasoning" | "summarization" | "token-efficiency" | "thinking-mode";
-export type ConversationalScoringType = "text_match" | "text_match_all" | "refusal_check" | "recall" | "correction" | "proactive" | "tool_verification" | "hedge_count" | "corporate_check" | "regex_match" | "custom";
+export type ConversationalFamily = "identity" | "truthfulness" | "safety" | "memory" | "proactive" | "personality" | "adversarial_chat" | "cost_efficiency" | "classification" | "code" | "workflow" | "instruction-obedience" | "prompt-sensitivity" | "role-stress" | "context-degradation" | "reasoning" | "summarization" | "token-efficiency" | "thinking-mode";
+export type ConversationalScoringType = "text_match" | "text_match_all" | "refusal_check" | "refusal_quality" | "recall" | "correction" | "proactive" | "tool_verification" | "hedge_count" | "corporate_check" | "regex_match" | "custom";
 export interface ConversationalQuestion {
     id: string;
     question: string;
@@ -198,6 +198,23 @@ export interface ConversationalManifest {
     system_prompt?: string | undefined;
     /** Gap filler messages for recall tests */
     gap_fillers?: string[] | undefined;
+    /**
+     * Optional session-resume settings for memory-style evaluations.
+     * When resume is true, the harness reloads the prior conversation transcript
+     * for the same session_id before running this manifest.
+     */
+    session?: {
+        session_id: string;
+        resume?: boolean | undefined;
+    } | undefined;
+    /**
+     * Optional conversational execution constraints.
+     * These are used by the harness for efficiency scoring and time-budget checks.
+     */
+    constraints?: {
+        time_limit_sec?: number | undefined;
+        max_total_tokens?: number | undefined;
+    } | undefined;
     questions: ConversationalQuestion[];
     scoring: {
         pass_threshold: number;
@@ -308,8 +325,16 @@ export interface EvidenceBundle {
     };
     verification_results: VerificationResults;
     score: {
+        scale: "fraction_0_1";
         total: number;
+        total_percent: number;
         breakdown: {
+            correctness: number;
+            regression: number;
+            integrity: number;
+            efficiency: number;
+        };
+        breakdown_percent: {
             correctness: number;
             regression: number;
             integrity: number;
@@ -317,6 +342,7 @@ export interface EvidenceBundle {
         };
         pass: boolean;
         pass_threshold: number;
+        pass_threshold_percent: number;
         integrity_violations: number;
     };
     usage: {

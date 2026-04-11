@@ -1,11 +1,9 @@
 /**
- * Tests for Run Full Suite feature:
- * - Button renders in UI
- * - Distinct from Run Evaluation
- * - Works without selected task
- * - Suite payload shape
- * - Suite results summary
- * - Mobile layout
+ * Current lane-batch and backend suite contract.
+ *
+ * The UI currently exposes lane-level batch actions rather than a dedicated
+ * full-suite button, while the backend still provides /api/run-suite for
+ * downstream and future UI callers.
  */
 export {};
 //# sourceMappingURL=suite-run.test.d.ts.map

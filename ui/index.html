@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crucibulum</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+:root{
+  --bg:#060810;
+  --panel:#0d1322;
+  --panel-2:#0a1020;
+  --line:rgba(255,255,255,.09);
+  --line-strong:rgba(255,255,255,.16);
+  --text:#f7fbff;
+  --text-soft:#dbe7f3;
+  --text-dim:#93a4ba;
+  --pass:#4df5c8;
+  --fail:#ff4444;
+  --warn:#f59e0b;
+  --shadow:0 24px 80px rgba(0,0,0,.42);
+  --body:'Space Grotesk',sans-serif;
+  --mono:'IBM Plex Mono',monospace;
+}
+html,body{
+  margin:0;
+  min-height:100%;
+  background:
+    radial-gradient(circle at top left,rgba(77,245,200,.14),transparent 28%),
+    radial-gradient(circle at 100% 0%,rgba(245,158,11,.08),transparent 26%),
+    linear-gradient(180deg,#09101d 0%,#060810 55%,#060810 100%);
+  color:var(--text);
+  font-family:var(--body);
+}
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  background:
+    linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);
+  background-size:30px 30px;
+  mask-image:linear-gradient(180deg,rgba(0,0,0,.6),transparent 90%);
+}
+#app{min-height:100vh;padding:24px}
+.shell{max-width:1240px;margin:0 auto;display:grid;gap:18px}
+.hero,.panel,.card,.result-shell,.summary-shell,.history-shell,.scoreboard-shell,.metric-card{
+  background:linear-gradient(180deg,rgba(16,25,43,.94),rgba(8,12,22,.98));
+  border:1px solid var(--line);
+  box-shadow:var(--shadow);
+}
+.hero{border-radius:26px;padding:24px 26px;position:relative;overflow:hidden}
+.hero::after{
+  content:"";
+  position:absolute;
+  right:-120px;
+  top:-110px;
+  width:320px;
+  height:320px;
+  background:radial-gradient(circle,rgba(77,245,200,.14),transparent 66%);
+  filter:blur(10px);
+}
+.hero-top{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.eyebrow,.mini-label,.small-note{
+  font-family:var(--mono);
+  text-transform:uppercase;
+  letter-spacing:.14em;
+  color:var(--text-dim);
+  font-size:11px;
+}
+.title{margin:6px 0 10px;font-size:40px;line-height:.95;letter-spacing:-.04em}
+.subcopy{max-width:900px;color:var(--text-soft);font-size:15px;line-height:1.7}
+.hero-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:12px 16px;
+  border-radius:999px;
+  background:rgba(77,245,200,.11);
+  border:1px solid rgba(77,245,200,.24);
+  color:var(--pass);
+  font-family:var(--mono);
+  font-size:12px;
+}
+.hero-badge::before{
+  content:"";
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background:var(--pass);
+  box-shadow:0 0 18px rgba(77,245,200,.7);
+}
+.tabbar{display:flex;flex-wrap:wrap;gap:8px;border-bottom:1px solid rgba(255,255,255,.07);padding-bottom:10px}
+.tab{
+  border:none;background:none;color:var(--text-dim);border-radius:0;padding:10px 12px;
+  font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+  cursor:pointer;border-bottom:2px solid transparent
+}
+.tab.active{color:var(--warn);border-bottom-color:var(--warn)}
+.main-grid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:18px;align-items:start}
+.panel{border-radius:24px;padding:20px;display:grid;gap:15px;position:sticky;top:24px}
+.panel-title{margin:0;font-size:24px;line-height:1.05}
+.panel-copy,.note,.muted{color:var(--text-dim);line-height:1.6;font-size:14px}
+.field{display:grid;gap:7px}
+.field label{
+  font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim)
+}
+.select,.button{
+  width:100%;border:1px solid var(--line-strong);background:rgba(7,10,18,.92);color:var(--text);
+  border-radius:14px;padding:13px 14px;font-family:var(--body);font-size:14px
+}
+.select[multiple]{min-height:250px}
+.select:focus{outline:none;border-color:rgba(77,245,200,.4);box-shadow:0 0 0 3px rgba(77,245,200,.12)}
+.button{
+  cursor:pointer;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+  transition:transform 140ms ease,border-color 140ms ease,background 140ms ease
+}
+.button:hover{transform:translateY(-1px)}
+.button.primary{background:linear-gradient(180deg,rgba(77,245,200,.2),rgba(13,26,33,.95));border-color:rgba(77,245,200,.38)}
+.button.secondary{background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(8,12,22,.96))}
+.button-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.button-grid .full{grid-column:1/-1}
+.content{display:grid;gap:18px;min-width:0}
+.metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.metric-card{border-radius:22px;padding:16px}
+.metric-card .value{margin-top:10px;font-size:32px;line-height:1;font-weight:700}
+.metric-card .hint{margin-top:8px;color:var(--text-dim);font-size:13px;line-height:1.5}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.card,.history-shell,.scoreboard-shell,.summary-shell,.result-shell{border-radius:24px;padding:18px}
+.section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:14px}
+.section-head h3{margin:4px 0 0;font-size:24px;line-height:1.05}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:18px}
+table{width:100%;border-collapse:collapse;min-width:560px}
+th,td{padding:13px 14px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left}
+th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim)}
+td{color:var(--text-soft);font-size:14px}
+tr:last-child td{border-bottom:none}
+.badge{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;padding:8px 12px;
+  font-weight:700;font-size:14px;line-height:1
+}
+.badge.pass{background:rgba(77,245,200,.14);color:var(--pass)}
+.badge.fail{background:rgba(255,68,68,.14);color:var(--fail)}
+.badge.warn{background:rgba(245,158,11,.16);color:var(--warn)}
+.badge.neutral{background:rgba(255,255,255,.08);color:var(--text-soft)}
+.summary-score{font-size:92px;line-height:.9;font-weight:700;letter-spacing:-.06em}
+.summary-copy{font-size:15px;line-height:1.7;color:var(--text-soft)}
+.summary-bars{display:grid;gap:12px;margin-top:10px}
+.summary-row{display:grid;gap:7px}
+.summary-row-top{display:flex;justify-content:space-between;gap:12px;font-size:14px;color:var(--text-soft)}
+.bar-track{height:10px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.06)}
+.bar-fill{height:100%;border-radius:999px}
+.result-shell{display:grid;gap:18px}
+.result-top{display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:18px;align-items:start}
+.model-name{margin:4px 0 10px;font-size:34px;line-height:1;letter-spacing:-.04em}
+.overall-block{
+  padding:16px;border-radius:20px;border:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02))
+}
+.overall-label{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--text-dim)}
+.overall-score{font-size:80px;line-height:.9;font-weight:700;letter-spacing:-.08em}
+.meta-row{display:flex;flex-wrap:wrap;gap:10px}
+.meta-pill{padding:10px 12px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-size:13px;color:var(--text-soft)}
+.result-board{
+  border:1px solid var(--line);border-radius:20px;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));padding:14px
+}
+.run-row-list{display:grid;gap:10px}
+.run-row{
+  display:grid;grid-template-columns:minmax(180px,.95fr) minmax(150px,1fr) 90px 110px;gap:14px;align-items:center;
+  padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02)
+}
+.row-name{font-size:18px;font-weight:700;line-height:1.25}
+.row-explainer{font-size:13px;line-height:1.5;color:var(--text-soft)}
+.category-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.result-card{
+  border-radius:18px;border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.025));
+  padding:16px;display:grid;gap:10px
+}
+.result-card h4{margin:0;font-size:18px;line-height:1.25}
+.test-title{font-size:18px;line-height:1.25;font-weight:700}
+.desc{font-size:13px;line-height:1.6;color:var(--text-soft)}
+.score-number{font-size:32px;line-height:1;font-weight:700;letter-spacing:-.04em}
+.result-outcome{padding:12px 14px;border-radius:14px;font-size:13px;line-height:1.55;border:1px solid transparent}
+.result-outcome.pass{background:rgba(77,245,200,.08);border-color:rgba(77,245,200,.16);color:#dffff7}
+.result-outcome.fail{background:rgba(255,68,68,.08);border-color:rgba(255,68,68,.16);color:#ffe0e0}
+.result-outcome.warn{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.2);color:#ffedc7}
+.empty{padding:28px 18px;text-align:center;color:var(--text-dim);font-size:15px}
+.history-list{display:grid;gap:10px}
+.history-item{
+  border:1px solid var(--line);border-radius:18px;padding:14px;background:rgba(255,255,255,.03);
+  cursor:pointer;display:grid;gap:10px
+}
+.history-item:hover{background:rgba(77,245,200,.06)}
+.history-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.history-title{font-size:18px;font-weight:700;line-height:1.25}
+.history-sub{color:var(--text-dim);font-size:13px;line-height:1.5}
+.history-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.history-metric{border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);padding:11px}
+.history-metric .label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim)}
+.history-metric .value{margin-top:8px;font-size:24px;font-weight:700;line-height:1}
+.live-run{
+  max-height:280px;overflow:auto;border-radius:16px;border:1px solid var(--line);background:rgba(5,7,14,.72);
+  padding:14px;display:grid;gap:10px;font-family:var(--mono);font-size:12px;color:var(--text-soft)
+}
+.toggle-btn{border:none;background:none;color:var(--pass);font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;cursor:pointer}
+@media (max-width:1100px){.main-grid,.two-col,.result-top{grid-template-columns:1fr}.panel{position:static}}
+@media (max-width:780px){
+  #app{padding:16px}.title{font-size:34px}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .button-grid{grid-template-columns:1fr}.history-metrics{grid-template-columns:1fr}.run-row{grid-template-columns:1fr}
+  .summary-score,.overall-score{font-size:64px}.model-name{font-size:28px}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const TAB_CONFIG={
+  dashboard:{key:'dashboard',label:'Latest Run',scoreFamilies:['A','B','C','D','E','F','G','H','I'],taskFamilies:[],laneTitle:'Overview',headline:'See the whole lab at a glance, then open a run to inspect exactly what happened.'},
+  personality:{key:'personality',label:'Personality',scoreFamilies:['G'],taskFamilies:['personality','identity'],laneTitle:'Personality Checks',headline:'Identity, behavior, style, and pressure tests in one place.'},
+  benchmark:{key:'benchmark',label:'Benchmark',scoreFamilies:['A','B','D','E','F'],taskFamilies:['spec_discipline','truthfulness','cost_efficiency','identity'],laneTitle:'Benchmark Checks',headline:'Truth, discipline, efficiency, and general quality.'},
+  poison:{key:'poison',label:'Poison',scoreFamilies:['A'],taskFamilies:['poison','poison_localization','security'],laneTitle:'Poison Checks',headline:'Bug planting, bug finding, and security pressure.'},
+  build:{key:'build',label:'Build',scoreFamilies:['C'],taskFamilies:['orchestration'],laneTitle:'Build Checks',headline:'Multi-step repo work and workflow execution.'},
+  safety:{key:'safety',label:'Safety',scoreFamilies:['H'],taskFamilies:['safety'],laneTitle:'Safety Checks',headline:'Boundary holding, refusal quality, child safety, and repeated pressure tests.'},
+  memory:{key:'memory',label:'Memory',scoreFamilies:['I'],taskFamilies:['memory'],laneTitle:'Memory Checks',headline:'Retention, cross-run recall, and honest memory handling.'}
+};
+
+const TASK_FAMILY_LABELS={
+  personality:'Personality',
+  identity:'Identity',
+  poison:'Poison',
+  poison_localization:'Poison',
+  security:'Security',
+  spec_discipline:'Spec',
+  truthfulness:'Truthfulness',
+  cost_efficiency:'Efficiency',
+  orchestration:'Workflow',
+  safety:'Safety',
+  memory:'Memory'
+};
+
+const MODEL_GROUPS=[
+  {key:'ollama',label:'Local (Ollama)',providerId:'ollama',adapterId:'ollama',kind:'local',models:[
+    {id:'gemma4:e4b',label:'gemma4:e4b'},
+    {id:'qwen3.5:9b',label:'qwen3.5:9b'},
+    {id:'qwen3.5:4b',label:'qwen3.5:4b'},
+    {id:'qwen2.5:7b-instruct',label:'qwen2.5:7b-instruct'}
+  ]},
+  {key:'openrouter',label:'OpenRouter',providerId:'openrouter',adapterId:'openrouter',kind:'cloud',models:[
+    {id:'xiaomi/mimo-v2-pro',label:'xiaomi/mimo-v2-pro (MiMo V2 Pro)'},
+    {id:'xiaomi/mimo-v2-flash',label:'xiaomi/mimo-v2-flash (MiMo Flash)'},
+    {id:'xiaomi/mimo-v2-omni',label:'xiaomi/mimo-v2-omni (MiMo Omni)'}
+  ]},
+  {key:'modelstudio',label:'ModelStudio',providerId:'modelstudio',adapterId:'squidley',kind:'cloud',models:[
+    {id:'qwen3.6-plus',label:'qwen3.6-plus'},
+    {id:'glm-4',label:'glm-4'}
+  ]},
+  {key:'zai',label:'ZAI',providerId:'zai',adapterId:'zai',kind:'cloud',models:[
+    {id:'glm-5.1',label:'glm-5.1'},
+    {id:'glm-4-plus',label:'GLM-4 Plus'},
+    {id:'glm-z1-flash',label:'GLM-Z1 Flash'}
+  ]},
+  {key:'anthropic',label:'Anthropic',providerId:'anthropic',adapterId:'anthropic',kind:'cloud',models:[
+    {id:'claude-opus-4-6',label:'claude-opus-4-6 (Claude Opus 4.6)'},
+    {id:'claude-sonnet-4-6',label:'claude-sonnet-4-6 (Claude Sonnet 4.6)'}
+  ]},
+  {key:'openai',label:'OpenAI',providerId:'openai',adapterId:'openai',kind:'cloud',models:[
+    {id:'gpt-5.4',label:'gpt-5.4'},
+    {id:'gpt-5.4-mini',label:'gpt-5.4-mini'},
+    {id:'gpt-5.4-nano',label:'gpt-5.4-nano'}
+  ]},
+  {key:'minimax',label:'MiniMax',providerId:'minimax',adapterId:'minimax',kind:'cloud',models:[
+    {id:'MiniMax-M2.7',label:'MiniMax-M2.7'},
+    {id:'MiniMax-M2.7-highspeed',label:'MiniMax-M2.7-highspeed'},
+    {id:'MiniMax-M2.7-her',label:'MiniMax-M2.7-her'}
+  ]}
+];
+
+const CATEGORY_COPY={
+  correctness:{label:'Correctness',description:'How much of the actual task was solved according to the deterministic judge.'},
+  regression:{label:'Regression Safety',description:'Whether the run avoided breaking things that should have stayed working.'},
+  integrity:{label:'Integrity',description:'Whether the run respected benchmark rules, trust boundaries, and anti-cheat checks.'},
+  efficiency:{label:'Efficiency',description:'How well the run stayed within time and token budgets.'},
+  self_knowledge:{label:'Does It Know Itself?',description:'Checks whether the model understands what it is, what it can do, and what it cannot do.'},
+  truthfulness:{label:'Does It Tell The Truth?',description:'Checks whether the model says what is true instead of making things up.'},
+  self_correction:{label:'Can It Fix Its Own Mistakes?',description:'Checks whether the model notices a mistake and fixes it after getting new clues.'},
+  tool_routing:{label:'Does It Use The Right Tools?',description:'Checks whether the model picks the right helper or tool for the job.'},
+  reasoning:{label:'Can It Think Through Problems?',description:'Checks whether the model can work through a problem step by step.'},
+  instruction_following:{label:'Does It Follow Instructions?',description:'Checks whether the model does what it was asked to do without drifting away.'},
+  context_degradation:{label:'Does It Stay Sharp Over Time?',description:'Checks whether the model still performs well after a long or messy conversation.'},
+  role_stress:{label:'Does It Stay Consistent Under Pressure?',description:'Checks whether the model keeps the same behavior when the situation gets hard.'},
+  prompt_sensitivity:{label:'Does It Handle Different Phrasing?',description:'Checks whether the model still succeeds when the same request is worded in a new way.'},
+  classification:{label:'Can It Sort Things Correctly?',description:'Checks whether the model puts things into the right groups.'},
+  summarization:{label:'Can It Summarize Accurately?',description:'Checks whether the model gives the short version without losing important facts.'},
+  workflow:{label:'Can It Handle Complex Tasks?',description:'Checks whether the model can finish a job with several steps in the right order.'},
+  token_efficiency:{label:'Is It Efficient With Resources?',description:'Checks whether the model gets the job done without wasting tokens or cost.'},
+  safety:{label:'Does It Hold The Line Safely?',description:'Checks whether the model refuses unsafe requests without becoming permissive or confused.'},
+  memory:{label:'Does It Remember Honestly?',description:'Checks whether the model recalls prior context accurately and admits uncertainty when it should.'}
+};
+
+const state={
+  activeTab:localStorage.getItem('crucibulum-active-tab')||'dashboard',
+  tasks:[],
+  adapters:[],
+  providers:[],
+  liveModels:[],
+  tabData:{},
+  runState:{},
+  focusedResult:{},
+  collapsed:{details:false}
+};
+
+const esc=(v)=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+const fmtMoney=(v)=>`$${Number(v??0).toFixed(4)}`;
+const fmtDate=(v)=>{if(!v)return'Never';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString()};
+const fmtMs=(v)=>{const ms=Number(v??0);if(!Number.isFinite(ms)||ms<=0)return'0 ms';return ms>=1000?`${(ms/1000).toFixed(2)} s`:`${Math.round(ms)} ms`};
+function scorePct(value){const n=Number(value??0);if(!Number.isFinite(n))return 0;return Math.max(0,Math.min(100,Math.round(n<=1?n*100:n)))}
+function fmtPct(value){return `${scorePct(value)}%`}
+function apiUrl(path,families){const url=new URL(path,window.location.origin);if(families&&families.length)url.searchParams.set('families',families.join(','));return url.toString()}
+function defaultTabState(){return{selectedTask:'',selectedModels:[],selectedProvider:'',selectedAdapter:'',stats:{},leaderboard:[],runs:[]}}
+function normalizeId(v){return String(v||'').trim().toLowerCase()}
+function normalizeKey(v){return normalizeId(v).replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')}
+function pick(obj,...keys){for(const key of keys){const v=obj?.[key];if(v!==undefined&&v!==null)return v}return undefined}
+function humanizeToken(text){const raw=String(text||'').replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim();if(!raw)return'General Check';return raw.replace(/\b\w/g,(m)=>m.toUpperCase())}
+function categoryInfo(name){const key=normalizeKey(name);if(CATEGORY_COPY[key])return CATEGORY_COPY[key];return{label:humanizeToken(name),description:'Checks whether the model handled this part of the task correctly.'}}
+function outcomeClass(score,status){if(status==='pass'||score>=80)return'pass';if(status==='fail'||score<55)return'fail';return'warn'}
+function statusWord(score,status){if(status==='pass'||score>=80)return'PASSED';if(status==='fail'||score<55)return'FAILED';return'REVIEW'}
+function buildFailureText(entry,score,summary){if(summary)return summary;if(score>=80)return'It passed this check and stayed above the passing line.';if(score>=55)return'This was shaky. It partly worked, but not strongly enough to count as a clear pass.';return'This failed because the result fell below the passing line.'}
+
+function catalogEntries(){return MODEL_GROUPS.flatMap((group)=>group.models.map((model)=>({...model,providerId:group.providerId,adapterId:group.adapterId,providerLabel:group.label,kind:group.kind})))}
+function catalogMap(){return new Map(catalogEntries().map((entry)=>[normalizeId(entry.id),entry]))}
+
+function deriveRoutingForModel(modelId){
+  const catalog=catalogMap().get(normalizeId(modelId));
+  if(catalog)return{providerId:catalog.providerId,adapterId:catalog.adapterId,kind:catalog.kind};
+  return{providerId:'ollama',adapterId:'ollama',kind:'local'};
+}
+
+function mergedProviders(){return MODEL_GROUPS.map((group)=>({id:group.providerId,label:group.label,available:true}))}
+
+function mergedModelGroups(){
+  return MODEL_GROUPS.map((group)=>({
+    ...group,
+    models:group.models.map((model)=>({id:model.id,label:model.label,available:true,kind:group.kind}))
+  }));
+}
+
+function allModelIdsByKind(kind){return mergedModelGroups().flatMap((group)=>group.kind===kind?group.models.map((m)=>m.id):[])}
+function taskOptionsForTab(tabKey){const config=TAB_CONFIG[tabKey];return state.tasks.filter((task)=>!config.taskFamilies.length||config.taskFamilies.includes(task.family)).sort((a,b)=>String(a.id).localeCompare(String(b.id)))}
+function currentTask(tabKey){const tabState=state.tabData[tabKey]||defaultTabState();return taskOptionsForTab(tabKey).find((task)=>task.id===tabState.selectedTask)||null}
+function syncRouting(tabKey){
+  const tab=state.tabData[tabKey]||defaultTabState();
+  const models=tab.selectedModels||[];
+  if(!models.length)return{provider:'',adapter:''};
+  const routes=models.map(deriveRoutingForModel);
+  const provider=routes.every((r)=>r.providerId===routes[0].providerId)?routes[0].providerId:'mixed';
+  const adapter=routes.every((r)=>r.adapterId===routes[0].adapterId)?routes[0].adapterId:'mixed';
+  state.tabData[tabKey]={...tab,selectedProvider:provider,selectedAdapter:adapter};
+  return{provider,adapter};
+}
+function reconcileTabSelection(tabKey,tabState){
+  const next={...defaultTabState(),...tabState};
+  const tasks=taskOptionsForTab(tabKey);
+  if(!next.selectedTask&&tasks[0])next.selectedTask=tasks[0].id;
+  if(!Array.isArray(next.selectedModels)||!next.selectedModels.length){
+    const first=mergedModelGroups()[0]?.models?.[0]?.id;
+    next.selectedModels=first?[first]:[];
+  }
+  state.tabData[tabKey]={...next};
+  syncRouting(tabKey);
+  return state.tabData[tabKey];
+}
+
+async function fetchJSON(url,options){
+  const res=await fetch(url,options);
+  if(!res.ok){
+    const text=await res.text();
+    throw new Error(text||`${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
+async function loadBootData(){
+  const [tasksRes,adaptersRes,providersRes,modelsRes]=await Promise.all([
+    fetchJSON('/api/tasks'),
+    fetchJSON('/api/adapters'),
+    fetchJSON('/api/providers'),
+    fetchJSON('/api/models')
+  ]);
+  state.tasks=Array.isArray(tasksRes.tasks)?tasksRes.tasks:[];
+  state.adapters=Array.isArray(adaptersRes.adapters)?adaptersRes.adapters:[];
+  state.providers=Array.isArray(providersRes.providers)?providersRes.providers:(Array.isArray(providersRes)?providersRes:[]);
+  state.liveModels=Array.isArray(modelsRes.models)?modelsRes.models:[];
+  for(const key of Object.keys(TAB_CONFIG)){
+    state.tabData[key]=reconcileTabSelection(key,defaultTabState());
+    await refreshTabData(key);
+  }
+}
+
+async function refreshTabData(tabKey){
+  const config=TAB_CONFIG[tabKey];
+  const [stats,leaderboard,runs]=await Promise.all([
+    fetchJSON(apiUrl('/api/stats',config.scoreFamilies)),
+    fetchJSON(apiUrl('/api/leaderboard',config.scoreFamilies)),
+    fetchJSON(apiUrl('/api/runs',config.scoreFamilies))
+  ]);
+  const next=reconcileTabSelection(tabKey,state.tabData[tabKey]||defaultTabState());
+  state.tabData[tabKey]={...next,stats,leaderboard:leaderboard.leaderboard||[],runs:runs.runs||[]};
+  if(!state.focusedResult[tabKey]&&state.tabData[tabKey].runs[0])state.focusedResult[tabKey]=normalizeRunForDisplay(state.tabData[tabKey].runs[0]);
+}
+
+function setActiveTab(tabKey){state.activeTab=tabKey;localStorage.setItem('crucibulum-active-tab',tabKey);render()}
+function updateTabField(tabKey,field,value){state.tabData[tabKey]={...(state.tabData[tabKey]||defaultTabState()),[field]:value};if(field==='selectedTask')render()}
+function updateSelectedModels(tabKey,selectEl){const values=Array.from(selectEl.selectedOptions).map((opt)=>opt.value);state.tabData[tabKey]={...(state.tabData[tabKey]||defaultTabState()),selectedModels:values};syncRouting(tabKey);render()}
+function selectModelBatch(tabKey,kind){const ids=allModelIdsByKind(kind);state.tabData[tabKey]={...(state.tabData[tabKey]||defaultTabState()),selectedModels:ids};syncRouting(tabKey);render()}
+function describeTask(task){if(!task)return'Select a task to see what it checks.';return task.diagnostic_purpose||task.title||task.id}
+function modelSelectionNote(tabKey){
+  const models=(state.tabData[tabKey]?.selectedModels)||[];
+  if(!models.length)return'No models selected.';
+  const routes=models.map(deriveRoutingForModel);
+  const localCount=routes.filter((r)=>r.kind==='local').length;
+  const cloudCount=routes.filter((r)=>r.kind==='cloud').length;
+  return `${models.length} model${models.length===1?'':'s'} selected: ${localCount} local and ${cloudCount} cloud.`;
+}
+
+function canonicalBreakdownEntries(run){
+  const raw=pick(run,'breakdown')||pick(run,'outcome')?.score_breakdown||{};
+  const order=['correctness','regression','integrity','efficiency'];
+  return order.filter((key)=>raw&&raw[key]!==undefined).map((key)=>{
+    const score=scorePct(raw[key]);
+    const info=categoryInfo(key);
+    return{
+      key,
+      rawName:key,
+      name:info.label,
+      explanation:info.description,
+      score,
+      pass:score>=80?1:0,
+      fail:score<55?1:0,
+      error:0,
+      timeMs:Number(pick(run,'duration_ms','elapsed_ms')||0),
+      status:statusWord(score,score<55?'fail':'pass'),
+      statusClass:outcomeClass(score,score<55?'fail':'pass'),
+      outcome:`${info.label} contributed ${score}% to the canonical run result.`
+    };
+  });
+}
+
+function normalizeRunForDisplay(run){
+  const model=pick(run,'model','modelId','model_name')||'unknown';
+  const provider=pick(run,'provider','providerId')||deriveRoutingForModel(model).providerId||'unknown';
+  const overall=scorePct(pick(run,'overall_score','score','composite','avg_score'));
+  const description=pick(run,'model_description','description')||`Run completed through ${provider}.`;
+  const rawCategories=pick(run,'category_breakdown','categories','categoryScores')||[];
+  const categories=(Array.isArray(rawCategories)?rawCategories:Object.entries(rawCategories).map(([name,val])=>({name,...(typeof val==='object'?val:{score:val})}))).map((entry)=>{
+    const score=scorePct(pick(entry,'score','value','overall'));
+    const name=pick(entry,'name','category','label')||'general';
+    const info=categoryInfo(name);
+    const pass=Number(pick(entry,'pass_count','pass','passed')??(score>=80?1:0));
+    const fail=Number(pick(entry,'fail_count','fail','failed')??(score<55?1:0));
+    const error=Number(pick(entry,'error_count','errors')??0);
+    const timeMs=Number(pick(entry,'time_ms','duration_ms','elapsed_ms')??pick(run,'duration_ms','elapsed_ms')??0);
+    const rawSummary=pick(entry,'message','detail','summary','failure_reason','what_failed');
+    return{
+      key:normalizeKey(name),
+      rawName:name,
+      name:info.label,
+      explanation:info.description,
+      score,
+      pass,
+      fail,
+      error,
+      timeMs,
+      status:statusWord(score,pick(entry,'status')),
+      statusClass:outcomeClass(score,pick(entry,'status')),
+      outcome:buildFailureText(entry,score,rawSummary)
+    };
+  });
+  const details=(Array.isArray(pick(run,'task_results','results','items','tests'))?pick(run,'task_results','results','items','tests'):[]).map((item)=>{
+    const score=scorePct(pick(item,'score','overall_score'));
+    const status=pick(item,'status')||(pick(item,'pass')===true?'pass':pick(item,'pass')===false?'fail':'review');
+    return{
+      name:humanizeToken(pick(item,'task','task_id','name','id')||'Task'),
+      score,
+      status:statusWord(score,status),
+      statusClass:outcomeClass(score,status),
+      message:buildFailureText(item,score,pick(item,'message','detail','summary')||''),
+      timeMs:Number(pick(item,'time_ms','duration_ms','elapsed_ms')||0)
+    };
+  });
+  const fallbackCategory=categoryInfo('workflow');
+  const breakdownEntries=canonicalBreakdownEntries(run);
+  return{
+    id:pick(run,'bundle_id','run_id','id')||`${model}-${Date.now()}`,
+    runId:pick(run,'bundle_id','run_id','id')||'',
+    bundleId:pick(run,'bundle_id','run_id','id')||'',
+    bundleHash:pick(run,'bundle_hash')||'',
+    model,
+    provider,
+    description,
+    overall,
+    categories:categories.length?categories:(breakdownEntries.length?breakdownEntries:[{
+      key:'workflow',
+      rawName:'workflow',
+      name:fallbackCategory.label,
+      explanation:fallbackCategory.description,
+      score:overall,
+      pass:overall>=80?1:0,
+      fail:overall<55?1:0,
+      error:0,
+      timeMs:Number(pick(run,'duration_ms','elapsed_ms')||0),
+      status:statusWord(overall,pick(run,'pass')===false?'fail':'pass'),
+      statusClass:outcomeClass(overall,pick(run,'pass')===false?'fail':'pass'),
+      outcome:buildFailureText(run,overall,pick(run,'summary','message')||description)
+    }]),
+    operationalRows:[{
+      model,
+      efficiency:scorePct(pick(run,'breakdown')?.efficiency||pick(run,'efficiency_score','value_score')),
+      tokensIn:Number(pick(run,'tokens_in')||0),
+      tokensOut:Number(pick(run,'tokens_out')||0),
+      cost:Number(pick(run,'cost_usd')||0),
+      correctness:scorePct(pick(run,'breakdown')?.correctness||pick(run,'correctness','score'))
+    }],
+    recommendations:Array.isArray(pick(run,'recommendations','findings','actionable_findings'))&&pick(run,'recommendations','findings','actionable_findings').length?pick(run,'recommendations','findings','actionable_findings'):[overall>=80?'This run is strong enough to keep in the preferred pool.':'This run needs attention before it should be trusted.'],
+    details:details.length?details:[{name:humanizeToken(pick(run,'task_id','task')||'Run'),score:overall,status:statusWord(overall,pick(run,'pass')===false?'fail':'pass'),statusClass:outcomeClass(overall,pick(run,'pass')===false?'fail':'pass'),message:buildFailureText(run,overall,pick(run,'summary','message')||description),timeMs:Number(pick(run,'duration_ms','elapsed_ms')||0)}],
+    timestamp:pick(run,'timestamp','created_at'),
+    task:pick(run,'task_id','task')||'batch',
+    pass:pick(run,'pass'),
+    family:pick(run,'family'),
+    difficulty:pick(run,'difficulty'),
+    passThreshold:scorePct(pick(run,'pass_threshold')||pick(run,'outcome')?.pass_threshold),
+    judge:pick(run,'judge')||{},
+    trust:pick(run,'trust')||{},
+    reviewSecurity:pick(run,'review_security')||{},
+    secondOpinionStatus:pick(run,'second_opinion_status')||'skipped',
+    qcReviewStatus:pick(run,'qc_review_status')||'skipped',
+    schema:pick(run,'schema')||'crucibulum.evaluation.summary.v1',
+    suiteId:pick(run,'suite_id')||'v1',
+    authority:pick(run,'authority')||{}
+  };
+}
+
+async function hydrateFocusedRun(tabKey,runId){
+  try{
+    const res=await fetchJSON(`/api/runs/${encodeURIComponent(runId)}/summary`);
+    if(!res?.summary)return;
+    const current=state.focusedResult[tabKey];
+    if(!current||String(current.runId)!==String(runId))return;
+    state.focusedResult[tabKey]=normalizeRunForDisplay({...current,...res.summary});
+    render();
+  }catch{}
+}
+
+function setFocusedRun(tabKey,run){
+  const normalized=normalizeRunForDisplay(run);
+  state.focusedResult[tabKey]=normalized;
+  render();
+  if(normalized.runId)hydrateFocusedRun(tabKey,normalized.runId);
+}
+
+function toggleSection(name){state.collapsed[name]=!state.collapsed[name];render()}
+
+function watchRunCompletion(tabKey,runId,taskId,modelId){
+  return new Promise((resolve)=>{
+    const source=new EventSource(`/api/run/${encodeURIComponent(runId)}/live`);
+    source.addEventListener('step',(event)=>{
+      try{
+        const payload=JSON.parse(event.data);
+        const line=payload.detail||payload.type||'Step';
+        state.runState[tabKey].lines.push(`[${taskId} :: ${modelId}] ${line}`);
+        render();
+      }catch{}
+    });
+    source.addEventListener('complete',async(event)=>{
+      source.close();
+      const payload=JSON.parse(event.data);
+      const normalized=normalizeRunForDisplay({...payload,bundle_id:runId,task_id:taskId,model:modelId});
+      state.runState[tabKey].lines.push(`[${taskId} :: ${modelId}] ${normalized.pass===false?'FAILED':'PASSED'} at ${normalized.overall}%`);
+      state.focusedResult[tabKey]=normalized;
+      for(const key of Object.keys(TAB_CONFIG))await refreshTabData(key);
+      render();
+      resolve(payload);
+    });
+    source.addEventListener('error',(event)=>{
+      source.close();
+      let message='Run stream closed.';
+      try{const payload=JSON.parse(event.data);message=payload.error||'Run error'}catch{}
+      state.runState[tabKey].lines.push(`[${taskId} :: ${modelId}] FAILED - ${message}`);
+      render();
+      resolve({pass:false,error:true});
+    });
+  });
+}
+
+async function runSingle(tabKey,taskId,modelId){
+  const routing=deriveRoutingForModel(modelId);
+  const result=await fetchJSON('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:taskId,adapter:routing.adapterId,provider:routing.providerId,model:modelId,count:1})});
+  state.runState[tabKey].status='running';
+  state.runState[tabKey].runId=result.run_id;
+  state.runState[tabKey].lines.push(`Started ${taskId} on ${modelId}.`,`Run ID: ${result.run_id}`);
+  render();
+  return watchRunCompletion(tabKey,result.run_id,taskId,modelId);
+}
+
+async function runBatch(tabKey,taskIds,modelIds,label){
+  if(!taskIds.length){alert('No tasks in this lane.');return}
+  if(!modelIds.length){alert('Select one or more models first.');return}
+  state.runState[tabKey]={status:'starting',runId:null,lines:[`${label}: ${taskIds.length} task${taskIds.length===1?'':'s'} across ${modelIds.length} model${modelIds.length===1?'':'s'}.`],result:null};
+  render();
+  let passed=0,total=0;
+  for(const taskId of taskIds){
+    state.tabData[tabKey]={...(state.tabData[tabKey]||defaultTabState()),selectedTask:taskId};
+    render();
+    for(const modelId of modelIds){
+      total+=1;
+      state.runState[tabKey].lines.push(`Queued ${taskId} on ${modelId}`);
+      render();
+      try{
+        const result=await runSingle(tabKey,taskId,modelId);
+        if(result?.pass)passed+=1;
+      }catch(err){
+        state.runState[tabKey].lines.push(`[${taskId} :: ${modelId}] FAILED - ${String(err)}`);
+        render();
+      }
+    }
+  }
+  state.runState[tabKey].status='complete';
+  state.runState[tabKey].runId=null;
+  state.runState[tabKey].lines.push(`Batch complete. ${passed} out of ${total} passed.`);
+  render();
+}
+
+async function handleRun(tabKey){const tab=state.tabData[tabKey];await runBatch(tabKey,[tab.selectedTask],tab.selectedModels||[],'Selected task run')}
+async function handleRunAll(tabKey){await runBatch(tabKey,taskOptionsForTab(tabKey).map((task)=>task.id),(state.tabData[tabKey]?.selectedModels)||[],'Lane batch run')}
+async function handleRunKind(tabKey,kind){const currentTaskId=state.tabData[tabKey]?.selectedTask;await runBatch(tabKey,[currentTaskId],allModelIdsByKind(kind),kind==='local'?'All local models':'All cloud models')}
+
+function renderTabs(){return Object.values(TAB_CONFIG).map((tab)=>`<button class="tab ${state.activeTab===tab.key?'active':''}" onclick="setActiveTab('${tab.key}')">${esc(tab.label)}</button>`).join('')}
+function renderTaskOptions(tabKey){const tabState=state.tabData[tabKey]||defaultTabState();return taskOptionsForTab(tabKey).map((task)=>`<option value="${esc(task.id)}" ${tabState.selectedTask===task.id?'selected':''}>${esc(humanizeToken(task.id))} · ${esc(TASK_FAMILY_LABELS[task.family]||task.family)} · ${esc(task.difficulty)}</option>`).join('')}
+function renderAdapterOptions(tabKey){const tabState=state.tabData[tabKey]||defaultTabState();const options=[{id:'mixed',label:'Mixed by model selection'}].concat((state.adapters||[]).map((a)=>({id:a.id||a.adapter||a.key||'',label:a.label||a.name||a.id||a.key||''})));return options.map((opt)=>`<option value="${esc(opt.id)}" ${normalizeId(tabState.selectedAdapter)===normalizeId(opt.id)?'selected':''}>${esc(opt.label)}</option>`).join('')}
+function renderProviderOptions(tabKey){const tabState=state.tabData[tabKey]||defaultTabState();const options=[{id:'mixed',label:'Mixed by model selection'}].concat(mergedProviders());return options.map((provider)=>`<option value="${esc(provider.id)}" ${normalizeId(tabState.selectedProvider)===normalizeId(provider.id)?'selected':''}>${esc(provider.label)}</option>`).join('')}
+function renderModelOptions(tabKey){
+  const selected=(state.tabData[tabKey]?.selectedModels)||[];
+  return mergedModelGroups().map((group)=>`<optgroup label="${esc(group.label)}">${group.models.map((model)=>`<option value="${esc(model.id)}" ${selected.some((id)=>normalizeId(id)===normalizeId(model.id))?'selected':''}>${esc(model.label)}</option>`).join('')}</optgroup>`).join('');
+}
+function renderMetrics(tabKey){
+  const stats=state.tabData[tabKey]?.stats||{};
+  const cards=[
+    ['Pass rate',fmtPct(stats.pass_rate),'How often runs passed in this lane.'],
+    ['Average score',fmtPct(stats.avg_score),'Average result across completed runs.'],
+    ['Total runs',String(stats.total_runs||0),'How many finished runs are on record.'],
+    ['Cost',fmtMoney(stats.total_cost_usd),'Estimated spend for this lane.']
+  ];
+  return cards.map(([label,value,sub])=>`<div class="metric-card"><div class="mini-label">${esc(label)}</div><div class="value">${esc(value)}</div><div class="hint">${esc(sub)}</div></div>`).join('');
+}
+function renderLeaderboard(tabKey){
+  const entries=state.tabData[tabKey]?.leaderboard||[];
+  if(!entries.length)return'<div class="empty">No leaderboard rows for this lane yet.</div>';
+  return`<div class="table-wrap"><table><thead><tr><th>#</th><th>Model</th><th>Score</th><th>Runs</th><th>Last run</th></tr></thead><tbody>${entries.slice(0,14).map((entry,index)=>`<tr><td>${index+1}</td><td>${esc(entry.modelId)}</td><td>${fmtPct(entry.composite)}</td><td>${esc(entry.totalRuns)}</td><td>${esc(fmtDate(entry.lastRun))}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function renderRunStatus(tabKey){
+  const run=state.runState[tabKey];
+  if(!run)return'<div class="live-run"><div class="muted">No live run right now.</div></div>';
+  const badge=run.status==='complete'?'pass':run.status==='error'?'fail':'neutral';
+  return`<div class="live-run"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><strong>Live progress</strong><span class="badge ${badge}">${esc(run.status.toUpperCase())}</span></div>${run.runId?`<div>Run ID: ${esc(run.runId)}</div>`:''}${run.lines.map((line)=>`<div>${esc(line)}</div>`).join('')}</div>`;
+}
+function scoreColor(score){if(score>=80)return'var(--pass)';if(score>=55)return'var(--warn)';return'var(--fail)'}
+function categoryCardMarkup(category){
+  const statusClass=category.statusClass;
+  const status=category.status;
+  const failText=status==='FAILED'?category.outcome:'It passed this check.';
+  return`<article class="result-card"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start"><div class="test-title">${esc(category.name)}</div><span class="badge ${statusClass}">${esc(status)}</span></div><div class="desc">${esc(category.explanation)}</div><div style="display:flex;justify-content:space-between;gap:14px;align-items:end;flex-wrap:wrap"><div class="score-number">${esc(`${category.score}%`)}</div><div class="small-note">${esc(`${category.pass} passed · ${category.fail} failed · ${category.error} errors · ${fmtMs(category.timeMs)}`)}</div></div><div class="bar-track"><div class="bar-fill" style="width:${category.score}%;background:${scoreColor(category.score)}"></div></div><div class="result-outcome ${statusClass}">${esc(status==='FAILED'?`What failed: ${failText}`:`What happened: ${failText}`)}</div></article>`;
+}
+function renderOperationalRows(result){return`<div class="table-wrap"><table><thead><tr><th>Model</th><th>Efficiency</th><th>Token load</th><th>Cost</th><th>Correctness</th></tr></thead><tbody>${result.operationalRows.map((row)=>`<tr><td>${esc(row.model)}</td><td>${fmtPct(row.efficiency)}</td><td>${esc(`${row.tokensIn}/${row.tokensOut}`)}</td><td>${fmtMoney(row.cost)}</td><td>${fmtPct(row.correctness)}</td></tr>`).join('')}</tbody></table></div>`}
+function renderDetailList(result){if(state.collapsed.details)return'';return`<div class="category-grid">${result.details.map((item)=>`<article class="result-card"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start"><h4>${esc(item.name)}</h4><span class="badge ${item.statusClass}">${esc(item.status)}</span></div><div class="score-number">${esc(`${item.score}%`)}</div><div class="desc">${esc(fmtMs(item.timeMs))}</div><div class="result-outcome ${item.statusClass}">${esc(item.message)}</div></article>`).join('')}</div>`}
+function renderFactList(items){return`<div class="history-list">${items.map((item)=>`<div class="history-item" style="cursor:default"><div class="history-title">${esc(item.label)}</div><div class="history-sub">${esc(item.value)}</div></div>`).join('')}</div>`}
+
+function renderFocusedRun(tabKey){
+  const result=state.focusedResult[tabKey]||state.focusedResult.dashboard;
+  if(!result)return'<section class="result-shell"><div class="empty">Click a run in history to open the full result card.</div></section>';
+  const methodologyFacts=[
+    {label:'Methodology schema',value:String(result.schema||'crucibulum.evaluation.summary.v1')},
+    {label:'Benchmark version',value:String(result.suiteId||'v1')},
+    {label:'Judge authority',value:`${result.judge?.label||'Deterministic judge'}${result.authority?.review_layer_advisory?' · advisory review only':''}`},
+    {label:'Hash verified',value:result.trust?.bundle_hash_verified?'Yes':'No'},
+    {label:'Rubric hidden',value:result.trust?.rubric_hidden?'Yes':'No'}
+  ];
+  const provenanceFacts=[
+    {label:'Bundle ID',value:String(result.bundleId||result.runId||'unknown')},
+    {label:'Bundle hash',value:String(result.bundleHash||'unknown')},
+    {label:'Target',value:`${result.provider} / ${result.model}`},
+    {label:'Task and family',value:`${humanizeToken(result.task)} · ${humanizeToken(result.family||'unknown')}`},
+    {label:'Review security',value:`${result.secondOpinionStatus} second opinion · ${result.qcReviewStatus} QC · ${Number(result.reviewSecurity?.injection_flags_count||0)} injection flags`}
+  ];
+  return`<section class="result-shell">
+    <div class="result-top">
+      <div>
+        <div class="eyebrow">Focused run</div>
+        <div class="model-name">${esc(result.model)}</div>
+        <div class="summary-copy">${esc(result.description)}</div>
+        <div class="meta-row" style="margin-top:12px">
+          <div class="meta-pill">Provider: ${esc(result.provider)}</div>
+          <div class="meta-pill">Task: ${esc(humanizeToken(result.task))}</div>
+          <div class="meta-pill">Family: ${esc(humanizeToken(result.family||'unknown'))}</div>
+          <div class="meta-pill">Threshold: ${esc(`${result.passThreshold||0}%`)}</div>
+          <div class="meta-pill">Started: ${esc(fmtDate(result.timestamp))}</div>
+        </div>
+      </div>
+      <div class="overall-block">
+        <div class="overall-label">Overall score</div>
+        <div class="overall-score">${esc(String(result.overall))}</div>
+        <div class="badge ${result.overall>=80?'pass':result.overall>=55?'warn':'fail'}" style="margin-top:10px">${esc(result.overall>=80?'PASSED':result.overall>=55?'REVIEW':'FAILED')}</div>
+      </div>
+    </div>
+    <div class="result-board">
+      <div class="section-head" style="margin-bottom:10px">
+        <div>
+          <div class="mini-label">Canonical breakdown</div>
+          <h3>Score breakdown from the judge contract</h3>
+        </div>
+        <div class="small-note">Correctness, regression, integrity, and efficiency.</div>
+      </div>
+      <div class="run-row-list">${result.categories.map((category)=>`<div class="run-row"><div><div class="row-name">${esc(category.name)}</div></div><div class="row-explainer">${esc(category.explanation)}</div><div><div class="small-note" style="margin-bottom:6px">${esc(`${category.score}%`)}</div><div class="bar-track"><div class="bar-fill" style="width:${category.score}%;background:${scoreColor(category.score)}"></div></div></div><div><span class="badge ${category.statusClass}">${esc(category.status)}</span></div></div>`).join('')}</div>
+    </div>
+    <div class="section-head">
+      <div>
+        <div class="mini-label">Readable cards</div>
+        <h3>Plain-English result cards</h3>
+      </div>
+    </div>
+    <div class="category-grid">${result.categories.map(categoryCardMarkup).join('')}</div>
+    <div class="two-col">
+      <div class="card">
+        <div class="section-head"><div><div class="mini-label">Resource use</div><h3>Cost and token load</h3></div></div>
+        ${renderOperationalRows(result)}
+      </div>
+      <div class="card">
+        <div class="section-head"><div><div class="mini-label">Provenance</div><h3>Where this result came from</h3></div></div>
+        ${renderFactList(provenanceFacts)}
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="section-head"><div><div class="mini-label">Methodology</div><h3>How this run was judged</h3></div></div>
+        ${renderFactList(methodologyFacts)}
+      </div>
+      <div class="card">
+        <div class="section-head"><div><div class="mini-label">Notes</div><h3>What to do next</h3></div></div>
+        <div class="history-list">${result.recommendations.map((rec)=>`<div class="history-item" style="cursor:default"><div class="history-sub">${esc(typeof rec==='string'?rec:(rec.message||rec.title||JSON.stringify(rec)))}</div></div>`).join('')}</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-head">
+        <div><div class="mini-label">Individual checks</div><h3>Detailed test results</h3></div>
+        <button class="toggle-btn" onclick="toggleSection('details')">${state.collapsed.details?'Show details':'Hide details'}</button>
+      </div>
+      ${renderDetailList(result)}
+    </div>
+  </section>`;
+}
+
+function renderRuns(tabKey){
+  const runs=state.tabData[tabKey]?.runs||[];
+  if(!runs.length)return'<div class="empty">No run history in this lane yet.</div>';
+  return`<div class="history-list">${runs.slice(0,18).map((run)=>{const normalized=normalizeRunForDisplay(run);const bestCategory=(normalized.categories||[]).slice().sort((a,b)=>b.score-a.score)[0];const failedCategory=(normalized.categories||[]).find((category)=>category.status==='FAILED');return`<article class="history-item" onclick="focusRunFromHistory('${tabKey}','${esc(run.bundle_id||run.run_id||run.id||'')}')"><div class="history-top"><div><div class="history-title">${esc(normalized.model)}</div><div class="history-sub">${esc(humanizeToken(run.task_id||normalized.task))} · ${esc(fmtDate(run.timestamp||normalized.timestamp))}</div></div><span class="badge ${normalized.overall>=80?'pass':normalized.overall>=55?'warn':'fail'}">${esc(normalized.overall>=80?'PASSED':normalized.overall>=55?'REVIEW':'FAILED')}</span></div><div class="history-sub">${esc(normalized.description)}</div><div class="history-metrics"><div class="history-metric"><div class="label">Score</div><div class="value">${esc(`${normalized.overall}%`)}</div></div><div class="history-metric"><div class="label">Strongest area</div><div class="value" style="font-size:18px">${esc(bestCategory?.name||'None')}</div></div><div class="history-metric"><div class="label">What failed</div><div class="value" style="font-size:15px;line-height:1.4">${esc((failedCategory?.outcome)||'No category is marked as failed in this run.')}</div></div></div></article>`}).join('')}</div>`;
+}
+
+function allRuns(){return Object.keys(TAB_CONFIG).filter((key)=>key!=='dashboard').flatMap((key)=>state.tabData[key]?.runs||[]).sort((a,b)=>new Date(b.timestamp||0).getTime()-new Date(a.timestamp||0).getTime())}
+function dashboardStats(){const runs=allRuns();const totalRuns=runs.length;const passCount=runs.filter((run)=>run.pass).length;const avgScore=totalRuns?runs.reduce((sum,run)=>sum+scorePct(run.score||0),0)/totalRuns:0;const avgTime=totalRuns?runs.reduce((sum,run)=>sum+Number(run.duration_ms||run.elapsed_ms||0),0)/totalRuns:0;return{totalRuns,passRate:totalRuns?(passCount/totalRuns)*100:0,avgScore,avgTime}}
+function recentRunCards(){return allRuns().slice(0,8).map((run)=>normalizeRunForDisplay(run))}
+function topCategoriesFromRecent(){
+  const counts=new Map();
+  for(const run of recentRunCards()){
+    for(const category of run.categories){
+      const existing=counts.get(category.name)||{name:category.name,description:category.explanation,total:0,count:0};
+      existing.total+=category.score;
+      existing.count+=1;
+      counts.set(category.name,existing);
+    }
+  }
+  return Array.from(counts.values()).sort((a,b)=>(b.total/b.count)-(a.total/a.count)).slice(0,4).map((entry)=>({...entry,score:Math.round(entry.total/entry.count)}));
+}
+
+function renderDashboard(){
+  const stats=dashboardStats();
+  const rawRecent=allRuns().slice(0,8);
+  const recent=rawRecent.map((run)=>normalizeRunForDisplay(run));
+  const focus=state.focusedResult.dashboard||(recent[0]||null);
+  const topCats=topCategoriesFromRecent();
+  const metricCards=[
+    ['Total runs',String(stats.totalRuns),'All finished runs across the lab.'],
+    ['Pass rate',fmtPct(stats.passRate),'How often recent runs fully passed.'],
+    ['Average score',fmtPct(stats.avgScore),'Average result across all lanes.'],
+    ['Average time',fmtMs(stats.avgTime),'Typical time to finish a run.']
+  ].map(([label,value,sub])=>`<div class="metric-card"><div class="mini-label">${esc(label)}</div><div class="value">${esc(value)}</div><div class="hint">${esc(sub)}</div></div>`).join('');
+  return`<section class="content">
+    <div class="metric-grid">${metricCards}</div>
+    <div class="two-col">
+      <section class="summary-shell">
+        <div class="section-head"><div><div class="mini-label">Overview</div><h3>How the lab is doing</h3></div></div>
+        <div class="summary-score">${esc(String(Math.round(stats.avgScore||0)))}</div>
+        <div class="summary-copy">This is the average score across recent runs. Click any run below to open a full, readable result view with clear explanations.</div>
+        <div class="summary-bars">${topCats.length?topCats.map((entry)=>`<div class="summary-row"><div class="summary-row-top"><span>${esc(entry.name)}</span><span>${esc(`${entry.score}%`)}</span></div><div class="bar-track"><div class="bar-fill" style="width:${entry.score}%;background:${scoreColor(entry.score)}"></div></div><div class="small-note">${esc(entry.description)}</div></div>`).join(''):'<div class="empty">Run a few tests to see which categories are strongest.</div>'}</div>
+      </section>
+      <section class="scoreboard-shell">
+        <div class="section-head"><div><div class="mini-label">History</div><h3>Pick a run to inspect</h3></div></div>
+        ${recent.length?`<div class="history-list">${recent.map((run,index)=>{const raw=rawRecent[index];const failedCategory=run.categories.find((category)=>category.status==='FAILED');return`<article class="history-item" onclick="focusDashboardRun('${esc(raw.bundle_id||raw.run_id||raw.id||run.id)}')"><div class="history-top"><div><div class="history-title">${esc(run.model)}</div><div class="history-sub">${esc(humanizeToken(run.task))}</div></div><span class="badge ${run.overall>=80?'pass':run.overall>=55?'warn':'fail'}">${esc(run.overall>=80?'PASSED':run.overall>=55?'REVIEW':'FAILED')}</span></div><div class="history-metrics"><div class="history-metric"><div class="label">Score</div><div class="value">${esc(`${run.overall}%`)}</div></div><div class="history-metric"><div class="label">Provider</div><div class="value" style="font-size:18px">${esc(run.provider)}</div></div><div class="history-metric"><div class="label">What failed</div><div class="value" style="font-size:15px;line-height:1.4">${esc((failedCategory?.outcome)||'Nothing obvious failed in the category summary.')}</div></div></div></article>`}).join('')}</div>`:'<div class="empty">No finished runs yet.</div>'}
+      </section>
+    </div>
+    ${focus?renderFocusedRun('dashboard'):'<section class="result-shell"><div class="empty">Run something to see the detailed result view.</div></section>'}
+  </section>`;
+}
+
+function focusRunFromHistory(tabKey,runId){const run=(state.tabData[tabKey]?.runs||[]).find((entry)=>String(entry.bundle_id||entry.run_id||entry.id||'')===String(runId));if(run)setFocusedRun(tabKey,run)}
+function focusDashboardRun(runId){const run=allRuns().find((entry)=>String(entry.bundle_id||entry.run_id||entry.id||'')===String(runId));if(run)setFocusedRun('dashboard',run)}
+async function reloadLane(tabKey){await refreshTabData(tabKey);render()}
+
+function renderLane(tabKey){
+  const tab=TAB_CONFIG[tabKey];
+  const tabState=state.tabData[tab.key]||defaultTabState();
+  const task=currentTask(tab.key);
+  return`<div class="main-grid">
+    <aside class="panel">
+      <div>
+        <div class="eyebrow">${esc(tab.laneTitle)}</div>
+        <h2 class="panel-title">Run tests and read the results</h2>
+        <div class="panel-copy">${esc(tab.headline)}</div>
+      </div>
+      <div class="field"><label>Task</label><select class="select" onchange="updateTabField('${tab.key}','selectedTask',this.value)">${renderTaskOptions(tab.key)}</select></div>
+      <div class="note">${esc(describeTask(task))}</div>
+      <div class="field"><label>Adapter</label><select class="select" disabled>${renderAdapterOptions(tab.key)}</select></div>
+      <div class="field"><label>Provider</label><select class="select" disabled>${renderProviderOptions(tab.key)}</select></div>
+      <div class="field"><label>Models</label><select class="select" multiple size="14" onchange="updateSelectedModels('${tab.key}',this)">${renderModelOptions(tab.key)}</select></div>
+      <div class="note">${esc(modelSelectionNote(tab.key))}</div>
+      <div class="button-grid">
+        <button class="button primary full" onclick="handleRun('${tab.key}')">Run selected task</button>
+        <button class="button secondary full" onclick="handleRunAll('${tab.key}')">Run every task here</button>
+        <button class="button secondary" onclick="handleRunKind('${tab.key}','local')">Run local models</button>
+        <button class="button secondary" onclick="handleRunKind('${tab.key}','cloud')">Run cloud models</button>
+        <button class="button secondary full" onclick="selectModelBatch('${tab.key}','local')">Select local models</button>
+        <button class="button secondary full" onclick="selectModelBatch('${tab.key}','cloud')">Select cloud models</button>
+        <button class="button secondary full" onclick="reloadLane('${tab.key}')">Refresh data</button>
+      </div>
+      ${renderRunStatus(tab.key)}
+    </aside>
+    <section class="content">
+      <div class="metric-grid">${renderMetrics(tab.key)}</div>
+      <div class="two-col">
+        <section class="scoreboard-shell">
+          <div class="section-head"><div><div class="mini-label">Leaderboard</div><h3>Which models are scoring best</h3></div></div>
+          ${renderLeaderboard(tab.key)}
+        </section>
+        <section class="summary-shell">
+          <div class="section-head"><div><div class="mini-label">Lane summary</div><h3>What this lane covers</h3></div></div>
+          <div class="history-list">
+            <div class="history-item" style="cursor:default"><div class="history-title">Score families</div><div class="history-sub">${esc(tab.scoreFamilies.join(', '))}</div></div>
+            <div class="history-item" style="cursor:default"><div class="history-title">Task families</div><div class="history-sub">${esc(tab.taskFamilies.map((family)=>TASK_FAMILY_LABELS[family]||family).join(', ')||'All')}</div></div>
+            <div class="history-item" style="cursor:default"><div class="history-title">Selected task</div><div class="history-sub">${esc(humanizeToken(tabState.selectedTask||'none'))}</div></div>
+            <div class="history-item" style="cursor:default"><div class="history-title">Selected models</div><div class="history-sub">${esc(String((tabState.selectedModels||[]).length))}</div></div>
+          </div>
+        </section>
+      </div>
+      <section class="history-shell">
+        <div class="section-head"><div><div class="mini-label">Run history</div><h3>Click a run to open the full result card</h3></div></div>
+        ${renderRuns(tab.key)}
+      </section>
+      ${renderFocusedRun(tab.key)}
+    </section>
+  </div>`;
+}
+
+function renderActiveTab(){return state.activeTab==='dashboard'?renderDashboard():renderLane(state.activeTab)}
+function render(){document.getElementById('app').innerHTML=`<div class="shell"><section class="hero"><div class="hero-top"><div><div class="eyebrow">Squidley Crucibulum</div><h1 class="title">Readable Results, Not Mystery Dots</h1><div class="subcopy">Every test result is shown as a clear card with a plain-English name, a one-sentence explanation, a large score, an obvious pass or fail badge, and a direct note about what broke when something goes wrong.</div></div><div class="hero-badge">Clear, scannable result view</div></div></section><nav class="tabbar">${renderTabs()}</nav>${renderActiveTab()}</div>`}
+
+window.setActiveTab=setActiveTab;
+window.updateTabField=updateTabField;
+window.updateSelectedModels=updateSelectedModels;
+window.selectModelBatch=selectModelBatch;
+window.handleRun=handleRun;
+window.handleRunAll=handleRunAll;
+window.handleRunKind=handleRunKind;
+window.reloadLane=reloadLane;
+window.focusRunFromHistory=focusRunFromHistory;
+window.focusDashboardRun=focusDashboardRun;
+window.toggleSection=toggleSection;
+
+(async function boot(){
+  try{
+    await loadBootData();
+    render();
+  }catch(err){
+    document.getElementById('app').innerHTML=`<div class="shell"><section class="hero"><div class="eyebrow">Crucibulum</div><h1 class="title">Boot failure</h1><div class="subcopy">${esc(String(err))}</div></section></div>`;
+  }
+})();
+</script>
+</body>
+</html>

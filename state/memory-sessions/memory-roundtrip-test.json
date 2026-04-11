@@ -1,0 +1,9 @@
+{
+  "session_id": "memory-roundtrip-test",
+  "messages": [
+    {
+      "role": "user",
+      "content": "remember this"
+    }
+  ]
+}
