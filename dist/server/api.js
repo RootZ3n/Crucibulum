@@ -178,6 +178,30 @@ async function handleRequest(req, res) {
             }
             return;
         }
+        // Static UI assets — Squidley is the keystone, so the PNG must
+        // resolve even without a build step. Any filename-safe asset in
+        // the ui/ directory is served from here.
+        if (method === "GET" && /^\/[a-zA-Z0-9_\-]+\.(png|jpg|jpeg|svg|webp|gif|ico)$/.test(path)) {
+            const assetPath = join(import.meta.dirname, "..", "..", "ui", path.slice(1));
+            if (existsSync(assetPath)) {
+                const ext = path.split(".").pop().toLowerCase();
+                const mime = {
+                    png: "image/png",
+                    jpg: "image/jpeg",
+                    jpeg: "image/jpeg",
+                    svg: "image/svg+xml",
+                    webp: "image/webp",
+                    gif: "image/gif",
+                    ico: "image/x-icon",
+                };
+                res.writeHead(200, {
+                    "Content-Type": mime[ext] || "application/octet-stream",
+                    "Cache-Control": "public, max-age=3600",
+                });
+                res.end(readFileSync(assetPath));
+                return;
+            }
+        }
         if (path === "/api/judge" && method === "GET") {
             sendJSON(res, 200, { judge: DETERMINISTIC_JUDGE_METADATA });
             return;
