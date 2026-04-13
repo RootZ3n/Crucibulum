@@ -1,7 +1,7 @@
 /**
  * Crucibulum — Z.AI Direct Adapter (GLM / Zhipu)
  * Direct BigModel API integration (OpenAI-compatible).
- * Supported: glm-4-plus, glm-z1-flash, glm-4-air
+ * Supported: glm-4-plus, glm-5.1, glm-z1-flash, glm-4-air
  *
  * CLI: --adapter zai --model glm-4-plus
  */

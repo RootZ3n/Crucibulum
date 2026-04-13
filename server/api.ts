@@ -590,11 +590,19 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
               });
               storeBundle(result.bundle);
               completedBundles.push(result.bundle);
+            } catch (runErr) {
+              broadcastSSE(runId, "step", {
+                type: "task_error",
+                detail: `Run ${index + 1}/${requestedCount} failed: ${String(runErr).slice(0, 200)}`,
+              });
             } finally {
               await adapterInstance.adapter.teardown();
             }
           }
 
+          if (completedBundles.length === 0) {
+            throw new Error(`All ${requestedCount} run(s) failed — no results produced`);
+          }
           const latestBundle = completedBundles[completedBundles.length - 1]!;
           const aggregate = summarizeRunSet(completedBundles);
           const active = activeRuns.get(runId);

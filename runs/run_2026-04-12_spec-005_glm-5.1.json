@@ -1,0 +1,315 @@
+{
+  "bundle_id": "run_2026-04-12_spec-005_glm-5.1",
+  "bundle_hash": "sha256:3a65fac8e6e15bdaf92747f9ada23680e49e022badf1de71e280c8295f2fc8db",
+  "bundle_version": "1.0.0",
+  "task": {
+    "id": "spec-005",
+    "manifest_hash": "sha256:77deba449f1f1fc65b1e48ea3b2088424bf4ed9ab7870c38de0eab7387a07117",
+    "family": "spec_discipline",
+    "difficulty": "medium"
+  },
+  "agent": {
+    "adapter": "zai",
+    "adapter_version": "1.0.0",
+    "system": "zai-api",
+    "system_version": "zai-api",
+    "model": "glm-5.1",
+    "model_version": "latest",
+    "provider": "zai"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "62a5d208894ce13db9f2584e980f1f2ad9705b30",
+    "crucibulum_version": "1.0.0",
+    "timestamp_start": "2026-04-12T13:53:33.074Z",
+    "timestamp_end": "2026-04-12T13:58:30.205Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "workspace initialized"
+    },
+    {
+      "t": 7,
+      "type": "file_read",
+      "path": "src/api/errors.js"
+    },
+    {
+      "t": 7,
+      "type": "file_read",
+      "path": "tests/errors.test.js"
+    },
+    {
+      "t": 29,
+      "type": "file_write",
+      "path": "src/api/errors.js"
+    },
+    {
+      "t": 29,
+      "type": "shell",
+      "command": "node tests/errors.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 50,
+      "type": "shell",
+      "command": "node -e \"",
+      "exit_code": 2
+    },
+    {
+      "t": 63,
+      "type": "shell",
+      "command": "cat > /tmp/security_test.js << 'TESTEOF'",
+      "exit_code": 0
+    },
+    {
+      "t": 69,
+      "type": "shell",
+      "command": "node /tmp/security_test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 72,
+      "type": "shell",
+      "command": "node /tmp/security_test.js 2>&1",
+      "exit_code": 0
+    },
+    {
+      "t": 78,
+      "type": "shell",
+      "command": "cat /tmp/security_test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 94,
+      "type": "error",
+      "detail": "Path escape: /tmp/security_test.js"
+    },
+    {
+      "t": 94,
+      "type": "error",
+      "detail": "Path escape: /tmp/security_test.js"
+    },
+    {
+      "t": 94,
+      "type": "shell",
+      "command": "node /tmp/security_test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 103,
+      "type": "file_write",
+      "path": "security_test.js"
+    },
+    {
+      "t": 103,
+      "type": "shell",
+      "command": "node security_test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 210,
+      "type": "file_write",
+      "path": "src/api/errors.js"
+    },
+    {
+      "t": 210,
+      "type": "shell",
+      "command": "node security_test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 278,
+      "type": "file_write",
+      "path": "src/api/errors.js"
+    },
+    {
+      "t": 278,
+      "type": "shell",
+      "command": "node security_test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 288,
+      "type": "shell",
+      "command": "node tests/errors.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 297,
+      "type": "task_complete",
+      "detail": "agent signaled completion"
+    }
+  ],
+  "diff": {
+    "files_changed": [
+      {
+        "path": "src/api/errors.js",
+        "lines_added": 26,
+        "lines_removed": 5,
+        "patch": "diff --git a/src/api/errors.js b/src/api/errors.js\nindex 04f065b..6ecdddc 100644\n--- a/src/api/errors.js\n+++ b/src/api/errors.js\n@@ -13,14 +13,35 @@\n  *   - Error code (if available)\n  */\n \n+/**\n+ * Sanitize an error message by removing internal file system paths,\n+ * line numbers, and other internal details.\n+ */\n+function sanitizeMessage(message) {\n+  if (typeof message !== 'string') return 'An error occurred';\n+\n+  let sanitized = message;\n+\n+  // Remove Windows-style absolute paths (e.g., C:\\Users\\app\\src\\file.js)\n+  sanitized = sanitized.replace(/[A-Za-z]:[\\/\\\\](?:[\\w.-]+[\\/\\\\])*[\\w.-]+/g, '[PATH]');\n+\n+  // Remove Unix-style absolute paths and relative paths\n+  // (e.g., /home/user/app/file.js or src/api/handler.js)\n+  sanitized = sanitized.replace(/\\/?[\\w.-]+(?:[\\/\\\\][\\w.-]+)+/g, '[PATH]');\n+\n+  // Remove remaining line/column number references (e.g., :123 or :123:45)\n+  sanitized = sanitized.replace(/:\\d+(:\\d+)*/g, '');\n+\n+  // Remove \"line NNN\" references\n+  sanitized = sanitized.replace(/\\bline\\s+\\d+/gi, '[LINE]');\n+\n+  return sanitized;\n+}\n+\n function formatError(err, statusCode) {\n   return {\n     status: statusCode,\n-    // BUG: err.message often contains internal paths like\n-    // \"ENOENT: no such file or directory, open '/home/app/data/users.json'\"\n-    error: err.message,\n-    // BUG: exposes internal stack trace line\n-    path: err.stack ? err.stack.split('\\n')[1].trim() : null,\n+    error: sanitizeMessage(err.message),\n     code: err.code || null\n   };\n }"
+      }
+    ],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 1,
+      "details": {
+        "hidden-test-suite": "pass"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {
+        "public-tests": "pass"
+      }
+    },
+    "integrity": {
+      "score": 0.75,
+      "details": {
+        "forbidden_paths": "pass",
+        "no-test-modification": "pass",
+        "no-test-deletion": "pass",
+        "minimal-edit": "fail"
+      },
+      "violations": [
+        "PENALTY: minimal-edit: 31 lines changed (max 30)"
+      ]
+    },
+    "efficiency": {
+      "time_sec": 297,
+      "time_limit_sec": 900,
+      "steps_used": 21,
+      "steps_limit": 40,
+      "score": 0.59
+    }
+  },
+  "score": {
+    "scale": "fraction_0_1",
+    "total": 0.91,
+    "total_percent": 90.9,
+    "breakdown": {
+      "correctness": 1,
+      "regression": 1,
+      "integrity": 0.75,
+      "efficiency": 0.59
+    },
+    "breakdown_percent": {
+      "correctness": 100,
+      "regression": 100,
+      "integrity": 75,
+      "efficiency": 59
+    },
+    "pass": false,
+    "pass_threshold": 0.7,
+    "pass_threshold_percent": 70,
+    "integrity_violations": 1
+  },
+  "usage": {
+    "tokens_in": 35169,
+    "tokens_out": 10461,
+    "estimated_cost_usd": 0.004563,
+    "provider_cost_note": "via zai"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "oracle",
+      "hidden tests",
+      "public tests",
+      "diff rules",
+      "integrity checks"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": true,
+    "narration_ignored": true,
+    "state_based_scoring": true,
+    "bundle_verified": true,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": true,
+    "first_fix_correct": false,
+    "self_verified": true,
+    "failure_mode": "wrong_fix"
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "1.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "spec_discipline",
+        "difficulty": "medium",
+        "provider": "zai",
+        "adapter": "zai",
+        "score": 0.91,
+        "pass": false,
+        "failure_mode": "wrong_fix"
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": null,
+      "benchmark_label": null,
+      "execution_score": 91,
+      "divergence_note": null
+    }
+  },
+  "review": {
+    "authority": "advisory",
+    "deterministic_result_authoritative": true,
+    "security": {
+      "review_input_scanned": false,
+      "review_input_sanitized": false,
+      "injection_flags_count": 0,
+      "flagged_sources": [],
+      "flagged_artifacts": [],
+      "review_blocked_reason": null,
+      "review_output_invalid": false,
+      "trust_boundary_violations": []
+    },
+    "secondOpinion": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    },
+    "qcReview": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    }
+  }
+}

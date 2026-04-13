@@ -824,7 +824,7 @@ body::after{
   gap:14px;
   align-items:start;
 }
-.control-rail{display:grid;gap:14px;position:sticky;top:18px}
+.control-rail{display:flex;flex-direction:column;gap:14px;position:sticky;top:18px;max-height:calc(100vh - 36px);min-height:0}
 .content-column,.side-column{display:grid;gap:14px;min-width:0}
 .dual-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(260px,.7fr);gap:14px}
 .inspection-shell,.rail-panel,.history-panel,.surface-panel,.metric-band{
@@ -832,6 +832,29 @@ body::after{
   display:grid;
   gap:12px;
 }
+.control-rail>.rail-panel:first-child{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  min-height:0;
+  flex:1 1 0;
+  overflow:hidden;
+}
+.control-rail>.rail-panel:first-child>.field:has(.select[multiple]){
+  flex:1 1 0;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+}
+.control-rail>.rail-panel:first-child>.field>.select[multiple]{
+  flex:1 1 0;
+  min-height:80px;
+  overflow-y:auto;
+}
+.control-rail>.rail-panel:nth-child(n+2){flex-shrink:0}
+.control-rail>.rail-panel:first-child>.section-head,
+.control-rail>.rail-panel:first-child>.field:not(:has(.select[multiple])),
+.control-rail>.rail-panel:first-child>.task-brief{flex-shrink:0}
 
 /* ─── Signal cards ──────────────────────────────────────────────── */
 .sig-grid,.category-grid{
@@ -1124,6 +1147,73 @@ body::after{
 .fs-value.teal{color:var(--teal)}
 .fs-value.dim{color:var(--ink-dim)}
 
+/* ─── Task brief — what this test checks (below task selector) ──── */
+.task-brief{
+  margin:2px 0 8px;
+  padding:10px 14px;
+  background:linear-gradient(135deg,rgba(4,10,24,.6),rgba(8,20,44,.4));
+  border:1px solid rgba(120,200,255,.08);
+  border-radius:6px;
+}
+.tb-purpose{
+  font-family:var(--mono);
+  font-size:11.5px;
+  line-height:1.5;
+  color:var(--teal);
+  letter-spacing:.02em;
+  margin-bottom:6px;
+}
+.tb-empty{
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--ink-dim);
+  letter-spacing:.04em;
+  opacity:.6;
+}
+.tb-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+  margin-bottom:4px;
+}
+.tb-tags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+  margin-top:4px;
+}
+.tb-tags .tag{font-size:8.5px;letter-spacing:.12em}
+
+/* ─── Batch progress bar ───────────────────────────────────────── */
+.batch-bar{
+  margin:6px 0 4px;
+  height:6px;
+  border-radius:3px;
+  background:rgba(120,200,255,.08);
+  overflow:hidden;
+}
+.batch-fill{
+  height:100%;
+  border-radius:3px;
+  background:var(--teal);
+  transition:width .3s ease;
+}
+
+/* ─── Inline validation warning (replaces alert()) ─────────────── */
+.inline-warn{
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:.06em;
+  color:var(--fail);
+  padding:6px 10px;
+  margin:4px 0;
+  background:rgba(255,85,119,.08);
+  border:1px solid rgba(255,85,119,.2);
+  border-radius:4px;
+  animation:warn-pulse .6s ease;
+}
+@keyframes warn-pulse{0%{opacity:0;transform:translateY(-4px)}100%{opacity:1;transform:translateY(0)}}
+
 /* ─── Glyph grid — dense meter wall (inspection) ────────────────── */
 .glyph-grid{
   display:grid;
@@ -1269,7 +1359,7 @@ body::after{
   letter-spacing:.06em;
   box-shadow:inset 0 1px 0 rgba(160,230,255,.12);
 }
-.select[multiple]{min-height:220px;border-radius:16px}
+.select[multiple]{min-height:120px;max-height:280px;border-radius:16px}
 .select:focus{
   outline:none;
   border-color:var(--cyan);
@@ -1304,7 +1394,7 @@ body::after{
   box-shadow:inset 0 1px 0 rgba(160,255,230,.22);
 }
 .button.secondary:hover{border-color:var(--teal);box-shadow:0 0 22px rgba(94,234,212,.24),inset 0 1px 0 rgba(180,255,230,.34)}
-.button-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.button-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex-shrink:0}
 .button-grid .full{grid-column:1/-1}
 
 /* ─── Focused inspection ────────────────────────────────────────── */
@@ -1578,7 +1668,7 @@ tr:hover td{background:rgba(111,217,255,.05)}
   .abyss-banner{grid-template-columns:1fr;text-align:left;gap:16px}
   .ab-telemetry{justify-items:start}
   .stage-grid,.control-grid,.dual-grid,.inspection-grid,.inspection-top{grid-template-columns:1fr}
-  .control-rail{position:static}
+  .control-rail{position:static;max-height:none}
   .vitals{grid-template-columns:repeat(2,1fr)}
   .run-strip{grid-template-columns:12px minmax(0,1fr) 60px 70px}
   .run-strip .rs-task,.run-strip .rs-bar{display:none}
@@ -1854,6 +1944,34 @@ function updateTabField(tabKey,field,value){state.tabData[tabKey]={...(state.tab
 function updateSelectedModels(tabKey,selectEl){const values=Array.from(selectEl.selectedOptions).map((opt)=>opt.value);state.tabData[tabKey]={...(state.tabData[tabKey]||defaultTabState()),selectedModels:values};syncRouting(tabKey);render()}
 function selectModelBatch(tabKey,kind){const ids=allModelIdsByKind(kind);state.tabData[tabKey]={...(state.tabData[tabKey]||defaultTabState()),selectedModels:ids};syncRouting(tabKey);render()}
 function describeTask(task){if(!task)return'Select a task to see what it checks.';return task.diagnostic_purpose||task.title||task.id}
+function taskExecLabel(task){if(!task)return'';return task.execution_mode==='conversational'?'Conversation':'Code task'}
+function taskScoringNote(task){
+  if(!task)return'';
+  if(task.execution_mode==='conversational'&&task.question_count)return`${task.question_count} question${task.question_count===1?'':'s'} scored automatically`;
+  const parts=[];
+  if(task.time_limit_sec)parts.push(`${Math.round(task.time_limit_sec/60)}m time limit`);
+  if(task.max_steps)parts.push(`${task.max_steps} step max`);
+  return parts.join(' · ')||'Scored automatically';
+}
+function renderTaskBrief(tabKey){
+  const task=currentTask(tabKey);
+  if(!task)return'<div class="task-brief"><div class="tb-empty">Pick a task above to see what it tests.</div></div>';
+  const purpose=describeTask(task);
+  const mode=taskExecLabel(task);
+  const scoring=taskScoringNote(task);
+  const tags=(task.tags||[]).slice(0,5);
+  const diff=task.difficulty||'';
+  const diffCls=diff==='easy'?'teal':diff==='hard'?'red':'orange';
+  return`<div class="task-brief">
+    <div class="tb-purpose">${esc(purpose)}</div>
+    <div class="tb-meta">
+      <span class="chip ${diffCls}">${esc(diff.toUpperCase())}</span>
+      <span class="chip dim">${esc(mode)}</span>
+      <span class="chip dim">${esc(scoring)}</span>
+    </div>
+    ${tags.length?`<div class="tb-tags">${tags.map(t=>`<span class="tag dim">${esc(t)}</span>`).join('')}</div>`:''}
+  </div>`;
+}
 function modelSelectionNote(tabKey){
   const models=(state.tabData[tabKey]?.selectedModels)||[];
   if(!models.length)return'No models selected.';
@@ -2023,9 +2141,9 @@ function watchRunCompletion(tabKey,runId,taskId,modelId){
     });
     source.addEventListener('error',(event)=>{
       source.close();
-      let message='Run stream closed.';
-      try{const payload=JSON.parse(event.data);message=payload.error||'Run error'}catch{}
-      state.runState[tabKey].lines.push(`[${taskId} :: ${modelId}] FAILED - ${message}`);
+      let message='Connection to server lost — the run may still be in progress. Try refreshing.';
+      try{const payload=JSON.parse(event.data);message=payload.error||'Run encountered an error'}catch{}
+      state.runState[tabKey].lines.push(`[${taskId} :: ${modelId}] FAILED — ${message}`);
       render();
       resolve({pass:false,error:true});
     });
@@ -2043,30 +2161,40 @@ async function runSingle(tabKey,taskId,modelId){
 }
 
 async function runBatch(tabKey,taskIds,modelIds,label){
-  if(!taskIds.length){alert('No tasks in this lane.');return}
-  if(!modelIds.length){alert('Select one or more models first.');return}
-  state.runState[tabKey]={status:'starting',runId:null,lines:[`${label}: ${taskIds.length} task${taskIds.length===1?'':'s'} across ${modelIds.length} model${modelIds.length===1?'':'s'}.`],result:null};
+  if(!taskIds.length){
+    state.runState[tabKey]={status:'error',runId:null,lines:['No tasks available in this lane.'],result:null,warn:'No tasks found. Try refreshing the page.'};
+    render();return;
+  }
+  if(!modelIds.length){
+    state.runState[tabKey]={status:'error',runId:null,lines:['No models selected.'],result:null,warn:'Select one or more models from the list above, then try again.'};
+    render();return;
+  }
+  const totalRuns=taskIds.length*modelIds.length;
+  state.runState[tabKey]={status:'starting',runId:null,lines:[`${label}: ${taskIds.length} test${taskIds.length===1?'':'s'} across ${modelIds.length} model${modelIds.length===1?'':'s'} (${totalRuns} run${totalRuns===1?'':'s'} total).`],result:null,warn:null,batchTotal:totalRuns,batchDone:0,batchPassed:0};
   render();
-  let passed=0,total=0;
+  let passed=0,done=0;
   for(const taskId of taskIds){
     state.tabData[tabKey]={...(state.tabData[tabKey]||defaultTabState()),selectedTask:taskId};
     render();
     for(const modelId of modelIds){
-      total+=1;
-      state.runState[tabKey].lines.push(`Queued ${taskId} on ${modelId}`);
+      state.runState[tabKey].lines.push(`Running ${humanizeToken(taskId)} on ${modelId}… (${done+1}/${totalRuns})`);
+      state.runState[tabKey].status='running';
       render();
       try{
         const result=await runSingle(tabKey,taskId,modelId);
         if(result?.pass)passed+=1;
       }catch(err){
-        state.runState[tabKey].lines.push(`[${taskId} :: ${modelId}] FAILED - ${String(err)}`);
-        render();
+        state.runState[tabKey].lines.push(`[${humanizeToken(taskId)} :: ${modelId}] FAILED — ${String(err)}`);
       }
+      done+=1;
+      state.runState[tabKey].batchDone=done;
+      state.runState[tabKey].batchPassed=passed;
+      render();
     }
   }
   state.runState[tabKey].status='complete';
   state.runState[tabKey].runId=null;
-  state.runState[tabKey].lines.push(`Batch complete. ${passed} out of ${total} passed.`);
+  state.runState[tabKey].lines.push(`Done. ${passed} of ${done} passed.`);
   render();
 }
 
@@ -2118,9 +2246,12 @@ function anyRunActive(){
 function renderRunStatus(tabKey){
   const run=state.runState[tabKey];
   if(!run)return`<div class="run-stream"><div class="run-line" style="opacity:.5">▲ STANDBY · NO SIGNAL</div></div>`;
-  const badge=run.status==='complete'?'pass':run.status==='error'?'fail':run.status==='running'?'warn':'neutral';
-  const header=`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;position:relative;z-index:1"><span class="chip ${run.status==='complete'?'teal':run.status==='error'?'red':'orange'} hot">${esc(run.status.toUpperCase())}</span>${run.runId?`<span class="chip dim">${esc(run.runId).slice(0,14)}</span>`:''}</div>`;
-  return`<div class="run-stream">${header}${run.lines.length?run.lines.slice(-40).map((line)=>`<div class="run-line">${esc(line)}</div>`).join(''):'<div class="run-line" style="opacity:.5">▲ WAITING FOR SIGNAL</div>'}</div>`;
+  const statusLabel=run.status==='complete'?'COMPLETE':run.status==='error'?'NEEDS ATTENTION':run.status==='running'?'RUNNING':'STARTING';
+  const statusCls=run.status==='complete'?'teal':run.status==='error'?'red':'orange';
+  const header=`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;position:relative;z-index:1"><span class="chip ${statusCls} hot">${esc(statusLabel)}</span>${run.runId?`<span class="chip dim">${esc(run.runId).slice(0,14)}</span>`:''}</div>`;
+  const warnHtml=run.warn?`<div class="inline-warn">${esc(run.warn)}</div>`:'';
+  const batchHtml=(run.batchTotal&&run.batchTotal>1)?`<div style="display:flex;align-items:center;gap:8px;margin:4px 0"><div class="batch-bar" style="flex:1"><div class="batch-fill" style="width:${Math.round(((run.batchDone||0)/run.batchTotal)*100)}%"></div></div><span style="font-family:var(--mono);font-size:10px;color:var(--teal);letter-spacing:.06em;white-space:nowrap">${run.batchDone||0}/${run.batchTotal}${run.batchPassed!=null?' · '+run.batchPassed+' passed':''}</span></div>`:'';
+  return`<div class="run-stream">${header}${warnHtml}${batchHtml}${run.lines.length?run.lines.slice(-40).map((line)=>`<div class="run-line">${esc(line)}</div>`).join(''):'<div class="run-line" style="opacity:.5">▲ WAITING FOR SIGNAL</div>'}</div>`;
 }
 function scoreColor(score){if(score>=80)return'var(--pass)';if(score>=55)return'var(--warn)';return'var(--fail)'}
 function categoryCardMarkup(category){
@@ -2392,6 +2523,7 @@ function renderLane(tabKey){
       <section class="panel rail-panel">
         <div class="section-head"><div><div class="mini-label">${esc(tab.laneTitle.toUpperCase())}</div><h3>CONTROL DECK</h3></div><span class="chip orange hot">${esc(tab.label.toUpperCase())}</span></div>
         <div class="field"><label>TASK</label><select class="select" onchange="updateTabField('${tab.key}','selectedTask',this.value)">${renderTaskOptions(tab.key)}</select></div>
+        ${renderTaskBrief(tab.key)}
         <div class="field"><label>ADAPTER</label><select class="select" disabled>${renderAdapterOptions(tab.key)}</select></div>
         <div class="field"><label>PROVIDER</label><select class="select" disabled>${renderProviderOptions(tab.key)}</select></div>
         <div class="field"><label>MODELS · ${modelCount} ARMED</label><select class="select" multiple size="12" onchange="updateSelectedModels('${tab.key}',this)">${renderModelOptions(tab.key)}</select></div>

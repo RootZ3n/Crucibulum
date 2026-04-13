@@ -1,7 +1,7 @@
 /**
  * Crucibulum — Z.AI Direct Adapter (GLM / Zhipu)
  * Direct BigModel API integration (OpenAI-compatible).
- * Supported: glm-4-plus, glm-z1-flash, glm-4-air
+ * Supported: glm-4-plus, glm-5.1, glm-z1-flash, glm-4-air
  *
  * CLI: --adapter zai --model glm-4-plus
  */
@@ -146,30 +146,49 @@ export class ZAIAdapter {
     }
 }
 // ── Z.AI API call ──────────────────────────────────────────────────────────
+const ZAI_MAX_RETRIES = 2;
 async function callZAI(apiKey, model, messages) {
-    const res = await fetch(`${ZAI_BASE}/chat/completions`, {
-        method: "POST",
-        headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            model,
-            messages,
-            max_tokens: 8192,
-            temperature: 0.1,
-        }),
-        signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
-    });
-    if (!res.ok) {
-        throw new Error(`Z.AI returned ${res.status}: ${await res.text().catch(() => "")}`);
+    let lastError = null;
+    for (let attempt = 0; attempt <= ZAI_MAX_RETRIES; attempt++) {
+        if (attempt > 0) {
+            log("warn", "zai", `Z.AI empty/failed response on attempt ${attempt}, retrying (${attempt}/${ZAI_MAX_RETRIES})…`);
+            await new Promise((r) => setTimeout(r, 1000 * attempt));
+        }
+        const res = await fetch(`${ZAI_BASE}/chat/completions`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                model,
+                messages,
+                max_tokens: 8192,
+                temperature: 0.1,
+            }),
+            signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
+        });
+        if (!res.ok) {
+            lastError = new Error(`Z.AI returned ${res.status}: ${await res.text().catch(() => "")}`);
+            continue;
+        }
+        const data = (await res.json());
+        const text = data.choices?.[0]?.message?.content ?? "";
+        if (!text && attempt < ZAI_MAX_RETRIES) {
+            log("warn", "zai", `Z.AI returned empty content for model ${model}, will retry`);
+            lastError = new Error(`Z.AI returned empty response for model ${model}`);
+            continue;
+        }
+        if (!text) {
+            log("warn", "zai", `Z.AI returned empty content for model ${model} after ${ZAI_MAX_RETRIES + 1} attempts`);
+        }
+        return {
+            text,
+            tokensIn: data.usage?.prompt_tokens ?? 0,
+            tokensOut: data.usage?.completion_tokens ?? 0,
+        };
     }
-    const data = (await res.json());
-    return {
-        text: data.choices?.[0]?.message?.content ?? "",
-        tokensIn: data.usage?.prompt_tokens ?? 0,
-        tokensOut: data.usage?.completion_tokens ?? 0,
-    };
+    throw lastError ?? new Error(`Z.AI call failed after ${ZAI_MAX_RETRIES + 1} attempts`);
 }
 // ── Shared agentic loop infrastructure ─────────────────────────────────────
 const RE_ANCHOR_MESSAGE = `You must use one of these exact commands on its own line to interact with the codebase. Do not explain — just issue the command.

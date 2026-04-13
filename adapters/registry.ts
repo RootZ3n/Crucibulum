@@ -385,6 +385,7 @@ const REGISTRY: RegistryDefinition[] = [
       if (!apiKey) return [];
       return [
         { id: "glm-4-plus", name: "GLM-4 Plus", provider: "zai", kind: "cloud" as const, available: true, reason: null },
+        { id: "glm-5.1", name: "GLM 5.1", provider: "zai", kind: "cloud" as const, available: true, reason: null },
         { id: "glm-z1-flash", name: "GLM-Z1 Flash", provider: "zai", kind: "cloud" as const, available: true, reason: null },
         { id: "glm-4-air", name: "GLM-4 Air", provider: "zai", kind: "cloud" as const, available: true, reason: null },
       ];
