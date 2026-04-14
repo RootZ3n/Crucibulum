@@ -1,0 +1,182 @@
+/**
+ * Crucibulum — API app factory
+ *
+ * Pure factory for the HTTP server. The previous layout ran listen() as a
+ * module-load side effect, which made it impossible to stand the server up in
+ * a test without actually binding port 18795. This module exposes two things:
+ *
+ *   createApp()   — returns a configured http.Server that has NOT yet called listen()
+ *   startServer() — the production boot path: loads scorers, binds the configured port
+ *
+ * Tests can call createApp() and manage the lifecycle themselves (listen on
+ * port 0, send requests, close). The real entrypoint (server/api.ts) just
+ * calls startServer() and does nothing else.
+ */
+import { createServer } from "node:http";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { log } from "../utils/logger.js";
+import { sendJSON } from "./routes/shared.js";
+import { requireAuth } from "./auth.js";
+import { loadAllScorers } from "../core/scorer-registry.js";
+import { enforce, RATE_READ, RATE_RUN, RATE_INGEST } from "./rate-limit.js";
+import * as health from "./routes/health.js";
+import * as run from "./routes/run.js";
+import * as suite from "./routes/suite.js";
+import * as leaderboard from "./routes/leaderboard.js";
+import { handleRunBatch } from "./routes/batch.js";
+const DEFAULT_PORT = parseInt(process.env["CRUCIBULUM_PORT"] ?? "18795", 10);
+const UI_PATH = join(import.meta.dirname, "..", "..", "ui", "index.html");
+async function handleRequest(req, res, opts) {
+    const url = new URL(req.url ?? "/", `http://localhost:${DEFAULT_PORT}`);
+    const path = url.pathname;
+    const method = req.method ?? "GET";
+    if (method === "OPTIONS") {
+        res.writeHead(204, {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        });
+        res.end();
+        return;
+    }
+    try {
+        if (path === "/" || path === "/index.html") {
+            if (existsSync(UI_PATH)) {
+                res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+                res.end(readFileSync(UI_PATH, "utf-8"));
+            }
+            else {
+                res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+                res.end("<html><body><h1>Crucibulum</h1><p>UI not built yet.</p></body></html>");
+            }
+            return;
+        }
+        if (method === "GET" && /^\/[a-zA-Z0-9_\-]+\.(png|jpg|jpeg|svg|webp|gif|ico)$/.test(path)) {
+            const assetPath = join(import.meta.dirname, "..", "..", "ui", path.slice(1));
+            if (existsSync(assetPath)) {
+                const ext = path.split(".").pop().toLowerCase();
+                const mime = {
+                    png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
+                    svg: "image/svg+xml", webp: "image/webp", gif: "image/gif", ico: "image/x-icon",
+                };
+                res.writeHead(200, { "Content-Type": mime[ext] || "application/octet-stream", "Cache-Control": "public, max-age=3600" });
+                res.end(readFileSync(assetPath));
+                return;
+            }
+        }
+        const isApi = path.startsWith("/api/") && path !== "/api/health";
+        const isHealthAlias = path === "/health";
+        if (isApi && opts.rateLimit !== false) {
+            const rule = method === "POST"
+                ? (path === "/api/scores/sync" || path === "/api/verum/ingest" ? RATE_INGEST : RATE_RUN)
+                : RATE_READ;
+            if (!enforce(req, res, rule))
+                return;
+        }
+        if (isApi) {
+            if (!requireAuth(req, res))
+                return;
+        }
+        if ((path === "/api/health" || isHealthAlias) && method === "GET") {
+            return void await health.handleHealth(req, res);
+        }
+        if (path === "/api/scorers" && method === "GET")
+            return void await health.handleScorers(req, res);
+        if (path === "/api/scorers/health" && method === "GET")
+            return void await health.handleScorersHealth(req, res);
+        if (path === "/api/health/adapters" && method === "GET")
+            return void await health.handleAdaptersHealth(req, res);
+        if (path === "/api/judge" && method === "GET")
+            return void await health.handleJudge(req, res);
+        if (path === "/api/suites" && method === "GET")
+            return void await health.handleSuites(req, res);
+        if (path === "/api/tasks" && method === "GET")
+            return void await health.handleTasks(req, res);
+        if (path === "/api/adapters" && method === "GET")
+            return void await health.handleAdapters(req, res);
+        if (path === "/api/models" && method === "GET")
+            return void await health.handleModels(req, res);
+        if (path === "/api/providers" && method === "GET")
+            return void await health.handleProviders(req, res);
+        if ((path === "/api/runs" || path === "/runs") && method === "GET")
+            return void await run.handleRunsList(req, res, url);
+        if (path.startsWith("/api/runs/") && path.endsWith("/summary") && method === "GET")
+            return void await run.handleRunSummary(req, res, path);
+        if (path.startsWith("/api/runs/") && !path.includes("/live") && !path.endsWith("/summary") && !path.endsWith("/crucible-link") && method === "GET")
+            return void await run.handleRunGet(req, res, path);
+        if ((path === "/api/stats" || path === "/stats") && method === "GET")
+            return void await run.handleStats(req, res, url);
+        if (path === "/api/receipts" && method === "GET")
+            return void await run.handleReceipts(req, res, url);
+        if (path === "/api/compare" && method === "GET")
+            return void await run.handleCompare(req, res, url);
+        if (path.startsWith("/api/run/") && path.endsWith("/status") && method === "GET")
+            return void await run.handleRunStatus(req, res, path);
+        if (path === "/api/run" && method === "POST")
+            return void await run.handleRunPost(req, res);
+        if (path.startsWith("/api/run/") && path.endsWith("/live") && method === "GET")
+            return void await run.handleRunLive(req, res, path);
+        if (path === "/api/run-suite" && method === "POST")
+            return void await suite.handleRunSuitePost(req, res);
+        if (path.startsWith("/api/run-suite/") && path.endsWith("/status") && method === "GET")
+            return void await suite.handleRunSuiteStatus(req, res, path);
+        if (path.startsWith("/api/runs/") && path.endsWith("/crucible-link") && method === "POST")
+            return void await run.handleCrucibleLink(req, res, path);
+        if (path === "/api/scores/sync" && method === "POST")
+            return void await leaderboard.handleScoresSync(req, res);
+        if (path === "/api/verum/ingest" && method === "POST")
+            return void await leaderboard.handleVerumIngest(req, res);
+        if (path === "/api/scores" && method === "GET")
+            return void await leaderboard.handleScoresQuery(req, res, url);
+        if ((path === "/api/scores/leaderboard" || path === "/api/leaderboard" || path === "/leaderboard") && method === "GET")
+            return void await leaderboard.handleLeaderboard(req, res, url);
+        if (path === "/api/synthesis" && method === "POST")
+            return void await leaderboard.handleSynthesis(req, res);
+        if (path === "/api/run-batch" && method === "POST")
+            return void await handleRunBatch(req, res);
+        sendJSON(res, 404, { error: "Not found" });
+    }
+    catch (err) {
+        log("error", "api", `Request error: ${String(err)}`);
+        sendJSON(res, 500, { error: String(err) });
+    }
+}
+/**
+ * Build an http.Server wired to the Crucibulum routes. Does NOT call listen() —
+ * the caller decides when/where to bind. Safe to import from tests.
+ */
+export function createApp(options = {}) {
+    const opts = { rateLimit: true, ...options };
+    return createServer((req, res) => {
+        handleRequest(req, res, opts).catch((err) => {
+            log("error", "api", String(err));
+            res.writeHead(500);
+            res.end("Internal error");
+        });
+    });
+}
+/**
+ * Production boot. Loads the scorer registry, then binds the configured port.
+ * Returns the listening server so callers can hold a reference for tests or
+ * shutdown hooks.
+ */
+export async function startServer(port = DEFAULT_PORT) {
+    const server = createApp();
+    try {
+        const scorerResults = await loadAllScorers();
+        log("info", "api", `Scorer registry: ${scorerResults.loaded} loaded, ${scorerResults.failed.length} failed`);
+        for (const f of scorerResults.failed) {
+            log("error", "api", `Scorer load failure: ${f.path} — ${f.error}`);
+        }
+    }
+    catch (err) {
+        log("error", "api", `Failed to initialize scorer registry: ${String(err)}`);
+    }
+    await new Promise((resolve) => server.listen(port, "0.0.0.0", () => resolve()));
+    log("info", "api", `Crucibulum server running on http://localhost:${port}`);
+    log("info", "api", `UI: http://localhost:${port}/`);
+    log("info", "api", `API: http://localhost:${port}/api/`);
+    return server;
+}
+//# sourceMappingURL=app.js.map

@@ -11,7 +11,13 @@ export function readCrucibleLink(bundleId) {
     if (!existsSync(file)) {
         return null;
     }
-    return JSON.parse(readFileSync(file, "utf-8"));
+    try {
+        return JSON.parse(readFileSync(file, "utf-8"));
+    }
+    catch {
+        // Corrupted link JSON — treat as missing rather than crashing the request.
+        return null;
+    }
 }
 export function writeCrucibleLink(bundleId, link) {
     mkdirSync(linksDir(), { recursive: true });

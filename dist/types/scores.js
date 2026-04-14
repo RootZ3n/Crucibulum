@@ -6,6 +6,14 @@
  * Internal run bundles still use 0-1 fractions until the bundle schema is migrated.
  */
 /**
+ * Minimum number of observed runs before a model's composite is considered
+ * well-sampled. Under this threshold, reliability_score is scaled by a linear
+ * sample penalty (runs/min) so a single-run model cannot outrank a
+ * well-sampled peer on luck alone. Explicit, explainable, and not a
+ * statistical-confidence-interval rabbit hole.
+ */
+export const LEADERBOARD_MIN_N = 3;
+/**
  * Canonical public score-family taxonomy.
  *
  * The benchmark task corpus uses descriptive task-family IDs such as

@@ -15,7 +15,12 @@ export function readCrucibleLink(bundleId: string): CrucibleLink | null {
   if (!existsSync(file)) {
     return null;
   }
-  return JSON.parse(readFileSync(file, "utf-8")) as CrucibleLink;
+  try {
+    return JSON.parse(readFileSync(file, "utf-8")) as CrucibleLink;
+  } catch {
+    // Corrupted link JSON — treat as missing rather than crashing the request.
+    return null;
+  }
 }
 
 export function writeCrucibleLink(bundleId: string, link: CrucibleLink): void {

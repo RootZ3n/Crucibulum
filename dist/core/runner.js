@@ -17,6 +17,7 @@ import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
 import { runReviewLayer, DEFAULT_REVIEW_CONFIG, DISABLED_REVIEW } from "./review.js";
 import { isConversationalTask, runConversationalTask } from "./conversational-runner.js";
 import { canonicalPercent } from "../types/scores.js";
+import { runWithProtection } from "./circuit-breaker.js";
 export async function runTask(options) {
     const { taskId, adapter, model } = options;
     const startTime = new Date().toISOString();
@@ -54,9 +55,9 @@ export async function runTask(options) {
     const repoPath = resolveRepoPath(manifest);
     const workspace = createWorkspace(repoPath, taskId);
     try {
-        // 5. Execute via adapter
+        // 5. Execute via adapter (protected by circuit breaker + rate limiter)
         log("info", "runner", `Executing in workspace: ${workspace.path}`);
-        const executionResult = await adapter.execute({
+        const executionResult = await runWithProtection(adapter.id, () => adapter.execute({
             task: agentManifest,
             workspace_path: workspace.path,
             budget: {
@@ -65,7 +66,7 @@ export async function runTask(options) {
                 max_file_edits: manifest.constraints.max_file_edits,
                 network_allowed: manifest.constraints.network_allowed,
             },
-        });
+        }));
         log("info", "runner", `Execution complete: ${executionResult.exit_reason} in ${formatDuration(executionResult.duration_ms)}`);
         // 6. Collect diff evidence
         const diff = getGitDiff(workspace.path);

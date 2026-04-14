@@ -1,0 +1,20 @@
+{
+  "id": "v1",
+  "label": "Crucibulum v1",
+  "description": "Default evaluation suite — all task families",
+  "scoring": {
+    "weights": {
+      "correctness": 0.40,
+      "regression": 0.25,
+      "integrity": 0.20,
+      "efficiency": 0.15
+    },
+    "pass_threshold": 0.60
+  },
+  "flake_detection": {
+    "enabled": true,
+    "retries": 3
+  },
+  "families": null,
+  "tasks": null
+}

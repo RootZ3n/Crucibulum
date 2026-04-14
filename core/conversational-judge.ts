@@ -20,6 +20,7 @@ import type {
   ConversationalManifest,
 } from "../adapters/base.js";
 import { log } from "../utils/logger.js";
+import { getScorer } from "./scorer-registry.js";
 
 // ── Text matching primitives ───────────────────────────────────────────────
 
@@ -333,8 +334,34 @@ export function scoreConversationalQuestion(
       break;
     }
     case "custom": {
-      // Custom scorers to be registered later
-      failureReason = `Custom scorer '${question.custom_scorer}' not registered`;
+      const scorerId = question.custom_scorer;
+      if (!scorerId) {
+        failureReason = "Question has scoring_type 'custom' but no custom_scorer field";
+        break;
+      }
+      const scorer = getScorer(scorerId);
+      if (!scorer) {
+        failureReason = `Custom scorer '${scorerId}' not loaded — check /scorers/ directory and /api/scorers/health`;
+        break;
+      }
+      try {
+        const result = scorer.score({
+          taskId: question.id,
+          taskFamily: "conversational",
+          modelResponse: response,
+          oracleData: {
+            pass_phrases: question.pass_phrases,
+            fail_phrases: question.fail_phrases,
+          },
+          metadata: { tags: question.tags },
+        });
+        passed = result.passed;
+        if (!passed) {
+          failureReason = result.explanation;
+        }
+      } catch (err) {
+        failureReason = `Custom scorer '${scorerId}' threw: ${String(err)}`;
+      }
       break;
     }
   }

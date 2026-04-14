@@ -416,8 +416,14 @@ async function callReviewModel(
       prompt_eval_count?: number;
       eval_count?: number;
     };
+    // Reject unexpected response shape explicitly instead of silently coercing to "".
+    // A silent empty string downstream masquerades as "valid-but-empty review", which
+    // makes an audit trail show a zero-evidence review that looks legitimate.
+    if (typeof data.message?.content !== "string") {
+      throw new Error("Ollama review response missing message.content");
+    }
     return {
-      text: data.message?.content ?? "",
+      text: data.message.content,
       tokensIn: data.prompt_eval_count ?? 0,
       tokensOut: data.eval_count ?? 0,
     };
@@ -448,8 +454,17 @@ async function callReviewModel(
     usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
 
+  // Validate response shape explicitly. If the provider returns an unexpected
+  // envelope (no choices, null content, etc.) surface that as an error rather
+  // than silently collapsing to "" with zero tokens — a zero-evidence review
+  // that looks legitimate is exactly the audit-trail hazard we want to avoid.
+  const content = data.choices?.[0]?.message?.content;
+  if (typeof content !== "string") {
+    throw new Error(`${provider} review response missing choices[0].message.content`);
+  }
+
   return {
-    text: data.choices?.[0]?.message?.content ?? "",
+    text: content,
     tokensIn: data.usage?.prompt_tokens ?? 0,
     tokensOut: data.usage?.completion_tokens ?? 0,
   };

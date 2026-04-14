@@ -70,7 +70,7 @@ export class OpenRouterAdapter implements CrucibulumAdapter {
     if (c.model) this.model = c.model;
     if (c.base_url) this.baseUrl = c.base_url;
     if (!this.apiKey) {
-      log("warn", this.id, `No API key set — set ${this.apiKeyEnv}`);
+      log("debug", this.id, `No API key set — set ${this.apiKeyEnv}`);
     }
   }
 

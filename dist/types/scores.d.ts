@@ -15,6 +15,31 @@ export interface ScoreFamilySpec {
     taskFamilies: CanonicalTaskFamily[];
     weight: number;
 }
+/** Suite-level scoring weights — optional defaults applied across tasks in a suite */
+export interface SuiteScoringWeights {
+    correctness: number;
+    regression: number;
+    integrity: number;
+    efficiency: number;
+}
+/** Flake detection configuration for a suite */
+export interface FlakeDetectionConfig {
+    enabled: boolean;
+    retries: number;
+}
+/** Suite manifest — defines defaults for tasks in the suite */
+export interface SuiteManifest {
+    id: string;
+    label: string;
+    description?: string | undefined;
+    scoring: {
+        weights: SuiteScoringWeights;
+        pass_threshold: number;
+    };
+    flake_detection?: FlakeDetectionConfig | undefined;
+    families: string[] | null;
+    tasks: string[] | null;
+}
 export interface ModelScore {
     modelId: string;
     taskId: string;
@@ -74,7 +99,25 @@ export interface LeaderboardEntry {
     totalRuns: number;
     lastRun: string;
     source: ScoreSource;
+    average_pass_rate?: number | undefined;
+    stability_score?: number | undefined;
+    reliability_score?: number | undefined;
+    total_flaky?: number | undefined;
+    total_stable?: number | undefined;
+    confidence?: "high" | "medium" | "low" | undefined;
+    /** Runs required before a model is considered well-sampled; see LEADERBOARD_MIN_N. */
+    sample_adequate?: boolean | undefined;
+    /** Multiplier applied to reliability_score for small-N entries; 1.0 when sample_adequate. */
+    sample_penalty?: number | undefined;
 }
+/**
+ * Minimum number of observed runs before a model's composite is considered
+ * well-sampled. Under this threshold, reliability_score is scaled by a linear
+ * sample penalty (runs/min) so a single-run model cannot outrank a
+ * well-sampled peer on luck alone. Explicit, explainable, and not a
+ * statistical-confidence-interval rabbit hole.
+ */
+export declare const LEADERBOARD_MIN_N = 3;
 /**
  * Canonical public score-family taxonomy.
  *

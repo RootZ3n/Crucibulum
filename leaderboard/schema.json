@@ -2,7 +2,22 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CrucibulumLeaderboardSubmission",
   "type": "object",
-  "required": ["submission_id", "submitted_at", "agent", "suite", "tasks_attempted", "tasks_passed", "scores", "performance"],
+  "required": [
+    "submission_id",
+    "submitted_at",
+    "bundle_hashes",
+    "crucibulum_version",
+    "agent",
+    "suite",
+    "tasks_attempted",
+    "tasks_passed",
+    "scores",
+    "pass_at",
+    "failure_taxonomy",
+    "review_signals",
+    "performance",
+    "verified"
+  ],
   "properties": {
     "submission_id": { "type": "string" },
     "submitted_at": { "type": "string", "format": "date-time" },
@@ -10,19 +25,21 @@
     "crucibulum_version": { "type": "string" },
     "agent": {
       "type": "object",
-      "required": ["adapter", "model"],
+      "required": ["adapter", "provider", "model", "system", "system_version"],
       "properties": {
         "adapter": { "type": "string" },
+        "provider": { "type": "string" },
         "model": { "type": "string" },
         "system": { "type": "string" },
         "system_version": { "type": "string" }
       }
     },
     "suite": { "type": "string" },
-    "tasks_attempted": { "type": "integer" },
-    "tasks_passed": { "type": "integer" },
+    "tasks_attempted": { "type": "integer", "minimum": 0 },
+    "tasks_passed": { "type": "integer", "minimum": 0 },
     "scores": {
       "type": "object",
+      "required": ["total", "correctness", "regression", "integrity", "efficiency"],
       "properties": {
         "total": { "type": "number" },
         "correctness": { "type": "number" },
@@ -31,15 +48,31 @@
         "efficiency": { "type": "number" }
       }
     },
-    "pass_at": { "type": "object", "additionalProperties": { "type": "boolean" } },
-    "failure_taxonomy": { "type": "object", "additionalProperties": { "type": "integer" } },
+    "pass_at": {
+      "type": "object",
+      "additionalProperties": { "type": "boolean" }
+    },
+    "failure_taxonomy": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "review_signals": {
+      "type": "object",
+      "required": ["disagreement_rate", "qc_disagreement_rate", "review_blocked_rate"],
+      "properties": {
+        "disagreement_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "qc_disagreement_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "review_blocked_rate": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
     "performance": {
       "type": "object",
+      "required": ["median_time_sec", "p90_time_sec", "median_steps", "total_cost_usd"],
       "properties": {
-        "median_time_sec": { "type": "number" },
-        "p90_time_sec": { "type": "number" },
-        "median_steps": { "type": "integer" },
-        "total_cost_usd": { "type": "number" }
+        "median_time_sec": { "type": "number", "minimum": 0 },
+        "p90_time_sec": { "type": "number", "minimum": 0 },
+        "median_steps": { "type": "integer", "minimum": 0 },
+        "total_cost_usd": { "type": "number", "minimum": 0 }
       }
     },
     "verified": { "type": "boolean" }

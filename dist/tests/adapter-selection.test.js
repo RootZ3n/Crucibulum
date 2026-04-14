@@ -1,12 +1,9 @@
 import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { getAdapterCatalog, listFlattenedModels, getProviderCatalog, } from "../adapters/registry.js";
 const realFetch = globalThis.fetch;
 const realOpenRouterKey = process.env["OPENROUTER_API_KEY"];
 const realOpenAIKey = process.env["OPENAI_API_KEY"];
-const ui = readFileSync(join(process.cwd(), "ui", "index.html"), "utf-8");
 function mockFetch(opts) {
     globalThis.fetch = (async (input, init) => {
         const url = String(input);
@@ -102,17 +99,10 @@ describe("adapter and selection catalog", () => {
         assert.ok(result.providers.some((provider) => provider.id === "ollama"));
         assert.ok(result.providers.some((provider) => provider.id === "openai"));
     });
-    it("current UI bootstraps catalogs and maintains a model-driven selection state", () => {
-        assert.match(ui, /const state=\{activeTab:localStorage\.getItem\('crucibulum-active-tab'\)\|\|'dashboard',tasks:\[],adapters:\[],providers:\[],liveModels:\[]/);
-        assert.match(ui, /function defaultTabState\(\)\{return\{selectedTask:'',selectedModels:\[],selectedProvider:'',selectedAdapter:''/);
-        assert.match(ui, /function mergedModelGroups/);
-        assert.match(ui, /function renderModelOptions/);
-    });
-    it("current UI exposes lane summary and leaderboard surfaces", () => {
-        assert.match(ui, /Lane summary/);
-        assert.match(ui, /Which models are scoring best/);
-        assert.match(ui, /Selected models/);
-        assert.match(ui, /No leaderboard rows for this lane yet\./);
-    });
+    // NOTE: Two prior UI-source-grep assertions ("current UI bootstraps
+    // catalogs …", "current UI exposes lane summary …") were removed. They
+    // matched literal JS-bundle text and copy like "Lane summary" that
+    // changed with every UI pass. Real coverage now lives in
+    // tests/route-contract.test.ts and tests/ui-layout-regression.test.ts.
 });
 //# sourceMappingURL=adapter-selection.test.js.map

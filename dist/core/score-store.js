@@ -5,7 +5,7 @@
 import Database from "better-sqlite3";
 import { resolve, join } from "node:path";
 import { mkdirSync } from "node:fs";
-import { FAMILY_WEIGHTS, SCORE_FAMILIES, } from "../types/scores.js";
+import { FAMILY_WEIGHTS, SCORE_FAMILIES, LEADERBOARD_MIN_N, } from "../types/scores.js";
 import { log } from "../utils/logger.js";
 const STATE_DIR = resolve(process.env["CRUCIBULUM_STATE_DIR"] ?? join(process.cwd(), "state"));
 const DB_PATH = join(STATE_DIR, "scores.db");
@@ -118,7 +118,7 @@ export function getLeaderboard(families) {
     const where = filteredFamilies ? `WHERE family IN (${placeholders})` : "";
     const rows = database.prepare(`
     SELECT modelId, family, AVG(score) as avg_score, COUNT(*) as total_runs,
-           MAX(timestamp) as last_run, MAX(source) as source
+           SUM(passed) as passed_runs, MAX(timestamp) as last_run, MAX(source) as source
     FROM scores
     ${where}
     GROUP BY modelId, family
@@ -127,11 +127,12 @@ export function getLeaderboard(families) {
     const models = new Map();
     for (const row of rows) {
         if (!models.has(row.modelId)) {
-            models.set(row.modelId, { families: {}, totalRuns: 0, lastRun: "", source: row.source });
+            models.set(row.modelId, { families: {}, totalRuns: 0, passedRuns: 0, lastRun: "", source: row.source });
         }
         const model = models.get(row.modelId);
         model.families[row.family] = Math.round(row.avg_score * 100) / 100;
         model.totalRuns += row.total_runs;
+        model.passedRuns += row.passed_runs ?? 0;
         if (row.last_run > model.lastRun)
             model.lastRun = row.last_run;
         model.source = row.source;
@@ -151,6 +152,30 @@ export function getLeaderboard(families) {
             }
         }
         const composite = weightTotal > 0 ? Math.round((weightedSum / weightTotal) * 100) / 100 : 0;
+        const averagePassRate = data.totalRuns > 0 ? Math.round((data.passedRuns / data.totalRuns) * 100) / 100 : 0;
+        // Stability: 1.0 when pass_rate is extreme (all pass or all fail), 0.0 when uncertain (50/50)
+        // Formula: 2 * |passRate - 0.5| gives 0 at 50%, 1.0 at 0% or 100%
+        const stabilityScore = Math.round(Math.abs(averagePassRate - 0.5) * 2 * 100) / 100;
+        // Sample penalty: linearly discount reliability for models with fewer than
+        // LEADERBOARD_MIN_N runs. A 1-run model keeps only 1/N of its reliability, a
+        // 2-run keeps 2/N, and models at or above the threshold keep the full score.
+        // This is intentionally simple — not a confidence interval — so users can
+        // read the rank penalty directly.
+        const sampleAdequate = data.totalRuns >= LEADERBOARD_MIN_N;
+        const samplePenalty = sampleAdequate ? 1 : Math.max(0, data.totalRuns) / LEADERBOARD_MIN_N;
+        // Reliability: composite × stability-weighted-factor × sample penalty.
+        // A flaky model (stability=0) gets half its composite; a stable model keeps full composite;
+        // an under-sampled model gets additionally reduced so it can't outrank well-sampled peers.
+        const rawReliability = composite * (0.5 + stabilityScore * 0.5) * samplePenalty;
+        const reliabilityScore = Math.round(rawReliability * 100) / 100;
+        // Confidence downgrades if the sample is inadequate, regardless of pass rate.
+        const confidence = !sampleAdequate
+            ? "low"
+            : averagePassRate >= 0.95 && stabilityScore >= 0.8
+                ? "high"
+                : averagePassRate >= 0.7 || stabilityScore >= 0.5
+                    ? "medium"
+                    : "low";
         entries.push({
             modelId,
             composite,
@@ -158,9 +183,30 @@ export function getLeaderboard(families) {
             totalRuns: data.totalRuns,
             lastRun: data.lastRun,
             source: data.source,
+            average_pass_rate: averagePassRate,
+            stability_score: stabilityScore,
+            reliability_score: reliabilityScore,
+            confidence,
+            sample_adequate: sampleAdequate,
+            sample_penalty: Math.round(samplePenalty * 100) / 100,
         });
     }
-    entries.sort((a, b) => b.composite - a.composite);
+    // Sort by reliability-aware score first, then pass_rate, then stability, then composite.
+    // Fall back to modelId to guarantee a deterministic, stable ordering when all else ties —
+    // otherwise leaderboard rank flaps across reads, which is a UX/consumer hazard.
+    entries.sort((a, b) => {
+        const aRel = a.reliability_score ?? a.composite;
+        const bRel = b.reliability_score ?? b.composite;
+        if (bRel !== aRel)
+            return bRel - aRel;
+        if ((b.average_pass_rate ?? 0) !== (a.average_pass_rate ?? 0))
+            return (b.average_pass_rate ?? 0) - (a.average_pass_rate ?? 0);
+        if ((b.stability_score ?? 0) !== (a.stability_score ?? 0))
+            return (b.stability_score ?? 0) - (a.stability_score ?? 0);
+        if (b.composite !== a.composite)
+            return b.composite - a.composite;
+        return a.modelId.localeCompare(b.modelId);
+    });
     return entries;
 }
 //# sourceMappingURL=score-store.js.map

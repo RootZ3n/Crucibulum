@@ -22,6 +22,7 @@ import { log } from "../utils/logger.js";
 import { formatDuration } from "../utils/timing.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
 import { canonicalPercent } from "../types/scores.js";
+import { runWithProtection } from "./circuit-breaker.js";
 // ── Default gap fillers for recall tests ──────────────────────────────────
 const DEFAULT_GAP_FILLERS = [
     "What's the weather like today?",
@@ -201,7 +202,7 @@ export async function runConversationalTask(options) {
         let qTokensIn = 0;
         let qTokensOut = 0;
         try {
-            const chatResult = await adapter.chat(messages);
+            const chatResult = await runWithProtection(adapter.id, () => adapter.chat(messages));
             response = chatResult.text;
             qTokensIn = chatResult.tokens_in;
             qTokensOut = chatResult.tokens_out;

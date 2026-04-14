@@ -8,6 +8,8 @@ import { readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { EvidenceBundle } from "../adapters/base.js";
 import { canonicalPercent } from "../types/scores.js";
+import { loadVerifiedBundle } from "../core/bundle.js";
+import { log } from "../utils/logger.js";
 
 const RUNS_DIR = process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs");
 const SUBMISSIONS_DIR = join(process.cwd(), "leaderboard", "submissions");
@@ -52,10 +54,17 @@ export interface LeaderboardEntry {
 
 export function loadBundles(): EvidenceBundle[] {
   try {
-    return readdirSync(RUNS_DIR)
-      .filter(f => f.endsWith(".json"))
-      .map(f => { try { return JSON.parse(readFileSync(join(RUNS_DIR, f), "utf-8")) as EvidenceBundle; } catch { return null; } })
-      .filter((b): b is EvidenceBundle => b !== null);
+    const files = readdirSync(RUNS_DIR).filter(f => f.endsWith(".json") && !f.endsWith(".crucible.json"));
+    const bundles: EvidenceBundle[] = [];
+    for (const f of files) {
+      try {
+        const bundle = loadVerifiedBundle(readFileSync(join(RUNS_DIR, f), "utf-8"), f);
+        if (bundle) bundles.push(bundle);
+      } catch (err) {
+        log("warn", "aggregator", `Skipping unreadable bundle file ${f}: ${String(err).slice(0, 120)}`);
+      }
+    }
+    return bundles;
   } catch { return []; }
 }
 
@@ -71,6 +80,9 @@ export function aggregateByModel(bundles: EvidenceBundle[]): Map<string, Evidenc
 }
 
 export function buildLeaderboardEntry(modelKey: string, bundles: EvidenceBundle[]): LeaderboardEntry {
+  if (bundles.length === 0) {
+    throw new Error(`buildLeaderboardEntry: cannot build entry for ${modelKey} with zero bundles`);
+  }
   const first = bundles[0]!;
   const taskResults = new Map<string, EvidenceBundle[]>();
   for (const b of bundles) {
@@ -134,6 +146,8 @@ export function buildLeaderboardEntry(modelKey: string, bundles: EvidenceBundle[
   const reviewBlockedRate = bundles.length === 0 ? 0 : bundles.filter((bundle) => !!bundle.review?.security.review_blocked_reason).length / bundles.length;
 
   const tasksPassedCount = [...taskResults.entries()].filter(([, runs]) => runs.some(r => r.score.pass)).length;
+  // Honest verification: submission is verified only if every bundle passed hash re-check on load.
+  const allVerified = bundles.every((b) => b.trust.bundle_verified === true);
 
   return {
     submission_id: `sub_${new Date().toISOString().slice(0, 10)}_${modelKey.replace(/[/:]/g, "-")}`,
@@ -170,7 +184,7 @@ export function buildLeaderboardEntry(modelKey: string, bundles: EvidenceBundle[
       median_steps: median(steps),
       total_cost_usd: Math.round(totalCost * 10000) / 10000,
     },
-    verified: true,
+    verified: allVerified,
   };
 }
 

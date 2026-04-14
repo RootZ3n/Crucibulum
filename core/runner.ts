@@ -19,6 +19,7 @@ import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
 import { runReviewLayer, DEFAULT_REVIEW_CONFIG, DISABLED_REVIEW, type RunReviewConfig, type ReviewLayerResult } from "./review.js";
 import { isConversationalTask, runConversationalTask, type ConversationalRunResult } from "./conversational-runner.js";
 import { canonicalPercent } from "../types/scores.js";
+import { runWithProtection } from "./circuit-breaker.js";
 
 export interface RunOptions {
   taskId: string;
@@ -80,18 +81,20 @@ export async function runTask(options: RunOptions): Promise<RunResult> {
   const workspace = createWorkspace(repoPath, taskId);
 
   try {
-    // 5. Execute via adapter
+    // 5. Execute via adapter (protected by circuit breaker + rate limiter)
     log("info", "runner", `Executing in workspace: ${workspace.path}`);
-    const executionResult = await adapter.execute({
-      task: agentManifest,
-      workspace_path: workspace.path,
-      budget: {
-        time_limit_sec: manifest.constraints.time_limit_sec,
-        max_steps: manifest.constraints.max_steps,
-        max_file_edits: manifest.constraints.max_file_edits,
-        network_allowed: manifest.constraints.network_allowed,
-      },
-    });
+    const executionResult = await runWithProtection(adapter.id, () =>
+      adapter.execute({
+        task: agentManifest,
+        workspace_path: workspace.path,
+        budget: {
+          time_limit_sec: manifest.constraints.time_limit_sec,
+          max_steps: manifest.constraints.max_steps,
+          max_file_edits: manifest.constraints.max_file_edits,
+          network_allowed: manifest.constraints.network_allowed,
+        },
+      }),
+    );
 
     log("info", "runner", `Execution complete: ${executionResult.exit_reason} in ${formatDuration(executionResult.duration_ms)}`);
 
@@ -259,3 +262,4 @@ function buildFailedBundle(
     },
   };
 }
+

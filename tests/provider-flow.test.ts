@@ -7,14 +7,11 @@
 
 import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { getAdapterCatalog, getProviderCatalog } from "../adapters/registry.js";
 
 const realFetch = globalThis.fetch;
 const realOpenRouterKey = process.env["OPENROUTER_API_KEY"];
 const realOpenAIKey = process.env["OPENAI_API_KEY"];
-const ui = readFileSync(join(process.cwd(), "ui", "index.html"), "utf-8");
 
 function mockFetch() {
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -115,29 +112,10 @@ describe("provider flow validation", () => {
     });
   });
 
-  describe("current UI routing contract", () => {
-    it("derives provider and adapter from selected models", () => {
-      assert.match(ui, /function deriveRoutingForModel/);
-      assert.match(ui, /function syncRouting/);
-      assert.match(ui, /Mixed by model selection/);
-    });
-
-    it("shows adapter and provider as derived read-only controls", () => {
-      assert.match(ui, /<label>Adapter<\/label>/);
-      assert.match(ui, /<label>Provider<\/label>/);
-      assert.match(ui, /<select class="select" disabled>\$\{renderAdapterOptions/);
-      assert.match(ui, /<select class="select" disabled>\$\{renderProviderOptions/);
-    });
-
-    it("shows provider information in the run detail and dashboard history surfaces", () => {
-      assert.match(ui, /Provider: \$\{esc\(result\.provider\)\}/);
-      assert.match(ui, /<div class="label">Provider<\/div>/);
-    });
-
-    it("has the current responsive breakpoints and mobile stacking rules", () => {
-      assert.match(ui, /@media \(max-width:1100px\)/);
-      assert.match(ui, /@media \(max-width:780px\)/);
-      assert.match(ui, /\.button-grid\{grid-template-columns:1fr\}/);
-    });
-  });
+  // NOTE: A prior "current UI routing contract" subsuite of source-string
+  // assertions was removed. Those tests grepped ui/index.html for specific
+  // function names, label copy, and CSS breakpoints — all of which drifted
+  // every time the UI was touched and caught zero real regressions.
+  // Behavioral coverage for UI-facing endpoints now lives in
+  // tests/route-contract.test.ts; layout invariants in tests/ui-layout-regression.test.ts.
 });

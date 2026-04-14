@@ -824,7 +824,13 @@ body::after{
   gap:14px;
   align-items:start;
 }
-.control-rail{display:flex;flex-direction:column;gap:14px;position:sticky;top:18px;max-height:calc(100vh - 36px);min-height:0}
+/* Control rail — vertical stack of lane-view panels.
+ * Historically this was sticky + max-height + internal scroll. That combo kept
+ * clipping the Coverage panel's lower content when the CONTROL DECK grew past
+ * the viewport (multiselect + many buttons). Sticky WITHOUT max-height is
+ * cleaner: the rail floats with scroll until its own height exceeds the
+ * viewport, at which point it simply scrolls with the page — no hidden content. */
+.control-rail{display:flex;flex-direction:column;gap:14px;position:sticky;top:18px;align-self:start}
 .content-column,.side-column{display:grid;gap:14px;min-width:0}
 .dual-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(260px,.7fr);gap:14px}
 .inspection-shell,.rail-panel,.history-panel,.surface-panel,.metric-band{
@@ -832,29 +838,14 @@ body::after{
   display:grid;
   gap:12px;
 }
-.control-rail>.rail-panel:first-child{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  min-height:0;
-  flex:1 1 0;
-  overflow:hidden;
-}
-.control-rail>.rail-panel:first-child>.field:has(.select[multiple]){
-  flex:1 1 0;
-  min-height:0;
-  display:flex;
-  flex-direction:column;
-}
+/* First rail panel (CONTROL DECK) takes natural size so every form field is
+ * always visible. The multiselect caps at ~260px with its own internal scroll
+ * so the rail doesn't blow up vertically for models lists of 100+ entries. */
+.control-rail>.rail-panel:first-child{display:flex;flex-direction:column;gap:12px}
 .control-rail>.rail-panel:first-child>.field>.select[multiple]{
-  flex:1 1 0;
-  min-height:80px;
+  max-height:260px;
   overflow-y:auto;
 }
-.control-rail>.rail-panel:nth-child(n+2){flex-shrink:0}
-.control-rail>.rail-panel:first-child>.section-head,
-.control-rail>.rail-panel:first-child>.field:not(:has(.select[multiple])),
-.control-rail>.rail-panel:first-child>.task-brief{flex-shrink:0}
 
 /* ─── Signal cards ──────────────────────────────────────────────── */
 .sig-grid,.category-grid{
@@ -1668,7 +1659,7 @@ tr:hover td{background:rgba(111,217,255,.05)}
   .abyss-banner{grid-template-columns:1fr;text-align:left;gap:16px}
   .ab-telemetry{justify-items:start}
   .stage-grid,.control-grid,.dual-grid,.inspection-grid,.inspection-top{grid-template-columns:1fr}
-  .control-rail{position:static;max-height:none}
+  .control-rail{position:static}
   .vitals{grid-template-columns:repeat(2,1fr)}
   .run-strip{grid-template-columns:12px minmax(0,1fr) 60px 70px}
   .run-strip .rs-task,.run-strip .rs-bar{display:none}

@@ -26,6 +26,7 @@ export interface BundleBuildInput {
     startTime: string;
     endTime: string;
     workspace: WorkspaceInfo;
+    suiteId?: string | undefined;
     adapter: CrucibulumAdapter;
     model: string;
 }
@@ -36,10 +37,24 @@ export declare function buildBundle(input: BundleBuildInput): EvidenceBundle;
 export declare function storeBundle(bundle: EvidenceBundle): string;
 /**
  * Verify a stored bundle's integrity by recomputing its hash.
+ *
+ * The stored bundle contains a `trust.bundle_verified` field that is set to
+ * `true` at build time — that flag alone is worthless, because anyone who
+ * edits the JSON on disk can flip it. Use this function (or
+ * `loadVerifiedBundle`) on every read from disk and trust the result, not
+ * the flag already inside the file.
  */
 export declare function verifyBundle(bundle: EvidenceBundle): {
     valid: boolean;
     expected: string;
     computed: string;
 };
+/**
+ * Parse a bundle JSON string, re-verify its hash, and normalize its trust state
+ * to reflect reality. Returns `null` if the payload is not a valid bundle
+ * object. A bundle that fails verification is still returned so operators can
+ * inspect it — but `trust.bundle_verified` is forced to `false` so downstream
+ * consumers cannot be misled.
+ */
+export declare function loadVerifiedBundle(raw: string, sourceLabel?: string): EvidenceBundle | null;
 //# sourceMappingURL=bundle.d.ts.map

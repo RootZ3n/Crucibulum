@@ -15,7 +15,8 @@ import { hashManifest } from "./manifest.js";
 import { estimateCost } from "../utils/cost.js";
 import { log } from "../utils/logger.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
-import { canonicalPercent } from "../types/scores.js";
+import { canonicalPercent, type SuiteScoringWeights } from "../types/scores.js";
+import { resolveScoringWeights, resolvePassThreshold } from "./suite-loader.js";
 
 export interface BundleBuildInput {
   manifest: TaskManifest;
@@ -37,6 +38,7 @@ export interface BundleBuildInput {
   startTime: string;
   endTime: string;
   workspace: WorkspaceInfo;
+  suiteId?: string | undefined;
   adapter: CrucibulumAdapter;
   model: string;
 }
@@ -44,7 +46,9 @@ export interface BundleBuildInput {
 export function buildBundle(input: BundleBuildInput): EvidenceBundle {
   const { manifest, executionResult, diff, judgeResult, security, startTime, endTime, workspace, adapter, model } = input;
 
-  const weights = manifest.scoring.weights;
+  // Resolve effective scoring weights: task-level > suite-level > defaults
+  const weights = resolveScoringWeights(manifest.scoring.weights, input.suiteId);
+  const passThreshold = resolvePassThreshold(manifest.scoring.pass_threshold, input.suiteId);
   const v = judgeResult.verification;
 
   const totalScore =
@@ -53,7 +57,7 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
     v.integrity.score * weights.integrity +
     v.efficiency.score * weights.efficiency;
 
-  const passed = totalScore >= manifest.scoring.pass_threshold && v.integrity.violations.length === 0;
+  const passed = totalScore >= passThreshold && v.integrity.violations.length === 0;
 
   const provider = executionResult.adapter_metadata.provider;
   const costUsd = estimateCost(provider, executionResult.tokens_in ?? 0, executionResult.tokens_out ?? 0);
@@ -110,7 +114,7 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
       },
       pass: passed,
       pass_threshold: manifest.scoring.pass_threshold,
-      pass_threshold_percent: canonicalPercent(manifest.scoring.pass_threshold),
+      pass_threshold_percent: canonicalPercent(passThreshold),
       integrity_violations: v.integrity.violations.length,
     },
     usage: {
@@ -124,6 +128,7 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
       rubric_hidden: true,
       narration_ignored: true,
       state_based_scoring: true,
+      // Bundle is freshly signed at build time; loadVerifiedBundle re-checks on read.
       bundle_verified: true,
       deterministic_judge_authoritative: true,
       review_layer_advisory: true,
@@ -184,10 +189,46 @@ export function storeBundle(bundle: EvidenceBundle): string {
 
 /**
  * Verify a stored bundle's integrity by recomputing its hash.
+ *
+ * The stored bundle contains a `trust.bundle_verified` field that is set to
+ * `true` at build time — that flag alone is worthless, because anyone who
+ * edits the JSON on disk can flip it. Use this function (or
+ * `loadVerifiedBundle`) on every read from disk and trust the result, not
+ * the flag already inside the file.
  */
 export function verifyBundle(bundle: EvidenceBundle): { valid: boolean; expected: string; computed: string } {
   const stored = bundle.bundle_hash;
   const hashInput = { ...bundle, bundle_hash: "" };
   const computed = sha256Object(hashInput);
   return { valid: stored === computed, expected: stored, computed };
+}
+
+/**
+ * Parse a bundle JSON string, re-verify its hash, and normalize its trust state
+ * to reflect reality. Returns `null` if the payload is not a valid bundle
+ * object. A bundle that fails verification is still returned so operators can
+ * inspect it — but `trust.bundle_verified` is forced to `false` so downstream
+ * consumers cannot be misled.
+ */
+export function loadVerifiedBundle(raw: string, sourceLabel?: string): EvidenceBundle | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object") return null;
+  const bundle = parsed as EvidenceBundle;
+  if (typeof bundle.bundle_id !== "string" || typeof bundle.bundle_hash !== "string" || !bundle.score || !bundle.trust) {
+    return null;
+  }
+  const result = verifyBundle(bundle);
+  if (!result.valid) {
+    log("warn", "bundle", `Hash mismatch on ${sourceLabel ?? bundle.bundle_id} — expected ${result.expected.slice(0, 20)}…, got ${result.computed.slice(0, 20)}…`);
+    // Never let a tampered bundle claim bundle_verified=true downstream.
+    bundle.trust = { ...bundle.trust, bundle_verified: false };
+  } else {
+    bundle.trust = { ...bundle.trust, bundle_verified: true };
+  }
+  return bundle;
 }

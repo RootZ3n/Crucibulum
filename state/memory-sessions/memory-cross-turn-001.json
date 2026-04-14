@@ -1,0 +1,65 @@
+{
+  "session_id": "memory-cross-turn-001",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are in a memory benchmark. If you do not remember a detail, say so instead of guessing."
+    },
+    {
+      "role": "user",
+      "content": "Remember this exactly: the launch codeword is ember-owl and the meeting room is Cobalt-9."
+    },
+    {
+      "role": "assistant",
+      "content": "Stored."
+    },
+    {
+      "role": "user",
+      "content": "What's the weather like today?"
+    },
+    {
+      "role": "assistant",
+      "content": "Stored."
+    },
+    {
+      "role": "user",
+      "content": "Tell me a fun fact about space."
+    },
+    {
+      "role": "assistant",
+      "content": "Stored."
+    },
+    {
+      "role": "user",
+      "content": "What's 15 times 23?"
+    },
+    {
+      "role": "assistant",
+      "content": "Stored."
+    },
+    {
+      "role": "user",
+      "content": "Name three types of clouds."
+    },
+    {
+      "role": "assistant",
+      "content": "Stored."
+    },
+    {
+      "role": "user",
+      "content": "In turn 1 I gave you a codeword. What was it?"
+    },
+    {
+      "role": "assistant",
+      "content": "Stored."
+    },
+    {
+      "role": "user",
+      "content": "Also from the earlier message, what meeting room did I tell you?"
+    },
+    {
+      "role": "assistant",
+      "content": "Stored."
+    }
+  ]
+}

@@ -150,30 +150,41 @@ function judgeIntegrity(
 function judgeCorrectness(
   oracle: Oracle,
   workspacePath: string,
-): { score: number; details: Record<string, "pass" | "fail"> } {
-  const details: Record<string, "pass" | "fail"> = {};
+): { score: number; details: Record<string, "pass" | "fail" | "unsupported">; not_evaluable?: boolean } {
+  const details: Record<string, "pass" | "fail" | "unsupported"> = {};
   let totalWeight = 0;
   let passedWeight = 0;
 
   for (const check of oracle.checks.correctness) {
     const weight = check.weight ?? 1;
-    totalWeight += weight;
 
     if (check.type === "hidden_test" && check.command) {
+      totalWeight += weight;
       const passed = runCommand(check.command, workspacePath);
       details[check.id] = passed ? "pass" : "fail";
       if (passed) passedWeight += weight;
-    }
-
-    if (check.type === "api_check") {
-      // API checks require runtime — skip in V1 (mark as untested)
-      details[check.id] = "pass"; // optimistic — runtime checks in V2
-      passedWeight += weight;
+    } else if (check.type === "api_check") {
+      // API checks are not implemented — mark as unsupported, do NOT count toward score
+      // This prevents fake passes from inflating correctness scores
+      details[check.id] = "unsupported";
+    } else if (check.type === "hidden_test" && !check.command) {
+      // Hidden test with no command — also unsupported
+      details[check.id] = "unsupported";
     }
   }
 
-  const score = totalWeight > 0 ? passedWeight / totalWeight : 0;
-  return { score, details };
+  // If every correctness check was unsupported (or the oracle had none at all),
+  // we have no evaluable signal. Return score=0 but flag not_evaluable so
+  // consumers can distinguish "nothing to grade" from "graded and got zero".
+  if (totalWeight === 0) {
+    const hasChecks = oracle.checks.correctness.length > 0;
+    if (hasChecks) {
+      log("warn", "judge", `Correctness: all ${oracle.checks.correctness.length} check(s) unsupported — score is not evaluable`);
+    }
+    return { score: 0, details, not_evaluable: true };
+  }
+
+  return { score: totalWeight > 0 ? passedWeight / totalWeight : 0, details };
 }
 
 // -- Regression Judge ---------------------------------------------------------

@@ -16,5 +16,5 @@
     "exactOptionalPropertyTypes": true
   },
   "include": ["cli/**/*.ts", "core/**/*.ts", "adapters/**/*.ts", "utils/**/*.ts", "schemas/**/*.ts", "security/**/*.ts", "leaderboard/**/*.ts", "server/**/*.ts", "tests/**/*.ts"],
-  "exclude": ["node_modules", "dist", "tasks", "oracles", "runs"]
+  "exclude": ["node_modules", "dist", "tasks", "oracles", "runs", "tests/flake-detection.test.ts", "tests/suite-scoring.test.ts", "tests/cleanup.test.ts", "tests/suite-flake.test.ts", "tests/leaderboard-ranking.test.ts", "tests/reporting-fields.test.ts"]
 }

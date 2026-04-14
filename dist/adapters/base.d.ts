@@ -264,7 +264,14 @@ export interface DiffEntry {
 export interface VerificationResults {
     correctness: {
         score: number;
-        details: Record<string, "pass" | "fail">;
+        details: Record<string, "pass" | "fail" | "unsupported">;
+        /**
+         * True when every correctness check was marked "unsupported" — i.e. the
+         * judge had nothing it could actually evaluate. A score of 0 here means
+         * "not evaluable", not "failed zero". Always check this before treating
+         * correctness as a real measurement.
+         */
+        not_evaluable?: boolean;
     };
     regression: {
         score: number;
