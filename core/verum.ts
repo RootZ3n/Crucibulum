@@ -21,6 +21,12 @@ function normalizeVerumResult(
     costEstimate: result.costEstimate,
     anomalyFlags: result.anomalyFlags,
     timestamp: result.timestamp,
+    completionState: result.passed ? "PASS" : "FAIL",
+    failureOrigin: result.passed ? null : "MODEL",
+    failureReasonCode: result.passed ? "pass" : "wrong_output",
+    failureReasonSummary: result.passed ? "Attack evaluation passed" : "Attack evaluation failed",
+    countsTowardModelScore: true,
+    countsTowardFailureRate: !result.passed,
     metadata: {
       provider: request.provider,
       adapter: request.adapter,

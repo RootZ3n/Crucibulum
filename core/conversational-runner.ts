@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Conversational Runner
+ * Crucible — Conversational Runner
  * Executes chat-based tests: sends questions via adapter.chat(),
  * scores responses deterministically, produces evidence bundles.
  *
@@ -23,6 +23,8 @@ import type {
   ChatMessage,
   EvidenceBundle,
   TimelineEvent,
+  SanitizedChatText,
+  ChatOptions,
 } from "../adapters/base.js";
 import { scoreConversationalQuestion, judgeConversational } from "./conversational-judge.js";
 import { sha256Object } from "../utils/hashing.js";
@@ -32,6 +34,11 @@ import { formatDuration } from "../utils/timing.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
 import { canonicalPercent } from "../types/scores.js";
 import { runWithProtection } from "./circuit-breaker.js";
+import { normalizeVerdict } from "./verdict.js";
+import type { StructuredProviderError } from "../types/provider-error.js";
+import { normalizeProviderError } from "./provider-errors.js";
+import { runReviewLayer, DISABLED_REVIEW, type RunReviewConfig } from "./review.js";
+import { applyReviewJudgeUsage } from "./judge-usage.js";
 
 // ── Default gap fillers for recall tests ──────────────────────────────────
 
@@ -50,6 +57,7 @@ const DEFAULT_GAP_FILLERS = [
 
 const TASKS_DIR = resolve(process.env["CRUCIBULUM_TASKS_DIR"] ?? join(process.cwd(), "tasks"));
 const MEMORY_DIR = resolve(process.env["CRUCIBULUM_MEMORY_DIR"] ?? join(process.cwd(), "state", "memory-sessions"));
+const NO_VISIBLE_REASONING_INSTRUCTION = "Benchmark rule: do not output chain-of-thought, hidden reasoning, or <think> blocks. Return only the final answer required by the prompt. If the prompt asks for a single word, line, or concise answer, output only that.";
 
 function sessionPath(sessionId: string): string {
   return join(MEMORY_DIR, `${sessionId}.json`);
@@ -110,6 +118,13 @@ export interface ConversationalRunOptions {
   model: string;
   /** Override system prompt (optional) */
   systemPrompt?: string | undefined;
+  /**
+   * Optional review-layer config. When either secondOpinion or qcReview is
+   * enabled, the run invokes the configured judge model on top of
+   * deterministic conversational scoring and rolls token + cost usage into
+   * `bundle.judge_usage`. Defaults seed from `core/judge-config.ts`.
+   */
+  reviewConfig?: RunReviewConfig | undefined;
 }
 
 export interface ConversationalRunResult {
@@ -125,6 +140,29 @@ export interface ConversationalEfficiencyResult {
   steps_used: number;
   steps_limit: number;
   score: number;
+}
+
+export function shouldSuppressVisibleReasoning(manifest: ConversationalManifest): boolean {
+  return manifest.family !== "thinking-mode";
+}
+
+function benchmarkChatOptions(manifest: ConversationalManifest): ChatOptions {
+  return {
+    benchmarkMode: true,
+    suppressVisibleReasoning: shouldSuppressVisibleReasoning(manifest),
+    reasoningEffort: shouldSuppressVisibleReasoning(manifest) ? "off" : "default",
+  };
+}
+
+export function sanitizeVisibleReasoning(text: string): SanitizedChatText {
+  const withoutClosedBlocks = text.replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, " ");
+  const withoutTags = withoutClosedBlocks.replace(/<\/?think\b[^>]*>/gi, " ");
+  const collapsed = withoutTags.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  const stripped = collapsed !== text.trim() && (/<\/?think\b/i.test(text) || /<think\b[\s\S]*<\/think>/i.test(text));
+  return {
+    text: collapsed || text.trim(),
+    strippedVisibleReasoning: stripped,
+  };
 }
 
 function conversationalTimeBudgetSec(manifest: ConversationalManifest): number {
@@ -189,14 +227,25 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
   }
 
   const manifest = loadConversationalManifest(taskId);
+  const chatOptions = benchmarkChatOptions(manifest);
   const gapFillers = manifest.gap_fillers ?? DEFAULT_GAP_FILLERS;
   const timeline: TimelineEvent[] = [];
   const results: ConversationalResult[] = [];
   let totalTokensIn = 0;
   let totalTokensOut = 0;
   const runStartMs = Date.now();
+  let terminalChatError: string | null = null;
+  let terminalProviderError: StructuredProviderError | null = null;
 
   timeline.push({ t: 0, type: "task_start", detail: `conversational: ${manifest.questions.length} questions` });
+
+  // Provider-reported spend accumulates here when the adapter surfaces
+  // `cost_usd` (OpenRouter does once the registry plumbs `usage.include=true`).
+  // If *any* reply reports a cost we trust the sum and skip the static
+  // estimate; if no reply reports cost we fall back to the estimate so old
+  // providers don't show blank spend.
+  let reportedCostUsd = 0;
+  let reportedCostSeen = false;
 
   // Conversation history — maintained across questions for recall tests,
   // and optionally resumed from persisted prior transcripts for memory tasks.
@@ -204,6 +253,9 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
   const systemPrompt = options.systemPrompt || manifest.system_prompt;
   if (systemPrompt) {
     messages.push({ role: "system", content: systemPrompt });
+  }
+  if (shouldSuppressVisibleReasoning(manifest)) {
+    messages.push({ role: "system", content: NO_VISIBLE_REASONING_INSTRUCTION });
   }
   if (manifest.session?.resume) {
     const persistedMessages = loadPersistedConversation(manifest.session.session_id);
@@ -230,13 +282,25 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
     if (question.setup) {
       messages.push({ role: "user", content: question.setup });
       try {
-        const setupResult = await adapter.chat(messages);
-        messages.push({ role: "assistant", content: setupResult.text });
+        const setupResult = await adapter.chat(messages, chatOptions);
+        const sanitizedSetup = shouldSuppressVisibleReasoning(manifest) ? sanitizeVisibleReasoning(setupResult.text) : { text: setupResult.text, strippedVisibleReasoning: false };
+        messages.push({ role: "assistant", content: sanitizedSetup.text });
         totalTokensIn += setupResult.tokens_in;
         totalTokensOut += setupResult.tokens_out;
+        if (typeof setupResult.cost_usd === "number") { reportedCostUsd += setupResult.cost_usd; reportedCostSeen = true; }
         timeline.push({ t: t(), type: "shell", command: `setup:${question.id}`, detail: question.setup.slice(0, 100) });
       } catch (err) {
-        log("warn", "conv-runner", `[${question.id}] Setup message failed: ${String(err).slice(0, 100)}`);
+        const structured = normalizeProviderError(err, {
+          provider: adapter.id,
+          adapter: adapter.id,
+          durationMs: Date.now() - questionStartMs,
+        });
+        const errorText = structured.rawMessage.slice(0, 200);
+        terminalChatError = structured.rawMessage;
+        terminalProviderError = structured;
+        log("warn", "conv-runner", `[${question.id}] Setup message failed: ${errorText}`);
+        timeline.push({ t: t(), type: "error", detail: `setup failed: ${errorText}`, provider_error: structured });
+        break;
       }
 
       // 2. Send gap filler messages (to test recall across conversation turns)
@@ -244,14 +308,25 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
       for (let i = 0; i < gapCount && i < gapFillers.length; i++) {
         messages.push({ role: "user", content: gapFillers[i]! });
         try {
-          const gapResult = await adapter.chat(messages);
-          messages.push({ role: "assistant", content: gapResult.text });
+          const gapResult = await adapter.chat(messages, chatOptions);
+          const sanitizedGap = shouldSuppressVisibleReasoning(manifest) ? sanitizeVisibleReasoning(gapResult.text) : { text: gapResult.text, strippedVisibleReasoning: false };
+          messages.push({ role: "assistant", content: sanitizedGap.text });
           totalTokensIn += gapResult.tokens_in;
           totalTokensOut += gapResult.tokens_out;
-        } catch {
-          // Gap fillers are best-effort
+          if (typeof gapResult.cost_usd === "number") { reportedCostUsd += gapResult.cost_usd; reportedCostSeen = true; }
+        } catch (err) {
+          const structured = normalizeProviderError(err, {
+            provider: adapter.id,
+            adapter: adapter.id,
+            durationMs: Date.now() - questionStartMs,
+          });
+          terminalChatError = structured.rawMessage;
+          terminalProviderError = structured;
+          timeline.push({ t: t(), type: "error", detail: structured.rawMessage, provider_error: structured });
+          break;
         }
       }
+      if (terminalChatError) break;
     }
 
     // 3. Send the actual question
@@ -261,17 +336,30 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
     let qTokensIn = 0;
     let qTokensOut = 0;
     try {
-      const chatResult = await runWithProtection(adapter.id, () => adapter.chat!(messages));
-      response = chatResult.text;
+      const chatResult = await runWithProtection(adapter.id, () => adapter.chat!(messages, chatOptions));
+      const sanitized = shouldSuppressVisibleReasoning(manifest) ? sanitizeVisibleReasoning(chatResult.text) : { text: chatResult.text, strippedVisibleReasoning: false };
+      response = sanitized.text;
       qTokensIn = chatResult.tokens_in;
       qTokensOut = chatResult.tokens_out;
       totalTokensIn += qTokensIn;
       totalTokensOut += qTokensOut;
+      if (typeof chatResult.cost_usd === "number") { reportedCostUsd += chatResult.cost_usd; reportedCostSeen = true; }
       messages.push({ role: "assistant", content: response });
+      if (sanitized.strippedVisibleReasoning) {
+        timeline.push({ t: t(), type: "task_start", detail: `${question.id}: stripped visible reasoning before scoring` });
+      }
     } catch (err) {
       response = "";
-      log("error", "conv-runner", `[${question.id}] Chat failed: ${String(err).slice(0, 200)}`);
-      timeline.push({ t: t(), type: "error", detail: `chat failed: ${String(err).slice(0, 100)}` });
+      const structured = normalizeProviderError(err, {
+        provider: adapter.id,
+        adapter: adapter.id,
+        durationMs: Date.now() - questionStartMs,
+      });
+      terminalChatError = structured.rawMessage;
+      terminalProviderError = structured;
+      log("error", "conv-runner", `[${question.id}] Chat failed: ${structured.rawMessage.slice(0, 200)}`);
+      timeline.push({ t: t(), type: "error", detail: `chat failed: ${structured.rawMessage.slice(0, 200)}`, provider_error: structured });
+      break;
     }
 
     // 4. Score the response
@@ -319,9 +407,24 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
     totalTokensIn,
     totalTokensOut,
     totalDurationMs,
+    reportedCostUsd: reportedCostSeen ? reportedCostUsd : null,
+    terminalChatError,
+    terminalProviderError,
   });
 
-  const exitCode = judgeResult.pass ? 0 : 1;
+  // 7. Optional review/judge model layer. Only runs when explicitly enabled
+  // (avoids surprise spend on harnesses that just want deterministic scoring).
+  const reviewCfg = options.reviewConfig;
+  if (reviewCfg && (reviewCfg.secondOpinion.enabled || reviewCfg.qcReview.enabled)) {
+    bundle.review = await runReviewLayer(reviewCfg, bundle, {
+      taskTitle: manifest.description,
+      taskDescription: manifest.description,
+    });
+    applyReviewJudgeUsage(bundle);
+    bundle.bundle_hash = sha256Object({ ...bundle, bundle_hash: "" });
+  }
+
+  const exitCode = bundle.verdict?.completionState === "PASS" ? 0 : bundle.verdict?.completionState === "FAIL" ? 1 : 3;
   if (manifest.session?.session_id) {
     persistConversation(manifest.session.session_id, messages);
   }
@@ -342,10 +445,14 @@ interface ConversationalBundleInput {
   totalTokensIn: number;
   totalTokensOut: number;
   totalDurationMs: number;
+  /** Provider-reported cost if any adapter call surfaced one; null = unknown (use estimate). */
+  reportedCostUsd: number | null;
+  terminalChatError: string | null;
+  terminalProviderError: StructuredProviderError | null;
 }
 
 function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBundle {
-  const { manifest, judgeResult, timeline, adapter, model, startTime, endTime, totalTokensIn, totalTokensOut, totalDurationMs } = input;
+  const { manifest, judgeResult, timeline, adapter, model, startTime, endTime, totalTokensIn, totalTokensOut, totalDurationMs, reportedCostUsd, terminalChatError, terminalProviderError } = input;
 
   const bundleId = `run_${new Date().toISOString().slice(0, 10)}_${manifest.id}_${model.replace(/[/:]/g, "-")}`;
 
@@ -429,8 +536,28 @@ function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBu
     usage: {
       tokens_in: totalTokensIn,
       tokens_out: totalTokensOut,
-      estimated_cost_usd: estimateCost(adapter.id, totalTokensIn, totalTokensOut),
-      provider_cost_note: `${adapter.id}:${model}`,
+      // Provider-reported cost (OpenRouter `usage.cost`) wins over the static
+      // per-adapter estimate; the note distinguishes the two so downstream
+      // spend inspection knows which figure is authoritative.
+      estimated_cost_usd: reportedCostUsd != null
+        ? Math.round(reportedCostUsd * 1_000_000) / 1_000_000
+        : estimateCost(adapter.id, totalTokensIn, totalTokensOut),
+      provider_cost_note: reportedCostUsd != null
+        ? `${adapter.id}:${model} (provider-reported)`
+        : `${adapter.id}:${model} (estimated)`,
+    },
+    // Conversational scoring runs in-process with text matching — no judge
+    // model is called per question, so the judge's spend is zero. We still
+    // record the field so model+judge totals always have a defined "judge
+    // side" for the UI to display.
+    judge_usage: {
+      provider: "",
+      model: "",
+      tokens_in: 0,
+      tokens_out: 0,
+      estimated_cost_usd: 0,
+      kind: "deterministic",
+      note: "deterministic conversational scoring — no model judge cost",
     },
     judge: {
       ...DETERMINISTIC_JUDGE_METADATA,
@@ -475,6 +602,15 @@ function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBu
       },
     },
   };
+
+  bundle.verdict = normalizeVerdict({
+    bundle,
+    executionMode: "conversational",
+    exitReason: terminalChatError ? "error" : "complete",
+    rawError: terminalChatError,
+    providerError: terminalProviderError,
+    attemptCount: manifest.questions.length,
+  });
 
   // Sign the bundle
   bundle.bundle_hash = sha256Object({ ...bundle, bundle_hash: "" });

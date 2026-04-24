@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Oracle Loader
+ * Crucible — Oracle Loader
  * Loads oracle files for the Judge. NEVER exposed to agent runtime.
  */
 import type { Oracle, TaskManifest } from "../adapters/base.js";

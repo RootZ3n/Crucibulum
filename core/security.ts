@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Core Security Enforcer
+ * Crucible — Core Security Enforcer
  * Coordinates all security checks.
  */
 

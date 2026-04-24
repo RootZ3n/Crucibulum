@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Phase-2 hardening regression tests
+ * Crucible — Phase-2 hardening regression tests
  *
  * Covers the items closed in the second hardening pass:
  *   - bundle verification on load (tampered disk state must flip trust.bundle_verified)

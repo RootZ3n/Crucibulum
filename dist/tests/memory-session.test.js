@@ -17,19 +17,20 @@ class MemoryMockAdapter {
     }
     async chat(messages) {
         const lastUser = [...messages].reverse().find((message) => message.role === "user")?.content ?? "";
+        const lastUserNorm = lastUser.toLowerCase();
         const transcript = messages.map((message) => message.content.toLowerCase()).join("\n");
         let text = "I don't know.";
-        if (lastUser.includes("What tea did I tell you to remember?")) {
-            text = transcript.includes("favorite tea is lapsang") ? "You said lapsang." : "I don't know.";
+        if (lastUserNorm.includes("what was it")) {
+            text = transcript.includes("ember-owl") ? "ember-owl" : "I don't know.";
         }
-        else if (lastUser.includes("What library code did I ask you to remember?")) {
-            text = transcript.includes("library code is lark-742") ? "The code was LARK-742." : "I don't know.";
+        else if (lastUserNorm.includes("what meeting room did i tell you")) {
+            text = transcript.includes("cobalt-9") ? "Cobalt-9" : "I don't know.";
         }
-        else if (lastUser.includes("Earlier in this benchmark, what tea")) {
-            text = transcript.includes("favorite tea is lapsang") ? "Earlier you said lapsang." : "I don't know.";
+        else if (lastUserNorm.includes("what city did i say i was born in")) {
+            text = "I don't know.";
         }
-        else if (lastUser.includes("Earlier in this benchmark, what library code")) {
-            text = transcript.includes("library code is lark-742") ? "Earlier you said LARK-742." : "I don't know.";
+        else if (lastUserNorm.includes("what was the name of my dog")) {
+            text = "I don't know.";
         }
         else {
             text = "Stored.";
@@ -44,7 +45,8 @@ class MemoryMockAdapter {
 }
 describe("memory session persistence", () => {
     it("persists and reloads conversation transcripts across conversational runs", async () => {
-        rmSync("state/memory-sessions/memory-demo-001.json", { force: true });
+        rmSync("state/memory-sessions/memory-cross-turn-001.json", { force: true });
+        rmSync("state/memory-sessions/memory-uncertainty-001.json", { force: true });
         persistConversation("memory-roundtrip-test", [{ role: "user", content: "remember this" }]);
         assert.deepEqual(loadPersistedConversation("memory-roundtrip-test"), [{ role: "user", content: "remember this" }]);
         const adapter = new MemoryMockAdapter();
@@ -60,7 +62,7 @@ describe("memory session persistence", () => {
             model: "memory-mock-model",
         });
         assert.equal(secondRun.passed, true);
-        assert.ok(loadPersistedConversation("memory-demo-001").length > 0);
+        assert.ok(loadPersistedConversation("memory-cross-turn-001").length > 0);
     });
 });
 //# sourceMappingURL=memory-session.test.js.map

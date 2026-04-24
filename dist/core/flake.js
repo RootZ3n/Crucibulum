@@ -1,8 +1,8 @@
 /**
- * Crucibulum — Flake Detection / Retry Support
+ * Crucible — Flake Detection / Retry Support
  * Wraps runTask with configurable retry logic for benchmark reliability.
  */
-import { runTask } from "./runner.js";
+import { runTask as defaultRunTask } from "./runner.js";
 import { log } from "../utils/logger.js";
 /**
  * Run a task with retry/flake detection.
@@ -10,6 +10,7 @@ import { log } from "../utils/logger.js";
  */
 export async function runTaskWithRetries(options) {
     const maxAttempts = Math.max(1, options.retry_count ?? 1);
+    const runTask = options._runTask ?? defaultRunTask;
     const attempts = [];
     let firstResult = null;
     for (let i = 0; i < maxAttempts; i++) {

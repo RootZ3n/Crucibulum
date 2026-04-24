@@ -1,5 +1,5 @@
 /**
- * Crucibulum CLI — replay command
+ * Crucible CLI — replay command
  * Replays a completed run, showing the full evidence trail.
  */
 import { readFileSync, existsSync } from "node:fs";
@@ -8,7 +8,7 @@ import { verifyBundle } from "../../core/bundle.js";
 export async function replayCommand(args) {
     const bundleId = args[0];
     if (!bundleId) {
-        console.error("Usage: crucibulum replay <run_id>");
+        console.error("Usage: crucible replay <run_id>");
         process.exit(3);
     }
     const runsDir = process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs");
@@ -44,7 +44,7 @@ export async function replayCommand(args) {
     // Header
     console.log("");
     console.log(`${D}${"═".repeat(70)}${X}`);
-    console.log(`  ${BOLD}CRUCIBULUM REPLAY${X}`);
+    console.log(`  ${BOLD}CRUCIBLE REPLAY${X}`);
     console.log(`${D}${"═".repeat(70)}${X}`);
     console.log("");
     // Summary

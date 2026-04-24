@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Grimoire Codex Adapter
+ * Crucible — Grimoire Codex Adapter
  * Routes tasks through Squidley's Grimoire Codex mode.
  * Codex Mode = iterative inspect/edit/verify loop.
  *
@@ -7,6 +7,7 @@
  *   --adapter grimoire-codex --model gpt-5.4
  */
 import { Observer } from "../core/observer.js";
+import { makeHttpProviderError, makeProviderFailureError, normalizeProviderError, providerErrorSummary } from "../core/provider-errors.js";
 import { log } from "../utils/logger.js";
 const DEFAULT_SQUIDLEY_URL = process.env["SQUIDLEY_URL"] ?? "http://localhost:18791";
 const SUBMIT_TIMEOUT_MS = 30_000;
@@ -38,12 +39,15 @@ export class GrimoireCodexAdapter {
             const res = await fetch(`${this.url}/health`, {
                 signal: AbortSignal.timeout(10_000),
             });
-            if (!res.ok)
-                return { ok: false, reason: `Squidley returned ${res.status}` };
+            if (!res.ok) {
+                const providerError = makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "grimoire-codex", adapter: this.id }).structured;
+                return { ok: false, reason: providerErrorSummary(providerError), providerError };
+            }
             return { ok: true };
         }
         catch (err) {
-            return { ok: false, reason: `Squidley unreachable: ${String(err).slice(0, 100)}` };
+            const providerError = normalizeProviderError(err, { provider: "grimoire-codex", adapter: this.id });
+            return { ok: false, reason: providerErrorSummary(providerError), providerError };
         }
     }
     async teardown() { }
@@ -68,17 +72,25 @@ export class GrimoireCodexAdapter {
             });
             if (!res.ok) {
                 const errText = await res.text().catch(() => "");
-                throw new Error(`Grimoire Codex returned ${res.status}: ${errText}`);
+                throw makeHttpProviderError(res, errText, { provider: "grimoire-codex", adapter: this.id });
             }
             const data = (await res.json());
             jobId = data.jobId ?? data.job_id ?? data.id ?? "";
             if (!jobId)
-                throw new Error("No jobId in response");
+                throw makeProviderFailureError({
+                    kind: "INVALID_RESPONSE",
+                    origin: "ADAPTER",
+                    provider: "grimoire-codex",
+                    adapter: this.id,
+                    rawMessage: "No jobId in Grimoire Codex response",
+                    retryable: false,
+                });
             log("info", "grimoire-codex", `Codex job submitted: ${jobId}`);
         }
         catch (err) {
-            log("error", "grimoire-codex", `Submit failed: ${String(err).slice(0, 200)}`);
-            observer.recordError(`Submit failed: ${String(err).slice(0, 200)}`);
+            const providerError = normalizeProviderError(err, { provider: "grimoire-codex", adapter: this.id });
+            log("error", "grimoire-codex", `Submit failed: ${providerError.rawMessage.slice(0, 200)}`);
+            observer.recordError(`Submit failed: ${providerError.rawMessage.slice(0, 200)}`, providerError);
             return buildErrorResult(observer, startMs, this);
         }
         // Poll for completion
@@ -105,10 +117,18 @@ export class GrimoireCodexAdapter {
         const totalDuration = Date.now() - startMs;
         if (status.status !== "complete" && status.status !== "error") {
             log("warn", "grimoire-codex", `Job timed out after ${Math.round(totalDuration / 1000)}s`);
-            observer.recordError("Codex job timed out");
+            observer.recordError("Codex job timed out", makeProviderFailureError({
+                kind: "TIMEOUT",
+                origin: "PROVIDER",
+                provider: "grimoire-codex",
+                adapter: this.id,
+                rawMessage: "Codex job timed out",
+                retryable: true,
+            }).structured);
             return {
                 exit_reason: "timeout",
                 timeline: observer.getTimeline(),
+                provider_error: observer.getProviderError() ?? undefined,
                 duration_ms: totalDuration,
                 steps_used: observer.getStepCount(),
                 files_read: [],
@@ -130,12 +150,16 @@ export class GrimoireCodexAdapter {
             result.files_read.forEach(f => observer.fileRead(f));
         if (result.files_written)
             result.files_written.forEach(f => observer.fileWrite(f));
+        if (status.status === "error") {
+            observer.recordError(result.error ? `Codex job failed: ${result.error.slice(0, 200)}` : "Codex job failed", normalizeProviderError(result.error ?? "Codex job failed", { provider: "grimoire-codex", adapter: this.id }));
+        }
         if (exitReason === "complete")
             observer.taskComplete();
         log("info", "grimoire-codex", `Run complete: ${exitReason} in ${Math.round(totalDuration / 1000)}s`);
         return {
             exit_reason: exitReason,
             timeline: observer.getTimeline(),
+            provider_error: observer.getProviderError() ?? undefined,
             duration_ms: totalDuration,
             steps_used: observer.getStepCount(),
             files_read: result.files_read ?? [],
@@ -167,6 +191,7 @@ function buildErrorResult(observer, startMs, adapter) {
     return {
         exit_reason: "error",
         timeline: observer.getTimeline(),
+        provider_error: observer.getProviderError() ?? undefined,
         duration_ms: Date.now() - startMs,
         steps_used: observer.getStepCount(),
         files_read: [],

@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Ollama Adapter
+ * Crucible — Ollama Adapter
  * Direct Ollama API integration for local model evaluation.
  * Implements an agentic loop with lenient command parsing and structured logging.
  */
@@ -7,6 +7,7 @@ import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { Observer } from "../core/observer.js";
+import { makeEmptyResponseError, makeHttpProviderError, makeInvalidResponseError, normalizeProviderError, providerErrorSummary } from "../core/provider-errors.js";
 import { log } from "../utils/logger.js";
 const DEFAULT_OLLAMA_URL = process.env["OLLAMA_URL"] ?? "http://localhost:11434";
 const MODEL_TIMEOUT_MS = 600_000; // 10 minutes — large models need time for first token
@@ -38,16 +39,19 @@ export class OllamaAdapter {
             const res = await fetch(`${this.url}/api/tags`, {
                 signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
             });
-            if (!res.ok)
-                return { ok: false, reason: `Ollama returned ${res.status}` };
+            if (!res.ok) {
+                const providerError = makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "ollama", adapter: this.id }).structured;
+                return { ok: false, reason: providerErrorSummary(providerError), providerError };
+            }
             return { ok: true };
         }
         catch (err) {
-            return { ok: false, reason: `Ollama unreachable: ${String(err).slice(0, 100)}` };
+            const providerError = normalizeProviderError(err, { provider: "ollama", adapter: this.id });
+            return { ok: false, reason: providerErrorSummary(providerError), providerError };
         }
     }
     async teardown() { }
-    async chat(messages) {
+    async chat(messages, _options) {
         const start = Date.now();
         const result = await callOllama(this.url, this.model, messages);
         return {
@@ -103,8 +107,9 @@ export class OllamaAdapter {
                 log("info", "ollama", `[step ${step + 1}/${maxSteps}] Response (${response.length} chars, ${result.tokensOut} tok): ${response.slice(0, 300).replace(/\n/g, "\\n")}${response.length > 300 ? "..." : ""}`);
             }
             catch (err) {
-                log("error", "ollama", `[step ${step + 1}/${maxSteps}] Model call failed: ${String(err).slice(0, 200)}`);
-                observer.recordError(`Model call failed: ${String(err).slice(0, 200)}`);
+                const providerError = normalizeProviderError(err, { provider: "ollama", adapter: this.id });
+                log("error", "ollama", `[step ${step + 1}/${maxSteps}] Model call failed: ${providerError.rawMessage.slice(0, 200)}`);
+                observer.recordError(`Model call failed: ${providerError.rawMessage.slice(0, 200)}`, providerError);
                 exitReason = "error";
                 break;
             }
@@ -170,6 +175,7 @@ export class OllamaAdapter {
         return {
             exit_reason: exitReason,
             timeline: observer.getTimeline(),
+            provider_error: observer.getProviderError() ?? undefined,
             duration_ms: totalDuration,
             steps_used: observer.getStepCount(),
             files_read: observer.getFilesRead(),
@@ -218,11 +224,22 @@ async function callOllama(url, model, messages) {
         signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
     });
     if (!res.ok) {
-        throw new Error(`Ollama returned ${res.status}: ${await res.text().catch(() => "")}`);
+        throw makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "ollama", adapter: "ollama" });
     }
-    const data = (await res.json());
+    const rawBody = await res.text();
+    let data;
+    try {
+        data = JSON.parse(rawBody);
+    }
+    catch {
+        throw makeInvalidResponseError({ provider: "ollama", adapter: "ollama" }, `Ollama returned non-JSON body: ${rawBody.slice(0, 400)}`);
+    }
+    const text = data.message?.content ?? "";
+    if (!text.trim()) {
+        throw makeEmptyResponseError({ provider: "ollama", adapter: "ollama" }, `Ollama returned empty response for model ${model}`);
+    }
     return {
-        text: data.message?.content ?? "",
+        text,
         tokensIn: data.prompt_eval_count ?? 0,
         tokensOut: data.eval_count ?? 0,
     };

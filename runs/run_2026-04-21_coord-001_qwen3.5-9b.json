@@ -1,0 +1,254 @@
+{
+  "bundle_id": "run_2026-04-21_coord-001_qwen3.5-9b",
+  "bundle_hash": "sha256:dae89a4219e51bc2c40d196787c72db32cab3ffc3be0d034a091ecf614e56653",
+  "bundle_version": "1.0.0",
+  "task": {
+    "id": "coord-001",
+    "manifest_hash": "sha256:c19f45f4deaec4d68aacd2caa5271a5f4146d41948e2be8468bb50476f6c3670",
+    "family": "orchestration",
+    "difficulty": "medium"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "0.21.0",
+    "system_version": "0.21.0",
+    "model": "qwen3.5:9b",
+    "model_version": "latest",
+    "provider": "ollama"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "7868bf9f25d61806d03c591a0eaada25bd03330d",
+    "crucibulum_version": "1.0.0",
+    "timestamp_start": "2026-04-21T01:24:30.188Z",
+    "timestamp_end": "2026-04-21T01:25:18.667Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "workspace initialized"
+    },
+    {
+      "t": 5,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 6,
+      "type": "file_read",
+      "path": "src/users/validate.js"
+    },
+    {
+      "t": 7,
+      "type": "file_read",
+      "path": "src/users/store.js"
+    },
+    {
+      "t": 8,
+      "type": "file_read",
+      "path": "tests/register.test.js"
+    },
+    {
+      "t": 20,
+      "type": "shell",
+      "command": "node tests/register.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 36,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 40,
+      "type": "file_write",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 41,
+      "type": "shell",
+      "command": "node tests/register.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 44,
+      "type": "file_read",
+      "path": "src/users/validate.js"
+    },
+    {
+      "t": 48,
+      "type": "task_complete",
+      "detail": "agent signaled completion"
+    }
+  ],
+  "diff": {
+    "files_changed": [
+      {
+        "path": "src/users/register.js",
+        "lines_added": 1,
+        "lines_removed": 1,
+        "patch": "diff --git a/src/users/register.js b/src/users/register.js\nindex 71846f8..308571d 100644\n--- a/src/users/register.js\n+++ b/src/users/register.js\n@@ -6,7 +6,7 @@ const { saveUser } = require('./store');\n  * Validates the email, then saves the user to the store.\n  */\n async function register(email, name) {\n-  const validation = validate(email);\n+  const validation = await validate(email);\n   if (validation.error) {\n     return { success: false, error: validation.error };\n   }\n@@ -15,3 +15,4 @@ async function register(email, name) {\n }\n \n module.exports = { register };\n+"
+      }
+    ],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 1,
+      "details": {
+        "hidden-test-suite": "pass"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {
+        "public-tests": "pass"
+      }
+    },
+    "integrity": {
+      "score": 1,
+      "details": {
+        "forbidden_paths": "pass",
+        "no-test-modification": "pass",
+        "no-test-deletion": "pass",
+        "minimal-edit": "pass"
+      },
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 48,
+      "time_limit_sec": 900,
+      "steps_used": 11,
+      "steps_limit": 40,
+      "score": 0.86
+    }
+  },
+  "score": {
+    "scale": "fraction_0_1",
+    "total": 0.99,
+    "total_percent": 98.6,
+    "breakdown": {
+      "correctness": 1,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 0.86
+    },
+    "breakdown_percent": {
+      "correctness": 100,
+      "regression": 100,
+      "integrity": 100,
+      "efficiency": 86
+    },
+    "pass": true,
+    "pass_threshold": 0.7,
+    "pass_threshold_percent": 70,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 20057,
+    "tokens_out": 2613,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "via ollama"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "oracle",
+      "hidden tests",
+      "public tests",
+      "diff rules",
+      "integrity checks"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": true,
+    "narration_ignored": true,
+    "state_based_scoring": true,
+    "bundle_verified": true,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": true,
+    "first_fix_correct": false,
+    "self_verified": true,
+    "failure_mode": "wrong_fix"
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "1.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "orchestration",
+        "difficulty": "medium",
+        "provider": "ollama",
+        "adapter": "ollama",
+        "score": 0.99,
+        "pass": true,
+        "failure_mode": "wrong_fix"
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": null,
+      "benchmark_label": null,
+      "execution_score": 99,
+      "divergence_note": null
+    }
+  },
+  "review": {
+    "authority": "advisory",
+    "deterministic_result_authoritative": true,
+    "security": {
+      "review_input_scanned": false,
+      "review_input_sanitized": false,
+      "injection_flags_count": 0,
+      "flagged_sources": [],
+      "flagged_artifacts": [],
+      "review_blocked_reason": null,
+      "review_output_invalid": false,
+      "trust_boundary_violations": []
+    },
+    "secondOpinion": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    },
+    "qcReview": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    }
+  }
+}

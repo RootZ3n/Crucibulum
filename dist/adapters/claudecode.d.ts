@@ -1,9 +1,9 @@
 /**
- * Crucibulum — Claude Code Adapter
+ * Crucible — Claude Code Adapter
  * Invokes the Claude Code CLI binary to solve tasks.
  * Uses --print mode for non-interactive execution.
  */
-import type { CrucibulumAdapter, AdapterConfig, ExecutionInput, ExecutionResult } from "./base.js";
+import type { CrucibulumAdapter, AdapterConfig, HealthCheckResult, ExecutionInput, ExecutionResult } from "./base.js";
 export declare class ClaudeCodeAdapter implements CrucibulumAdapter {
     id: string;
     name: string;
@@ -15,10 +15,7 @@ export declare class ClaudeCodeAdapter implements CrucibulumAdapter {
     supportsToolCalls(): boolean;
     supportsChat(): boolean;
     init(config: AdapterConfig): Promise<void>;
-    healthCheck(): Promise<{
-        ok: boolean;
-        reason?: string | undefined;
-    }>;
+    healthCheck(): Promise<HealthCheckResult>;
     teardown(): Promise<void>;
     execute(input: ExecutionInput): Promise<ExecutionResult>;
     private parseOutput;

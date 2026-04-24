@@ -1,10 +1,11 @@
 /**
- * Crucibulum — Observer (Flight Recorder)
+ * Crucible — Observer (Flight Recorder)
  * Records every action during agent execution for the Judge.
  * The Observer is the source of truth — not the agent's narration.
  */
 
 import type { TimelineEvent } from "../adapters/base.js";
+import type { StructuredProviderError } from "../types/provider-error.js";
 import { log } from "../utils/logger.js";
 
 export class Observer {
@@ -13,6 +14,7 @@ export class Observer {
   private filesRead: Set<string> = new Set();
   private filesWritten: Set<string> = new Set();
   private stepCount: number = 0;
+  private terminalProviderError: StructuredProviderError | null = null;
 
   constructor() {
     this.startTime = Date.now();
@@ -46,8 +48,11 @@ export class Observer {
   }
 
   /** Record an error */
-  recordError(detail: string): void {
-    this.record({ type: "error", detail });
+  recordError(detail: string, providerError?: StructuredProviderError): void {
+    if (providerError) {
+      this.terminalProviderError = providerError;
+    }
+    this.record({ type: "error", detail, provider_error: providerError });
   }
 
   /** Record a file read */
@@ -88,5 +93,9 @@ export class Observer {
   /** Get elapsed time in ms */
   getElapsedMs(): number {
     return Date.now() - this.startTime;
+  }
+
+  getProviderError(): StructuredProviderError | null {
+    return this.terminalProviderError;
   }
 }

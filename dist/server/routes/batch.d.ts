@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Batch Routes
+ * Crucible — Batch Routes
  * Multi-model batch execution.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";

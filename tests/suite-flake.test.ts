@@ -1,91 +1,94 @@
 /**
- * Crucibulum — Suite Flake Integration Tests
- * Tests for suite-level flake detection integration.
+ * Crucible — Suite Flake Integration Tests
+ *
+ * Suite-level flake config resolution and confidence computation. Originally
+ * authored against vitest; ported to node:test so the project's `node --test`
+ * runner picks them up. Logic is unchanged.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import { resolveFlakeConfig, computeConfidence, DEFAULT_FLAKE_CONFIG } from "../core/suite-loader.js";
 
 describe("resolveFlakeConfig", () => {
   it("returns defaults when no suite and no override", () => {
     const config = resolveFlakeConfig(undefined);
-    expect(config).toEqual(DEFAULT_FLAKE_CONFIG);
-    expect(config.enabled).toBe(true);
-    expect(config.retries).toBe(3);
+    assert.deepEqual(config, DEFAULT_FLAKE_CONFIG);
+    assert.equal(config.enabled, true);
+    assert.equal(config.retries, 3);
   });
 
   it("loads config from suite manifest", () => {
-    // v1 suite has flake_detection: { enabled: true, retries: 3 }
     const config = resolveFlakeConfig("v1");
-    expect(config.enabled).toBe(true);
-    expect(config.retries).toBe(3);
+    assert.equal(config.enabled, true);
+    assert.equal(config.retries, 3);
   });
 
   it("request override takes precedence over suite manifest", () => {
     const config = resolveFlakeConfig("v1", { retries: 5 });
-    expect(config.retries).toBe(5);
-    expect(config.enabled).toBe(true); // from suite
+    assert.equal(config.retries, 5);
+    assert.equal(config.enabled, true);
   });
 
   it("can disable flake detection via override", () => {
     const config = resolveFlakeConfig("v1", { enabled: false });
-    expect(config.enabled).toBe(false);
+    assert.equal(config.enabled, false);
   });
 
   it("returns defaults for nonexistent suite", () => {
     const config = resolveFlakeConfig("nonexistent");
-    expect(config).toEqual(DEFAULT_FLAKE_CONFIG);
+    assert.deepEqual(config, DEFAULT_FLAKE_CONFIG);
   });
 
   it("override can change both enabled and retries", () => {
     const config = resolveFlakeConfig(undefined, { enabled: false, retries: 1 });
-    expect(config.enabled).toBe(false);
-    expect(config.retries).toBe(1);
+    assert.equal(config.enabled, false);
+    assert.equal(config.retries, 1);
   });
 });
 
 describe("computeConfidence", () => {
   it("high: pass_rate 1.0 and not flaky", () => {
-    expect(computeConfidence(1.0, false)).toBe("high");
+    assert.equal(computeConfidence(1.0, false), "high");
   });
 
   it("high: pass_rate 1.0 with flaky is medium", () => {
-    expect(computeConfidence(1.0, true)).toBe("medium");
+    assert.equal(computeConfidence(1.0, true), "medium");
   });
 
   it("medium: pass_rate 0.8 and not flaky", () => {
-    expect(computeConfidence(0.8, false)).toBe("medium");
+    assert.equal(computeConfidence(0.8, false), "medium");
   });
 
   it("medium: pass_rate 0.6 and flaky", () => {
-    expect(computeConfidence(0.6, true)).toBe("medium");
+    assert.equal(computeConfidence(0.6, true), "medium");
   });
 
   it("low: pass_rate 0.5 and not flaky", () => {
-    expect(computeConfidence(0.5, false)).toBe("low");
+    assert.equal(computeConfidence(0.5, false), "low");
   });
 
   it("low: pass_rate 0.3", () => {
-    expect(computeConfidence(0.3, false)).toBe("low");
-    expect(computeConfidence(0.3, true)).toBe("low");
+    assert.equal(computeConfidence(0.3, false), "low");
+    assert.equal(computeConfidence(0.3, true), "low");
   });
 
   it("medium: pass_rate 0.7 and not flaky", () => {
-    expect(computeConfidence(0.7, false)).toBe("medium");
+    assert.equal(computeConfidence(0.7, false), "medium");
   });
 
   it("low: pass_rate 0.69", () => {
-    expect(computeConfidence(0.69, false)).toBe("low");
+    assert.equal(computeConfidence(0.69, false), "low");
   });
 });
 
 describe("suite flake summary structure", () => {
   it("defines expected outcome types", () => {
     const outcomes = ["stable_pass", "stable_fail", "flaky_pass", "flaky_fail"] as const;
-    expect(outcomes).toHaveLength(4);
-    expect(outcomes).toContain("stable_pass");
-    expect(outcomes).toContain("stable_fail");
-    expect(outcomes).toContain("flaky_pass");
-    expect(outcomes).toContain("flaky_fail");
+    assert.equal(outcomes.length, 4);
+    assert.ok(outcomes.includes("stable_pass"));
+    assert.ok(outcomes.includes("stable_fail"));
+    assert.ok(outcomes.includes("flaky_pass"));
+    assert.ok(outcomes.includes("flaky_fail"));
   });
 });

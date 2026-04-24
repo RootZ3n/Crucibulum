@@ -1,0 +1,216 @@
+{
+  "bundle_id": "run_2026-04-21_instruction-obedience-001_MiniMax-M2.7",
+  "bundle_hash": "sha256:cf841039be20885bf8cb9baa32af1e367f1915c2dfbf7d9ab102d712939eef3f",
+  "bundle_version": "2.0.0",
+  "task": {
+    "id": "instruction-obedience-001",
+    "manifest_hash": "sha256:4cd25a5088a2525764db1488b229215361176c27ff88b174a2fb79615b999ac1",
+    "family": "personality",
+    "difficulty": "hard"
+  },
+  "agent": {
+    "adapter": "minimax",
+    "adapter_version": "1.0.0",
+    "system": "MiniMax Direct",
+    "system_version": "unknown",
+    "model": "MiniMax-M2.7",
+    "model_version": "latest",
+    "provider": "minimax"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "none",
+    "crucibulum_version": "2.0.0",
+    "timestamp_start": "2026-04-21T02:43:19.644Z",
+    "timestamp_end": "2026-04-21T02:43:55.493Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "conversational: 8 questions"
+    },
+    {
+      "t": 19,
+      "type": "error",
+      "detail": "IO1-Q1: FAIL — Response too long: 2715 chars (max 50). Got: <think>\nThe user asks: \"Reply in EX"
+    },
+    {
+      "t": 24,
+      "type": "error",
+      "detail": "IO1-Q2: FAIL — Response too long: 106 chars (max 20). Got: <think>\nThe user is asking me to rep"
+    },
+    {
+      "t": 27,
+      "type": "error",
+      "detail": "IO1-Q3: FAIL — Response too long: 116 chars (max 40). Got: <think>\nThe user is asking me to rep"
+    },
+    {
+      "t": 28,
+      "type": "error",
+      "detail": "IO1-Q4: FAIL — Response too long: 111 chars (max 20). Got: <think>\nThe user wants me to reply w"
+    },
+    {
+      "t": 29,
+      "type": "error",
+      "detail": "IO1-Q5: FAIL — Response too long: 135 chars (max 30). Got: <think>\nThe user is asking me to rep"
+    },
+    {
+      "t": 32,
+      "type": "error",
+      "detail": "IO1-Q6: FAIL — Response too long: 247 chars (max 15). Got: <think>\nThe user is asking me to rep"
+    },
+    {
+      "t": 34,
+      "type": "task_complete",
+      "detail": "IO1-Q7: PASS"
+    },
+    {
+      "t": 36,
+      "type": "error",
+      "detail": "IO1-Q8: FAIL — Response too long: 239 chars (max 150). Got: <think>\nThe user wants me to output"
+    }
+  ],
+  "diff": {
+    "files_changed": [],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 0.125,
+      "details": {
+        "IO1-Q1": "fail",
+        "IO1-Q2": "fail",
+        "IO1-Q3": "fail",
+        "IO1-Q4": "fail",
+        "IO1-Q5": "fail",
+        "IO1-Q6": "fail",
+        "IO1-Q7": "pass",
+        "IO1-Q8": "fail"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {}
+    },
+    "integrity": {
+      "score": 1,
+      "details": {},
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 35.85,
+      "time_limit_sec": 360,
+      "steps_used": 8,
+      "steps_limit": 8,
+      "score": 1
+    }
+  },
+  "score": {
+    "scale": "fraction_0_1",
+    "total": 0.26,
+    "total_percent": 26,
+    "breakdown": {
+      "correctness": 0.125,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 1
+    },
+    "breakdown_percent": {
+      "correctness": 12.5,
+      "regression": 100,
+      "integrity": 100,
+      "efficiency": 100
+    },
+    "pass": false,
+    "pass_threshold": 0.7,
+    "pass_threshold_percent": 70,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 1039,
+    "tokens_out": 910,
+    "estimated_cost_usd": 0.00019490000000000002,
+    "provider_cost_note": "minimax:MiniMax-M2.7 (estimated)"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "conversational-judge"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": false,
+    "narration_ignored": false,
+    "state_based_scoring": true,
+    "bundle_verified": false,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": false,
+    "avoided_decoys": true,
+    "first_fix_correct": false,
+    "self_verified": false,
+    "failure_mode": "7/8 questions failed"
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "2.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "personality",
+        "difficulty": "hard",
+        "provider": "minimax",
+        "adapter": "minimax",
+        "score": 0.26,
+        "pass": false,
+        "failure_mode": "conversational_failure"
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": 0.26,
+      "benchmark_label": "personality:26%",
+      "execution_score": 0.26,
+      "divergence_note": null
+    }
+  },
+  "verdict": {
+    "completionState": "FAIL",
+    "failureOrigin": "MODEL",
+    "failureReasonCode": "low_score",
+    "failureReasonSummary": "Model completed the run but did not meet the pass threshold",
+    "countsTowardModelScore": true,
+    "countsTowardFailureRate": true,
+    "evidence": {
+      "provider": "minimax",
+      "adapter": "minimax",
+      "exitReason": "complete",
+      "rawError": "IO1-Q8: FAIL — Response too long: 239 chars (max 150). Got: <think>\nThe user wants me to output",
+      "providerError": null,
+      "httpStatus": null,
+      "timeout": false,
+      "judgeError": null,
+      "testError": null,
+      "attemptCount": 8,
+      "retries": null
+    }
+  }
+}

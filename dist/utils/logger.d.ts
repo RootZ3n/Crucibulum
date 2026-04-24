@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Structured Logger
+ * Crucible — Structured Logger
  */
 export type LogLevel = "debug" | "info" | "warn" | "error";
 export declare function setLogLevel(level: LogLevel): void;

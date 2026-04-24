@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Core Module Tests
+ * Crucible — Core Module Tests
  * Covers: hashing, security/velum, observer, bundle verification, judge ordering, workspace.
  */
 

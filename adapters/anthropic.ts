@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Anthropic Direct Adapter
+ * Crucible — Anthropic Direct Adapter
  * Direct Anthropic Messages API integration.
  * Supports: claude-opus-4-6, claude-sonnet-4-6, claude-haiku-4-5-20251001
  *
@@ -14,8 +14,12 @@ import type {
   AdapterConfig,
   ExecutionInput,
   ExecutionResult,
+  ChatMessage,
+  ChatResult,
+  ChatOptions,
 } from "./base.js";
 import { Observer } from "../core/observer.js";
+import { makeEmptyResponseError, makeHttpProviderError, makeInvalidResponseError, makeProviderFailureError, normalizeProviderError, providerErrorSummary, providerErrorDetail } from "../core/provider-errors.js";
 import { log } from "../utils/logger.js";
 
 const ANTHROPIC_BASE = "https://api.anthropic.com/v1";
@@ -43,7 +47,26 @@ export class AnthropicAdapter implements CrucibulumAdapter {
   }
 
   supportsChat(): boolean {
-    return false;
+    return true;
+  }
+
+  async chat(messages: ChatMessage[], _options?: ChatOptions): Promise<ChatResult> {
+    if (!this.apiKey) throw new Error("Anthropic: ANTHROPIC_API_KEY not set");
+    const start = Date.now();
+    // Anthropic's Messages API keeps the system prompt out of the message array.
+    const systemParts: string[] = [];
+    const convo: Array<{ role: string; content: string }> = [];
+    for (const m of messages) {
+      if (m.role === "system") systemParts.push(m.content);
+      else convo.push({ role: m.role, content: m.content });
+    }
+    const result = await callAnthropic(this.apiKey, this.model, systemParts.join("\n\n"), convo);
+    return {
+      text: result.text,
+      tokens_in: result.tokensIn,
+      tokens_out: result.tokensOut,
+      duration_ms: Date.now() - start,
+    };
   }
 
   async init(config: AdapterConfig): Promise<void> {
@@ -52,8 +75,12 @@ export class AnthropicAdapter implements CrucibulumAdapter {
     this.apiKey = process.env["ANTHROPIC_API_KEY"] ?? "";
   }
 
-  async healthCheck(): Promise<{ ok: boolean; reason?: string | undefined }> {
-    if (!this.apiKey) return { ok: false, reason: "ANTHROPIC_API_KEY not set" };
+  async healthCheck() {
+    if (!this.apiKey) {
+      const providerError = makeProviderFailureError({ kind: "AUTH", origin: "ADAPTER", provider: "anthropic", adapter: this.id, rawMessage: "ANTHROPIC_API_KEY not set" }).structured;
+      // Detail (not Summary) so operators see WHICH env var to set.
+      return { ok: false, reason: providerErrorDetail(providerError), providerError };
+    }
     try {
       const res = await fetch(`${ANTHROPIC_BASE}/models`, {
         headers: {
@@ -62,11 +89,14 @@ export class AnthropicAdapter implements CrucibulumAdapter {
         },
         signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
       });
-      if (res.status === 401) return { ok: false, reason: "ANTHROPIC_API_KEY invalid (401)" };
-      if (!res.ok) return { ok: false, reason: `Anthropic returned ${res.status}` };
+      if (!res.ok) {
+        const providerError = makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "anthropic", adapter: this.id }).structured;
+        return { ok: false, reason: providerErrorSummary(providerError), providerError };
+      }
       return { ok: true };
     } catch (err) {
-      return { ok: false, reason: `Anthropic unreachable: ${String(err).slice(0, 100)}` };
+      const providerError = normalizeProviderError(err, { provider: "anthropic", adapter: this.id });
+      return { ok: false, reason: providerErrorSummary(providerError), providerError };
     }
   }
 
@@ -121,8 +151,9 @@ export class AnthropicAdapter implements CrucibulumAdapter {
         totalTokensOut += result.tokensOut;
         log("info", "anthropic", `[step ${step + 1}/${maxSteps}] Response (${response.length} chars, ${result.tokensOut} tok)`);
       } catch (err) {
-        log("error", "anthropic", `[step ${step + 1}/${maxSteps}] Model call failed: ${String(err).slice(0, 200)}`);
-        observer.recordError(`Model call failed: ${String(err).slice(0, 200)}`);
+        const providerError = normalizeProviderError(err, { provider: "anthropic", adapter: this.id });
+        log("error", "anthropic", `[step ${step + 1}/${maxSteps}] Model call failed: ${providerError.rawMessage.slice(0, 200)}`);
+        observer.recordError(`Model call failed: ${providerError.rawMessage.slice(0, 200)}`, providerError);
         exitReason = "error";
         break;
       }
@@ -180,6 +211,7 @@ export class AnthropicAdapter implements CrucibulumAdapter {
     return {
       exit_reason: exitReason,
       timeline: observer.getTimeline(),
+      provider_error: observer.getProviderError() ?? undefined,
       duration_ms: Date.now() - startMs,
       steps_used: observer.getStepCount(),
       files_read: observer.getFilesRead(),
@@ -222,15 +254,24 @@ async function callAnthropic(
   });
 
   if (!res.ok) {
-    throw new Error(`Anthropic returned ${res.status}: ${await res.text().catch(() => "")}`);
+    throw makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "anthropic", adapter: "anthropic" });
   }
 
-  const data = (await res.json()) as {
+  const rawBody = await res.text();
+  let data: {
     content?: Array<{ type: string; text?: string }>;
     usage?: { input_tokens?: number; output_tokens?: number };
   };
+  try {
+    data = JSON.parse(rawBody) as typeof data;
+  } catch {
+    throw makeInvalidResponseError({ provider: "anthropic", adapter: "anthropic" }, `Anthropic returned non-JSON body: ${rawBody.slice(0, 400)}`);
+  }
 
   const text = data.content?.find(b => b.type === "text")?.text ?? "";
+  if (!text.trim()) {
+    throw makeEmptyResponseError({ provider: "anthropic", adapter: "anthropic" }, `Anthropic returned empty response for model ${model}`);
+  }
 
   return {
     text,

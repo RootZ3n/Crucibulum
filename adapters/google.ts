@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Google AI Direct Adapter
+ * Crucible — Google AI Direct Adapter
  * Direct Gemini API integration via generativelanguage.googleapis.com.
  * Uses Google's native content format (role: "model", parts: [{text}]).
  * API key passed as URL query parameter, not auth header.
@@ -16,8 +16,12 @@ import type {
   AdapterConfig,
   ExecutionInput,
   ExecutionResult,
+  ChatMessage,
+  ChatResult,
+  ChatOptions,
 } from "./base.js";
 import { Observer } from "../core/observer.js";
+import { makeEmptyResponseError, makeHttpProviderError, makeInvalidResponseError, makeProviderFailureError, normalizeProviderError, providerErrorSummary, providerErrorDetail } from "../core/provider-errors.js";
 import { log } from "../utils/logger.js";
 
 const GOOGLE_BASE = "https://generativelanguage.googleapis.com/v1beta";
@@ -45,7 +49,33 @@ export class GoogleAdapter implements CrucibulumAdapter {
   }
 
   supportsChat(): boolean {
-    return false;
+    return true;
+  }
+
+  async chat(messages: ChatMessage[], options?: ChatOptions): Promise<ChatResult> {
+    if (!this.apiKey) throw new Error("Google AI: GOOGLE_AI_API_KEY not set");
+    const start = Date.now();
+    // Gemini keeps system prompts out of the contents array (similar to Anthropic)
+    // and uses "model" instead of "assistant" for the model's turn.
+    const systemParts: string[] = [];
+    const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
+    for (const m of messages) {
+      if (m.role === "system") {
+        systemParts.push(m.content);
+      } else {
+        contents.push({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }],
+        });
+      }
+    }
+    const result = await callGoogle(this.apiKey, this.model, systemParts.join("\n\n"), contents, options);
+    return {
+      text: result.text,
+      tokens_in: result.tokensIn,
+      tokens_out: result.tokensOut,
+      duration_ms: Date.now() - start,
+    };
   }
 
   async init(config: AdapterConfig): Promise<void> {
@@ -54,17 +84,24 @@ export class GoogleAdapter implements CrucibulumAdapter {
     this.apiKey = process.env["GOOGLE_AI_API_KEY"] ?? "";
   }
 
-  async healthCheck(): Promise<{ ok: boolean; reason?: string | undefined }> {
-    if (!this.apiKey) return { ok: false, reason: "GOOGLE_AI_API_KEY not set" };
+  async healthCheck() {
+    if (!this.apiKey) {
+      const providerError = makeProviderFailureError({ kind: "AUTH", origin: "ADAPTER", provider: "google", adapter: this.id, rawMessage: "GOOGLE_AI_API_KEY not set" }).structured;
+      // Detail (not Summary) so operators see WHICH env var to set.
+      return { ok: false, reason: providerErrorDetail(providerError), providerError };
+    }
     try {
       const res = await fetch(`${GOOGLE_BASE}/models?key=${this.apiKey}`, {
         signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
       });
-      if (res.status === 400 || res.status === 401) return { ok: false, reason: "GOOGLE_AI_API_KEY invalid" };
-      if (!res.ok) return { ok: false, reason: `Google AI returned ${res.status}` };
+      if (!res.ok) {
+        const providerError = makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "google", adapter: this.id }).structured;
+        return { ok: false, reason: providerErrorSummary(providerError), providerError };
+      }
       return { ok: true };
     } catch (err) {
-      return { ok: false, reason: `Google AI unreachable: ${String(err).slice(0, 100)}` };
+      const providerError = normalizeProviderError(err, { provider: "google", adapter: this.id });
+      return { ok: false, reason: providerErrorSummary(providerError), providerError };
     }
   }
 
@@ -107,8 +144,9 @@ export class GoogleAdapter implements CrucibulumAdapter {
         totalTokensOut += result.tokensOut;
         log("info", "google", `[step ${step + 1}/${maxSteps}] Response (${response.length} chars, ${result.tokensOut} tok)`);
       } catch (err) {
-        log("error", "google", `[step ${step + 1}/${maxSteps}] Model call failed: ${String(err).slice(0, 200)}`);
-        observer.recordError(`Model call failed: ${String(err).slice(0, 200)}`);
+        const providerError = normalizeProviderError(err, { provider: "google", adapter: this.id });
+        log("error", "google", `[step ${step + 1}/${maxSteps}] Model call failed: ${providerError.rawMessage.slice(0, 200)}`);
+        observer.recordError(`Model call failed: ${providerError.rawMessage.slice(0, 200)}`, providerError);
         exitReason = "error"; break;
       }
 
@@ -139,6 +177,7 @@ export class GoogleAdapter implements CrucibulumAdapter {
     return {
       exit_reason: exitReason,
       timeline: observer.getTimeline(),
+      provider_error: observer.getProviderError() ?? undefined,
       duration_ms: Date.now() - startMs,
       steps_used: observer.getStepCount(),
       files_read: observer.getFilesRead(),
@@ -163,7 +202,9 @@ async function callGoogle(
   model: string,
   systemInstruction: string,
   contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }>,
+  options?: ChatOptions,
 ): Promise<{ text: string; tokensIn: number; tokensOut: number }> {
+  const generationConfig = buildGoogleGenerationConfig(options);
   const res = await fetch(
     `${GOOGLE_BASE}/models/${model}:generateContent?key=${apiKey}`,
     {
@@ -172,20 +213,18 @@ async function callGoogle(
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemInstruction }] },
         contents,
-        generationConfig: {
-          maxOutputTokens: 8192,
-          temperature: 0.1,
-        },
+        generationConfig,
       }),
       signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
     },
   );
 
   if (!res.ok) {
-    throw new Error(`Google AI returned ${res.status}: ${await res.text().catch(() => "")}`);
+    throw makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "google", adapter: "google" });
   }
 
-  const data = (await res.json()) as {
+  const rawBody = await res.text();
+  let data: {
     candidates?: Array<{
       content?: { parts?: Array<{ text?: string }> };
     }>;
@@ -194,14 +233,38 @@ async function callGoogle(
       candidatesTokenCount?: number;
     };
   };
+  try {
+    data = JSON.parse(rawBody) as typeof data;
+  } catch {
+    throw makeInvalidResponseError({ provider: "google", adapter: "google" }, `Google AI returned non-JSON body: ${rawBody.slice(0, 400)}`);
+  }
 
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  if (!text.trim()) {
+    throw makeEmptyResponseError({ provider: "google", adapter: "google" }, `Google AI returned empty response for model ${model}`);
+  }
 
   return {
     text,
     tokensIn: data.usageMetadata?.promptTokenCount ?? 0,
     tokensOut: data.usageMetadata?.candidatesTokenCount ?? 0,
   };
+}
+
+export function buildGoogleGenerationConfig(options?: ChatOptions): Record<string, unknown> {
+  const generationConfig: Record<string, unknown> = {
+    maxOutputTokens: 8192,
+    temperature: 0.1,
+  };
+  const requestedReasoning = options?.reasoningEffort;
+  const suppressVisibleReasoning = options?.suppressVisibleReasoning === true;
+  const wantsReasoningOff = requestedReasoning === "off" || (requestedReasoning == null && suppressVisibleReasoning);
+  if (wantsReasoningOff || requestedReasoning === "minimal") {
+    generationConfig.thinkingConfig = {
+      thinkingBudget: wantsReasoningOff ? 0 : 256,
+    };
+  }
+  return generationConfig;
 }
 
 // ── Shared agentic loop infrastructure ─────────────────────────────────────

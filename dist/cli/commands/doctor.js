@@ -1,13 +1,13 @@
 /**
- * Crucibulum CLI — doctor command
- * crucibulum doctor
+ * Crucible CLI — doctor command
+ * crucible doctor
  * Reports provider availability, configuration status, and blockers.
  */
 import { getProviderCatalog } from "../../adapters/registry.js";
 export async function doctorCommand(_args) {
     console.log("");
     console.log("=".repeat(60));
-    console.log("  CRUCIBULUM DOCTOR — Provider Status");
+    console.log("  CRUCIBLE DOCTOR — Provider Status");
     console.log("=".repeat(60));
     console.log("");
     const catalog = await getProviderCatalog();

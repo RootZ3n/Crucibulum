@@ -1,14 +1,15 @@
 /**
- * Crucibulum — OpenClaw Adapter
+ * Crucible — OpenClaw Adapter
  * Invokes OpenClaw as a subprocess in the workspace.
  * OpenClaw operates autonomously — reads files, runs commands, writes fixes.
- * Crucibulum observes its actions via stdout/file system monitoring.
+ * Crucible observes its actions via stdout/file system monitoring.
  */
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { Observer } from "../core/observer.js";
+import { makeProcessProviderError, makeProviderFailureError, providerErrorSummary } from "../core/provider-errors.js";
 import { log } from "../utils/logger.js";
 export class OpenClawAdapter {
     id = "openclaw";
@@ -59,15 +60,19 @@ export class OpenClawAdapter {
                 proc.on("close", (code) => {
                     if (code === 0)
                         res({ ok: true });
-                    else
-                        res({ ok: false, reason: `openclaw --version exited ${code}: ${output.slice(0, 100)}` });
+                    else {
+                        const providerError = makeProcessProviderError({ provider: this.provider ?? "openclaw", adapter: this.id }, `openclaw --version exited ${code}: ${output.slice(0, 100)}`).structured;
+                        res({ ok: false, reason: providerErrorSummary(providerError), providerError });
+                    }
                 });
                 proc.on("error", (err) => {
-                    res({ ok: false, reason: `Cannot spawn openclaw: ${err.message}` });
+                    const providerError = makeProcessProviderError({ provider: this.provider ?? "openclaw", adapter: this.id }, `Cannot spawn openclaw: ${err.message}`, err.code ?? null).structured;
+                    res({ ok: false, reason: providerErrorSummary(providerError), providerError });
                 });
             }
             catch (err) {
-                res({ ok: false, reason: `OpenClaw check failed: ${String(err).slice(0, 100)}` });
+                const providerError = makeProviderFailureError({ kind: "PROCESS_ERROR", origin: "LOCAL_RUNTIME", provider: this.provider ?? "openclaw", adapter: this.id, rawMessage: `OpenClaw check failed: ${String(err).slice(0, 100)}` }).structured;
+                res({ ok: false, reason: providerErrorSummary(providerError), providerError });
             }
         });
     }
@@ -133,11 +138,21 @@ export class OpenClawAdapter {
         });
         if (result.exitCode !== 0 && Date.now() - startMs > input.budget.time_limit_sec * 1000) {
             exitReason = "timeout";
-            observer.recordError("OpenClaw timed out");
+            observer.recordError("OpenClaw timed out", makeProviderFailureError({
+                kind: "TIMEOUT",
+                origin: "LOCAL_RUNTIME",
+                provider: this.provider ?? "openclaw",
+                adapter: this.id,
+                rawMessage: "OpenClaw timed out",
+                retryable: true,
+            }).structured);
         }
         else if (result.exitCode !== 0) {
             exitReason = "error";
-            observer.recordError(`OpenClaw exited with code ${result.exitCode}`);
+            observer.recordError(`OpenClaw exited with code ${result.exitCode}`, makeProcessProviderError({
+                provider: this.provider ?? "openclaw",
+                adapter: this.id,
+            }, `OpenClaw exited with code ${result.exitCode}${result.stderr ? `: ${result.stderr.slice(0, 200)}` : ""}`).structured);
         }
         // Diff workspace to detect what changed
         const afterFiles = snapshotFiles(input.workspace_path);
@@ -154,6 +169,7 @@ export class OpenClawAdapter {
         return {
             exit_reason: exitReason,
             timeline: observer.getTimeline(),
+            provider_error: observer.getProviderError() ?? undefined,
             duration_ms: Date.now() - startMs,
             steps_used: observer.getStepCount(),
             files_read: observer.getFilesRead(),

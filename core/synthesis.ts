@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Synthesis Layer (Veritor Mode)
+ * Crucible — Synthesis Layer (Veritor Mode)
  *
  * Multi-model comparative analysis engine.
  * Extracts structured claims from evidence bundles, identifies consensus,

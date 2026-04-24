@@ -1,14 +1,14 @@
-# Crucibulum Methodology
+# Crucible Methodology
 
 ## Purpose
 
-Crucibulum is designed to measure whether a model or agent can produce a correct state transition under constraints and with auditable evidence.
+Crucible is designed to measure whether a model or agent can produce a correct state transition under constraints and with auditable evidence.
 
 The benchmark does not trust narration, explanation quality, or self-reported success.
 
 ## Evaluation Modes
 
-Crucibulum currently supports two evaluation modes:
+Crucible currently supports two evaluation modes:
 
 - Repo execution tasks: the model operates inside an isolated task repository under explicit budgets.
 - Conversational tasks: the model answers a scored sequence of prompts with deterministic rubric checks.

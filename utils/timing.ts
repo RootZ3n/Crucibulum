@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Timing Utilities
+ * Crucible — Timing Utilities
  */
 
 export class StepTimer {

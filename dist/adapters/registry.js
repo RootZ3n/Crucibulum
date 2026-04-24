@@ -1,3 +1,4 @@
+import { listProviders, getPreset } from "../core/provider-registry.js";
 import { OllamaAdapter } from "./ollama.js";
 import { OpenRouterAdapter } from "./openrouter.js";
 import { OpenClawAdapter } from "./openclaw.js";
@@ -11,6 +12,7 @@ import { MiniMaxAdapter } from "./minimax.js";
 import { ZAIAdapter } from "./zai.js";
 import { GoogleAdapter } from "./google.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "../core/judge.js";
+import { getCircuitState } from "../core/circuit-breaker.js";
 const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
 const OPENAI_BASE = "https://api.openai.com/v1";
 const DEFAULT_OLLAMA_URL = process.env["OLLAMA_URL"] ?? "http://localhost:11434";
@@ -295,12 +297,19 @@ const REGISTRY = [
         create: () => new MiniMaxAdapter(),
         provider_options: [{ id: "minimax", name: "MiniMax", kind: "cloud", configurable: false }],
         async listModels() {
+            // The MiniMax international catalog is stable enough to pin here as
+            // a starter list; the older M2.7* placeholder was fictional and
+            // caused every run to fail with the provider's "unknown model" error.
+            // Account-scoped/newer ids still come in through the Providers tab.
             const apiKey = process.env["MINIMAX_API_KEY"] ?? "";
             if (!apiKey)
                 return [];
             return [
-                { id: "MiniMax-M2.7", name: "MiniMax M2.7", provider: "minimax", kind: "cloud", available: true, reason: null },
                 { id: "abab6.5s-chat", name: "ABAB 6.5s Chat", provider: "minimax", kind: "cloud", available: true, reason: null },
+                { id: "abab6.5g-chat", name: "ABAB 6.5g Chat", provider: "minimax", kind: "cloud", available: true, reason: null },
+                { id: "abab6.5-chat", name: "ABAB 6.5 Chat", provider: "minimax", kind: "cloud", available: true, reason: null },
+                { id: "abab5.5-chat", name: "ABAB 5.5 Chat", provider: "minimax", kind: "cloud", available: true, reason: null },
+                { id: "MiniMax-Text-01", name: "MiniMax Text 01", provider: "minimax", kind: "cloud", available: true, reason: null },
             ];
         },
         makeConfig(input) { return { model: input.model }; },
@@ -389,10 +398,12 @@ export async function getAdapterCatalog() {
                 available: health.ok,
                 reason: health.reason ?? null,
                 supports_tool_calls: adapter.supportsToolCalls(),
+                supports_chat: typeof adapter.chat === "function" && adapter.supportsChat(),
                 supports_custom_model: entry.supports_custom_model,
                 provider_options: entry.provider_options,
                 models,
                 judge: DETERMINISTIC_JUDGE_METADATA,
+                circuit: getCircuitState(entry.id),
             });
             try {
                 await adapter.teardown();
@@ -410,10 +421,12 @@ export async function getAdapterCatalog() {
                 available: false,
                 reason: `init error: ${String(err)}`,
                 supports_tool_calls: false,
+                supports_chat: false,
                 supports_custom_model: entry.supports_custom_model,
                 provider_options: entry.provider_options,
                 models: [],
                 judge: DETERMINISTIC_JUDGE_METADATA,
+                circuit: getCircuitState(entry.id),
             });
         }
     }
@@ -425,10 +438,12 @@ export async function listFlattenedModels() {
         ...model,
         adapter: entry.id,
         adapter_name: entry.name,
+        supports_chat: entry.supports_chat,
     })));
 }
 export async function instantiateAdapterForRun(input) {
     const registry = resolveAdapter(input.adapter);
+    hydrateEnvFromRegistry(registry.id);
     const adapter = registry.create();
     const config = registry.makeConfig({
         model: input.model,
@@ -436,6 +451,49 @@ export async function instantiateAdapterForRun(input) {
     });
     await adapter.init(config);
     return { adapter, config, registry };
+}
+// Bridge inline API keys and baseUrl overrides from the Providers tab
+// (registry) into process.env so adapters that read `process.env[…]` at init
+// time pick them up. Without this, a user who configured credentials through
+// the UI but never exported env vars gets an instant "API_KEY not set"
+// failure on every run, even though the Test button in the Providers tab
+// worked (that path reads inline values directly). Only fills env slots that
+// are currently unset — a real exported env var still wins.
+const ADAPTER_BASE_URL_ENV = {
+    minimax: "MINIMAX_BASE_URL",
+    zai: "ZAI_BASE_URL",
+    openrouter: "OPENROUTER_BASE_URL",
+    openai: "OPENAI_BASE_URL",
+    anthropic: "ANTHROPIC_BASE_URL",
+    squidley: "SQUIDLEY_URL",
+    google: "GOOGLE_AI_BASE_URL",
+};
+function hydrateEnvFromRegistry(adapterId) {
+    let providers;
+    try {
+        providers = listProviders();
+    }
+    catch {
+        return;
+    }
+    for (const provider of providers) {
+        if (!provider.enabled)
+            continue;
+        const preset = getPreset(provider.presetId);
+        if (!preset || preset.adapter !== adapterId)
+            continue;
+        if (preset.envKey) {
+            const inlineKey = provider.apiKey;
+            if (inlineKey && !process.env[preset.envKey])
+                process.env[preset.envKey] = inlineKey;
+        }
+        const baseEnv = ADAPTER_BASE_URL_ENV[adapterId];
+        if (baseEnv) {
+            const url = provider.baseUrl || preset.defaultBaseUrl;
+            if (url && !process.env[baseEnv])
+                process.env[baseEnv] = url;
+        }
+    }
 }
 // ── Provider Catalog ──────────────────────────────────────────────────────
 const ENV_KEYS = {

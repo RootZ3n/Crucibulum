@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Adapter Interface
+ * Crucible — Adapter Interface
  * Every adapter implements this contract. No exceptions.
  */
 export {};

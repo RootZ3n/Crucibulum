@@ -1,5 +1,5 @@
 /**
- * Crucibulum — SHA256 Hashing
+ * Crucible — SHA256 Hashing
  */
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";

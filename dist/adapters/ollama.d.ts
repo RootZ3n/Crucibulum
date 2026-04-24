@@ -1,9 +1,9 @@
 /**
- * Crucibulum — Ollama Adapter
+ * Crucible — Ollama Adapter
  * Direct Ollama API integration for local model evaluation.
  * Implements an agentic loop with lenient command parsing and structured logging.
  */
-import type { CrucibulumAdapter, AdapterConfig, ExecutionInput, ExecutionResult, ChatMessage, ChatResult } from "./base.js";
+import type { CrucibulumAdapter, AdapterConfig, ExecutionInput, ExecutionResult, ChatMessage, ChatResult, ChatOptions } from "./base.js";
 export declare class OllamaAdapter implements CrucibulumAdapter {
     id: string;
     name: string;
@@ -16,10 +16,15 @@ export declare class OllamaAdapter implements CrucibulumAdapter {
     init(config: AdapterConfig): Promise<void>;
     healthCheck(): Promise<{
         ok: boolean;
-        reason?: string | undefined;
+        reason: string;
+        providerError: import("../types/provider-error.js").StructuredProviderError;
+    } | {
+        ok: boolean;
+        reason?: never;
+        providerError?: never;
     }>;
     teardown(): Promise<void>;
-    chat(messages: ChatMessage[]): Promise<ChatResult>;
+    chat(messages: ChatMessage[], _options?: ChatOptions): Promise<ChatResult>;
     execute(input: ExecutionInput): Promise<ExecutionResult>;
 }
 //# sourceMappingURL=ollama.d.ts.map

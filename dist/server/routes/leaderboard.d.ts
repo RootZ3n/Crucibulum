@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Leaderboard & Scores Routes
+ * Crucible — Leaderboard & Scores Routes
  * Score queries, leaderboard, synthesis, verum ingest.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";

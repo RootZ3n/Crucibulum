@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Runner
+ * Crucible — Runner
  * Orchestrates the full evaluation lifecycle.
  * Load → Workspace → Security → Execute → Judge → Bundle
  */

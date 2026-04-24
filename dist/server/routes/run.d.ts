@@ -1,11 +1,12 @@
 /**
- * Crucibulum — Run Routes
+ * Crucible — Run Routes
  * Single task execution, run queries, SSE streaming.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { EvidenceBundle } from "../../adapters/base.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "../../core/judge.js";
 import { summarizeRunSet } from "../contracts.js";
+import type { StructuredProviderError } from "../../types/provider-error.js";
 interface ActiveRun {
     id: string;
     status: "running" | "complete" | "error";
@@ -14,6 +15,7 @@ interface ActiveRun {
     bundles?: EvidenceBundle[] | undefined;
     aggregate?: ReturnType<typeof summarizeRunSet> | undefined;
     error?: string | undefined;
+    provider_error?: StructuredProviderError | undefined;
     request?: {
         task: string;
         adapter: string;
@@ -22,6 +24,7 @@ interface ActiveRun {
         count: number;
         judge: typeof DETERMINISTIC_JUDGE_METADATA;
     } | undefined;
+    failure_stage?: "preflight" | "adapter_init" | "health_check" | "execution" | "unknown" | undefined;
 }
 export declare const activeRuns: Map<string, ActiveRun>;
 export declare const sseClients: Map<string, ServerResponse<IncomingMessage>[]>;

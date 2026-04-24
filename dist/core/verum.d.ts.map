@@ -1,1 +1,1 @@
-{"version":3,"file":"verum.d.ts","sourceRoot":"","sources":["../../core/verum.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,UAAU,EAAqB,kBAAkB,EAAE,MAAM,oBAAoB,CAAC;AAoC5F,wBAAgB,oBAAoB,CAAC,OAAO,EAAE,kBAAkB,GAAG,UAAU,EAAE,CAE9E"}
+{"version":3,"file":"verum.d.ts","sourceRoot":"","sources":["../../core/verum.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,UAAU,EAAqB,kBAAkB,EAAE,MAAM,oBAAoB,CAAC;AA0C5F,wBAAgB,oBAAoB,CAAC,OAAO,EAAE,kBAAkB,GAAG,UAAU,EAAE,CAE9E"}

@@ -1,4 +1,4 @@
-# Crucibulum Scoring
+# Crucible Scoring
 
 ## Public vs Internal Scale
 

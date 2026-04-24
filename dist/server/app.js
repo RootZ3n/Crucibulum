@@ -1,5 +1,5 @@
 /**
- * Crucibulum — API app factory
+ * Crucible — API app factory
  *
  * Pure factory for the HTTP server. The previous layout ran listen() as a
  * module-load side effect, which made it impossible to stand the server up in
@@ -17,16 +17,20 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { log } from "../utils/logger.js";
 import { sendJSON } from "./routes/shared.js";
-import { requireAuth } from "./auth.js";
+import { requireAuth, ensureTokenConfigured } from "./auth.js";
 import { loadAllScorers } from "../core/scorer-registry.js";
 import { enforce, RATE_READ, RATE_RUN, RATE_INGEST } from "./rate-limit.js";
 import * as health from "./routes/health.js";
 import * as run from "./routes/run.js";
 import * as suite from "./routes/suite.js";
 import * as leaderboard from "./routes/leaderboard.js";
+import * as auth from "./routes/auth.js";
+import * as registry from "./routes/registry.js";
 import { handleRunBatch } from "./routes/batch.js";
 const DEFAULT_PORT = parseInt(process.env["CRUCIBULUM_PORT"] ?? "18795", 10);
-const UI_PATH = join(import.meta.dirname, "..", "..", "ui", "index.html");
+const UI_DIR = join(import.meta.dirname, "..", "..", "ui");
+const UI_PATH = join(UI_DIR, "index.html");
+const CRUCIBULUM_CSS_PATH = join(UI_DIR, "crucibulum.css");
 async function handleRequest(req, res, opts) {
     const url = new URL(req.url ?? "/", `http://localhost:${DEFAULT_PORT}`);
     const path = url.pathname;
@@ -34,7 +38,7 @@ async function handleRequest(req, res, opts) {
     if (method === "OPTIONS") {
         res.writeHead(204, {
             "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+            "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type, Authorization",
         });
         res.end();
@@ -48,12 +52,22 @@ async function handleRequest(req, res, opts) {
             }
             else {
                 res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-                res.end("<html><body><h1>Crucibulum</h1><p>UI not built yet.</p></body></html>");
+                res.end("<html><body><h1>Crucible</h1><p>UI not built yet.</p></body></html>");
             }
             return;
         }
+        // Crucible design-system stylesheet. Auctor is now a standalone
+        // product with its own server and its own copy of these tokens; this
+        // route only serves Crucible's own shell.
+        if (method === "GET" && path === "/crucibulum.css") {
+            if (existsSync(CRUCIBULUM_CSS_PATH)) {
+                res.writeHead(200, { "Content-Type": "text/css; charset=utf-8", "Cache-Control": "public, max-age=3600" });
+                res.end(readFileSync(CRUCIBULUM_CSS_PATH, "utf-8"));
+                return;
+            }
+        }
         if (method === "GET" && /^\/[a-zA-Z0-9_\-]+\.(png|jpg|jpeg|svg|webp|gif|ico)$/.test(path)) {
-            const assetPath = join(import.meta.dirname, "..", "..", "ui", path.slice(1));
+            const assetPath = join(UI_DIR, path.slice(1));
             if (existsSync(assetPath)) {
                 const ext = path.split(".").pop().toLowerCase();
                 const mime = {
@@ -67,19 +81,52 @@ async function handleRequest(req, res, opts) {
         }
         const isApi = path.startsWith("/api/") && path !== "/api/health";
         const isHealthAlias = path === "/health";
+        // Auth-surface endpoints bypass the global auth gate. Each implements its
+        // own policy: /auth/status is public; /auth/bootstrap* is loopback-only;
+        // /auth/redeem is a public secret-input endpoint (rate-limited);
+        // /auth/pairing and /auth/logout are auth-gated inside the handler.
+        const isAuthSurface = path === "/api/auth/status"
+            || path === "/api/auth/bootstrap"
+            || path === "/api/auth/bootstrap-local"
+            || path === "/api/auth/redeem"
+            || path === "/api/auth/pairing"
+            || path === "/api/auth/logout";
         if (isApi && opts.rateLimit !== false) {
-            const rule = method === "POST"
-                ? (path === "/api/scores/sync" || path === "/api/verum/ingest" ? RATE_INGEST : RATE_RUN)
+            // /auth/redeem is brute-forceable input — bind it to the tighter
+            // ingest bucket. Other auth-surface POSTs are also tight (avoids
+            // someone using /pairing to spam token issuance).
+            const isAuthIngest = path === "/api/auth/redeem" || path === "/api/auth/pairing" || path === "/api/auth/bootstrap-local";
+            const isWrite = method === "POST" || method === "PATCH" || method === "DELETE";
+            const rule = isWrite
+                ? (isAuthIngest || path === "/api/scores/sync" || path === "/api/verum/ingest" ? RATE_INGEST : RATE_RUN)
                 : RATE_READ;
             if (!enforce(req, res, rule))
                 return;
         }
-        if (isApi) {
+        if (isApi && !isAuthSurface) {
             if (!requireAuth(req, res))
                 return;
         }
         if ((path === "/api/health" || isHealthAlias) && method === "GET") {
             return void await health.handleHealth(req, res);
+        }
+        if (path === "/api/auth/status" && method === "GET") {
+            return void await auth.handleAuthStatus(req, res);
+        }
+        if (path === "/api/auth/bootstrap" && method === "GET") {
+            return void await auth.handleAuthBootstrap(req, res);
+        }
+        if (path === "/api/auth/bootstrap-local" && method === "POST") {
+            return void await auth.handleAuthBootstrapLocal(req, res);
+        }
+        if (path === "/api/auth/pairing" && method === "POST") {
+            return void await auth.handleAuthPairing(req, res);
+        }
+        if (path === "/api/auth/redeem" && method === "POST") {
+            return void await auth.handleAuthRedeem(req, res);
+        }
+        if (path === "/api/auth/logout" && method === "POST") {
+            return void await auth.handleAuthLogout(req, res);
         }
         if (path === "/api/scorers" && method === "GET")
             return void await health.handleScorers(req, res);
@@ -87,6 +134,10 @@ async function handleRequest(req, res, opts) {
             return void await health.handleScorersHealth(req, res);
         if (path === "/api/health/adapters" && method === "GET")
             return void await health.handleAdaptersHealth(req, res);
+        if (path.startsWith("/api/adapters/") && path.endsWith("/reset-circuit") && method === "POST") {
+            const adapterId = path.slice("/api/adapters/".length, path.length - "/reset-circuit".length);
+            return void await health.handleResetAdapterCircuit(req, res, decodeURIComponent(adapterId));
+        }
         if (path === "/api/judge" && method === "GET")
             return void await health.handleJudge(req, res);
         if (path === "/api/suites" && method === "GET")
@@ -123,6 +174,30 @@ async function handleRequest(req, res, opts) {
             return void await suite.handleRunSuiteStatus(req, res, path);
         if (path.startsWith("/api/runs/") && path.endsWith("/crucible-link") && method === "POST")
             return void await run.handleCrucibleLink(req, res, path);
+        // ── Provider / model registry ───────────────────────────────────────
+        if (path === "/api/registry/state" && method === "GET")
+            return void await registry.handleRegistryState(req, res);
+        if (path === "/api/registry/providers" && method === "POST")
+            return void await registry.handleAddProvider(req, res);
+        if (path === "/api/registry/models" && method === "POST")
+            return void await registry.handleAddModel(req, res);
+        if (path === "/api/registry/models/bulk" && method === "POST")
+            return void await registry.handleBulkAddModels(req, res);
+        if (path.startsWith("/api/registry/providers/") && path.endsWith("/test") && method === "POST") {
+            return void await registry.handleTestProvider(req, res, path.slice("/api/registry/providers/".length, -"/test".length));
+        }
+        if (path.startsWith("/api/registry/providers/") && method === "PATCH") {
+            return void await registry.handleUpdateProvider(req, res, path.slice("/api/registry/providers/".length));
+        }
+        if (path.startsWith("/api/registry/providers/") && method === "DELETE") {
+            return void await registry.handleRemoveProvider(req, res, path.slice("/api/registry/providers/".length));
+        }
+        if (path.startsWith("/api/registry/models/") && method === "PATCH") {
+            return void await registry.handleUpdateModel(req, res, path.slice("/api/registry/models/".length));
+        }
+        if (path.startsWith("/api/registry/models/") && method === "DELETE") {
+            return void await registry.handleRemoveModel(req, res, path.slice("/api/registry/models/".length));
+        }
         if (path === "/api/scores/sync" && method === "POST")
             return void await leaderboard.handleScoresSync(req, res);
         if (path === "/api/verum/ingest" && method === "POST")
@@ -143,7 +218,7 @@ async function handleRequest(req, res, opts) {
     }
 }
 /**
- * Build an http.Server wired to the Crucibulum routes. Does NOT call listen() —
+ * Build an http.Server wired to the Crucible routes. Does NOT call listen() —
  * the caller decides when/where to bind. Safe to import from tests.
  */
 export function createApp(options = {}) {
@@ -163,6 +238,10 @@ export function createApp(options = {}) {
  */
 export async function startServer(port = DEFAULT_PORT) {
     const server = createApp();
+    // Resolve/generate the auth token and log the bootstrap banner if one was
+    // just auto-generated. Done before listen() so the banner appears above
+    // the "server running" line in operator logs.
+    ensureTokenConfigured();
     try {
         const scorerResults = await loadAllScorers();
         log("info", "api", `Scorer registry: ${scorerResults.loaded} loaded, ${scorerResults.failed.length} failed`);
@@ -174,7 +253,7 @@ export async function startServer(port = DEFAULT_PORT) {
         log("error", "api", `Failed to initialize scorer registry: ${String(err)}`);
     }
     await new Promise((resolve) => server.listen(port, "0.0.0.0", () => resolve()));
-    log("info", "api", `Crucibulum server running on http://localhost:${port}`);
+    log("info", "api", `Crucible server running on http://localhost:${port}`);
     log("info", "api", `UI: http://localhost:${port}/`);
     log("info", "api", `API: http://localhost:${port}/api/`);
     return server;

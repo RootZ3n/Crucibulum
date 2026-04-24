@@ -1,10 +1,10 @@
-# Claude Code Prompt — Crucibulum Critical Fixes
+# Claude Code Prompt — Crucible Critical Fixes
 
 ## Context
 
-Crucibulum is the truth engine / evaluation system in the Squidley ecosystem. It runs tasks against AI models, evaluates results with a deterministic judge, and produces evidence bundles. Three critical issues must be fixed before it can be trusted as the foundation layer.
+Crucible is the truth engine / evaluation system in the Squidley ecosystem. It runs tasks against AI models, evaluates results with a deterministic judge, and produces evidence bundles. Three critical issues must be fixed before it can be trusted as the foundation layer.
 
-**Repo:** `/mnt/ai/crucibulum`
+**Repo:** `/mnt/ai/crucible`
 **Port:** 18795
 **Stack:** TypeScript, Node.js, native HTTP server (no Express/Fastify)
 
@@ -18,7 +18,7 @@ The system advertises "custom" scoring but there's no registry/loader/implementa
 ### Solution
 Build a scorer registry that:
 1. Defines a `ScorerPlugin` interface
-2. Loads scorer plugins from a configurable directory (`/mnt/ai/crucibulum/scorers/`)
+2. Loads scorer plugins from a configurable directory (`/mnt/ai/crucible/scorers/`)
 3. Validates scorer exports at load time (fail loud, not silent)
 4. Integrates with the existing judge pipeline
 
@@ -28,7 +28,7 @@ Build a scorer registry that:
 
 ```typescript
 /**
- * Crucibulum — Scorer Registry
+ * Crucible — Scorer Registry
  * Loads, validates, and manages custom scorer plugins.
  */
 
@@ -326,7 +326,7 @@ if (taskManifest.scoring?.type === "custom") {
 ## Fix 2: API Authentication
 
 ### Problem
-Anyone on the network can hit Crucibulum's endpoints. No auth means no access control.
+Anyone on the network can hit Crucible's endpoints. No auth means no access control.
 
 ### Solution
 Token-based authentication via environment variable. Local-only by default, token required for remote access.
@@ -337,7 +337,7 @@ Token-based authentication via environment variable. Local-only by default, toke
 
 ```typescript
 /**
- * Crucibulum — API Authentication
+ * Crucible — API Authentication
  * Token-based auth via CRUCIBULUM_API_TOKEN env var.
  * Local-only by default (127.0.0.1, ::1, localhost).
  */
@@ -469,7 +469,7 @@ Per-adapter rate limiter + circuit breaker with cooldown.
 
 ```typescript
 /**
- * Crucibulum — Circuit Breaker & Rate Limiter
+ * Crucible — Circuit Breaker & Rate Limiter
  * Prevents cascading failures and retry storms.
  */
 

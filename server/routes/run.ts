@@ -1,10 +1,10 @@
 /**
- * Crucibulum — Run Routes
+ * Crucible — Run Routes
  * Single task execution, run queries, SSE streaming.
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { sendJSON, readBody, parseJsonBody, isSafeId, loadBundles, getBundleById, filterBundlesByFamilies, parseFamiliesParam, bundleSummary, getStats, log, canonicalPercent } from "./shared.js";
+import { sendJSON, readBody, parseJsonBody, isSafeId, loadBundles, getBundleById, filterBundlesByTaskFamilies, resolveLaneScope, bundleSummary, getStats, log, canonicalPercent } from "./shared.js";
 import { validateRunRequest, validateCrucibleLinkRequest } from "../validators.js";
 import type { EvidenceBundle } from "../../adapters/base.js";
 import { instantiateAdapterForRun } from "../../adapters/registry.js";
@@ -14,6 +14,11 @@ import { DETERMINISTIC_JUDGE_METADATA } from "../../core/judge.js";
 import { summarizeRunSet, type CrucibleLink } from "../contracts.js";
 import { writeCrucibleLink } from "../validation-links.js";
 import { requireAuth } from "../auth.js";
+import { isConversationalTask } from "../../core/conversational-runner.js";
+import { normalizeBundleVerdict } from "../../core/verdict.js";
+import type { StructuredProviderError } from "../../types/provider-error.js";
+import { providerErrorDetail } from "../../core/provider-errors.js";
+import { resolveByModelIdWithHint } from "../../core/provider-registry.js";
 
 interface ActiveRun {
   id: string;
@@ -23,6 +28,7 @@ interface ActiveRun {
   bundles?: EvidenceBundle[] | undefined;
   aggregate?: ReturnType<typeof summarizeRunSet> | undefined;
   error?: string | undefined;
+  provider_error?: StructuredProviderError | undefined;
   request?: {
     task: string;
     adapter: string;
@@ -31,6 +37,7 @@ interface ActiveRun {
     count: number;
     judge: typeof DETERMINISTIC_JUDGE_METADATA;
   } | undefined;
+  failure_stage?: "preflight" | "adapter_init" | "health_check" | "execution" | "unknown" | undefined;
 }
 
 export const activeRuns = new Map<string, ActiveRun>();
@@ -41,6 +48,16 @@ const RUN_COMPLETED_AT = new Map<string, number>();
 const RUN_RETENTION_MS = 10 * 60 * 1000;
 // Hard cap so a flood of runs cannot exhaust heap.
 const MAX_ACTIVE_RUNS = 256;
+
+function resolveRequestedDispatch(adapter: string, provider: string | null, model: string): { adapter: string; provider: string | null; model: string } {
+  const resolved = resolveByModelIdWithHint(model, provider);
+  if (!resolved) return { adapter, provider, model };
+  return {
+    adapter: resolved.adapter,
+    provider: resolved.presetId,
+    model: resolved.model,
+  };
+}
 
 export function markRunSettled(runId: string): void {
   RUN_COMPLETED_AT.set(runId, Date.now());
@@ -76,12 +93,13 @@ export function broadcastSSE(runId: string, event: string, data: unknown): void 
 }
 
 export async function handleRunsList(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
-  const families = parseFamiliesParam(url);
+  const scope = resolveLaneScope(url);
   const allBundles = loadBundles();
-  const bundles = filterBundlesByFamilies(allBundles, families);
+  const bundles = filterBundlesByTaskFamilies(allBundles, scope.taskFamilies);
   bundles.sort((a, b) => new Date(b.environment.timestamp_start).getTime() - new Date(a.environment.timestamp_start).getTime());
   const runs = bundles.map((bundle) => {
     const summary = bundleSummary(bundle, allBundles);
+    const verdict = normalizeBundleVerdict(bundle);
     return {
       bundle_id: bundle.bundle_id,
       bundle_hash: bundle.bundle_hash,
@@ -93,6 +111,7 @@ export async function handleRunsList(req: IncomingMessage, res: ServerResponse, 
       adapter: bundle.agent.adapter,
       score: canonicalPercent(bundle.score.total),
       pass: bundle.score.pass,
+      verdict,
       pass_threshold: canonicalPercent(bundle.score.pass_threshold),
       integrity_violations: bundle.score.integrity_violations,
       breakdown: {
@@ -107,6 +126,22 @@ export async function handleRunsList(req: IncomingMessage, res: ServerResponse, 
       tokens_in: bundle.usage.tokens_in,
       tokens_out: bundle.usage.tokens_out,
       cost_usd: bundle.usage.estimated_cost_usd,
+      // Separate-channel cost transparency: judge_usage is the model judge's
+      // spend (zero for deterministic-only runs). Frontend renders it in its
+      // own row so the operator never confuses tested-model cost with judge
+      // cost. Falls back to a deterministic stub when the bundle predates the
+      // field.
+      judge_usage: bundle.judge_usage ?? {
+        provider: "",
+        model: "",
+        tokens_in: 0,
+        tokens_out: 0,
+        estimated_cost_usd: 0,
+        kind: "deterministic" as const,
+        note: "deterministic judge — no model cost",
+      },
+      total_tokens: bundle.usage.tokens_in + bundle.usage.tokens_out + (bundle.judge_usage?.tokens_in ?? 0) + (bundle.judge_usage?.tokens_out ?? 0),
+      total_cost_usd: bundle.usage.estimated_cost_usd + (bundle.judge_usage?.estimated_cost_usd ?? 0),
       judge: bundle.judge,
       judge_status: "authoritative",
       trust: summary.trust,
@@ -120,7 +155,7 @@ export async function handleRunsList(req: IncomingMessage, res: ServerResponse, 
       review_security: summary.review_security,
     };
   });
-  sendJSON(res, 200, { runs, families });
+  sendJSON(res, 200, { runs, task_families: scope.taskFamilies, scope_key: scope.scopeKey });
 }
 
 export async function handleRunSummary(req: IncomingMessage, res: ServerResponse, path: string): Promise<void> {
@@ -146,14 +181,14 @@ export async function handleRunGet(req: IncomingMessage, res: ServerResponse, pa
 }
 
 export async function handleStats(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
-  const families = parseFamiliesParam(url);
-  const bundles = filterBundlesByFamilies(loadBundles(), families);
-  sendJSON(res, 200, { ...getStats(bundles), families });
+  const scope = resolveLaneScope(url);
+  const bundles = filterBundlesByTaskFamilies(loadBundles(), scope.taskFamilies);
+  sendJSON(res, 200, { ...getStats(bundles), task_families: scope.taskFamilies, scope_key: scope.scopeKey });
 }
 
 export async function handleReceipts(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
-  const families = parseFamiliesParam(url);
-  const bundles = filterBundlesByFamilies(loadBundles(), families);
+  const scope = resolveLaneScope(url);
+  const bundles = filterBundlesByTaskFamilies(loadBundles(), scope.taskFamilies);
   bundles.sort((a, b) => new Date(b.environment.timestamp_start).getTime() - new Date(a.environment.timestamp_start).getTime());
   const receipts = bundles.map((bundle) => ({
     run_id: bundle.bundle_id,
@@ -179,29 +214,51 @@ export async function handleReceipts(req: IncomingMessage, res: ServerResponse, 
     tokens_in: bundle.usage.tokens_in,
     tokens_out: bundle.usage.tokens_out,
     cost_usd: bundle.usage.estimated_cost_usd,
+    judge_usage: bundle.judge_usage ?? {
+      provider: "",
+      model: "",
+      tokens_in: 0,
+      tokens_out: 0,
+      estimated_cost_usd: 0,
+      kind: "deterministic" as const,
+      note: "deterministic judge — no model cost",
+    },
+    total_cost_usd: bundle.usage.estimated_cost_usd + (bundle.judge_usage?.estimated_cost_usd ?? 0),
+    total_tokens: bundle.usage.tokens_in + bundle.usage.tokens_out + (bundle.judge_usage?.tokens_in ?? 0) + (bundle.judge_usage?.tokens_out ?? 0),
     duration_ms: new Date(bundle.environment.timestamp_end).getTime() - new Date(bundle.environment.timestamp_start).getTime(),
     pass: bundle.score.pass,
     score: canonicalPercent(bundle.score.total),
+    verdict: normalizeBundleVerdict(bundle),
     timestamp: bundle.environment.timestamp_start,
   }));
   const totalCost = receipts.reduce((sum, receipt) => sum + receipt.cost_usd, 0);
+  const totalJudgeCost = receipts.reduce((sum, receipt) => sum + (receipt.judge_usage?.estimated_cost_usd ?? 0), 0);
   const totalTokens = receipts.reduce((sum, receipt) => sum + receipt.tokens_in + receipt.tokens_out, 0);
+  const totalJudgeTokens = receipts.reduce((sum, receipt) => sum + (receipt.judge_usage?.tokens_in ?? 0) + (receipt.judge_usage?.tokens_out ?? 0), 0);
   sendJSON(res, 200, {
     receipts,
     summary: {
       total_runs: receipts.length,
-      total_cost_usd: totalCost,
-      total_tokens: totalTokens,
+      // Tested model spend, kept separate from the judge spend below so the
+      // UI can render two distinct lines instead of one ambiguous total.
+      total_model_cost_usd: totalCost,
+      total_judge_cost_usd: totalJudgeCost,
+      total_cost_usd: totalCost + totalJudgeCost,
+      total_model_tokens: totalTokens,
+      total_judge_tokens: totalJudgeTokens,
+      total_tokens: totalTokens + totalJudgeTokens,
       judge: DETERMINISTIC_JUDGE_METADATA,
     },
+    task_families: scope.taskFamilies,
+    scope_key: scope.scopeKey,
   });
 }
 
 export async function handleCompare(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
   const taskId = url.searchParams.get("task") ?? "";
   const suiteId = url.searchParams.get("suite") ?? "v1";
-  const families = parseFamiliesParam(url);
-  const bundles = filterBundlesByFamilies(loadBundles(), families);
+  const scope = resolveLaneScope(url);
+  const bundles = filterBundlesByTaskFamilies(loadBundles(), scope.taskFamilies);
   const filtered = taskId ? bundles.filter((bundle) => bundle.task.id === taskId) : bundles;
   const groups = new Map<string, EvidenceBundle[]>();
   for (const bundle of filtered) {
@@ -230,7 +287,7 @@ export async function handleCompare(req: IncomingMessage, res: ServerResponse, u
       reliability: aggregate.reliability,
     };
   }).sort((a, b) => b.avg_score - a.avg_score);
-  sendJSON(res, 200, { comparisons, task_id: taskId || null, suite_id: suiteId, families });
+  sendJSON(res, 200, { comparisons, task_id: taskId || null, suite_id: suiteId, task_families: scope.taskFamilies, scope_key: scope.scopeKey });
 }
 
 export async function handleRunStatus(req: IncomingMessage, res: ServerResponse, path: string): Promise<void> {
@@ -241,6 +298,8 @@ export async function handleRunStatus(req: IncomingMessage, res: ServerResponse,
       run_id: runId,
       status: active.status,
       error: active.error ?? null,
+      provider_error: active.provider_error ?? null,
+      failure_stage: active.failure_stage ?? null,
       request: active.request ?? null,
       bundle_id: active.bundle?.bundle_id ?? null,
       bundle_ids: active.bundles?.map((bundle) => bundle.bundle_id) ?? (active.bundle ? [active.bundle.bundle_id] : []),
@@ -254,6 +313,7 @@ export async function handleRunStatus(req: IncomingMessage, res: ServerResponse,
       run_id: runId,
       status: "complete",
       error: null,
+      failure_stage: null,
       request: {
         task: stored.task.id,
         adapter: stored.agent.adapter,
@@ -279,8 +339,44 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
   const v = validateRunRequest(parsed.value);
   if (!v.ok) { sendJSON(res, 400, { error: "Invalid run request", details: v.errors }); return; }
   const body = v.value;
-  const adapterId = body.adapter;
+  const dispatch = resolveRequestedDispatch(body.adapter, body.provider ?? null, body.model);
+  const adapterId = dispatch.adapter;
   const requestedCount = body.count;
+
+  // Preflight: a conversational task requires the adapter to implement chat().
+  // Rejecting here stops the UI from silently reporting "completed" for a task
+  // that was never actually executed (no bundle stored) — the bug that let
+  // spec-only runs masquerade as broad coverage.
+  const taskIsConversational = (() => {
+    try { return isConversationalTask(body.task); } catch { return false; }
+  })();
+  if (taskIsConversational) {
+    let probe;
+    try {
+      probe = await instantiateAdapterForRun({
+        adapter: adapterId,
+        model: dispatch.model,
+        provider: dispatch.provider,
+      });
+    } catch (err) {
+      sendJSON(res, 400, { error: `Adapter ${adapterId} unavailable: ${String(err).slice(0, 160)}` });
+      return;
+    }
+    const capable = typeof probe.adapter.chat === "function" && probe.adapter.supportsChat();
+    try { await probe.adapter.teardown(); } catch { /* ignore */ }
+    if (!capable) {
+      sendJSON(res, 422, {
+        error: "adapter_cannot_run_task",
+        reason: `Task ${body.task} is conversational (requires chat()), but adapter ${adapterId} does not support chat. Pick a chat-capable model or a repo-based task.`,
+        task: body.task,
+        adapter: adapterId,
+        model: dispatch.model,
+        task_kind: "conversational",
+        adapter_supports_chat: false,
+      });
+      return;
+    }
+  }
 
   const reviewConfig = {
     secondOpinion: {
@@ -303,8 +399,8 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
     request: {
       task: body.task,
       adapter: adapterId,
-      provider: body.provider ?? null,
-      model: body.model,
+      provider: dispatch.provider,
+      model: dispatch.model,
       count: requestedCount,
       judge: DETERMINISTIC_JUDGE_METADATA,
     },
@@ -313,43 +409,69 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
   sendJSON(res, 202, { ok: true, run_id: runId, judge: DETERMINISTIC_JUDGE_METADATA });
 
   void (async () => {
+    let failureStage: ActiveRun["failure_stage"] = "unknown";
+    let failureReason = "";
+    let failureProviderError: StructuredProviderError | null = null;
     try {
-      const healthAdapter = await instantiateAdapterForRun({
-        adapter: adapterId,
-        model: body.model,
-        provider: body.provider ?? null,
-      });
+      let healthAdapter;
+      try {
+        healthAdapter = await instantiateAdapterForRun({
+          adapter: adapterId,
+          model: dispatch.model,
+          provider: dispatch.provider,
+        });
+      } catch (err) {
+        failureStage = "adapter_init";
+        failureReason = `Adapter init failed: ${String(err).slice(0, 200)}`;
+        throw err;
+      }
       const health = await healthAdapter.adapter.healthCheck();
-      if (!health.ok) throw new Error(health.reason ?? `${adapterId} unavailable`);
+      if (!health.ok) {
+        failureStage = "health_check";
+        failureProviderError = health.providerError ?? null;
+        // Prefer a reason that carries both the bucket ("Invalid provider
+        // payload") AND the raw detail ("MiniMax error 2049: invalid api
+        // key") — adapters stash the root cause in rawMessage but return
+        // only the generic summary as `reason`. Without merging, the
+        // operator sees a vague "Invalid provider payload" on every run and
+        // can't tell a bad API key from a wrong model id.
+        failureReason = failureProviderError
+          ? providerErrorDetail(failureProviderError)
+          : (health.reason ?? `${adapterId} unavailable`);
+        throw Object.assign(new Error(failureReason), { stage: failureStage, providerError: failureProviderError });
+      }
       await healthAdapter.adapter.teardown();
 
       broadcastSSE(runId, "step", {
         type: "task_start",
-        detail: `Target ${body.task} via ${adapterId}/${body.model} (${requestedCount} run${requestedCount === 1 ? "" : "s"})`,
+        detail: `Target ${body.task} via ${adapterId}/${dispatch.model} (${requestedCount} run${requestedCount === 1 ? "" : "s"})`,
       });
 
       const completedBundles: EvidenceBundle[] = [];
       for (let index = 0; index < requestedCount; index += 1) {
         const adapterInstance = await instantiateAdapterForRun({
           adapter: adapterId,
-          model: body.model,
-          provider: body.provider ?? null,
+          model: dispatch.model,
+          provider: dispatch.provider,
         });
         try {
           broadcastSSE(runId, "step", { type: "task_start", detail: `Run ${index + 1}/${requestedCount} executing` });
           const result = await runTask({
             taskId: body.task,
             adapter: adapterInstance.adapter,
-            model: body.model,
+            model: dispatch.model,
             keepWorkspace: false,
             reviewConfig,
           });
           storeBundle(result.bundle);
           completedBundles.push(result.bundle);
         } catch (runErr) {
+          failureStage = "execution";
+          failureReason = `Run ${index + 1}/${requestedCount} failed: ${String(runErr).slice(0, 200)}`;
           broadcastSSE(runId, "step", {
             type: "task_error",
-            detail: `Run ${index + 1}/${requestedCount} failed: ${String(runErr).slice(0, 200)}`,
+            detail: failureReason,
+            stage: "execution",
           });
         } finally {
           await adapterInstance.adapter.teardown();
@@ -357,7 +479,11 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
       }
 
       if (completedBundles.length === 0) {
-        throw new Error(`All ${requestedCount} run(s) failed — no results produced`);
+        if (!failureReason) {
+          failureStage = "execution";
+          failureReason = `All ${requestedCount} run(s) failed — no results produced`;
+        }
+        throw Object.assign(new Error(failureReason), { stage: failureStage });
       }
       const latestBundle = completedBundles[completedBundles.length - 1]!;
       const aggregate = summarizeRunSet(completedBundles);
@@ -373,6 +499,7 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
         bundle_ids: completedBundles.map((bundle) => bundle.bundle_id),
         score: latestBundle.score,
         pass: latestBundle.score.pass,
+        verdict: normalizeBundleVerdict(latestBundle),
         judge: latestBundle.judge,
         review: latestBundle.review,
         aggregate,
@@ -383,12 +510,20 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
         },
       });
     } catch (err) {
+      const stage = (typeof err === "object" && err && "stage" in err ? (err as { stage?: ActiveRun["failure_stage"] }).stage : failureStage) ?? "unknown";
+      const message = failureReason || String(err);
+      const providerError =
+        (typeof err === "object" && err && "providerError" in err ? (err as { providerError?: StructuredProviderError | null }).providerError : null)
+        ?? failureProviderError;
+      const classification = stage === "execution" ? "failed" : stage === "preflight" ? "skipped_by_preflight" : "could_not_start";
       const active = activeRuns.get(runId);
       if (active) {
         active.status = "error";
-        active.error = String(err);
+        active.error = message;
+        active.provider_error = providerError ?? undefined;
+        active.failure_stage = stage;
       }
-      broadcastSSE(runId, "error", { error: String(err) });
+      broadcastSSE(runId, "error", { error: message, reason: message, provider_error: providerError, stage, classification });
     } finally {
       const clients = sseClients.get(runId) ?? [];
       for (const client of clients) {

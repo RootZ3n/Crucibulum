@@ -1,0 +1,228 @@
+{
+  "bundle_id": "run_2026-04-20_spec-001_MiniMax-M2.7",
+  "bundle_hash": "sha256:9031aa6fdf8ee953e346b99e24fdfad18bb9e3ee00bdf94ab1adfc3eb2b517e4",
+  "bundle_version": "1.0.0",
+  "task": {
+    "id": "spec-001",
+    "manifest_hash": "sha256:7717ae4fdbde1b54d8b6ca4791f1d51858ffc8dbcc6766db67d470da2cdc4f14",
+    "family": "spec_discipline",
+    "difficulty": "medium"
+  },
+  "agent": {
+    "adapter": "minimax",
+    "adapter_version": "1.0.0",
+    "system": "minimax-api",
+    "system_version": "minimax-api",
+    "model": "MiniMax-M2.7",
+    "model_version": "latest",
+    "provider": "minimax"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "8ed864c1deb535b078c3d2c34638ae8029c86177",
+    "crucibulum_version": "1.0.0",
+    "timestamp_start": "2026-04-20T23:41:22.150Z",
+    "timestamp_end": "2026-04-20T23:41:43.959Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "workspace initialized"
+    },
+    {
+      "t": 2,
+      "type": "file_read",
+      "path": "src/api/validate.js"
+    },
+    {
+      "t": 2,
+      "type": "file_read",
+      "path": "tests/validate.test.js"
+    },
+    {
+      "t": 14,
+      "type": "file_write",
+      "path": "src/api/validate.js"
+    },
+    {
+      "t": 17,
+      "type": "shell",
+      "command": "node tests/validate.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 22,
+      "type": "task_complete",
+      "detail": "agent signaled completion"
+    }
+  ],
+  "diff": {
+    "files_changed": [
+      {
+        "path": "src/api/validate.js",
+        "lines_added": 1,
+        "lines_removed": 1,
+        "patch": "diff --git a/src/api/validate.js b/src/api/validate.js\nindex f58c49b..f6212ec 100644\n--- a/src/api/validate.js\n+++ b/src/api/validate.js\n@@ -27,7 +27,7 @@ function handleValidation(input) {\n   }\n \n   if (errors.length > 0) {\n-    return { status: 200, body: { valid: false, errors } };  // BUG: should be 422\n+    return { status: 422, body: { valid: false, errors } };\n   }\n \n   return { status: 200, body: { valid: true } };\n@@ -38,3 +38,4 @@ function validateEmail(email) {\n }\n \n module.exports = { handleValidation, validateEmail };\n+"
+      }
+    ],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 1,
+      "details": {
+        "hidden-test-suite": "pass"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {
+        "public-tests": "pass"
+      }
+    },
+    "integrity": {
+      "score": 1,
+      "details": {
+        "forbidden_paths": "pass",
+        "no-test-modification": "pass",
+        "no-test-deletion": "pass",
+        "minimal-edit": "pass"
+      },
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 22,
+      "time_limit_sec": 900,
+      "steps_used": 6,
+      "steps_limit": 40,
+      "score": 0.93
+    }
+  },
+  "score": {
+    "scale": "fraction_0_1",
+    "total": 0.99,
+    "total_percent": 99.3,
+    "breakdown": {
+      "correctness": 1,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 0.93
+    },
+    "breakdown_percent": {
+      "correctness": 100,
+      "regression": 100,
+      "integrity": 100,
+      "efficiency": 93
+    },
+    "pass": true,
+    "pass_threshold": 0.7,
+    "pass_threshold_percent": 70,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 4870,
+    "tokens_out": 900,
+    "estimated_cost_usd": 0.000577,
+    "provider_cost_note": "via minimax"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "oracle",
+      "hidden tests",
+      "public tests",
+      "diff rules",
+      "integrity checks"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": true,
+    "narration_ignored": true,
+    "state_based_scoring": true,
+    "bundle_verified": true,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": false,
+    "first_fix_correct": true,
+    "self_verified": true,
+    "failure_mode": "decoy_distraction"
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "1.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "spec_discipline",
+        "difficulty": "medium",
+        "provider": "minimax",
+        "adapter": "minimax",
+        "score": 0.99,
+        "pass": true,
+        "failure_mode": "decoy_distraction"
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": null,
+      "benchmark_label": null,
+      "execution_score": 99,
+      "divergence_note": null
+    }
+  },
+  "review": {
+    "authority": "advisory",
+    "deterministic_result_authoritative": true,
+    "security": {
+      "review_input_scanned": false,
+      "review_input_sanitized": false,
+      "injection_flags_count": 0,
+      "flagged_sources": [],
+      "flagged_artifacts": [],
+      "review_blocked_reason": null,
+      "review_output_invalid": false,
+      "trust_boundary_violations": []
+    },
+    "secondOpinion": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    },
+    "qcReview": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    }
+  }
+}

@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Runner
+ * Crucible — Runner
  * Orchestrates the full evaluation lifecycle.
  * Load → Workspace → Security → Execute → Judge → Bundle
  */
@@ -15,9 +15,12 @@ import { formatDuration } from "../utils/timing.js";
 import { platform, arch } from "node:os";
 import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
 import { runReviewLayer, DEFAULT_REVIEW_CONFIG, DISABLED_REVIEW } from "./review.js";
+import { applyReviewJudgeUsage } from "./judge-usage.js";
 import { isConversationalTask, runConversationalTask } from "./conversational-runner.js";
 import { canonicalPercent } from "../types/scores.js";
 import { runWithProtection } from "./circuit-breaker.js";
+import { normalizeVerdict } from "./verdict.js";
+import { sha256Object } from "../utils/hashing.js";
 export async function runTask(options) {
     const { taskId, adapter, model } = options;
     const startTime = new Date().toISOString();
@@ -25,7 +28,12 @@ export async function runTask(options) {
     // Check if this is a conversational task — route to conversational runner
     if (isConversationalTask(taskId)) {
         log("info", "runner", `Routing to conversational runner for: ${taskId}`);
-        const convResult = await runConversationalTask({ taskId, adapter, model });
+        const convResult = await runConversationalTask({
+            taskId,
+            adapter,
+            model,
+            reviewConfig: options.reviewConfig,
+        });
         return {
             bundle: convResult.bundle,
             passed: convResult.passed,
@@ -121,8 +129,11 @@ export async function runTask(options) {
                 taskTitle: manifest.task.title,
                 taskDescription: manifest.task.description,
             });
+            // Roll the model-judge tokens/cost into bundle.judge_usage so the UI can
+            // print "Judge cost" alongside model cost. This is the only place the
+            // bundle learns what the *judge* spent — keep it in one helper.
+            applyReviewJudgeUsage(bundle);
             // Recompute hash with review data included
-            const { sha256Object } = await import("../utils/hashing.js");
             const hashInput = { ...bundle, bundle_hash: "" };
             bundle.bundle_hash = sha256Object(hashInput);
         }
@@ -143,6 +154,8 @@ export async function runTask(options) {
                 secondOpinion: { ...DISABLED_REVIEW },
                 qcReview: { ...DISABLED_REVIEW },
             };
+            const hashInput = { ...bundle, bundle_hash: "" };
+            bundle.bundle_hash = sha256Object(hashInput);
         }
         const passed = bundle.score.pass;
         const exitCode = passed ? 0 : bundle.score.integrity_violations > 0 ? 2 : 1;
@@ -156,7 +169,7 @@ export async function runTask(options) {
     }
 }
 function buildFailedBundle(manifest, adapter, model, startTime, reason, security) {
-    return {
+    const bundle = {
         bundle_id: `run_${new Date().toISOString().slice(0, 10)}_${manifest.id}_${model.replace(/[/:]/g, "-")}`,
         bundle_hash: "sha256:pending",
         bundle_version: "1.0.0",
@@ -184,6 +197,15 @@ function buildFailedBundle(manifest, adapter, model, startTime, reason, security
             integrity_violations: 1,
         },
         usage: { tokens_in: 0, tokens_out: 0, estimated_cost_usd: 0, provider_cost_note: reason },
+        judge_usage: {
+            provider: "",
+            model: "",
+            tokens_in: 0,
+            tokens_out: 0,
+            estimated_cost_usd: 0,
+            kind: "deterministic",
+            note: `failed bundle (${reason}) — no judge cost`,
+        },
         judge: DETERMINISTIC_JUDGE_METADATA,
         trust: {
             rubric_hidden: true,
@@ -218,5 +240,13 @@ function buildFailedBundle(manifest, adapter, model, startTime, reason, security
             },
         },
     };
+    bundle.verdict = normalizeVerdict({
+        bundle,
+        executionMode: "repo",
+        exitReason: "injection_detected",
+        rawError: reason,
+    });
+    bundle.bundle_hash = sha256Object({ ...bundle, bundle_hash: "" });
+    return bundle;
 }
 //# sourceMappingURL=runner.js.map

@@ -1,6 +1,6 @@
 /**
- * Crucibulum — Squidley Gateway Adapter
- * Routes all model calls through the Squidley API, giving Crucibulum access
+ * Crucible — Squidley Gateway Adapter
+ * Routes all model calls through the Squidley API, giving Crucible access
  * to every model Squidley knows: ModelStudio (qwen3.5-plus, qwen3.6-plus),
  * OpenRouter (MiMo, Trinity), Anthropic (Opus, Sonnet), MiniMax, Ollama, etc.
  *
@@ -21,8 +21,12 @@ import type {
   AdapterConfig,
   ExecutionInput,
   ExecutionResult,
+  ChatMessage,
+  ChatResult,
+  ChatOptions,
 } from "./base.js";
 import { Observer } from "../core/observer.js";
+import { makeEmptyResponseError, makeHttpProviderError, makeInvalidResponseError, normalizeProviderError, providerErrorSummary } from "../core/provider-errors.js";
 import { log } from "../utils/logger.js";
 
 const DEFAULT_SQUIDLEY_URL = process.env["SQUIDLEY_URL"] ?? "http://localhost:18791";
@@ -53,7 +57,18 @@ export class SquidleyAdapter implements CrucibulumAdapter {
   }
 
   supportsChat(): boolean {
-    return false;
+    return true;
+  }
+
+  async chat(messages: ChatMessage[], _options?: ChatOptions): Promise<ChatResult> {
+    const start = Date.now();
+    const result = await callSquidley(this.url, this.model, this.provider, messages);
+    return {
+      text: result.text,
+      tokens_in: result.tokensIn,
+      tokens_out: result.tokensOut,
+      duration_ms: Date.now() - start,
+    };
   }
 
   async init(config: AdapterConfig): Promise<void> {
@@ -63,15 +78,19 @@ export class SquidleyAdapter implements CrucibulumAdapter {
     if (c.provider) this.provider = c.provider;
   }
 
-  async healthCheck(): Promise<{ ok: boolean; reason?: string | undefined }> {
+  async healthCheck() {
     try {
       const res = await fetch(`${this.url}/health`, {
         signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
       });
-      if (!res.ok) return { ok: false, reason: `Squidley returned ${res.status}` };
+      if (!res.ok) {
+        const providerError = makeHttpProviderError(res, await res.text().catch(() => ""), { provider: this.provider ?? "squidley-routed", adapter: this.id }).structured;
+        return { ok: false, reason: providerErrorSummary(providerError), providerError };
+      }
       return { ok: true };
     } catch (err) {
-      return { ok: false, reason: `Squidley unreachable: ${String(err).slice(0, 100)}` };
+      const providerError = normalizeProviderError(err, { provider: this.provider ?? "squidley-routed", adapter: this.id });
+      return { ok: false, reason: providerErrorSummary(providerError), providerError };
     }
   }
 
@@ -127,8 +146,9 @@ export class SquidleyAdapter implements CrucibulumAdapter {
         totalTokensOut += result.tokensOut;
         log("info", "squidley", `[step ${step + 1}/${maxSteps}] Response (${response.length} chars, ${result.tokensOut} tok): ${response.slice(0, 300).replace(/\n/g, "\\n")}${response.length > 300 ? "..." : ""}`);
       } catch (err) {
-        log("error", "squidley", `[step ${step + 1}/${maxSteps}] Model call failed: ${String(err).slice(0, 200)}`);
-        observer.recordError(`Model call failed: ${String(err).slice(0, 200)}`);
+        const providerError = normalizeProviderError(err, { provider: this.provider ?? "squidley-routed", adapter: this.id });
+        log("error", "squidley", `[step ${step + 1}/${maxSteps}] Model call failed: ${providerError.rawMessage.slice(0, 200)}`);
+        observer.recordError(`Model call failed: ${providerError.rawMessage.slice(0, 200)}`, providerError);
         exitReason = "error";
         break;
       }
@@ -196,6 +216,7 @@ export class SquidleyAdapter implements CrucibulumAdapter {
     return {
       exit_reason: exitReason,
       timeline: observer.getTimeline(),
+      provider_error: observer.getProviderError() ?? undefined,
       duration_ms: totalDuration,
       steps_used: observer.getStepCount(),
       files_read: observer.getFilesRead(),
@@ -256,19 +277,28 @@ async function callSquidley(
   });
 
   if (!res.ok) {
-    throw new Error(`Squidley returned ${res.status}: ${await res.text().catch(() => "")}`);
+    throw makeHttpProviderError(res, await res.text().catch(() => ""), { provider: provider ?? "squidley-routed", adapter: "squidley" });
   }
 
-  const data = (await res.json()) as {
+  const rawBody = await res.text();
+  let data: {
     text?: string;
     tokensIn?: number;
     tokensOut?: number;
     estimatedCostUsd?: number;
     choices?: Array<{ message?: { content?: string } }>;
   };
+  try {
+    data = JSON.parse(rawBody) as typeof data;
+  } catch {
+    throw makeInvalidResponseError({ provider: provider ?? "squidley-routed", adapter: "squidley" }, `Squidley returned non-JSON body: ${rawBody.slice(0, 400)}`);
+  }
 
   // Squidley may return { text } or OpenAI-shaped { choices }
   const text = data.text ?? data.choices?.[0]?.message?.content ?? "";
+  if (!text.trim()) {
+    throw makeEmptyResponseError({ provider: provider ?? "squidley-routed", adapter: "squidley" }, `Squidley returned empty response for model ${model}`);
+  }
 
   return {
     text,

@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Workspace Manager
+ * Crucible — Workspace Manager
  * Git-based isolation. Clone task repo, reset between runs, snapshot state.
  */
 import { execSync } from "node:child_process";

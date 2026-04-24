@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Circuit Breaker & Rate Limiter
+ * Crucible — Circuit Breaker & Rate Limiter
  * Prevents cascading failures and retry storms against model providers.
  */
 export type CircuitState = "closed" | "open" | "half-open";

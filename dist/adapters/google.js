@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Google AI Direct Adapter
+ * Crucible — Google AI Direct Adapter
  * Direct Gemini API integration via generativelanguage.googleapis.com.
  * Uses Google's native content format (role: "model", parts: [{text}]).
  * API key passed as URL query parameter, not auth header.
@@ -11,6 +11,7 @@ import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { Observer } from "../core/observer.js";
+import { makeEmptyResponseError, makeHttpProviderError, makeInvalidResponseError, makeProviderFailureError, normalizeProviderError, providerErrorSummary, providerErrorDetail } from "../core/provider-errors.js";
 import { log } from "../utils/logger.js";
 const GOOGLE_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const MODEL_TIMEOUT_MS = 300_000;
@@ -28,7 +29,34 @@ export class GoogleAdapter {
         return true;
     }
     supportsChat() {
-        return false;
+        return true;
+    }
+    async chat(messages, options) {
+        if (!this.apiKey)
+            throw new Error("Google AI: GOOGLE_AI_API_KEY not set");
+        const start = Date.now();
+        // Gemini keeps system prompts out of the contents array (similar to Anthropic)
+        // and uses "model" instead of "assistant" for the model's turn.
+        const systemParts = [];
+        const contents = [];
+        for (const m of messages) {
+            if (m.role === "system") {
+                systemParts.push(m.content);
+            }
+            else {
+                contents.push({
+                    role: m.role === "assistant" ? "model" : "user",
+                    parts: [{ text: m.content }],
+                });
+            }
+        }
+        const result = await callGoogle(this.apiKey, this.model, systemParts.join("\n\n"), contents, options);
+        return {
+            text: result.text,
+            tokens_in: result.tokensIn,
+            tokens_out: result.tokensOut,
+            duration_ms: Date.now() - start,
+        };
     }
     async init(config) {
         const c = config;
@@ -37,20 +65,24 @@ export class GoogleAdapter {
         this.apiKey = process.env["GOOGLE_AI_API_KEY"] ?? "";
     }
     async healthCheck() {
-        if (!this.apiKey)
-            return { ok: false, reason: "GOOGLE_AI_API_KEY not set" };
+        if (!this.apiKey) {
+            const providerError = makeProviderFailureError({ kind: "AUTH", origin: "ADAPTER", provider: "google", adapter: this.id, rawMessage: "GOOGLE_AI_API_KEY not set" }).structured;
+            // Detail (not Summary) so operators see WHICH env var to set.
+            return { ok: false, reason: providerErrorDetail(providerError), providerError };
+        }
         try {
             const res = await fetch(`${GOOGLE_BASE}/models?key=${this.apiKey}`, {
                 signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
             });
-            if (res.status === 400 || res.status === 401)
-                return { ok: false, reason: "GOOGLE_AI_API_KEY invalid" };
-            if (!res.ok)
-                return { ok: false, reason: `Google AI returned ${res.status}` };
+            if (!res.ok) {
+                const providerError = makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "google", adapter: this.id }).structured;
+                return { ok: false, reason: providerErrorSummary(providerError), providerError };
+            }
             return { ok: true };
         }
         catch (err) {
-            return { ok: false, reason: `Google AI unreachable: ${String(err).slice(0, 100)}` };
+            const providerError = normalizeProviderError(err, { provider: "google", adapter: this.id });
+            return { ok: false, reason: providerErrorSummary(providerError), providerError };
         }
     }
     async teardown() { }
@@ -89,8 +121,9 @@ export class GoogleAdapter {
                 log("info", "google", `[step ${step + 1}/${maxSteps}] Response (${response.length} chars, ${result.tokensOut} tok)`);
             }
             catch (err) {
-                log("error", "google", `[step ${step + 1}/${maxSteps}] Model call failed: ${String(err).slice(0, 200)}`);
-                observer.recordError(`Model call failed: ${String(err).slice(0, 200)}`);
+                const providerError = normalizeProviderError(err, { provider: "google", adapter: this.id });
+                log("error", "google", `[step ${step + 1}/${maxSteps}] Model call failed: ${providerError.rawMessage.slice(0, 200)}`);
+                observer.recordError(`Model call failed: ${providerError.rawMessage.slice(0, 200)}`, providerError);
                 exitReason = "error";
                 break;
             }
@@ -133,6 +166,7 @@ export class GoogleAdapter {
         return {
             exit_reason: exitReason,
             timeline: observer.getTimeline(),
+            provider_error: observer.getProviderError() ?? undefined,
             duration_ms: Date.now() - startMs,
             steps_used: observer.getStepCount(),
             files_read: observer.getFilesRead(),
@@ -150,30 +184,53 @@ export class GoogleAdapter {
     }
 }
 // ── Google AI API call ─────────────────────────────────────────────────────
-async function callGoogle(apiKey, model, systemInstruction, contents) {
+async function callGoogle(apiKey, model, systemInstruction, contents, options) {
+    const generationConfig = buildGoogleGenerationConfig(options);
     const res = await fetch(`${GOOGLE_BASE}/models/${model}:generateContent?key=${apiKey}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             systemInstruction: { parts: [{ text: systemInstruction }] },
             contents,
-            generationConfig: {
-                maxOutputTokens: 8192,
-                temperature: 0.1,
-            },
+            generationConfig,
         }),
         signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
     });
     if (!res.ok) {
-        throw new Error(`Google AI returned ${res.status}: ${await res.text().catch(() => "")}`);
+        throw makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "google", adapter: "google" });
     }
-    const data = (await res.json());
+    const rawBody = await res.text();
+    let data;
+    try {
+        data = JSON.parse(rawBody);
+    }
+    catch {
+        throw makeInvalidResponseError({ provider: "google", adapter: "google" }, `Google AI returned non-JSON body: ${rawBody.slice(0, 400)}`);
+    }
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    if (!text.trim()) {
+        throw makeEmptyResponseError({ provider: "google", adapter: "google" }, `Google AI returned empty response for model ${model}`);
+    }
     return {
         text,
         tokensIn: data.usageMetadata?.promptTokenCount ?? 0,
         tokensOut: data.usageMetadata?.candidatesTokenCount ?? 0,
     };
+}
+export function buildGoogleGenerationConfig(options) {
+    const generationConfig = {
+        maxOutputTokens: 8192,
+        temperature: 0.1,
+    };
+    const requestedReasoning = options?.reasoningEffort;
+    const suppressVisibleReasoning = options?.suppressVisibleReasoning === true;
+    const wantsReasoningOff = requestedReasoning === "off" || (requestedReasoning == null && suppressVisibleReasoning);
+    if (wantsReasoningOff || requestedReasoning === "minimal") {
+        generationConfig.thinkingConfig = {
+            thinkingBudget: wantsReasoningOff ? 0 : 256,
+        };
+    }
+    return generationConfig;
 }
 // ── Shared agentic loop infrastructure ─────────────────────────────────────
 const RE_ANCHOR_MESSAGE = `You must use one of these exact commands on its own line to interact with the codebase. Do not explain — just issue the command.

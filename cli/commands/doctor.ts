@@ -1,6 +1,6 @@
 /**
- * Crucibulum CLI — doctor command
- * crucibulum doctor
+ * Crucible CLI — doctor command
+ * crucible doctor
  * Reports provider availability, configuration status, and blockers.
  */
 
@@ -9,7 +9,7 @@ import { getProviderCatalog, getNotImplementedProviders } from "../../adapters/r
 export async function doctorCommand(_args: string[]): Promise<void> {
   console.log("");
   console.log("=".repeat(60));
-  console.log("  CRUCIBULUM DOCTOR — Provider Status");
+  console.log("  CRUCIBLE DOCTOR — Provider Status");
   console.log("=".repeat(60));
   console.log("");
 

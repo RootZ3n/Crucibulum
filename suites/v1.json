@@ -1,6 +1,6 @@
 {
   "id": "v1",
-  "label": "Crucibulum v1",
+  "label": "Crucible v1",
   "description": "Default evaluation suite — all task families",
   "scoring": {
     "weights": {

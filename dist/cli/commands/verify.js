@@ -1,5 +1,5 @@
 /**
- * Crucibulum CLI — verify command
+ * Crucible CLI — verify command
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -7,7 +7,7 @@ import { verifyBundle } from "../../core/bundle.js";
 export async function verifyCommand(args) {
     const bundleId = args[0];
     if (!bundleId) {
-        console.error("Usage: crucibulum verify <bundle_id>");
+        console.error("Usage: crucible verify <bundle_id>");
         process.exit(3);
     }
     const runsDir = process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs");

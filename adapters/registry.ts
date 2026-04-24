@@ -1,4 +1,5 @@
 import type { AdapterConfig, CrucibulumAdapter } from "./base.js";
+import { listProviders, getPreset } from "../core/provider-registry.js";
 import { OllamaAdapter } from "./ollama.js";
 import { OpenRouterAdapter } from "./openrouter.js";
 import { OpenClawAdapter } from "./openclaw.js";
@@ -12,6 +13,7 @@ import { MiniMaxAdapter } from "./minimax.js";
 import { ZAIAdapter } from "./zai.js";
 import { GoogleAdapter } from "./google.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "../core/judge.js";
+import { getCircuitState, type CircuitState } from "../core/circuit-breaker.js";
 
 export type AdapterRuntimeKind = "local" | "cloud" | "subprocess";
 
@@ -64,10 +66,13 @@ export interface AdapterCatalogEntry {
   available: boolean;
   reason: string | null;
   supports_tool_calls: boolean;
+  supports_chat: boolean;
   supports_custom_model: boolean;
   provider_options: AdapterProviderOption[];
   models: AdapterModelOption[];
   judge: typeof DETERMINISTIC_JUDGE_METADATA;
+  /** Circuit breaker snapshot — degraded providers surface state:"open" here. */
+  circuit: { state: CircuitState; failures: number; lastFailureAt: number | null };
 }
 
 export interface RegistryDefinition {
@@ -362,11 +367,18 @@ const REGISTRY: RegistryDefinition[] = [
     create: () => new MiniMaxAdapter(),
     provider_options: [{ id: "minimax", name: "MiniMax", kind: "cloud", configurable: false }],
     async listModels() {
+      // The MiniMax international catalog is stable enough to pin here as
+      // a starter list; the older M2.7* placeholder was fictional and
+      // caused every run to fail with the provider's "unknown model" error.
+      // Account-scoped/newer ids still come in through the Providers tab.
       const apiKey = process.env["MINIMAX_API_KEY"] ?? "";
       if (!apiKey) return [];
       return [
-        { id: "MiniMax-M2.7", name: "MiniMax M2.7", provider: "minimax", kind: "cloud" as const, available: true, reason: null },
         { id: "abab6.5s-chat", name: "ABAB 6.5s Chat", provider: "minimax", kind: "cloud" as const, available: true, reason: null },
+        { id: "abab6.5g-chat", name: "ABAB 6.5g Chat", provider: "minimax", kind: "cloud" as const, available: true, reason: null },
+        { id: "abab6.5-chat", name: "ABAB 6.5 Chat", provider: "minimax", kind: "cloud" as const, available: true, reason: null },
+        { id: "abab5.5-chat", name: "ABAB 5.5 Chat", provider: "minimax", kind: "cloud" as const, available: true, reason: null },
+        { id: "MiniMax-Text-01", name: "MiniMax Text 01", provider: "minimax", kind: "cloud" as const, available: true, reason: null },
       ];
     },
     makeConfig(input) { return { model: input.model } as AdapterConfig; },
@@ -454,10 +466,12 @@ export async function getAdapterCatalog(): Promise<AdapterCatalogEntry[]> {
         available: health.ok,
         reason: health.reason ?? null,
         supports_tool_calls: adapter.supportsToolCalls(),
+        supports_chat: typeof adapter.chat === "function" && adapter.supportsChat(),
         supports_custom_model: entry.supports_custom_model,
         provider_options: entry.provider_options,
         models,
         judge: DETERMINISTIC_JUDGE_METADATA,
+        circuit: getCircuitState(entry.id),
       });
       try { await adapter.teardown(); } catch { /* best effort */ }
     } catch (err) {
@@ -471,22 +485,25 @@ export async function getAdapterCatalog(): Promise<AdapterCatalogEntry[]> {
         available: false,
         reason: `init error: ${String(err)}`,
         supports_tool_calls: false,
+        supports_chat: false,
         supports_custom_model: entry.supports_custom_model,
         provider_options: entry.provider_options,
         models: [],
         judge: DETERMINISTIC_JUDGE_METADATA,
+        circuit: getCircuitState(entry.id),
       });
     }
   }
   return entries;
 }
 
-export async function listFlattenedModels(): Promise<Array<AdapterModelOption & { adapter: string; adapter_name: string }>> {
+export async function listFlattenedModels(): Promise<Array<AdapterModelOption & { adapter: string; adapter_name: string; supports_chat: boolean }>> {
   const catalog = await getAdapterCatalog();
   return catalog.flatMap((entry) => entry.models.map((model) => ({
     ...model,
     adapter: entry.id,
     adapter_name: entry.name,
+    supports_chat: entry.supports_chat,
   })));
 }
 
@@ -496,6 +513,7 @@ export async function instantiateAdapterForRun(input: {
   provider?: string | null;
 }): Promise<{ adapter: CrucibulumAdapter; config: AdapterConfig; registry: RegistryDefinition }> {
   const registry = resolveAdapter(input.adapter);
+  hydrateEnvFromRegistry(registry.id);
   const adapter = registry.create();
   const config = registry.makeConfig({
     model: input.model,
@@ -503,6 +521,41 @@ export async function instantiateAdapterForRun(input: {
   });
   await adapter.init(config);
   return { adapter, config, registry };
+}
+
+// Bridge inline API keys and baseUrl overrides from the Providers tab
+// (registry) into process.env so adapters that read `process.env[…]` at init
+// time pick them up. Without this, a user who configured credentials through
+// the UI but never exported env vars gets an instant "API_KEY not set"
+// failure on every run, even though the Test button in the Providers tab
+// worked (that path reads inline values directly). Only fills env slots that
+// are currently unset — a real exported env var still wins.
+const ADAPTER_BASE_URL_ENV: Record<string, string> = {
+  minimax: "MINIMAX_BASE_URL",
+  zai: "ZAI_BASE_URL",
+  openrouter: "OPENROUTER_BASE_URL",
+  openai: "OPENAI_BASE_URL",
+  anthropic: "ANTHROPIC_BASE_URL",
+  squidley: "SQUIDLEY_URL",
+  google: "GOOGLE_AI_BASE_URL",
+};
+function hydrateEnvFromRegistry(adapterId: string): void {
+  let providers;
+  try { providers = listProviders(); } catch { return; }
+  for (const provider of providers) {
+    if (!provider.enabled) continue;
+    const preset = getPreset(provider.presetId);
+    if (!preset || preset.adapter !== adapterId) continue;
+    if (preset.envKey) {
+      const inlineKey = provider.apiKey;
+      if (inlineKey && !process.env[preset.envKey]) process.env[preset.envKey] = inlineKey;
+    }
+    const baseEnv = ADAPTER_BASE_URL_ENV[adapterId];
+    if (baseEnv) {
+      const url = provider.baseUrl || preset.defaultBaseUrl;
+      if (url && !process.env[baseEnv]) process.env[baseEnv] = url;
+    }
+  }
 }
 
 // ── Provider Catalog ──────────────────────────────────────────────────────

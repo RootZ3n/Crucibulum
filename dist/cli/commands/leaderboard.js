@@ -1,7 +1,7 @@
 /**
- * Crucibulum CLI — leaderboard command
- * crucibulum leaderboard show
- * crucibulum leaderboard submit [bundle_id]
+ * Crucible CLI — leaderboard command
+ * crucible leaderboard show
+ * crucible leaderboard submit [bundle_id]
  */
 import { loadBundles, aggregateByModel, buildLeaderboardEntry, saveSubmission, loadSubmissions } from "../../leaderboard/aggregator.js";
 export async function leaderboardCommand(args) {
@@ -43,12 +43,12 @@ export async function leaderboardCommand(args) {
         printLeaderboard(submissions);
         return;
     }
-    console.log("Usage: crucibulum leaderboard show | crucibulum leaderboard submit");
+    console.log("Usage: crucible leaderboard show | crucible leaderboard submit");
 }
 function printLeaderboard(entries) {
     const sorted = [...entries].sort((a, b) => b.scores.total - a.scores.total);
     console.log("\n" + "═".repeat(80));
-    console.log("  CRUCIBULUM LEADERBOARD");
+    console.log("  CRUCIBLE LEADERBOARD");
     console.log("═".repeat(80));
     console.log("");
     console.log("  Rank  Model".padEnd(40) + "Score".padEnd(10) + "Pass".padEnd(10) + "Time".padEnd(10) + "Cost");

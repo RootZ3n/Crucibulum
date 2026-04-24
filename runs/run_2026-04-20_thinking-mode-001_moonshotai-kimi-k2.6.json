@@ -1,0 +1,177 @@
+{
+  "bundle_id": "run_2026-04-20_thinking-mode-001_moonshotai-kimi-k2.6",
+  "bundle_hash": "sha256:0980bd90d8bbfbddec95f988ef8741f257e35e9fde65a740b96f08ede41f3c26",
+  "bundle_version": "2.0.0",
+  "task": {
+    "id": "thinking-mode-001",
+    "manifest_hash": "sha256:30fda612bf9061ad49c828cfd52b99b3813663d1077f54b3ea7698cdf4a6faa0",
+    "family": "cost_efficiency",
+    "difficulty": "medium"
+  },
+  "agent": {
+    "adapter": "openrouter",
+    "adapter_version": "1.0.0",
+    "system": "OpenRouter",
+    "system_version": "unknown",
+    "model": "moonshotai/kimi-k2.6",
+    "model_version": "latest",
+    "provider": "openrouter"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "none",
+    "crucibulum_version": "2.0.0",
+    "timestamp_start": "2026-04-20T20:41:55.408Z",
+    "timestamp_end": "2026-04-20T20:42:16.141Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "conversational: 5 questions"
+    },
+    {
+      "t": 2,
+      "type": "task_complete",
+      "detail": "TM1-Q1: PASS"
+    },
+    {
+      "t": 5,
+      "type": "task_complete",
+      "detail": "TM1-Q2: PASS"
+    },
+    {
+      "t": 8,
+      "type": "task_complete",
+      "detail": "TM1-Q3: PASS"
+    },
+    {
+      "t": 13,
+      "type": "task_complete",
+      "detail": "TM1-Q4: PASS"
+    },
+    {
+      "t": 21,
+      "type": "task_complete",
+      "detail": "TM1-Q5: PASS"
+    }
+  ],
+  "diff": {
+    "files_changed": [],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 1,
+      "details": {
+        "TM1-Q1": "pass",
+        "TM1-Q2": "pass",
+        "TM1-Q3": "pass",
+        "TM1-Q4": "pass",
+        "TM1-Q5": "pass"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {}
+    },
+    "integrity": {
+      "score": 1,
+      "details": {},
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 20.73,
+      "time_limit_sec": 90,
+      "steps_used": 5,
+      "steps_limit": 5,
+      "score": 0.73
+    }
+  },
+  "score": {
+    "scale": "fraction_0_1",
+    "total": 0.96,
+    "total_percent": 96,
+    "breakdown": {
+      "correctness": 1,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 0.73
+    },
+    "breakdown_percent": {
+      "correctness": 100,
+      "regression": 100,
+      "integrity": 100,
+      "efficiency": 73
+    },
+    "pass": true,
+    "pass_threshold": 0.7,
+    "pass_threshold_percent": 70,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 612,
+    "tokens_out": 895,
+    "estimated_cost_usd": 0.004161,
+    "provider_cost_note": "openrouter:moonshotai/kimi-k2.6 (provider-reported)"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "conversational-judge"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": false,
+    "narration_ignored": false,
+    "state_based_scoring": true,
+    "bundle_verified": false,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": true,
+    "first_fix_correct": true,
+    "self_verified": false,
+    "failure_mode": null
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "2.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "cost_efficiency",
+        "difficulty": "medium",
+        "provider": "openrouter",
+        "adapter": "openrouter",
+        "score": 0.96,
+        "pass": true,
+        "failure_mode": null
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": 0.96,
+      "benchmark_label": "cost_efficiency:96%",
+      "execution_score": 0.96,
+      "divergence_note": null
+    }
+  }
+}

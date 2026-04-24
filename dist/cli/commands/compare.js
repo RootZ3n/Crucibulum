@@ -1,5 +1,5 @@
 /**
- * Crucibulum CLI — compare command
+ * Crucible CLI — compare command
  * Run the same task(s) against multiple models and compare results.
  * Supports pass@k scoring across repeated runs.
  */
@@ -68,7 +68,7 @@ function resolveAdapter(modelSpec) {
 }
 export async function compareCommand(args) {
     const opts = parseArgs(args);
-    console.log(`\nCrucibulum Compare: ${opts.task}`);
+    console.log(`\nCrucible Compare: ${opts.task}`);
     console.log(`Models: ${opts.models.join(" vs ")}`);
     console.log(`Runs per model: ${opts.runs}\n`);
     const results = [];

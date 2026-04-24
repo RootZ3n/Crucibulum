@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Suite Loader
+ * Crucible — Suite Loader
  * Loads suite manifests with scoring weight defaults.
  */
 

@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Leaderboard Aggregator Tests
+ * Crucible — Leaderboard Aggregator Tests
  * Covers: aggregateByModel, buildLeaderboardEntry, pass@k correctness.
  */
 import { describe, it } from "node:test";
@@ -143,8 +143,7 @@ describe("buildLeaderboardEntry", () => {
             makeMockBundle({ pass: false, total: 0.3, failureMode: "localization_failure" }),
         ];
         const entry = buildLeaderboardEntry("mock:local:mock-model", bundles);
-        assert.equal(entry.failure_taxonomy["wrong_fix"], 2);
-        assert.equal(entry.failure_taxonomy["localization_failure"], 1);
+        assert.equal(entry.failure_taxonomy["FAIL:MODEL:low_score"], 3);
     });
 });
 // ── pass@k correctness ──────────────────────────────────────────────────────
@@ -222,6 +221,8 @@ describe("pass@k", () => {
         assert.equal(entry.pass_at["task-pk5_pass@5"], true);
         assert.equal(entry.review_signals.qc_disagreement_rate, 0.2);
         assert.equal(entry.review_signals.review_blocked_rate, 0.2);
+        assert.equal(entry.verdict_metrics?.model_failures, 4);
+        assert.equal(entry.verdict_metrics?.not_complete, 0);
     });
 });
 //# sourceMappingURL=leaderboard.test.js.map

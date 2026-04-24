@@ -1,10 +1,21 @@
 /**
- * Crucibulum — Flake Detection / Retry Support
+ * Crucible — Flake Detection / Retry Support
  * Wraps runTask with configurable retry logic for benchmark reliability.
  */
 
-import { runTask, type RunOptions, type RunResult } from "./runner.js";
+import { runTask as defaultRunTask, type RunOptions, type RunResult } from "./runner.js";
 import { log } from "../utils/logger.js";
+
+/**
+ * Test-only injection point for `runTask`. Production callers never set
+ * this — they go through the imported `runTask` directly, so behaviour is
+ * unchanged. The unit tests for flake-detection use this to feed canned
+ * RunResult fixtures without booting a real adapter / workspace.
+ *
+ * Kept as a function-level parameter rather than a module-level mutable
+ * binding so concurrent tests can't race each other's mocks.
+ */
+type RunTaskFn = (options: RunOptions) => Promise<RunResult>;
 
 export interface FlakeAttempt {
   run_number: number;
@@ -55,6 +66,12 @@ export interface FlakeResult {
 export interface FlakeRunOptions extends RunOptions {
   /** Number of attempts for flake detection. Default: 1 (no retry). Set to 3 for flake detection. */
   retry_count?: number | undefined;
+  /**
+   * Internal: override the runTask implementation used per attempt. Tests use
+   * this; production callers should leave it undefined and the real runTask
+   * is used.
+   */
+  _runTask?: RunTaskFn | undefined;
 }
 
 /**
@@ -63,6 +80,7 @@ export interface FlakeRunOptions extends RunOptions {
  */
 export async function runTaskWithRetries(options: FlakeRunOptions): Promise<{ result: RunResult; flake: FlakeResult }> {
   const maxAttempts = Math.max(1, options.retry_count ?? 1);
+  const runTask: RunTaskFn = options._runTask ?? defaultRunTask;
   const attempts: FlakeAttempt[] = [];
   let firstResult: RunResult | null = null;
 

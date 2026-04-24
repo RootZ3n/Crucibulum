@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Claude Code Adapter
+ * Crucible — Claude Code Adapter
  * Invokes the Claude Code CLI binary to solve tasks.
  * Uses --print mode for non-interactive execution.
  */
@@ -8,8 +8,9 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import type { CrucibulumAdapter, AdapterConfig, ExecutionInput, ExecutionResult } from "./base.js";
+import type { CrucibulumAdapter, AdapterConfig, HealthCheckResult, ExecutionInput, ExecutionResult } from "./base.js";
 import { Observer } from "../core/observer.js";
+import { makeProcessProviderError, makeProviderFailureError, providerErrorSummary } from "../core/provider-errors.js";
 import { log } from "../utils/logger.js";
 
 interface ClaudeCodeConfig extends AdapterConfig {
@@ -47,8 +48,8 @@ export class ClaudeCodeAdapter implements CrucibulumAdapter {
     } catch { /* best effort */ }
   }
 
-  async healthCheck(): Promise<{ ok: boolean; reason?: string | undefined }> {
-    return new Promise((resolve) => {
+  async healthCheck(): Promise<HealthCheckResult> {
+    return new Promise<HealthCheckResult>((resolve) => {
       try {
         const proc = spawn(this.binaryPath, ["--version"], { timeout: 15000, stdio: ["pipe", "pipe", "pipe"] });
         let output = "";
@@ -56,13 +57,18 @@ export class ClaudeCodeAdapter implements CrucibulumAdapter {
         proc.stderr.on("data", (d: Buffer) => { output += d.toString(); });
         proc.on("close", (code) => {
           if (code === 0) resolve({ ok: true });
-          else resolve({ ok: false, reason: `claude --version exited ${code}: ${output.slice(0, 100)}` });
+          else {
+            const providerError = makeProcessProviderError({ provider: "claudecode", adapter: this.id }, `claude --version exited ${code}: ${output.slice(0, 100)}`).structured;
+            resolve({ ok: false, reason: providerErrorSummary(providerError), providerError });
+          }
         });
         proc.on("error", (err) => {
-          resolve({ ok: false, reason: `Cannot spawn claude: ${err.message}` });
+          const providerError = makeProcessProviderError({ provider: "claudecode", adapter: this.id }, `Cannot spawn claude: ${err.message}`, (err as NodeJS.ErrnoException).code ?? null).structured;
+          resolve({ ok: false, reason: providerErrorSummary(providerError), providerError });
         });
       } catch (err) {
-        resolve({ ok: false, reason: `Claude Code check failed: ${String(err).slice(0, 100)}` });
+        const providerError = makeProviderFailureError({ kind: "PROCESS_ERROR", origin: "LOCAL_RUNTIME", provider: "claudecode", adapter: this.id, rawMessage: `Claude Code check failed: ${String(err).slice(0, 100)}` }).structured;
+        resolve({ ok: false, reason: providerErrorSummary(providerError), providerError });
       }
     });
   }
@@ -132,10 +138,20 @@ export class ClaudeCodeAdapter implements CrucibulumAdapter {
     if (result.exitCode !== 0) {
       if (Date.now() - startMs > input.budget.time_limit_sec * 1000) {
         exitReason = "timeout";
-        observer.recordError("Claude Code timed out");
+        observer.recordError("Claude Code timed out", makeProviderFailureError({
+          kind: "TIMEOUT",
+          origin: "LOCAL_RUNTIME",
+          provider: "claudecode",
+          adapter: this.id,
+          rawMessage: "Claude Code timed out",
+          retryable: true,
+        }).structured);
       } else {
         exitReason = "error";
-        observer.recordError(`Claude Code exited with code ${result.exitCode}`);
+        observer.recordError(`Claude Code exited with code ${result.exitCode}`, makeProcessProviderError({
+          provider: "claudecode",
+          adapter: this.id,
+        }, `Claude Code exited with code ${result.exitCode}${result.stderr ? `: ${result.stderr.slice(0, 200)}` : ""}`).structured);
       }
     }
 
@@ -157,6 +173,7 @@ export class ClaudeCodeAdapter implements CrucibulumAdapter {
     return {
       exit_reason: exitReason,
       timeline: observer.getTimeline(),
+      provider_error: observer.getProviderError() ?? undefined,
       duration_ms: Date.now() - startMs,
       steps_used: observer.getStepCount(),
       files_read: observer.getFilesRead(),

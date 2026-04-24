@@ -1,5 +1,6 @@
 import { verifyBundle } from "../core/bundle.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "../core/judge.js";
+import { normalizeBundleVerdict } from "../core/verdict.js";
 import { canonicalPercent } from "../types/scores.js";
 function round4(value) {
     return Math.round(value * 10000) / 10000;
@@ -15,8 +16,10 @@ export function getRelatedBundles(bundles, bundle) {
 export function summarizeRunSet(bundles) {
     const sorted = [...bundles].sort((a, b) => new Date(a.environment.timestamp_start).getTime() - new Date(b.environment.timestamp_start).getTime());
     const runCount = sorted.length;
-    const passes = sorted.filter((bundle) => bundle.score.pass).length;
-    const failures = runCount - passes;
+    const verdicts = sorted.map((bundle) => normalizeBundleVerdict(bundle));
+    const passes = verdicts.filter((verdict) => verdict.completionState === "PASS").length;
+    const failures = verdicts.filter((verdict) => verdict.completionState === "FAIL" && verdict.failureOrigin === "MODEL").length;
+    const notComplete = verdicts.filter((verdict) => verdict.completionState === "NC").length;
     const passRate = runCount > 0 ? round4((passes / runCount) * 100) : 0;
     const passAt = {
         pass_at_1: sorted[0]?.score.pass ?? false,
@@ -58,7 +61,11 @@ export function summarizeRunSet(bundles) {
         run_count: runCount,
         passes,
         failures,
+        not_complete: notComplete,
         pass_rate: passRate,
+        completion_rate: runCount > 0 ? round4(((runCount - notComplete) / runCount) * 100) : 0,
+        model_failure_rate: runCount > 0 ? round4((failures / runCount) * 100) : 0,
+        nc_rate: runCount > 0 ? round4((notComplete / runCount) * 100) : 0,
         pass_at: passAt,
         avg_score: avgScore,
         total_tokens: totalTokens,
@@ -84,6 +91,7 @@ export function summarizeRunSet(bundles) {
 }
 export function summarizeBundle(bundle, repeatRunCount = 1, crucible, relatedBundles) {
     const validity = verifyBundle(bundle);
+    const verdict = normalizeBundleVerdict(bundle);
     const durationSec = Math.round((new Date(bundle.environment.timestamp_end).getTime() - new Date(bundle.environment.timestamp_start).getTime()) / 1000);
     const executionScore = Math.round(canonicalPercent(bundle.score.total));
     const benchmarkScore = crucible?.benchmark_score ?? null;
@@ -151,6 +159,7 @@ export function summarizeBundle(bundle, repeatRunCount = 1, crucible, relatedBun
         },
         outcome: {
             pass: bundle.score.pass,
+            verdict,
             score: canonicalPercent(bundle.score.total),
             score_breakdown: {
                 correctness: canonicalPercent(bundle.score.breakdown.correctness),
@@ -161,7 +170,7 @@ export function summarizeBundle(bundle, repeatRunCount = 1, crucible, relatedBun
             pass_threshold: canonicalPercent(bundle.score.pass_threshold),
             integrity_violations: bundle.score.integrity_violations,
             failure_taxonomy: {
-                failure_mode: bundle.diagnosis.failure_mode,
+                failure_mode: verdict.failureReasonCode === "pass" ? null : `${verdict.completionState}:${verdict.failureOrigin ?? "NONE"}:${verdict.failureReasonCode}`,
                 integrity_violations: bundle.verification_results.integrity.violations,
             },
         },
@@ -186,6 +195,19 @@ export function summarizeBundle(bundle, repeatRunCount = 1, crucible, relatedBun
             tokens_out: bundle.usage.tokens_out,
             estimated_cost_usd: bundle.usage.estimated_cost_usd,
             provider_cost_note: bundle.usage.provider_cost_note,
+        },
+        judge_usage: bundle.judge_usage ?? {
+            provider: "",
+            model: "",
+            tokens_in: 0,
+            tokens_out: 0,
+            estimated_cost_usd: 0,
+            kind: "deterministic",
+            note: "deterministic judge — no model cost",
+        },
+        total: {
+            tokens: bundle.usage.tokens_in + bundle.usage.tokens_out + (bundle.judge_usage?.tokens_in ?? 0) + (bundle.judge_usage?.tokens_out ?? 0),
+            cost_usd: bundle.usage.estimated_cost_usd + (bundle.judge_usage?.estimated_cost_usd ?? 0),
         },
         timing: {
             started_at: bundle.environment.timestamp_start,

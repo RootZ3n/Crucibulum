@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Core Security Enforcer
+ * Crucible — Core Security Enforcer
  * Coordinates all security checks.
  */
 import { type ScanResult } from "../security/velum.js";

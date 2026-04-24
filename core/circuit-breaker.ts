@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Circuit Breaker & Rate Limiter
+ * Crucible — Circuit Breaker & Rate Limiter
  * Prevents cascading failures and retry storms against model providers.
  */
 
@@ -115,8 +115,13 @@ export interface RateLimiterConfig {
   windowMs: number;
 }
 
+// Ceiling meant to catch runaway loops, not throttle legitimate benchmarking.
+// A single conversational run can issue 10-30 chat calls (one per step), and a
+// user commonly fires a batch of 5-20 tasks back-to-back. The prior 30/60s
+// cap pegged after the first batch. Paid APIs enforce their own per-key
+// quotas upstream, so this local guard can sit much higher.
 const DEFAULT_RATE_CONFIG: RateLimiterConfig = {
-  maxRequests: 30,
+  maxRequests: 600,
   windowMs: 60_000,
 };
 

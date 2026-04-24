@@ -1,10 +1,12 @@
 /**
- * Crucibulum — Unified Score Schema
- * Shared between Crucible (Squidley) and Crucibulum (standalone).
+ * Crucible — Unified Score Schema
+ * Shared between the Squidley Crucible module and the standalone Crucible product.
  *
  * Public score APIs use 0-100 percentages.
  * Internal run bundles still use 0-1 fractions until the bundle schema is migrated.
  */
+
+import type { CompletionState, FailureOrigin, FailureReasonCode } from "./verdict.js";
 
 export type ScoreFamily = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I";
 export type ScoreSource = "crucible" | "crucibulum" | "veritor" | "verum";
@@ -69,6 +71,12 @@ export interface ModelScore {
   anomalyFlags?: string[] | undefined;
   timestamp: string;
   metadata?: Record<string, unknown> | undefined;
+  completionState?: CompletionState | undefined;
+  failureOrigin?: FailureOrigin | null | undefined;
+  failureReasonCode?: FailureReasonCode | undefined;
+  failureReasonSummary?: string | undefined;
+  countsTowardModelScore?: boolean | undefined;
+  countsTowardFailureRate?: boolean | undefined;
 }
 
 export interface ScoreSyncRequest {
@@ -118,10 +126,15 @@ export interface LeaderboardEntry {
   composite: number;
   families: Record<ScoreFamily, number | null>;
   totalRuns: number;
+  completedRuns?: number | undefined;
+  notCompleteRuns?: number | undefined;
   lastRun: string;
   source: ScoreSource;
   // Flake-aware fields
   average_pass_rate?: number | undefined;
+  model_failure_rate?: number | undefined;
+  completion_rate?: number | undefined;
+  nc_rate?: number | undefined;
   stability_score?: number | undefined;
   reliability_score?: number | undefined;
   total_flaky?: number | undefined;

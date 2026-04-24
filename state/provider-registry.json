@@ -1,0 +1,139 @@
+{
+  "version": 1,
+  "providers": [
+    {
+      "id": "openrouter-seed-1776223301866",
+      "presetId": "openrouter",
+      "label": "OpenRouter",
+      "baseUrl": null,
+      "apiKeyEnv": "OPENROUTER_API_KEY",
+      "apiKey": null,
+      "enabled": true,
+      "lastTestedAt": 1776247161248,
+      "lastTestedOk": true,
+      "lastTestedReason": "HTTP 200",
+      "createdAt": 1776223301866
+    },
+    {
+      "id": "openai-seed-1776223301866",
+      "presetId": "openai",
+      "label": "OpenAI",
+      "baseUrl": null,
+      "apiKeyEnv": "OPENAI_API_KEY",
+      "apiKey": null,
+      "enabled": true,
+      "lastTestedAt": null,
+      "lastTestedOk": null,
+      "lastTestedReason": null,
+      "createdAt": 1776223301866
+    },
+    {
+      "id": "anthropic-seed-1776223301866",
+      "presetId": "anthropic",
+      "label": "Anthropic",
+      "baseUrl": null,
+      "apiKeyEnv": "ANTHROPIC_API_KEY",
+      "apiKey": null,
+      "enabled": true,
+      "lastTestedAt": null,
+      "lastTestedOk": null,
+      "lastTestedReason": null,
+      "createdAt": 1776223301866
+    },
+    {
+      "id": "ollama-seed-1776223301866",
+      "presetId": "ollama",
+      "label": "Ollama (local)",
+      "baseUrl": "http://localhost:11434",
+      "apiKeyEnv": null,
+      "apiKey": null,
+      "enabled": true,
+      "lastTestedAt": null,
+      "lastTestedOk": null,
+      "lastTestedReason": null,
+      "createdAt": 1776223301866
+    },
+    {
+      "id": "prov-mo7r6xsn-z857uc",
+      "presetId": "minimax",
+      "label": "MiniMax Direct",
+      "baseUrl": null,
+      "apiKeyEnv": "MINIMAX_API_KEY",
+      "apiKey": null,
+      "enabled": true,
+      "lastTestedAt": 1776723370134,
+      "lastTestedOk": true,
+      "lastTestedReason": "HTTP 200",
+      "createdAt": 1776723322775
+    },
+    {
+      "id": "prov-mo8hxuz3-if9nol",
+      "presetId": "minimax",
+      "label": "MiniMax Direct (International)",
+      "baseUrl": null,
+      "apiKeyEnv": "MINIMAX_API_KEY",
+      "apiKey": null,
+      "enabled": true,
+      "lastTestedAt": 1776768281940,
+      "lastTestedOk": false,
+      "lastTestedReason": "Provider HTTP 404",
+      "lastTestedError": {
+        "kind": "HTTP_4XX",
+        "origin": "PROVIDER",
+        "provider": "minimax",
+        "adapter": "minimax",
+        "statusCode": 404,
+        "retryable": false,
+        "rawMessage": "minimax returned HTTP 404: 404 page not found",
+        "rawCode": null,
+        "cause": null,
+        "attempt": null,
+        "durationMs": null,
+        "requestId": null
+      },
+      "createdAt": 1776768248847
+    }
+  ],
+  "models": [
+    {
+      "id": "mdl-mnzvoy67-mys5pb",
+      "providerConfigId": "openrouter-seed-1776223301866",
+      "modelId": "qwen/qwen3.6-plus",
+      "displayName": "qwen/qwen3.6-plus",
+      "enabled": true,
+      "tags": [],
+      "notes": null,
+      "createdAt": 1776247152127
+    },
+    {
+      "id": "mdl-mo7ilrvr-3guqe5",
+      "providerConfigId": "openrouter-seed-1776223301866",
+      "modelId": "moonshotai/kimi-k2.6",
+      "displayName": "moonshotai/kimi-k2.6",
+      "enabled": true,
+      "tags": [],
+      "notes": null,
+      "createdAt": 1776708898407
+    },
+    {
+      "id": "mdl-mo7r7t6m-fcjl8l",
+      "providerConfigId": "prov-mo7r6xsn-z857uc",
+      "modelId": "MiniMax-M2.7",
+      "displayName": "MiniMax-M2.7",
+      "enabled": true,
+      "tags": [],
+      "notes": null,
+      "createdAt": 1776723363454
+    },
+    {
+      "id": "mdl-mo8hyi06-qx4iy2",
+      "providerConfigId": "prov-mo8hxuz3-if9nol",
+      "modelId": "abab6.5s-chat",
+      "displayName": "abab6.5s-chat",
+      "enabled": true,
+      "tags": [],
+      "notes": null,
+      "createdAt": 1776768278694
+    }
+  ]
+}

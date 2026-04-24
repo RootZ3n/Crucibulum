@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Score Store
+ * Crucible — Score Store
  * SQLite-backed score storage with query and leaderboard support.
  */
 import { type ModelScore, type ScoreSource, type ScoreFamily, type LeaderboardEntry } from "../types/scores.js";

@@ -1,0 +1,271 @@
+{
+  "bundle_id": "run_2026-04-21_coord-004_gemma4-e4b",
+  "bundle_hash": "sha256:dc10384ca6fbd3fadb5648088c7dafcea059916b7eba1a04f65f167e71c7cce9",
+  "bundle_version": "1.0.0",
+  "task": {
+    "id": "coord-004",
+    "manifest_hash": "sha256:bfa412f5396ae83b4926ea44d2289258804a1e126376de51f1118bc4e15c69fe",
+    "family": "orchestration",
+    "difficulty": "medium"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "0.21.0",
+    "system_version": "0.21.0",
+    "model": "gemma4:e4b",
+    "model_version": "latest",
+    "provider": "ollama"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "8f1b7ac652103574709265113c99bbe2508c75b7",
+    "crucibulum_version": "1.0.0",
+    "timestamp_start": "2026-04-21T02:01:17.503Z",
+    "timestamp_end": "2026-04-21T02:02:55.853Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "workspace initialized"
+    },
+    {
+      "t": 34,
+      "type": "file_read",
+      "path": "src/search/engine.js"
+    },
+    {
+      "t": 34,
+      "type": "file_read",
+      "path": "tests/search.test.js"
+    },
+    {
+      "t": 68,
+      "type": "file_write",
+      "path": "src/search/engine.js"
+    },
+    {
+      "t": 68,
+      "type": "shell",
+      "command": "node tests/search.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 98,
+      "type": "task_complete",
+      "detail": "agent signaled completion"
+    }
+  ],
+  "diff": {
+    "files_changed": [
+      {
+        "path": "src/search/engine.js",
+        "lines_added": 10,
+        "lines_removed": 5,
+        "patch": "diff --git a/src/search/engine.js b/src/search/engine.js\nindex 463f139..07c8637 100644\n--- a/src/search/engine.js\n+++ b/src/search/engine.js\n@@ -15,12 +15,17 @@ function search(query, documents) {\n     let score = 0;\n     const content = doc.content || '';\n \n+    // Optimization: Process document content once to count word frequencies\n+    const words = content.toLowerCase().split(/\\s+/).filter(Boolean);\n+    const wordCounts = {};\n+    for (const word of words) {\n+        wordCounts[word] = (wordCounts[word] || 0) + 1;\n+    }\n+\n+    // Calculate score by summing the frequency of each search term\n     for (const term of terms) {\n-      // BUG: re-splitting the document content for EVERY term creates O(terms * words) work\n-      // per document, making the total complexity O(docs * terms * words)\n-      const words = content.toLowerCase().split(/\\s+/);\n-      for (const word of words) {\n-        if (word === term) score++;\n+      if (wordCounts[term]) {\n+        score += wordCounts[term];\n       }\n     }"
+      }
+    ],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 1,
+      "details": {
+        "hidden-test-suite": "pass"
+      },
+      "command_results": [
+        {
+          "id": "hidden-test-suite",
+          "scope": "correctness",
+          "command": "node tests/oracle.test.js",
+          "status": "pass",
+          "summary": "Command completed successfully",
+          "exitCode": 0,
+          "stdout": "Oracle Tests (Search Performance):\n  ✓ Large search must complete in <400ms (took 201ms)\n  ✓ Should find results in large dataset\n  ✓ Results must be sorted by score (pos 0 >= pos 1)\n  ✓ Results must be sorted by score (pos 1 >= pos 2)\n  ✓ Results must be sorted by score (pos 2 >= pos 3)\n  ✓ Results must be sorted by score (pos 3 >= pos 4)\n  ✓ Results must be sorted by score (pos 4 >= pos 5)\n  ✓ Results must be sorted by score (pos 5 >= pos 6)\n  ✓ Results must be sorted by score (pos 6 >= pos 7)\n  ✓ Results must be sorted by score (pos 7 >= pos 8)\n  ✓ Results must be sorted by score (pos 8 >= pos 9)\n  ✓ Results must be sorted by score (pos 9 >= pos 10)\n  ✓ Results must be sorted by score (pos 10 >= pos 11)\n  ✓ Results must be sorted by score (pos 11 >= pos 12)\n  ✓ Results must be sorted by score (pos 12 >= pos 13)\n  ✓ Results must be sorted by score (pos 13 >= pos 14)\n  ✓ Results must be sorted by score (pos 14 >= pos 15)\n  ✓ Results must be sorted by score (pos 15 >= pos 16)\n  ✓ Results must be sorted by score (pos 16 >= pos 17)\n  ✓ Results must be sorted by score (pos 17 >= pos 18)\n  ✓ Results must be sorted by score (pos 18 >= pos 19)\n  ✓ Second large search must complete in <400ms (took 136ms)\n  ✓ Should find 3 matching docs\n  ✓ Doc \"a\" should rank first (hello x2 + world x1 = 3)\n  ✓ Doc \"a\" should have score 3\n  ✓ Single-term large search must complete in <300ms (took 138ms)\n\n26 passed, 0 failed\n"
+        }
+      ]
+    },
+    "regression": {
+      "score": 1,
+      "details": {
+        "public-tests": "pass"
+      },
+      "command_results": [
+        {
+          "id": "public-tests",
+          "scope": "regression",
+          "command": "node tests/search.test.js",
+          "status": "pass",
+          "summary": "Command completed successfully",
+          "exitCode": 0,
+          "stdout": "Search Tests:\n  ✓ Should find 2 docs containing \"quick\"\n  ✓ Should match doc 1 or 3\n  ✓ Multi-term search should find matching docs\n  ✓ Doc 1 should rank highest for \"the lazy\"\n  ✓ Should return empty for no matches\n  ✓ Empty query should return empty\n  ✓ searchWithLimit should respect limit\n  ✓ Result 0 score >= result 1 score\n\n8 passed, 0 failed\n"
+        }
+      ]
+    },
+    "integrity": {
+      "score": 1,
+      "details": {
+        "forbidden_paths": "pass",
+        "no-test-modification": "pass",
+        "no-test-deletion": "pass",
+        "minimal-edit": "pass"
+      },
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 98,
+      "time_limit_sec": 900,
+      "steps_used": 6,
+      "steps_limit": 40,
+      "score": 0.87
+    }
+  },
+  "score": {
+    "scale": "fraction_0_1",
+    "total": 0.99,
+    "total_percent": 98.7,
+    "breakdown": {
+      "correctness": 1,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 0.87
+    },
+    "breakdown_percent": {
+      "correctness": 100,
+      "regression": 100,
+      "integrity": 100,
+      "efficiency": 87
+    },
+    "pass": true,
+    "pass_threshold": 0.7,
+    "pass_threshold_percent": 70,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 3836,
+    "tokens_out": 1513,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "via ollama"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "oracle",
+      "hidden tests",
+      "public tests",
+      "diff rules",
+      "integrity checks"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": true,
+    "narration_ignored": true,
+    "state_based_scoring": true,
+    "bundle_verified": true,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": true,
+    "first_fix_correct": false,
+    "self_verified": true,
+    "failure_mode": "wrong_fix"
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "1.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "orchestration",
+        "difficulty": "medium",
+        "provider": "ollama",
+        "adapter": "ollama",
+        "score": 0.99,
+        "pass": true,
+        "failure_mode": "wrong_fix"
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": null,
+      "benchmark_label": null,
+      "execution_score": 99,
+      "divergence_note": null
+    }
+  },
+  "verdict": {
+    "completionState": "PASS",
+    "failureOrigin": null,
+    "failureReasonCode": "pass",
+    "failureReasonSummary": "Run completed and passed evaluation",
+    "countsTowardModelScore": true,
+    "countsTowardFailureRate": false,
+    "evidence": {
+      "provider": "ollama",
+      "adapter": "ollama",
+      "exitReason": "complete",
+      "rawError": null,
+      "providerError": null,
+      "httpStatus": null,
+      "timeout": false,
+      "judgeError": null,
+      "testError": null,
+      "attemptCount": null,
+      "retries": null
+    }
+  },
+  "review": {
+    "authority": "advisory",
+    "deterministic_result_authoritative": true,
+    "security": {
+      "review_input_scanned": false,
+      "review_input_sanitized": false,
+      "injection_flags_count": 0,
+      "flagged_sources": [],
+      "flagged_artifacts": [],
+      "review_blocked_reason": null,
+      "review_output_invalid": false,
+      "trust_boundary_violations": []
+    },
+    "secondOpinion": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    },
+    "qcReview": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    }
+  }
+}

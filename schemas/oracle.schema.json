@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://crucibulum.local/schemas/oracle.schema.json",
-  "title": "Crucibulum Oracle",
+  "title": "Crucible Oracle",
   "description": "Validates oracle files containing ground truth and verification checks.",
   "type": "object",
   "required": ["task_id", "version", "hash", "ground_truth", "checks"],

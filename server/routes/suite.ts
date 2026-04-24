@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Suite Routes
+ * Crucible — Suite Routes
  * Suite execution with flake detection and status.
  */
 

@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Lightweight in-memory rate limiter
+ * Crucible — Lightweight in-memory rate limiter
  *
  * Simple token-bucket-per-key limiter. Not a replacement for a real gateway —
  * it exists to cap resource abuse on a single server instance (runaway client

@@ -1,7 +1,9 @@
 import type { EvidenceBundle } from "../adapters/base.js";
 import { verifyBundle } from "../core/bundle.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "../core/judge.js";
+import { normalizeBundleVerdict } from "../core/verdict.js";
 import { canonicalPercent } from "../types/scores.js";
+import type { NormalizedVerdict } from "../types/verdict.js";
 
 export interface CrucibleLink {
   profile_id: string | null;
@@ -32,7 +34,11 @@ export interface RunSetSummary {
   run_count: number;
   passes: number;
   failures: number;
+  not_complete: number;
   pass_rate: number;
+  completion_rate: number;
+  model_failure_rate: number;
+  nc_rate: number;
   pass_at: PassAtSummary;
   avg_score: number;
   total_tokens: number;
@@ -60,6 +66,7 @@ export interface EvaluationSummary {
   };
   outcome: {
     pass: boolean;
+    verdict: NormalizedVerdict;
     score: number;
     score_breakdown: EvidenceBundle["score"]["breakdown"];
     pass_threshold: number;
@@ -80,6 +87,26 @@ export interface EvaluationSummary {
     tokens_out: number;
     estimated_cost_usd: number;
     provider_cost_note: string;
+  };
+  /**
+   * Judge model spend, tracked separately from `usage` (which is the model
+   * under test). Always present so consumers can render "Judge cost" without
+   * branching on undefined; kind: "deterministic" with zero values means no
+   * model judge ran.
+   */
+  judge_usage: {
+    provider: string;
+    model: string;
+    tokens_in: number;
+    tokens_out: number;
+    estimated_cost_usd: number;
+    kind: "deterministic" | "model" | "skipped";
+    note: string;
+  };
+  /** Total = tested-model spend + judge-model spend. Convenience for the UI. */
+  total: {
+    tokens: number;
+    cost_usd: number;
   };
   timing: {
     started_at: string;
@@ -121,8 +148,10 @@ export function getRelatedBundles(bundles: EvidenceBundle[], bundle: EvidenceBun
 export function summarizeRunSet(bundles: EvidenceBundle[]): RunSetSummary {
   const sorted = [...bundles].sort((a, b) => new Date(a.environment.timestamp_start).getTime() - new Date(b.environment.timestamp_start).getTime());
   const runCount = sorted.length;
-  const passes = sorted.filter((bundle) => bundle.score.pass).length;
-  const failures = runCount - passes;
+  const verdicts = sorted.map((bundle) => normalizeBundleVerdict(bundle));
+  const passes = verdicts.filter((verdict) => verdict.completionState === "PASS").length;
+  const failures = verdicts.filter((verdict) => verdict.completionState === "FAIL" && verdict.failureOrigin === "MODEL").length;
+  const notComplete = verdicts.filter((verdict) => verdict.completionState === "NC").length;
   const passRate = runCount > 0 ? round4((passes / runCount) * 100) : 0;
   const passAt: PassAtSummary = {
     pass_at_1: sorted[0]?.score.pass ?? false,
@@ -164,7 +193,11 @@ export function summarizeRunSet(bundles: EvidenceBundle[]): RunSetSummary {
     run_count: runCount,
     passes,
     failures,
+    not_complete: notComplete,
     pass_rate: passRate,
+    completion_rate: runCount > 0 ? round4(((runCount - notComplete) / runCount) * 100) : 0,
+    model_failure_rate: runCount > 0 ? round4((failures / runCount) * 100) : 0,
+    nc_rate: runCount > 0 ? round4((notComplete / runCount) * 100) : 0,
     pass_at: passAt,
     avg_score: avgScore,
     total_tokens: totalTokens,
@@ -196,6 +229,7 @@ export function summarizeBundle(
   relatedBundles?: EvidenceBundle[],
 ): EvaluationSummary {
   const validity = verifyBundle(bundle);
+  const verdict = normalizeBundleVerdict(bundle);
   const durationSec = Math.round((new Date(bundle.environment.timestamp_end).getTime() - new Date(bundle.environment.timestamp_start).getTime()) / 1000);
   const executionScore = Math.round(canonicalPercent(bundle.score.total));
   const benchmarkScore = crucible?.benchmark_score ?? null;
@@ -265,6 +299,7 @@ export function summarizeBundle(
     },
     outcome: {
       pass: bundle.score.pass,
+      verdict,
       score: canonicalPercent(bundle.score.total),
       score_breakdown: {
         correctness: canonicalPercent(bundle.score.breakdown.correctness),
@@ -275,7 +310,7 @@ export function summarizeBundle(
       pass_threshold: canonicalPercent(bundle.score.pass_threshold),
       integrity_violations: bundle.score.integrity_violations,
       failure_taxonomy: {
-        failure_mode: bundle.diagnosis.failure_mode,
+        failure_mode: verdict.failureReasonCode === "pass" ? null : `${verdict.completionState}:${verdict.failureOrigin ?? "NONE"}:${verdict.failureReasonCode}`,
         integrity_violations: bundle.verification_results.integrity.violations,
       },
     },
@@ -300,6 +335,19 @@ export function summarizeBundle(
       tokens_out: bundle.usage.tokens_out,
       estimated_cost_usd: bundle.usage.estimated_cost_usd,
       provider_cost_note: bundle.usage.provider_cost_note,
+    },
+    judge_usage: bundle.judge_usage ?? {
+      provider: "",
+      model: "",
+      tokens_in: 0,
+      tokens_out: 0,
+      estimated_cost_usd: 0,
+      kind: "deterministic" as const,
+      note: "deterministic judge — no model cost",
+    },
+    total: {
+      tokens: bundle.usage.tokens_in + bundle.usage.tokens_out + (bundle.judge_usage?.tokens_in ?? 0) + (bundle.judge_usage?.tokens_out ?? 0),
+      cost_usd: bundle.usage.estimated_cost_usd + (bundle.judge_usage?.estimated_cost_usd ?? 0),
     },
     timing: {
       started_at: bundle.environment.timestamp_start,

@@ -1,0 +1,257 @@
+{
+  "bundle_id": "run_2026-04-18_classification-001_nemotron-3-nano-4b",
+  "bundle_hash": "sha256:9745c93d72d89add7ac66e9f834f27b7084ac0ad6578c27341394fb57657e0c4",
+  "bundle_version": "2.0.0",
+  "task": {
+    "id": "classification-001",
+    "manifest_hash": "sha256:e0fc76ad4de841b9acabd36d6f09ead914a7afef8e0ab89944425fe8c20475c4",
+    "family": "identity",
+    "difficulty": "hard"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "Ollama",
+    "system_version": "unknown",
+    "model": "nemotron-3-nano:4b",
+    "model_version": "latest",
+    "provider": "ollama"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "none",
+    "crucibulum_version": "2.0.0",
+    "timestamp_start": "2026-04-18T03:51:44.477Z",
+    "timestamp_end": "2026-04-18T03:51:44.477Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "conversational: 10 questions"
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "chat failed: Error: Rate limit exceeded for adapter 'ollama' (30/30 in 60s window). Resets in 3s."
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "CL1-Q1: FAIL — Response did not match pattern /\\bbug\\b/. Got: "
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "chat failed: Error: Rate limit exceeded for adapter 'ollama' (30/30 in 60s window). Resets in 3s."
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "CL1-Q2: FAIL — Response did not match pattern /\\bfeature\\b/. Got: "
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "chat failed: Error: Rate limit exceeded for adapter 'ollama' (30/30 in 60s window). Resets in 3s."
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "CL1-Q3: FAIL — Response did not match pattern /\\bquestion\\b/. Got: "
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "chat failed: Error: Rate limit exceeded for adapter 'ollama' (30/30 in 60s window). Resets in 3s."
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "CL1-Q4: FAIL — Response did not match pattern /\\b(bug|feature)\\b/. Got: "
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "chat failed: Error: Rate limit exceeded for adapter 'ollama' (30/30 in 60s window). Resets in 3s."
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "CL1-Q5: FAIL — Response did not match pattern /\\b(bug|feature)\\b/. Got: "
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "chat failed: Error: Rate limit exceeded for adapter 'ollama' (30/30 in 60s window). Resets in 3s."
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "CL1-Q6: FAIL — Response did not match pattern /\\b(question|feature)\\b/. Got: "
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "chat failed: Error: Rate limit exceeded for adapter 'ollama' (30/30 in 60s window). Resets in 3s."
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "CL1-Q7: FAIL — Response did not match pattern /\\bbug\\b/. Got: "
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "chat failed: Error: Rate limit exceeded for adapter 'ollama' (30/30 in 60s window). Resets in 3s."
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "CL1-Q8: FAIL — Response did not match pattern /\\bfeature\\b/. Got: "
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "chat failed: Error: Rate limit exceeded for adapter 'ollama' (30/30 in 60s window). Resets in 3s."
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "CL1-Q9: FAIL — Response did not match pattern /\\bbug\\b/. Got: "
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "chat failed: Error: Rate limit exceeded for adapter 'ollama' (30/30 in 60s window). Resets in 3s."
+    },
+    {
+      "t": 0,
+      "type": "error",
+      "detail": "CL1-Q10: FAIL — Response did not match pattern /\\bquestion\\b/. Got: "
+    }
+  ],
+  "diff": {
+    "files_changed": [],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 0,
+      "details": {
+        "CL1-Q1": "fail",
+        "CL1-Q2": "fail",
+        "CL1-Q3": "fail",
+        "CL1-Q4": "fail",
+        "CL1-Q5": "fail",
+        "CL1-Q6": "fail",
+        "CL1-Q7": "fail",
+        "CL1-Q8": "fail",
+        "CL1-Q9": "fail",
+        "CL1-Q10": "fail"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {}
+    },
+    "integrity": {
+      "score": 1,
+      "details": {},
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 0,
+      "time_limit_sec": 450,
+      "steps_used": 10,
+      "steps_limit": 10,
+      "score": 1
+    }
+  },
+  "score": {
+    "scale": "fraction_0_1",
+    "total": 0.15,
+    "total_percent": 15,
+    "breakdown": {
+      "correctness": 0,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 1
+    },
+    "breakdown_percent": {
+      "correctness": 0,
+      "regression": 100,
+      "integrity": 100,
+      "efficiency": 100
+    },
+    "pass": false,
+    "pass_threshold": 0.7,
+    "pass_threshold_percent": 70,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 0,
+    "tokens_out": 0,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "ollama:nemotron-3-nano:4b (estimated)"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "conversational-judge"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": false,
+    "narration_ignored": false,
+    "state_based_scoring": true,
+    "bundle_verified": false,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": false,
+    "avoided_decoys": true,
+    "first_fix_correct": false,
+    "self_verified": false,
+    "failure_mode": "10/10 questions failed"
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "2.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "identity",
+        "difficulty": "hard",
+        "provider": "ollama",
+        "adapter": "ollama",
+        "score": 0.15,
+        "pass": false,
+        "failure_mode": "conversational_failure"
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": 0.15,
+      "benchmark_label": "identity:15%",
+      "execution_score": 0.15,
+      "divergence_note": null
+    }
+  }
+}

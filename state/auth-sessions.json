@@ -1,0 +1,24 @@
+{
+  "records": [
+    {
+      "id": "K663RCIHZrZZGOUVCOvuXeKQT4iaJv6XAtGejjkL8k0",
+      "code": "245E2E",
+      "kind": "pairing",
+      "createdAt": 1776213388025,
+      "expiresAt": 1776213688025,
+      "redeemed": true,
+      "issuedFrom": "127.0.0.1",
+      "redeemedAt": 1776213412178,
+      "redeemedSessionId": "eRguBwDSGJc5KiGRo_hxtHa_68wiGOck_m12h4qkYPA"
+    },
+    {
+      "id": "eRguBwDSGJc5KiGRo_hxtHa_68wiGOck_m12h4qkYPA",
+      "kind": "session",
+      "createdAt": 1776213412178,
+      "expiresAt": 1778805412178,
+      "deviceLabel": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, li",
+      "issuedFrom": "100.117.132.48",
+      "lastSeenAt": 1776213412178
+    }
+  ]
+}

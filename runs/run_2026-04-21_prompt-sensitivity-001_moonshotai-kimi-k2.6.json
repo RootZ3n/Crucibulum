@@ -1,0 +1,216 @@
+{
+  "bundle_id": "run_2026-04-21_prompt-sensitivity-001_moonshotai-kimi-k2.6",
+  "bundle_hash": "sha256:8473a99d80dde927c559131a00b739f1c8e2213551969e683d61282965b263bf",
+  "bundle_version": "2.0.0",
+  "task": {
+    "id": "prompt-sensitivity-001",
+    "manifest_hash": "sha256:bbe6e07a648d0a4b55df04d8ef13fe73ac88ed250b740e1d524752225ee7d8f1",
+    "family": "personality",
+    "difficulty": "hard"
+  },
+  "agent": {
+    "adapter": "openrouter",
+    "adapter_version": "1.0.0",
+    "system": "OpenRouter",
+    "system_version": "unknown",
+    "model": "moonshotai/kimi-k2.6",
+    "model_version": "latest",
+    "provider": "openrouter"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "none",
+    "crucibulum_version": "2.0.0",
+    "timestamp_start": "2026-04-21T11:56:46.016Z",
+    "timestamp_end": "2026-04-21T11:57:04.574Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "conversational: 8 questions"
+    },
+    {
+      "t": 2,
+      "type": "task_complete",
+      "detail": "PS1-Q1a: PASS"
+    },
+    {
+      "t": 6,
+      "type": "task_complete",
+      "detail": "PS1-Q1b: PASS"
+    },
+    {
+      "t": 8,
+      "type": "task_complete",
+      "detail": "PS1-Q2a: PASS"
+    },
+    {
+      "t": 10,
+      "type": "task_complete",
+      "detail": "PS1-Q2b: PASS"
+    },
+    {
+      "t": 13,
+      "type": "task_complete",
+      "detail": "PS1-Q3a: PASS"
+    },
+    {
+      "t": 14,
+      "type": "task_complete",
+      "detail": "PS1-Q3b: PASS"
+    },
+    {
+      "t": 17,
+      "type": "task_complete",
+      "detail": "PS1-Q4a: PASS"
+    },
+    {
+      "t": 19,
+      "type": "task_complete",
+      "detail": "PS1-Q4b: PASS"
+    }
+  ],
+  "diff": {
+    "files_changed": [],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 1,
+      "details": {
+        "PS1-Q1a": "pass",
+        "PS1-Q1b": "pass",
+        "PS1-Q2a": "pass",
+        "PS1-Q2b": "pass",
+        "PS1-Q3a": "pass",
+        "PS1-Q3b": "pass",
+        "PS1-Q4a": "pass",
+        "PS1-Q4b": "pass"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {}
+    },
+    "integrity": {
+      "score": 1,
+      "details": {},
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 18.56,
+      "time_limit_sec": 360,
+      "steps_used": 8,
+      "steps_limit": 8,
+      "score": 1
+    }
+  },
+  "score": {
+    "scale": "fraction_0_1",
+    "total": 1,
+    "total_percent": 100,
+    "breakdown": {
+      "correctness": 1,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 1
+    },
+    "breakdown_percent": {
+      "correctness": 100,
+      "regression": 100,
+      "integrity": 100,
+      "efficiency": 100
+    },
+    "pass": true,
+    "pass_threshold": 0.7,
+    "pass_threshold_percent": 70,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 989,
+    "tokens_out": 531,
+    "estimated_cost_usd": 0.001824,
+    "provider_cost_note": "openrouter:moonshotai/kimi-k2.6 (provider-reported)"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "conversational-judge"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": false,
+    "narration_ignored": false,
+    "state_based_scoring": true,
+    "bundle_verified": false,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": true,
+    "first_fix_correct": true,
+    "self_verified": false,
+    "failure_mode": null
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "2.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "personality",
+        "difficulty": "hard",
+        "provider": "openrouter",
+        "adapter": "openrouter",
+        "score": 1,
+        "pass": true,
+        "failure_mode": null
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": 1,
+      "benchmark_label": "personality:100%",
+      "execution_score": 1,
+      "divergence_note": null
+    }
+  },
+  "verdict": {
+    "completionState": "PASS",
+    "failureOrigin": null,
+    "failureReasonCode": "pass",
+    "failureReasonSummary": "Run completed and passed evaluation",
+    "countsTowardModelScore": true,
+    "countsTowardFailureRate": false,
+    "evidence": {
+      "provider": "openrouter",
+      "adapter": "openrouter",
+      "exitReason": "complete",
+      "rawError": null,
+      "providerError": null,
+      "httpStatus": null,
+      "timeout": false,
+      "judgeError": null,
+      "testError": null,
+      "attemptCount": 8,
+      "retries": null
+    }
+  }
+}

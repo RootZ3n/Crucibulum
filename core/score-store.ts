@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Score Store
+ * Crucible — Score Store
  * SQLite-backed score storage with query and leaderboard support.
  */
 
@@ -15,12 +15,23 @@ import {
   SCORE_FAMILIES,
   LEADERBOARD_MIN_N,
 } from "../types/scores.js";
+import type { CompletionState, FailureOrigin, FailureReasonCode } from "../types/verdict.js";
 import { log } from "../utils/logger.js";
 
 const STATE_DIR = resolve(process.env["CRUCIBULUM_STATE_DIR"] ?? join(process.cwd(), "state"));
 const DB_PATH = join(STATE_DIR, "scores.db");
 
 let db: InstanceType<typeof Database> | null = null;
+
+function addColumnIfMissing(database: InstanceType<typeof Database>, ddl: string): void {
+  try {
+    database.exec(ddl);
+  } catch (err) {
+    if (!String(err).toLowerCase().includes("duplicate column")) {
+      throw err;
+    }
+  }
+}
 
 function getDb(): InstanceType<typeof Database> {
   if (db) return db;
@@ -45,6 +56,12 @@ function getDb(): InstanceType<typeof Database> {
       anomalyFlags TEXT,
       timestamp TEXT NOT NULL,
       metadata TEXT,
+      completionState TEXT,
+      failureOrigin TEXT,
+      failureReasonCode TEXT,
+      failureReasonSummary TEXT,
+      countsTowardModelScore INTEGER,
+      countsTowardFailureRate INTEGER,
       source TEXT NOT NULL DEFAULT 'crucibulum',
       runId TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -55,6 +72,12 @@ function getDb(): InstanceType<typeof Database> {
     CREATE INDEX IF NOT EXISTS idx_scores_task ON scores(taskId);
     CREATE INDEX IF NOT EXISTS idx_scores_timestamp ON scores(timestamp DESC);
   `);
+  addColumnIfMissing(db, "ALTER TABLE scores ADD COLUMN completionState TEXT");
+  addColumnIfMissing(db, "ALTER TABLE scores ADD COLUMN failureOrigin TEXT");
+  addColumnIfMissing(db, "ALTER TABLE scores ADD COLUMN failureReasonCode TEXT");
+  addColumnIfMissing(db, "ALTER TABLE scores ADD COLUMN failureReasonSummary TEXT");
+  addColumnIfMissing(db, "ALTER TABLE scores ADD COLUMN countsTowardModelScore INTEGER");
+  addColumnIfMissing(db, "ALTER TABLE scores ADD COLUMN countsTowardFailureRate INTEGER");
 
   log("info", "score-store", `Score store initialized at ${DB_PATH}`);
   return db;
@@ -71,8 +94,10 @@ export function storeScores(
 
   const insert = database.prepare(`
     INSERT INTO scores (modelId, taskId, family, category, passed, score, rawScore,
-      duration_ms, tokensUsed, costEstimate, anomalyFlags, timestamp, metadata, source, runId)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      duration_ms, tokensUsed, costEstimate, anomalyFlags, timestamp, metadata,
+      completionState, failureOrigin, failureReasonCode, failureReasonSummary,
+      countsTowardModelScore, countsTowardFailureRate, source, runId)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertMany = database.transaction((items: ModelScore[]) => {
@@ -92,6 +117,12 @@ export function storeScores(
           s.anomalyFlags ? JSON.stringify(s.anomalyFlags) : null,
           s.timestamp,
           s.metadata ? JSON.stringify(s.metadata) : null,
+          s.completionState ?? null,
+          s.failureOrigin ?? null,
+          s.failureReasonCode ?? null,
+          s.failureReasonSummary ?? null,
+          s.countsTowardModelScore == null ? null : (s.countsTowardModelScore ? 1 : 0),
+          s.countsTowardFailureRate == null ? null : (s.countsTowardFailureRate ? 1 : 0),
           source,
           runId ?? null,
         );
@@ -121,6 +152,9 @@ interface LeaderboardRow {
   avg_score: number;
   total_runs: number;
   passed_runs: number;
+  completed_runs: number;
+  model_fail_runs: number;
+  nc_runs: number;
   last_run: string;
   source: string;
 }
@@ -139,6 +173,12 @@ interface ScoreRow {
   anomalyFlags: string | null;
   timestamp: string;
   metadata: string | null;
+  completionState: string | null;
+  failureOrigin: string | null;
+  failureReasonCode: string | null;
+  failureReasonSummary: string | null;
+  countsTowardModelScore: number | null;
+  countsTowardFailureRate: number | null;
 }
 
 export function queryScores(query: ScoreQuery): ModelScore[] {
@@ -155,7 +195,9 @@ export function queryScores(query: ScoreQuery): ModelScore[] {
   const limit = Math.min(query.limit ?? 100, 1000);
 
   const rows = database.prepare(
-    `SELECT modelId, taskId, family, category, passed, score, rawScore, duration_ms, tokensUsed, costEstimate, anomalyFlags, timestamp, metadata FROM scores ${where} ORDER BY timestamp DESC LIMIT ?`
+    `SELECT modelId, taskId, family, category, passed, score, rawScore, duration_ms, tokensUsed, costEstimate, anomalyFlags, timestamp, metadata,
+      completionState, failureOrigin, failureReasonCode, failureReasonSummary, countsTowardModelScore, countsTowardFailureRate
+      FROM scores ${where} ORDER BY timestamp DESC LIMIT ?`
   ).all(...params, limit) as ScoreRow[];
 
   return rows.map((r): ModelScore => ({
@@ -172,6 +214,12 @@ export function queryScores(query: ScoreQuery): ModelScore[] {
     anomalyFlags: r.anomalyFlags ? JSON.parse(r.anomalyFlags) as string[] : undefined,
     timestamp: r.timestamp,
     metadata: r.metadata ? JSON.parse(r.metadata) as Record<string, unknown> : undefined,
+    completionState: (r.completionState ?? undefined) as CompletionState | undefined,
+    failureOrigin: (r.failureOrigin ?? undefined) as FailureOrigin | undefined,
+    failureReasonCode: (r.failureReasonCode ?? undefined) as FailureReasonCode | undefined,
+    failureReasonSummary: r.failureReasonSummary ?? undefined,
+    countsTowardModelScore: r.countsTowardModelScore == null ? undefined : !!r.countsTowardModelScore,
+    countsTowardFailureRate: r.countsTowardFailureRate == null ? undefined : !!r.countsTowardFailureRate,
   }));
 }
 
@@ -186,7 +234,23 @@ export function getLeaderboard(families?: ScoreFamily[]): LeaderboardEntry[] {
 
   const rows = database.prepare(`
     SELECT modelId, family, AVG(score) as avg_score, COUNT(*) as total_runs,
-           SUM(passed) as passed_runs, MAX(timestamp) as last_run, MAX(source) as source
+           SUM(CASE
+             WHEN completionState = 'PASS' THEN 1
+             WHEN completionState IS NULL AND passed = 1 THEN 1
+             ELSE 0
+           END) as passed_runs,
+           SUM(CASE
+             WHEN completionState IS NULL THEN 1
+             WHEN completionState != 'NC' THEN 1
+             ELSE 0
+           END) as completed_runs,
+           SUM(CASE
+             WHEN countsTowardFailureRate = 1 THEN 1
+             WHEN countsTowardFailureRate IS NULL AND passed = 0 THEN 1
+             ELSE 0
+           END) as model_fail_runs,
+           SUM(CASE WHEN completionState = 'NC' THEN 1 ELSE 0 END) as nc_runs,
+           MAX(timestamp) as last_run, MAX(source) as source
     FROM scores
     ${where}
     GROUP BY modelId, family
@@ -197,18 +261,24 @@ export function getLeaderboard(families?: ScoreFamily[]): LeaderboardEntry[] {
     families: Partial<Record<ScoreFamily, number>>;
     totalRuns: number;
     passedRuns: number;
+    completedRuns: number;
+    modelFailRuns: number;
+    notCompleteRuns: number;
     lastRun: string;
     source: string;
   }>();
 
   for (const row of rows) {
     if (!models.has(row.modelId)) {
-      models.set(row.modelId, { families: {}, totalRuns: 0, passedRuns: 0, lastRun: "", source: row.source });
+      models.set(row.modelId, { families: {}, totalRuns: 0, passedRuns: 0, completedRuns: 0, modelFailRuns: 0, notCompleteRuns: 0, lastRun: "", source: row.source });
     }
     const model = models.get(row.modelId)!;
     model.families[row.family as ScoreFamily] = Math.round(row.avg_score * 100) / 100;
     model.totalRuns += row.total_runs;
     model.passedRuns += (row.passed_runs as number) ?? 0;
+    model.completedRuns += (row.completed_runs as number) ?? 0;
+    model.modelFailRuns += (row.model_fail_runs as number) ?? 0;
+    model.notCompleteRuns += (row.nc_runs as number) ?? 0;
     if (row.last_run > model.lastRun) model.lastRun = row.last_run;
     model.source = row.source;
   }
@@ -231,7 +301,7 @@ export function getLeaderboard(families?: ScoreFamily[]): LeaderboardEntry[] {
     }
 
     const composite = weightTotal > 0 ? Math.round((weightedSum / weightTotal) * 100) / 100 : 0;
-    const averagePassRate = data.totalRuns > 0 ? Math.round((data.passedRuns / data.totalRuns) * 100) / 100 : 0;
+    const averagePassRate = data.completedRuns > 0 ? Math.round((data.passedRuns / data.completedRuns) * 100) / 100 : 0;
     // Stability: 1.0 when pass_rate is extreme (all pass or all fail), 0.0 when uncertain (50/50)
     // Formula: 2 * |passRate - 0.5| gives 0 at 50%, 1.0 at 0% or 100%
     const stabilityScore = Math.round(Math.abs(averagePassRate - 0.5) * 2 * 100) / 100;
@@ -261,9 +331,14 @@ export function getLeaderboard(families?: ScoreFamily[]): LeaderboardEntry[] {
       composite,
       families: familyScores,
       totalRuns: data.totalRuns,
+      completedRuns: data.completedRuns,
+      notCompleteRuns: data.notCompleteRuns,
       lastRun: data.lastRun,
       source: data.source as ScoreSource,
       average_pass_rate: averagePassRate,
+      model_failure_rate: data.totalRuns > 0 ? Math.round((data.modelFailRuns / data.totalRuns) * 100) / 100 : 0,
+      completion_rate: data.totalRuns > 0 ? Math.round((data.completedRuns / data.totalRuns) * 100) / 100 : 0,
+      nc_rate: data.totalRuns > 0 ? Math.round((data.notCompleteRuns / data.totalRuns) * 100) / 100 : 0,
       stability_score: stabilityScore,
       reliability_score: reliabilityScore,
       confidence,

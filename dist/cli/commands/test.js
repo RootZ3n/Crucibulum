@@ -1,6 +1,6 @@
 /**
- * Crucibulum CLI — test command
- * crucibulum test --model ollama:gemma3:27b --task poison-001 [--runs 3] [--output json]
+ * Crucible CLI — test command
+ * crucible test --model ollama:gemma3:27b --task poison-001 [--runs 3] [--output json]
  */
 import { runTask } from "../../core/runner.js";
 import { storeBundle } from "../../core/bundle.js";
@@ -100,7 +100,7 @@ function resolveAdapter(modelSpec) {
 export async function testCommand(args) {
     const opts = parseArgs(args);
     const { adapter, model, adapterConfig } = resolveAdapter(opts.model);
-    log("info", "cli", `Crucibulum test: ${opts.task} × ${model} (${opts.runs} run${opts.runs > 1 ? "s" : ""})`);
+    log("info", "cli", `Crucible test: ${opts.task} × ${model} (${opts.runs} run${opts.runs > 1 ? "s" : ""})`);
     // Init adapter
     await adapter.init(adapterConfig);
     // Health check
@@ -137,7 +137,7 @@ export async function testCommand(args) {
     // Summary
     if (opts.output === "table") {
         console.log("\n" + "=".repeat(60));
-        console.log(`  CRUCIBULUM RESULTS — ${opts.task}`);
+        console.log(`  CRUCIBLE RESULTS — ${opts.task}`);
         console.log("=".repeat(60));
         console.log(`  Model:    ${model}`);
         console.log(`  Adapter:  ${adapter.name}`);

@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Conversational Judge
+ * Crucible — Conversational Judge
  * Deterministic scoring for chat-based tasks.
  * Ported from Squidley Veritor's scorer — same logic, standalone.
  *
@@ -262,6 +262,27 @@ function scoreRegexMatch(q: ConversationalQuestion, response: string): { passed:
   }
 }
 
+// ── Empty-response guard ──────────────────────────────────────────────────
+
+/**
+ * Scoring types that decide PASS by *absence* of certain content (no hedges,
+ * no corporate-speak, etc.). For these, an empty model answer trivially
+ * satisfies the rule and gets silently marked PASS — which was the personality
+ * tab's biggest reliability bug: a model that returned nothing scored 100%.
+ *
+ * We treat empty/whitespace-only answers as a hard FAIL with an explicit
+ * "no_answer" reason for these scorers, so the runner records evidence that
+ * the model produced no output instead of crediting it for that.
+ */
+const ABSENCE_SCORING_TYPES: ReadonlySet<string> = new Set([
+  "hedge_count",
+  "corporate_check",
+]);
+
+function isEffectivelyEmpty(response: string): boolean {
+  return !response || response.trim().length === 0;
+}
+
 // ── Main scoring dispatcher ───────────────────────────────────────────────
 
 export function scoreConversationalQuestion(
@@ -271,6 +292,25 @@ export function scoreConversationalQuestion(
   const start = Date.now();
   let passed = false;
   let failureReason: string | null = null;
+
+  // Guard: absence-style scorers must not silently credit empty answers.
+  // (hedge_count, corporate_check). For other scorers, the per-type logic
+  // already returns the right reason on empty input.
+  if (ABSENCE_SCORING_TYPES.has(question.scoring_type) && isEffectivelyEmpty(response)) {
+    return {
+      _internal: true,
+      question_id: question.id,
+      question: question.question,
+      response,
+      passed: false,
+      score: 0,
+      weight: question.weight,
+      failure_reason: `Empty model answer — ${question.scoring_type} requires a real response, not silence`,
+      duration_ms: Date.now() - start,
+      tokens_in: 0,
+      tokens_out: 0,
+    };
+  }
 
   switch (question.scoring_type) {
     case "text_match": {
@@ -405,13 +445,27 @@ export function judgeConversational(
   const passedCount = results.filter(r => r.passed).length;
   const failedCount = results.filter(r => !r.passed).length;
 
-  // Anomaly detection
+  // Anomaly detection — flag suspicious cases the harness/UI must surface.
   const anomalyFlags: string[] = [];
   if (failedCount === results.length && results.length > 2) {
     anomalyFlags.push("ALL_FAILED: Every question failed — likely API or routing issue");
   }
   if (passedCount === results.length && results.length > 5) {
     anomalyFlags.push("PERFECT_SCORE: All questions passed — verify scoring is correct");
+  }
+  // An "empty answer that still passed" is the personality-tab regression
+  // signature: the model returned nothing yet the absence-of-X scorer marked
+  // it pass. Should not happen after the empty-response guard, but kept as a
+  // belt-and-braces flag the harness checks for.
+  const silentPassWithoutAnswer = results.find((r) => r.passed && (!r.response || r.response.trim().length === 0));
+  if (silentPassWithoutAnswer) {
+    anomalyFlags.push(`SILENT_PASS: Question ${silentPassWithoutAnswer.question_id} passed with an empty answer`);
+  }
+  // No tokens whatsoever on a passing run almost always means the adapter
+  // never reached the provider — the run should be NC, not PASS.
+  const allZeroTokens = results.length > 0 && results.every((r) => (r.tokens_in ?? 0) === 0 && (r.tokens_out ?? 0) === 0);
+  if (allZeroTokens && passedCount > 0) {
+    anomalyFlags.push("NO_TOKENS_REPORTED: Run reported zero token usage on passing questions — verify provider call actually happened");
   }
 
   const pass = score >= manifest.scoring.pass_threshold;

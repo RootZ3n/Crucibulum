@@ -1,5 +1,5 @@
 /**
- * Crucibulum CLI — compare command
+ * Crucible CLI — compare command
  * Run the same task(s) against multiple models and compare results.
  * Supports pass@k scoring across repeated runs.
  */

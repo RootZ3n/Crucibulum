@@ -1,6 +1,6 @@
 /**
- * Crucibulum — Squidley Gateway Adapter
- * Routes all model calls through the Squidley API, giving Crucibulum access
+ * Crucible — Squidley Gateway Adapter
+ * Routes all model calls through the Squidley API, giving Crucible access
  * to every model Squidley knows: ModelStudio (qwen3.5-plus, qwen3.6-plus),
  * OpenRouter (MiMo, Trinity), Anthropic (Opus, Sonnet), MiniMax, Ollama, etc.
  *
@@ -12,7 +12,7 @@
  *   --model squidley:claude-opus-4-6
  *   --model squidley:mimo-v2-pro
  */
-import type { CrucibulumAdapter, AdapterConfig, ExecutionInput, ExecutionResult } from "./base.js";
+import type { CrucibulumAdapter, AdapterConfig, ExecutionInput, ExecutionResult, ChatMessage, ChatResult, ChatOptions } from "./base.js";
 export declare class SquidleyAdapter implements CrucibulumAdapter {
     id: string;
     name: string;
@@ -23,10 +23,16 @@ export declare class SquidleyAdapter implements CrucibulumAdapter {
     supports(_family: "poison" | "spec" | "orchestration"): boolean;
     supportsToolCalls(): boolean;
     supportsChat(): boolean;
+    chat(messages: ChatMessage[], _options?: ChatOptions): Promise<ChatResult>;
     init(config: AdapterConfig): Promise<void>;
     healthCheck(): Promise<{
         ok: boolean;
-        reason?: string | undefined;
+        reason: string;
+        providerError: import("../types/provider-error.js").StructuredProviderError;
+    } | {
+        ok: boolean;
+        reason?: never;
+        providerError?: never;
     }>;
     teardown(): Promise<void>;
     execute(input: ExecutionInput): Promise<ExecutionResult>;

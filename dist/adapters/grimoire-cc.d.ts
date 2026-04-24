@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Grimoire CC Adapter
+ * Crucible — Grimoire CC Adapter
  * Routes tasks through Squidley's Grimoire CC mode.
  * CC Mode = non-blocking approval flow, file editing with approval gates.
  * For benchmark runs, auto_approve is set to true.
@@ -20,7 +20,12 @@ export declare class GrimoireCCAdapter implements CrucibulumAdapter {
     init(config: AdapterConfig): Promise<void>;
     healthCheck(): Promise<{
         ok: boolean;
-        reason?: string | undefined;
+        reason: string;
+        providerError: import("../types/provider-error.js").StructuredProviderError;
+    } | {
+        ok: boolean;
+        reason?: never;
+        providerError?: never;
     }>;
     teardown(): Promise<void>;
     execute(input: ExecutionInput): Promise<ExecutionResult>;

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://crucibulum.local/schemas/adapter_config.schema.json",
-  "title": "Crucibulum Adapter Config",
+  "title": "Crucible Adapter Config",
   "description": "Validates adapter configuration passed to CrucibulumAdapter.init().",
   "type": "object",
   "additionalProperties": false,

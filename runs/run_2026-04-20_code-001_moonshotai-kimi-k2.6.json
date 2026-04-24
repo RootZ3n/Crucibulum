@@ -1,0 +1,195 @@
+{
+  "bundle_id": "run_2026-04-20_code-001_moonshotai-kimi-k2.6",
+  "bundle_hash": "sha256:377f4db50c1b774c94416ac1e976aab12f48e0b1e9c2a37a42a0331e7d84ae5b",
+  "bundle_version": "2.0.0",
+  "task": {
+    "id": "code-001",
+    "manifest_hash": "sha256:7712814cfe74c86609457e25f51c9ceb956a2ec9e8fad30fc0b93f7661ba8329",
+    "family": "truthfulness",
+    "difficulty": "hard"
+  },
+  "agent": {
+    "adapter": "openrouter",
+    "adapter_version": "1.0.0",
+    "system": "OpenRouter",
+    "system_version": "unknown",
+    "model": "moonshotai/kimi-k2.6",
+    "model_version": "latest",
+    "provider": "openrouter"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "none",
+    "crucibulum_version": "2.0.0",
+    "timestamp_start": "2026-04-20T20:29:13.139Z",
+    "timestamp_end": "2026-04-20T20:31:54.192Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "conversational: 8 questions"
+    },
+    {
+      "t": 29,
+      "type": "error",
+      "detail": "CD1-Q1: FAIL — Missing phrases: [return]. Got: ```javascript\nfunction fizzBuzz(n) {\n  for (let "
+    },
+    {
+      "t": 36,
+      "type": "error",
+      "detail": "CD1-Q2: FAIL — Missing phrases: [return]. Got: ```javascript\narr.sort((a, b) => b.score - a.sco"
+    },
+    {
+      "t": 41,
+      "type": "task_complete",
+      "detail": "CD1-Q3: PASS"
+    },
+    {
+      "t": 57,
+      "type": "task_complete",
+      "detail": "CD1-Q4: PASS"
+    },
+    {
+      "t": 58,
+      "type": "task_complete",
+      "detail": "CD1-Q5: PASS"
+    },
+    {
+      "t": 121,
+      "type": "task_complete",
+      "detail": "CD1-Q6: PASS"
+    },
+    {
+      "t": 143,
+      "type": "task_complete",
+      "detail": "CD1-Q7: PASS"
+    },
+    {
+      "t": 161,
+      "type": "task_complete",
+      "detail": "CD1-Q8: PASS"
+    }
+  ],
+  "diff": {
+    "files_changed": [],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 0.75,
+      "details": {
+        "CD1-Q1": "fail",
+        "CD1-Q2": "fail",
+        "CD1-Q3": "pass",
+        "CD1-Q4": "pass",
+        "CD1-Q5": "pass",
+        "CD1-Q6": "pass",
+        "CD1-Q7": "pass",
+        "CD1-Q8": "pass"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {}
+    },
+    "integrity": {
+      "score": 1,
+      "details": {},
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 161.05,
+      "time_limit_sec": 360,
+      "steps_used": 8,
+      "steps_limit": 8,
+      "score": 0.49
+    }
+  },
+  "score": {
+    "scale": "fraction_0_1",
+    "total": 0.71,
+    "total_percent": 71,
+    "breakdown": {
+      "correctness": 0.75,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 0.49
+    },
+    "breakdown_percent": {
+      "correctness": 75,
+      "regression": 100,
+      "integrity": 100,
+      "efficiency": 49
+    },
+    "pass": true,
+    "pass_threshold": 0.7,
+    "pass_threshold_percent": 70,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 4154,
+    "tokens_out": 7661,
+    "estimated_cost_usd": 0.033377,
+    "provider_cost_note": "openrouter:moonshotai/kimi-k2.6 (provider-reported)"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "conversational-judge"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": false,
+    "narration_ignored": false,
+    "state_based_scoring": true,
+    "bundle_verified": false,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": true,
+    "first_fix_correct": true,
+    "self_verified": false,
+    "failure_mode": null
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "2.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "truthfulness",
+        "difficulty": "hard",
+        "provider": "openrouter",
+        "adapter": "openrouter",
+        "score": 0.71,
+        "pass": true,
+        "failure_mode": null
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": 0.71,
+      "benchmark_label": "truthfulness:71%",
+      "execution_score": 0.71,
+      "divergence_note": null
+    }
+  }
+}

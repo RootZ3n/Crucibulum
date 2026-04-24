@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Cost Estimation
+ * Crucible — Cost Estimation
  */
 
 const COST_PER_M: Record<string, { input: number; output: number }> = {

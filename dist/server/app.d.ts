@@ -1,5 +1,5 @@
 /**
- * Crucibulum — API app factory
+ * Crucible — API app factory
  *
  * Pure factory for the HTTP server. The previous layout ran listen() as a
  * module-load side effect, which made it impossible to stand the server up in
@@ -18,7 +18,7 @@ export interface CreateAppOptions {
     rateLimit?: boolean;
 }
 /**
- * Build an http.Server wired to the Crucibulum routes. Does NOT call listen() —
+ * Build an http.Server wired to the Crucible routes. Does NOT call listen() —
  * the caller decides when/where to bind. Safe to import from tests.
  */
 export declare function createApp(options?: CreateAppOptions): Server;

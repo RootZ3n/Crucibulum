@@ -1,18 +1,19 @@
 /**
- * Crucibulum — Health Routes
+ * Crucible — Health Routes
  * Health check, adapter status, judge info.
  */
-import { sendJSON } from "./shared.js";
+import { sendJSON, log } from "./shared.js";
 import { getAdapterCatalog } from "../../adapters/registry.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "../../core/judge.js";
-import { getCircuitState, rateLimitStatus } from "../../core/circuit-breaker.js";
+import { describeDefaultJudge, resolveJudgeConfig } from "../../core/judge-config.js";
+import { getCircuitState, rateLimitStatus, circuitReset } from "../../core/circuit-breaker.js";
 import { authStatus } from "../auth.js";
 import { listScorers } from "../../core/scorer-registry.js";
 import { listSuites, listTaskDetails } from "./shared.js";
 export async function handleHealth(_req, res) {
     sendJSON(res, 200, {
         status: "ok",
-        service: "crucibulum",
+        service: "crucible",
         auth: authStatus(),
         uptime: process.uptime(),
     });
@@ -40,7 +41,18 @@ export async function handleAdaptersHealth(_req, res) {
     sendJSON(res, 200, { adapters: status });
 }
 export async function handleJudge(_req, res) {
-    sendJSON(res, 200, { judge: DETERMINISTIC_JUDGE_METADATA });
+    // Expose both the deterministic judge (always-on, authoritative) and the
+    // configured *model* judge (advisory, used for subjective tone scoring and
+    // QC review) so the UI/CLI can render "Tested model" and "Judge model" in
+    // the same panel without guessing what's running.
+    const judgeCfg = resolveJudgeConfig();
+    sendJSON(res, 200, {
+        judge: DETERMINISTIC_JUDGE_METADATA,
+        model_judge: {
+            ...describeDefaultJudge(),
+            source: judgeCfg.source,
+        },
+    });
 }
 export async function handleSuites(_req, res) {
     sendJSON(res, 200, { suites: listSuites() });
@@ -61,5 +73,14 @@ export async function handleProviders(_req, res) {
     const { getProviderCatalog } = await import("../../adapters/registry.js");
     const catalog = await getProviderCatalog();
     sendJSON(res, 200, catalog);
+}
+export async function handleResetAdapterCircuit(_req, res, adapterId) {
+    if (!adapterId) {
+        sendJSON(res, 400, { error: "adapter id required" });
+        return;
+    }
+    circuitReset(adapterId);
+    log("info", "circuit-breaker", `Circuit ${adapterId}: reset via API`);
+    sendJSON(res, 200, { ok: true, adapter: adapterId, circuit: getCircuitState(adapterId) });
 }
 //# sourceMappingURL=health.js.map

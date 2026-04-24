@@ -1,7 +1,10 @@
 /**
- * Crucibulum — Adapter Interface
+ * Crucible — Adapter Interface
  * Every adapter implements this contract. No exceptions.
  */
+import type { JudgeCommandResult } from "../core/verdict.js";
+import type { StructuredProviderError } from "../types/provider-error.js";
+import type { NormalizedVerdict } from "../types/verdict.js";
 export interface AgentVisibleManifest {
     task: {
         title: string;
@@ -123,6 +126,11 @@ export interface AdapterConfig {
     extra_flags?: string[] | undefined;
     env?: Record<string, string> | undefined;
 }
+export interface HealthCheckResult {
+    ok: boolean;
+    reason?: string | undefined;
+    providerError?: StructuredProviderError | undefined;
+}
 export interface ExecutionInput {
     task: AgentVisibleManifest;
     workspace_path: string;
@@ -140,10 +148,12 @@ export interface TimelineEvent {
     command?: string | undefined;
     exit_code?: number | undefined;
     detail?: string | undefined;
+    provider_error?: StructuredProviderError | undefined;
 }
 export interface ExecutionResult {
     exit_reason: "complete" | "timeout" | "budget_exceeded" | "error" | "injection_detected";
     timeline: TimelineEvent[];
+    provider_error?: StructuredProviderError | undefined;
     duration_ms: number;
     steps_used: number;
     files_read: string[];
@@ -167,6 +177,21 @@ export interface ChatResult {
     tokens_in: number;
     tokens_out: number;
     duration_ms: number;
+    /**
+     * USD cost if the provider surfaces it (OpenRouter does when the request
+     * opts into usage metadata). Stays `undefined` for providers that don't
+     * report cost; callers must treat missing cost as "unknown", not "zero".
+     */
+    cost_usd?: number | undefined;
+}
+export interface SanitizedChatText {
+    text: string;
+    strippedVisibleReasoning: boolean;
+}
+export interface ChatOptions {
+    benchmarkMode?: boolean | undefined;
+    suppressVisibleReasoning?: boolean | undefined;
+    reasoningEffort?: "off" | "minimal" | "default" | undefined;
 }
 export type ConversationalFamily = "identity" | "truthfulness" | "safety" | "memory" | "proactive" | "personality" | "adversarial_chat" | "cost_efficiency" | "classification" | "code" | "workflow" | "instruction-obedience" | "prompt-sensitivity" | "role-stress" | "context-degradation" | "reasoning" | "summarization" | "token-efficiency" | "thinking-mode";
 export type ConversationalScoringType = "text_match" | "text_match_all" | "refusal_check" | "refusal_quality" | "recall" | "correction" | "proactive" | "tool_verification" | "hedge_count" | "corporate_check" | "regex_match" | "custom";
@@ -246,14 +271,11 @@ export interface CrucibulumAdapter {
     supportsChat(): boolean;
     supportsToolCalls(): boolean;
     init(config: AdapterConfig): Promise<void>;
-    healthCheck(): Promise<{
-        ok: boolean;
-        reason?: string | undefined;
-    }>;
+    healthCheck(): Promise<HealthCheckResult>;
     teardown(): Promise<void>;
     execute(input: ExecutionInput): Promise<ExecutionResult>;
     /** Send a chat message and get a response. Required for conversational tasks. */
-    chat?(messages: ChatMessage[]): Promise<ChatResult>;
+    chat?(messages: ChatMessage[], options?: ChatOptions): Promise<ChatResult>;
 }
 export interface DiffEntry {
     path: string;
@@ -272,10 +294,12 @@ export interface VerificationResults {
          * correctness as a real measurement.
          */
         not_evaluable?: boolean;
+        command_results?: JudgeCommandResult[] | undefined;
     };
     regression: {
         score: number;
         details: Record<string, "pass" | "fail">;
+        command_results?: JudgeCommandResult[] | undefined;
     };
     integrity: {
         score: number;
@@ -358,6 +382,30 @@ export interface EvidenceBundle {
         estimated_cost_usd: number;
         provider_cost_note: string;
     };
+    /**
+     * Token + cost spent by the JUDGE / scorer model itself, kept separate from
+     * `usage` (which is the model under test). When the judge runs purely on
+     * deterministic text matching this is all zero. When a model judge / review
+     * layer is invoked, the operator can see exactly what was paid for the
+     * scoring step versus the answer step.
+     */
+    judge_usage?: {
+        /** Provider id of the judge model (e.g. "openrouter"). Empty when no model judge ran. */
+        provider: string;
+        /** Model id of the judge (e.g. "xiaomi/mimo-v2-pro"). Empty when none ran. */
+        model: string;
+        tokens_in: number;
+        tokens_out: number;
+        estimated_cost_usd: number;
+        /**
+         * "deterministic" — no model call (the default). Cost will be zero.
+         * "model" — a model judge ran and the cost is provider-reported or estimated.
+         * "skipped" — judge call was attempted but skipped (e.g. provider offline).
+         */
+        kind: "deterministic" | "model" | "skipped";
+        /** Free-form note: estimate vs provider-reported, or skip reason. */
+        note: string;
+    } | undefined;
     judge: {
         kind: "deterministic";
         label: string;
@@ -450,6 +498,7 @@ export interface EvidenceBundle {
             divergence_note: string | null;
         };
     };
+    verdict?: NormalizedVerdict | undefined;
     synthesis?: SynthesisReport | undefined;
 }
 export interface SynthesisClaim {

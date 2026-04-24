@@ -1,8 +1,18 @@
 /**
- * Crucibulum — Flake Detection / Retry Support
+ * Crucible — Flake Detection / Retry Support
  * Wraps runTask with configurable retry logic for benchmark reliability.
  */
 import { type RunOptions, type RunResult } from "./runner.js";
+/**
+ * Test-only injection point for `runTask`. Production callers never set
+ * this — they go through the imported `runTask` directly, so behaviour is
+ * unchanged. The unit tests for flake-detection use this to feed canned
+ * RunResult fixtures without booting a real adapter / workspace.
+ *
+ * Kept as a function-level parameter rather than a module-level mutable
+ * binding so concurrent tests can't race each other's mocks.
+ */
+type RunTaskFn = (options: RunOptions) => Promise<RunResult>;
 export interface FlakeAttempt {
     run_number: number;
     passed: boolean;
@@ -50,6 +60,12 @@ export interface FlakeResult {
 export interface FlakeRunOptions extends RunOptions {
     /** Number of attempts for flake detection. Default: 1 (no retry). Set to 3 for flake detection. */
     retry_count?: number | undefined;
+    /**
+     * Internal: override the runTask implementation used per attempt. Tests use
+     * this; production callers should leave it undefined and the real runTask
+     * is used.
+     */
+    _runTask?: RunTaskFn | undefined;
 }
 /**
  * Run a task with retry/flake detection.
@@ -59,4 +75,5 @@ export declare function runTaskWithRetries(options: FlakeRunOptions): Promise<{
     result: RunResult;
     flake: FlakeResult;
 }>;
+export {};
 //# sourceMappingURL=flake.d.ts.map

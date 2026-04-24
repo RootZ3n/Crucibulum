@@ -1,5 +1,5 @@
 /**
- * Crucibulum CLI — list command
+ * Crucible CLI — list command
  */
 import { listTasks } from "../../core/manifest.js";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
@@ -90,6 +90,6 @@ export async function listCommand(args: string[]): Promise<void> {
       console.log("");
     } catch { console.log("No runs directory found."); }
   } else {
-    console.log("Usage: crucibulum list tasks [--family <name>] | crucibulum list runs");
+    console.log("Usage: crucible list tasks [--family <name>] | crucible list runs");
   }
 }

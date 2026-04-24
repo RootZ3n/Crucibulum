@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Judge
+ * Crucible — Judge
  * Scores based on observable state transitions. Never trusts narration.
  * Scoring order: Integrity → Correctness → Regression → Efficiency
  */

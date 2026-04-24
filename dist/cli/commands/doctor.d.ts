@@ -1,6 +1,6 @@
 /**
- * Crucibulum CLI — doctor command
- * crucibulum doctor
+ * Crucible CLI — doctor command
+ * crucible doctor
  * Reports provider availability, configuration status, and blockers.
  */
 export declare function doctorCommand(_args: string[]): Promise<void>;

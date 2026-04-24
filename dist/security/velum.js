@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Security: Injection Scanner + Anti-Cheat
+ * Crucible — Security: Injection Scanner + Anti-Cheat
  * Velum-grade prompt injection detection.
  */
 // ── Injection Patterns ─────────────────────────────────────────────────────
@@ -11,7 +11,7 @@ const INJECTION_PATTERNS = [
     /disregard\s+(all\s+)?(prior|previous)/i,
     /new\s+instructions?\s*:/i,
     /override\s+(system|safety)/i,
-    // Crucibulum-specific
+    // Crucible-specific
     /reveal\s+(the\s+)?oracle/i,
     /show\s+(me\s+)?(the\s+)?hidden\s+tests/i,
     /what\s+are\s+the\s+scoring\s+weights/i,

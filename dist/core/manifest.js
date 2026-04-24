@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Manifest Loader
+ * Crucible — Manifest Loader
  * Loads full manifest for judge, filters for agent-visible version.
  * Supports both repo-based (task.title) and conversational (description) manifest schemas.
  */

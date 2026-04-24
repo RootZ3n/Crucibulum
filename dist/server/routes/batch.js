@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Batch Routes
+ * Crucible — Batch Routes
  * Multi-model batch execution.
  */
 import { sendJSON, parseJsonBody, log, canonicalPercent } from "./shared.js";
@@ -12,6 +12,17 @@ import { summarizeRunSet } from "../contracts.js";
 import { runSynthesis } from "../../core/synthesis.js";
 import { requireAuth } from "../auth.js";
 import { activeRuns, broadcastSSE, sseClients, markRunSettled } from "./run.js";
+import { resolveByModelIdWithHint } from "../../core/provider-registry.js";
+function resolveRequestedDispatch(adapter, provider, model) {
+    const resolved = resolveByModelIdWithHint(model, provider);
+    if (!resolved)
+        return { adapter, provider, model };
+    return {
+        adapter: resolved.adapter,
+        provider: resolved.presetId,
+        model: resolved.model,
+    };
+}
 export async function handleRunBatch(req, res) {
     if (!requireAuth(req, res))
         return;
@@ -65,28 +76,29 @@ export async function handleRunBatch(req, res) {
         try {
             for (let index = 0; index < body.models.length; index += 1) {
                 const modelSpec = body.models[index];
-                const adapterId = modelSpec.adapter;
+                const dispatch = resolveRequestedDispatch(modelSpec.adapter, modelSpec.provider ?? null, modelSpec.model);
+                const adapterId = dispatch.adapter;
                 broadcastSSE(batchId, "step", {
                     type: "task_start",
-                    detail: `Model ${index + 1}/${body.models.length}: ${adapterId}/${modelSpec.model}`,
+                    detail: `Model ${index + 1}/${body.models.length}: ${adapterId}/${dispatch.model}`,
                 });
                 try {
                     const adapterInstance = await instantiateAdapterForRun({
                         adapter: adapterId,
-                        model: modelSpec.model,
-                        provider: modelSpec.provider ?? null,
+                        model: dispatch.model,
+                        provider: dispatch.provider,
                     });
                     const health = await adapterInstance.adapter.healthCheck();
                     if (!health.ok) {
-                        broadcastSSE(batchId, "step", { type: "skip", detail: `${adapterId}/${modelSpec.model}: unavailable — ${health.reason ?? "no reason"}` });
-                        log("debug", "api", `Batch skip: ${adapterId}/${modelSpec.model} unavailable`);
+                        broadcastSSE(batchId, "step", { type: "skip", detail: `${adapterId}/${dispatch.model}: unavailable — ${health.reason ?? "no reason"}` });
+                        log("debug", "api", `Batch skip: ${adapterId}/${dispatch.model} unavailable`);
                         await adapterInstance.adapter.teardown();
                         continue;
                     }
                     const result = await runTask({
                         taskId: body.task,
                         adapter: adapterInstance.adapter,
-                        model: modelSpec.model,
+                        model: dispatch.model,
                         keepWorkspace: false,
                         reviewConfig,
                     });
@@ -94,14 +106,14 @@ export async function handleRunBatch(req, res) {
                     completedBundles.push(result.bundle);
                     broadcastSSE(batchId, "step", {
                         type: "task_complete",
-                        detail: `${adapterId}/${modelSpec.model}: ${result.bundle.score.pass ? "PASS" : "FAIL"} (${Math.round(canonicalPercent(result.bundle.score.total))}%)`,
+                        detail: `${adapterId}/${dispatch.model}: ${result.bundle.score.pass ? "PASS" : "FAIL"} (${Math.round(canonicalPercent(result.bundle.score.total))}%)`,
                     });
                     await adapterInstance.adapter.teardown();
                 }
                 catch (err) {
                     broadcastSSE(batchId, "step", {
                         type: "error",
-                        detail: `${adapterId}/${modelSpec.model}: ${String(err).slice(0, 200)}`,
+                        detail: `${adapterId}/${dispatch.model}: ${String(err).slice(0, 200)}`,
                     });
                 }
             }

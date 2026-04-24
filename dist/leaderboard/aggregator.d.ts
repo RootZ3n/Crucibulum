@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Leaderboard Aggregator
+ * Crucible — Leaderboard Aggregator
  * Aggregates evidence bundles into leaderboard entries.
  * Computes pass@k, failure taxonomy, performance metrics.
  */
@@ -38,6 +38,13 @@ export interface LeaderboardEntry {
         p90_time_sec: number;
         median_steps: number;
         total_cost_usd: number;
+    };
+    verdict_metrics?: {
+        model_failures: number;
+        not_complete: number;
+        completion_rate: number;
+        model_failure_rate: number;
+        nc_rate: number;
     };
     verified: boolean;
 }

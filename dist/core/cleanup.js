@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Workspace Cleanup
+ * Crucible — Workspace Cleanup
  * Conservative cleanup of stale run workspaces and artifacts.
  */
 import { readdirSync, statSync, rmSync, existsSync } from "node:fs";

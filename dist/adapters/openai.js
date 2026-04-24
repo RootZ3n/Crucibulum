@@ -1,5 +1,5 @@
 /**
- * Crucibulum — OpenAI Direct Adapter
+ * Crucible — OpenAI Direct Adapter
  * Direct OpenAI Chat Completions API integration.
  * Handles reasoning models (o1, o3) which require max_completion_tokens
  * and do not support temperature.
@@ -11,6 +11,7 @@ import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { Observer } from "../core/observer.js";
+import { makeEmptyResponseError, makeHttpProviderError, makeInvalidResponseError, makeProviderFailureError, normalizeProviderError, providerErrorSummary, providerErrorDetail } from "../core/provider-errors.js";
 import { log } from "../utils/logger.js";
 const OPENAI_BASE = "https://api.openai.com/v1";
 const MODEL_TIMEOUT_MS = 300_000;
@@ -31,7 +32,19 @@ export class OpenAIAdapter {
         return true;
     }
     supportsChat() {
-        return false;
+        return true;
+    }
+    async chat(messages, options) {
+        if (!this.apiKey)
+            throw new Error("OpenAI: OPENAI_API_KEY not set");
+        const start = Date.now();
+        const result = await callOpenAI(this.apiKey, this.model, messages, options);
+        return {
+            text: result.text,
+            tokens_in: result.tokensIn,
+            tokens_out: result.tokensOut,
+            duration_ms: Date.now() - start,
+        };
     }
     async init(config) {
         const c = config;
@@ -40,21 +53,26 @@ export class OpenAIAdapter {
         this.apiKey = process.env["OPENAI_API_KEY"] ?? "";
     }
     async healthCheck() {
-        if (!this.apiKey)
-            return { ok: false, reason: "OPENAI_API_KEY not set" };
+        if (!this.apiKey) {
+            const providerError = makeProviderFailureError({ kind: "AUTH", origin: "ADAPTER", provider: "openai", adapter: this.id, rawMessage: "OPENAI_API_KEY not set" }).structured;
+            // Detail (not Summary) so operators see WHICH env var to set, not
+            // just "Authentication failed".
+            return { ok: false, reason: providerErrorDetail(providerError), providerError };
+        }
         try {
             const res = await fetch(`${OPENAI_BASE}/models`, {
                 headers: { Authorization: `Bearer ${this.apiKey}` },
                 signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
             });
-            if (res.status === 401)
-                return { ok: false, reason: "OPENAI_API_KEY invalid (401)" };
-            if (!res.ok)
-                return { ok: false, reason: `OpenAI returned ${res.status}` };
+            if (!res.ok) {
+                const providerError = makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "openai", adapter: this.id }).structured;
+                return { ok: false, reason: providerErrorSummary(providerError), providerError };
+            }
             return { ok: true };
         }
         catch (err) {
-            return { ok: false, reason: `OpenAI unreachable: ${String(err).slice(0, 100)}` };
+            const providerError = normalizeProviderError(err, { provider: "openai", adapter: this.id });
+            return { ok: false, reason: providerErrorSummary(providerError), providerError };
         }
     }
     async teardown() { }
@@ -92,8 +110,9 @@ export class OpenAIAdapter {
                 log("info", "openai", `[step ${step + 1}/${maxSteps}] Response (${response.length} chars, ${result.tokensOut} tok)`);
             }
             catch (err) {
-                log("error", "openai", `[step ${step + 1}/${maxSteps}] Model call failed: ${String(err).slice(0, 200)}`);
-                observer.recordError(`Model call failed: ${String(err).slice(0, 200)}`);
+                const providerError = normalizeProviderError(err, { provider: "openai", adapter: this.id });
+                log("error", "openai", `[step ${step + 1}/${maxSteps}] Model call failed: ${providerError.rawMessage.slice(0, 200)}`);
+                observer.recordError(`Model call failed: ${providerError.rawMessage.slice(0, 200)}`, providerError);
                 exitReason = "error";
                 break;
             }
@@ -135,6 +154,7 @@ export class OpenAIAdapter {
         return {
             exit_reason: exitReason,
             timeline: observer.getTimeline(),
+            provider_error: observer.getProviderError() ?? undefined,
             duration_ms: Date.now() - startMs,
             steps_used: observer.getStepCount(),
             files_read: observer.getFilesRead(),
@@ -152,16 +172,8 @@ export class OpenAIAdapter {
     }
 }
 // ── OpenAI API call ────────────────────────────────────────────────────────
-async function callOpenAI(apiKey, model, messages) {
-    const body = { model, messages };
-    if (isReasoningModel(model)) {
-        // Reasoning models: max_completion_tokens, no temperature
-        body.max_completion_tokens = 8192;
-    }
-    else {
-        body.max_tokens = 8192;
-        body.temperature = 0.1;
-    }
+async function callOpenAI(apiKey, model, messages, options) {
+    const body = buildOpenAIChatBody(model, messages, options);
     const res = await fetch(`${OPENAI_BASE}/chat/completions`, {
         method: "POST",
         headers: {
@@ -172,14 +184,45 @@ async function callOpenAI(apiKey, model, messages) {
         signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
     });
     if (!res.ok) {
-        throw new Error(`OpenAI returned ${res.status}: ${await res.text().catch(() => "")}`);
+        throw makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "openai", adapter: "openai" });
     }
-    const data = (await res.json());
+    const rawBody = await res.text();
+    let data;
+    try {
+        data = JSON.parse(rawBody);
+    }
+    catch {
+        throw makeInvalidResponseError({ provider: "openai", adapter: "openai" }, `OpenAI returned non-JSON body: ${rawBody.slice(0, 400)}`);
+    }
+    const text = data.choices?.[0]?.message?.content ?? "";
+    if (!text.trim()) {
+        throw makeEmptyResponseError({ provider: "openai", adapter: "openai" }, `OpenAI returned empty response for model ${model}`);
+    }
     return {
-        text: data.choices?.[0]?.message?.content ?? "",
+        text,
         tokensIn: data.usage?.prompt_tokens ?? 0,
         tokensOut: data.usage?.completion_tokens ?? 0,
     };
+}
+export function buildOpenAIChatBody(model, messages, options) {
+    const body = { model, messages };
+    const requestedReasoning = options?.reasoningEffort;
+    const suppressVisibleReasoning = options?.suppressVisibleReasoning === true;
+    const wantsReasoningOff = requestedReasoning === "off" || (requestedReasoning == null && suppressVisibleReasoning);
+    if (isReasoningModel(model)) {
+        body.max_completion_tokens = 8192;
+    }
+    else {
+        body.max_tokens = 8192;
+        body.temperature = 0.1;
+    }
+    if (wantsReasoningOff && (/^gpt-5/i.test(model) || isReasoningModel(model))) {
+        body.reasoning_effort = /^gpt-5/i.test(model) ? "none" : "minimal";
+    }
+    else if (requestedReasoning === "minimal" && (/^gpt-5/i.test(model) || isReasoningModel(model))) {
+        body.reasoning_effort = "minimal";
+    }
+    return body;
 }
 // ── Shared agentic loop infrastructure ─────────────────────────────────────
 const RE_ANCHOR_MESSAGE = `You must use one of these exact commands on its own line to interact with the codebase. Do not explain — just issue the command.

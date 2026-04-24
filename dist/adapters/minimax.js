@@ -1,5 +1,5 @@
 /**
- * Crucibulum — MiniMax Direct Adapter
+ * Crucible — MiniMax Direct Adapter
  * Direct MiniMax API integration via OpenAI-compatible endpoint.
  * Supported: MiniMax-M2.7, abab6.5s-chat
  *
@@ -9,16 +9,28 @@ import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { Observer } from "../core/observer.js";
+import { makeEmptyResponseError, makeHttpProviderError, makeInvalidResponseError, makeProviderFailureError, normalizeProviderError, providerErrorSummary, providerErrorDetail } from "../core/provider-errors.js";
 import { log } from "../utils/logger.js";
-const MINIMAX_BASE = "https://api.minimax.chat/v1";
+// MiniMax runs two distinct platforms with separate accounts and keys:
+//   • International: api.minimax.io — current global API host
+//   • Domestic (CN): api.minimax.chat
+// We default to the international endpoint for standalone Crucible users.
+// Override via MINIMAX_BASE_URL or the Providers tab base URL.
+const MINIMAX_BASE_DEFAULT = "https://api.minimax.io/v1";
 const MODEL_TIMEOUT_MS = 300_000;
 const HEALTH_TIMEOUT_MS = 15_000;
 export class MiniMaxAdapter {
     id = "minimax";
     name = "MiniMax Direct";
     version = "1.0.0";
-    model = "MiniMax-M2.7";
+    // No default model id — the MiniMax catalog is account-scoped and its
+    // ids change between platform releases. A stale hardcoded default silently
+    // fails every healthCheck with "unknown model" (error code 2013). Force
+    // callers to pass a real id so the failure, if any, is about *their* model
+    // and not ours.
+    model = "";
     apiKey = "";
+    baseUrl = MINIMAX_BASE_DEFAULT;
     supports(_family) {
         return true;
     }
@@ -26,20 +38,57 @@ export class MiniMaxAdapter {
         return true;
     }
     supportsChat() {
-        return false;
+        return true;
+    }
+    async chat(messages, _options) {
+        if (!this.apiKey)
+            throw new Error("MiniMax: MINIMAX_API_KEY not set");
+        const start = Date.now();
+        const result = await callMiniMax(this.baseUrl, this.apiKey, this.model, messages);
+        return {
+            text: result.text,
+            tokens_in: result.tokensIn,
+            tokens_out: result.tokensOut,
+            duration_ms: Date.now() - start,
+        };
     }
     async init(config) {
         const c = config;
         if (c.model)
             this.model = c.model;
-        this.apiKey = process.env["MINIMAX_API_KEY"] ?? "";
+        if (c.api_key)
+            this.apiKey = c.api_key;
+        else
+            this.apiKey = process.env["MINIMAX_API_KEY"] ?? "";
+        const envBase = process.env["MINIMAX_BASE_URL"];
+        this.baseUrl = (c.base_url || envBase || MINIMAX_BASE_DEFAULT).replace(/\/+$/, "");
     }
     async healthCheck() {
-        if (!this.apiKey)
-            return { ok: false, reason: "MINIMAX_API_KEY not set" };
+        if (!this.apiKey) {
+            const providerError = makeProviderFailureError({ kind: "AUTH", origin: "ADAPTER", provider: "minimax", adapter: this.id, rawMessage: "MINIMAX_API_KEY not set" }).structured;
+            // Detail (not Summary) so operators see WHICH env var to set.
+            return { ok: false, reason: providerErrorDetail(providerError), providerError };
+        }
+        if (!this.model) {
+            // Clean, local rejection rather than calling the API with model="" and
+            // getting back the same 2013 "unknown model" error from MiniMax — the
+            // message the user sees is now precise and actionable.
+            const providerError = makeProviderFailureError({
+                kind: "INVALID_RESPONSE",
+                origin: "ADAPTER",
+                provider: "minimax",
+                adapter: this.id,
+                rawMessage: "MiniMax model id not configured — register a model via the Providers tab (MiniMax's catalog is account-scoped, so there is no safe default)",
+            }).structured;
+            return { ok: false, reason: providerErrorSummary(providerError), providerError };
+        }
         try {
-            // Verify key with a minimal completion
-            const res = await fetch(`${MINIMAX_BASE}/text/chatcompletion_v2`, {
+            // Verify key with a minimal completion. MiniMax embeds per-call errors
+            // in base_resp even on HTTP 200 (e.g. 2049 invalid api key, 1004 login
+            // fail). We surface those so the user sees the real cause instead of
+            // the adapter silently returning ok:true and then producing empty
+            // completions at run time.
+            const res = await fetch(`${this.baseUrl}/text/chatcompletion_v2`, {
                 method: "POST",
                 headers: {
                     "Authorization": `Bearer ${this.apiKey}`,
@@ -52,14 +101,25 @@ export class MiniMaxAdapter {
                 }),
                 signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
             });
-            if (res.status === 401)
-                return { ok: false, reason: "MINIMAX_API_KEY invalid (401)" };
-            if (!res.ok)
-                return { ok: false, reason: `MiniMax returned ${res.status}` };
+            if (!res.ok) {
+                const providerError = makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "minimax", adapter: this.id }).structured;
+                return { ok: false, reason: providerErrorSummary(providerError), providerError };
+            }
+            const body = await res.text();
+            try {
+                const parsed = JSON.parse(body);
+                const code = parsed.base_resp?.status_code;
+                if (typeof code === "number" && code !== 0) {
+                    const providerError = makeInvalidResponseError({ provider: "minimax", adapter: this.id }, `MiniMax error ${code}: ${parsed.base_resp?.status_msg || "(no message)"} (base=${this.baseUrl})`).structured;
+                    return { ok: false, reason: providerErrorSummary(providerError), providerError };
+                }
+            }
+            catch { /* non-JSON body; treat HTTP 200 as reachable */ }
             return { ok: true };
         }
         catch (err) {
-            return { ok: false, reason: `MiniMax unreachable: ${String(err).slice(0, 100)}` };
+            const providerError = normalizeProviderError(err, { provider: "minimax", adapter: this.id });
+            return { ok: false, reason: providerErrorSummary(providerError), providerError };
         }
     }
     async teardown() { }
@@ -90,15 +150,16 @@ export class MiniMaxAdapter {
             log("info", "minimax", `[step ${step + 1}/${maxSteps}] Calling ${this.model}...`);
             let response;
             try {
-                const result = await callMiniMax(this.apiKey, this.model, messages);
+                const result = await callMiniMax(this.baseUrl, this.apiKey, this.model, messages);
                 response = result.text;
                 totalTokensIn += result.tokensIn;
                 totalTokensOut += result.tokensOut;
                 log("info", "minimax", `[step ${step + 1}/${maxSteps}] Response (${response.length} chars, ${result.tokensOut} tok)`);
             }
             catch (err) {
-                log("error", "minimax", `[step ${step + 1}/${maxSteps}] Model call failed: ${String(err).slice(0, 200)}`);
-                observer.recordError(`Model call failed: ${String(err).slice(0, 200)}`);
+                const providerError = normalizeProviderError(err, { provider: "minimax", adapter: this.id });
+                log("error", "minimax", `[step ${step + 1}/${maxSteps}] Model call failed: ${providerError.rawMessage.slice(0, 200)}`);
+                observer.recordError(`Model call failed: ${providerError.rawMessage.slice(0, 200)}`, providerError);
                 exitReason = "error";
                 break;
             }
@@ -139,6 +200,7 @@ export class MiniMaxAdapter {
         return {
             exit_reason: exitReason,
             timeline: observer.getTimeline(),
+            provider_error: observer.getProviderError() ?? undefined,
             duration_ms: Date.now() - startMs,
             steps_used: observer.getStepCount(),
             files_read: observer.getFilesRead(),
@@ -156,8 +218,8 @@ export class MiniMaxAdapter {
     }
 }
 // ── MiniMax API call ───────────────────────────────────────────────────────
-async function callMiniMax(apiKey, model, messages) {
-    const res = await fetch(`${MINIMAX_BASE}/text/chatcompletion_v2`, {
+async function callMiniMax(baseUrl, apiKey, model, messages) {
+    const res = await fetch(`${baseUrl}/text/chatcompletion_v2`, {
         method: "POST",
         headers: {
             "Authorization": `Bearer ${apiKey}`,
@@ -171,12 +233,39 @@ async function callMiniMax(apiKey, model, messages) {
         }),
         signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
     });
+    const rawBody = await res.text();
     if (!res.ok) {
-        throw new Error(`MiniMax returned ${res.status}: ${await res.text().catch(() => "")}`);
+        throw makeHttpProviderError(res, rawBody, { provider: "minimax", adapter: "minimax" });
     }
-    const data = (await res.json());
+    let data;
+    try {
+        data = JSON.parse(rawBody);
+    }
+    catch {
+        throw makeInvalidResponseError({ provider: "minimax", adapter: "minimax" }, `MiniMax returned non-JSON body: ${rawBody.slice(0, 400)}`);
+    }
+    // MiniMax embeds per-call errors in `base_resp` even when HTTP is 200
+    // (unknown model id, auth issues, content filter, etc.). Surface that
+    // instead of silently returning an empty string.
+    if (data.base_resp && typeof data.base_resp.status_code === "number" && data.base_resp.status_code !== 0) {
+        throw makeInvalidResponseError({ provider: "minimax", adapter: "minimax" }, `MiniMax error ${data.base_resp.status_code}: ${data.base_resp.status_msg || "(no message)"}`);
+    }
+    // Response shape varies across MiniMax endpoints/models:
+    //   • chatcompletion_v2 (OpenAI-ish): choices[0].message.content
+    //   • older chatcompletion: choices[0].messages[0].content / text
+    //   • some models: top-level reply
+    const choice = data.choices?.[0];
+    const text = choice?.message?.content ??
+        choice?.messages?.[0]?.content ??
+        choice?.messages?.[0]?.text ??
+        choice?.text ??
+        data.reply ??
+        "";
+    if (!text) {
+        throw makeEmptyResponseError({ provider: "minimax", adapter: "minimax" }, `MiniMax returned empty content. Raw body: ${rawBody.slice(0, 400)}`);
+    }
     return {
-        text: data.choices?.[0]?.message?.content ?? "",
+        text,
         tokensIn: data.usage?.prompt_tokens ?? 0,
         tokensOut: data.usage?.completion_tokens ?? 0,
     };

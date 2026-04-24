@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Runtime request-body validation
+ * Crucible — Runtime request-body validation
  *
  * Tiny, dependency-free validators for the handful of POST routes that accept
  * structured payloads. Intentionally not a generic schema framework — every

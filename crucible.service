@@ -1,0 +1,15 @@
+[Unit]
+Description=Crucible standalone (web UI + API server)
+After=network.target
+
+[Service]
+Type=simple
+User=zen
+WorkingDirectory=/mnt/ai/crucible
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node dist/server/api.js
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

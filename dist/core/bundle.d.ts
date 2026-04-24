@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Evidence Bundle Builder
+ * Crucible — Evidence Bundle Builder
  * Builds, signs (SHA256), and stores immutable evidence bundles.
  */
 import type { TaskManifest, Oracle, ExecutionResult, EvidenceBundle, DiffEntry } from "../adapters/base.js";

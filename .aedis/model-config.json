@@ -1,0 +1,30 @@
+{
+  "scout": {
+    "model": "local",
+    "provider": "local"
+  },
+  "builder": {
+    "model": "MiniMax-M2.7",
+    "provider": "minimax"
+  },
+  "critic": {
+    "model": "qwen3.5:9b",
+    "provider": "ollama"
+  },
+  "verifier": {
+    "model": "local",
+    "provider": "local"
+  },
+  "integrator": {
+    "model": "glm-5.1",
+    "provider": "zai"
+  },
+  "escalation": {
+    "model": "MiniMax-M2.7",
+    "provider": "minimax"
+  },
+  "coordinator": {
+    "model": "xiaomi/mimo-v2-pro",
+    "provider": "openrouter"
+  }
+}

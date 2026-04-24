@@ -1,19 +1,24 @@
 {
-  "name": "crucibulum",
+  "name": "crucible",
   "version": "1.0.0",
   "description": "Execution-based AI agent evaluation harness",
   "type": "module",
-  "main": "dist/cli/main.js",
+  "main": "dist/server/api.js",
   "bin": {
-    "crucibulum": "dist/cli/main.js"
+    "crucible": "dist/cli/main.js"
   },
   "scripts": {
     "build": "tsc",
+    "build:clean": "rm -rf dist && tsc",
     "dev": "tsc --watch",
-    "start": "node dist/cli/main.js",
+    "start": "node dist/server/api.js",
+    "serve": "node dist/server/api.js",
+    "cli": "node dist/cli/main.js",
+    "pretest": "rm -rf dist && tsc",
     "test": "node --test dist/tests/*.test.js",
     "lint": "tsc --noEmit",
-    "serve": "node dist/server/api.js"
+    "harness": "node dist/cli/main.js harness",
+    "qa": "node dist/cli/main.js qa"
   },
   "keywords": [
     "ai",

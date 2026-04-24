@@ -1,5 +1,5 @@
 /**
- * Crucibulum CLI — replay command
+ * Crucible CLI — replay command
  * Replays a completed run, showing the full evidence trail.
  */
 
@@ -11,7 +11,7 @@ import type { EvidenceBundle, TimelineEvent } from "../../adapters/base.js";
 export async function replayCommand(args: string[]): Promise<void> {
   const bundleId = args[0];
   if (!bundleId) {
-    console.error("Usage: crucibulum replay <run_id>");
+    console.error("Usage: crucible replay <run_id>");
     process.exit(3);
   }
 
@@ -53,7 +53,7 @@ export async function replayCommand(args: string[]): Promise<void> {
   // Header
   console.log("");
   console.log(`${D}${"═".repeat(70)}${X}`);
-  console.log(`  ${BOLD}CRUCIBULUM REPLAY${X}`);
+  console.log(`  ${BOLD}CRUCIBLE REPLAY${X}`);
   console.log(`${D}${"═".repeat(70)}${X}`);
   console.log("");
 

@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Token Estimation
+ * Crucible — Token Estimation
  * Rough estimation — not a tokenizer, just chars/4.
  */
 export declare function estimateTokens(text: string): number;

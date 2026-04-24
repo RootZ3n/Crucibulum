@@ -1,4 +1,5 @@
 import type { EvidenceBundle } from "../adapters/base.js";
+import type { NormalizedVerdict } from "../types/verdict.js";
 export interface CrucibleLink {
     profile_id: string | null;
     benchmark_score: number | null;
@@ -25,7 +26,11 @@ export interface RunSetSummary {
     run_count: number;
     passes: number;
     failures: number;
+    not_complete: number;
     pass_rate: number;
+    completion_rate: number;
+    model_failure_rate: number;
+    nc_rate: number;
     pass_at: PassAtSummary;
     avg_score: number;
     total_tokens: number;
@@ -52,6 +57,7 @@ export interface EvaluationSummary {
     };
     outcome: {
         pass: boolean;
+        verdict: NormalizedVerdict;
         score: number;
         score_breakdown: EvidenceBundle["score"]["breakdown"];
         pass_threshold: number;
@@ -74,6 +80,26 @@ export interface EvaluationSummary {
         tokens_out: number;
         estimated_cost_usd: number;
         provider_cost_note: string;
+    };
+    /**
+     * Judge model spend, tracked separately from `usage` (which is the model
+     * under test). Always present so consumers can render "Judge cost" without
+     * branching on undefined; kind: "deterministic" with zero values means no
+     * model judge ran.
+     */
+    judge_usage: {
+        provider: string;
+        model: string;
+        tokens_in: number;
+        tokens_out: number;
+        estimated_cost_usd: number;
+        kind: "deterministic" | "model" | "skipped";
+        note: string;
+    };
+    /** Total = tested-model spend + judge-model spend. Convenience for the UI. */
+    total: {
+        tokens: number;
+        cost_usd: number;
     };
     timing: {
         started_at: string;

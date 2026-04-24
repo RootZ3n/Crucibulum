@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Grimoire Codex Adapter
+ * Crucible — Grimoire Codex Adapter
  * Routes tasks through Squidley's Grimoire Codex mode.
  * Codex Mode = iterative inspect/edit/verify loop.
  *
@@ -19,7 +19,12 @@ export declare class GrimoireCodexAdapter implements CrucibulumAdapter {
     init(config: AdapterConfig): Promise<void>;
     healthCheck(): Promise<{
         ok: boolean;
-        reason?: string | undefined;
+        reason: string;
+        providerError: import("../types/provider-error.js").StructuredProviderError;
+    } | {
+        ok: boolean;
+        reason?: never;
+        providerError?: never;
     }>;
     teardown(): Promise<void>;
     execute(input: ExecutionInput): Promise<ExecutionResult>;

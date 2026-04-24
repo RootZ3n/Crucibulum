@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Shared Route Helpers
+ * Crucible — Shared Route Helpers
  * Common utilities for route handlers.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -36,7 +36,25 @@ export declare function getBundleById(id: string): EvidenceBundle | null;
 /** Explicit task-scoped lookup for callers that actually want every bundle for a task. */
 export declare function getBundlesByTaskId(taskId: string): EvidenceBundle[];
 export declare function parseFamiliesParam(url: URL): ScoreFamily[] | null;
+export declare function parseTaskFamiliesParam(url: URL): string[] | null;
+export declare function parseBundleTaskFamiliesParam(url: URL): string[] | null;
+/**
+ * Resolved lane scope echoed back on every lane-aware endpoint so clients can
+ * verify the response matches the request. `taskFamilies` is the canonical
+ * filter; `scopeKey` is a stable, order-independent string the UI can use as a
+ * cache key ("all" when nothing is applied).
+ *
+ * Scope flows end-to-end through one name — `task_families` — and this
+ * helper is the single parsing point. Anything that branches on scope must go
+ * through here; do NOT read searchParams for lane filtering anywhere else.
+ */
+export interface LaneScope {
+    taskFamilies: string[] | null;
+    scopeKey: string;
+}
+export declare function resolveLaneScope(url: URL): LaneScope;
 export declare function filterBundlesByFamilies(bundles: EvidenceBundle[], families: ScoreFamily[] | null): EvidenceBundle[];
+export declare function filterBundlesByTaskFamilies(bundles: EvidenceBundle[], taskFamilies: string[] | null): EvidenceBundle[];
 export declare function listTaskDetails(): Array<Record<string, unknown>>;
 export declare function listSuites(): Array<Record<string, unknown>>;
 export declare function bundleSummary(bundle: EvidenceBundle, allBundles: EvidenceBundle[]): ReturnType<typeof summarizeBundle>;

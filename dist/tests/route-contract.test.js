@@ -1,7 +1,7 @@
 /**
- * Crucibulum — HTTP route contract tests
+ * Crucible — HTTP route contract tests
  *
- * Stands up the real Crucibulum app via createApp() bound to an ephemeral
+ * Stands up the real Crucible app via createApp() bound to an ephemeral
  * port, then hits endpoints with fetch. Covers the public API contract the
  * UI and external consumers rely on, and pins the runtime validation on
  * malformed payloads.
@@ -30,6 +30,7 @@ process.env["CRUCIBULUM_ALLOW_LOCAL"] = "true";
 const { createApp } = await import("../server/app.js");
 const { __resetRateLimiterForTests } = await import("../server/rate-limit.js");
 const { storeBundle, buildBundle } = await import("../core/bundle.js");
+const registry = await import("../core/provider-registry.js");
 let server;
 let base = "";
 // ── setup ───────────────────────────────────────────────────────────────────
@@ -37,7 +38,7 @@ function makeBundle(overrides = {}) {
     return buildBundle({
         manifest: {
             id: overrides.taskId ?? "t-route-1",
-            family: "spec_discipline",
+            family: overrides.family ?? "spec_discipline",
             difficulty: "easy",
             description: "route contract fixture",
             constraints: { time_limit_sec: 900, max_steps: 40, network_allowed: false },
@@ -104,9 +105,44 @@ describe("route: /api/runs", () => {
         assert.ok(Array.isArray(body.runs));
         assert.ok(body.runs.some((r) => r.task_id === "t-route-seed"));
     });
+    it("scopes runs by task_families without leaking other lanes", async () => {
+        storeBundle(makeBundle({ taskId: "t-build-only", family: "orchestration", model: "build-model" }));
+        storeBundle(makeBundle({ taskId: "t-safety-only", family: "safety", model: "safety-model" }));
+        const res = await fetch(`${base}/api/runs?task_families=orchestration`);
+        assert.equal(res.status, 200);
+        const body = await res.json();
+        assert.ok(body.runs.some((run) => run.task_id === "t-build-only" && run.family === "orchestration"));
+        assert.ok(body.runs.every((run) => run.family === "orchestration"));
+        assert.ok(body.runs.every((run) => run.task_id !== "t-safety-only"));
+    });
+    it("does not silently fall back to global data for an unknown task_families scope", async () => {
+        const res = await fetch(`${base}/api/runs?task_families=definitely_unknown_lane`);
+        assert.equal(res.status, 200);
+        const body = await res.json();
+        assert.deepEqual(body.task_families, ["definitely_unknown_lane"]);
+        assert.equal(body.runs.length, 0);
+    });
     it("returns 404 for an unknown bundle id (no silent task.id fallback)", async () => {
         const res = await fetch(`${base}/api/runs/does-not-exist`);
         assert.equal(res.status, 404);
+    });
+});
+describe("route: /api/stats", () => {
+    it("returns lane-scoped aggregate stats", async () => {
+        storeBundle(makeBundle({ taskId: "t-build-stats-pass", family: "orchestration", model: "builder", score: 0.95 }));
+        storeBundle(makeBundle({ taskId: "t-build-stats-fail", family: "orchestration", model: "builder", score: 0.25 }));
+        storeBundle(makeBundle({ taskId: "t-memory-stats-pass", family: "memory", model: "memory-bot", score: 0.88 }));
+        const buildRes = await fetch(`${base}/api/stats?task_families=orchestration`);
+        assert.equal(buildRes.status, 200);
+        const buildBody = await buildRes.json();
+        assert.deepEqual(buildBody.task_families, ["orchestration"]);
+        assert.equal(buildBody.total_runs >= 2, true);
+        const memoryRes = await fetch(`${base}/api/stats?task_families=memory`);
+        assert.equal(memoryRes.status, 200);
+        const memoryBody = await memoryRes.json();
+        assert.deepEqual(memoryBody.task_families, ["memory"]);
+        assert.equal(memoryBody.total_runs >= 1, true);
+        assert.notEqual(buildBody.total_runs, memoryBody.total_runs, "scoped stats must reflect lane-specific run sets");
     });
 });
 // ── run POST (validation) ───────────────────────────────────────────────────
@@ -139,6 +175,150 @@ describe("route: POST /api/run", () => {
         assert.equal(res.status, 400);
     });
 });
+// ── run POST (selection-to-execution integrity) ─────────────────────────────
+//
+// Root cause of the spec-only-execution bug: every cloud adapter used to
+// declare `supportsChat()=false` and never implement `chat()`. Conversational
+// tasks (truthfulness/identity/classification/etc.) fired off /api/run, the
+// runner tried to call `adapter.chat()`, threw, and the failed run produced
+// no bundle — so the archive showed spec-only history even when mixed-family
+// tests were selected. The UI counted the attempt as "done" because SSE 'error'
+// resolved the watcher. Fixes: (1) cloud adapters now implement chat(),
+// (2) handleRunPost preflights conversational task + chat-capable adapter
+// and rejects 422 BEFORE spending tokens so the UI can surface the reason.
+//
+// These tests pin both halves so the bug cannot return silently.
+describe("route: POST /api/run — selection integrity", () => {
+    it("422s when a conversational task is routed to an adapter without chat() — no silent spec-only fallback", async () => {
+        // openclaw is a subprocess adapter that intentionally has no chat(); a
+        // conversational task on this adapter MUST be rejected by preflight, not
+        // silently turned into a failed run with zero bundle output.
+        const res = await fetch(`${base}/api/run`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                task: "truthfulness-001",
+                adapter: "openclaw",
+                provider: "openclaw",
+                model: "any",
+                count: 1,
+            }),
+        });
+        assert.equal(res.status, 422, "conversational-task + non-chat-adapter must preflight-fail");
+        const body = await res.json();
+        assert.equal(body.error, "adapter_cannot_run_task");
+        assert.equal(body.task_kind, "conversational");
+        assert.equal(body.adapter_supports_chat, false);
+        assert.equal(body.adapter, "openclaw");
+        assert.equal(body.task, "truthfulness-001");
+        assert.match(body.reason, /chat/i, "reason must name the missing capability so the UI can surface why");
+    });
+    it("accepts a conversational task when the adapter advertises chat() (openrouter after the fix)", async () => {
+        // The OpenRouter adapter now implements chat(), so preflight must let this
+        // through — proving the fix end-to-end: a non-spec selection IS allowed to
+        // execute on a cloud model. (The run itself will fail at healthCheck in
+        // this test env because no OPENROUTER_API_KEY is set, but that is a
+        // downstream error, not a preflight rejection — the contract here is that
+        // preflight accepted the request on capability grounds.)
+        const res = await fetch(`${base}/api/run`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                task: "truthfulness-001",
+                adapter: "openrouter",
+                provider: "openrouter",
+                model: "xiaomi/mimo-v2-flash",
+                count: 1,
+            }),
+        });
+        assert.equal(res.status, 202, "openrouter now supports chat — conversational task must not be preflight-rejected");
+        const body = await res.json();
+        assert.equal(body.ok, true);
+        assert.ok(typeof body.run_id === "string" && body.run_id.startsWith("run_"));
+    });
+    it("does NOT preflight repo-based (spec) tasks — existing behavior preserved", async () => {
+        // Spec tasks use adapter.execute(), not chat(). Even if adapter.supportsChat()
+        // is false, a spec task must still be accepted — we only gate conversational.
+        const res = await fetch(`${base}/api/run`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                task: "spec-001",
+                adapter: "openclaw",
+                provider: "openclaw",
+                model: "any",
+                count: 1,
+            }),
+        });
+        assert.equal(res.status, 202, "spec task on a non-chat adapter must still queue (execute() path, not chat())");
+    });
+    it("preserves the exact task id through the run request — no lane/family substitution", async () => {
+        // This is the contract the UI relies on: whatever taskId the client sends
+        // is what the server queues. /api/run/:id/status echoes request.task back.
+        const post = await fetch(`${base}/api/run`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                task: "spec-002",
+                adapter: "openclaw",
+                provider: "openclaw",
+                model: "any",
+                count: 1,
+            }),
+        });
+        assert.equal(post.status, 202);
+        const { run_id } = await post.json();
+        const status = await fetch(`${base}/api/run/${run_id}/status`);
+        assert.equal(status.status, 200);
+        const body = await status.json();
+        // request echoes back what was queued; it may have moved to error by now
+        // (downstream adapter failure), but the task id must match exactly.
+        assert.ok(body.request, "status endpoint must preserve the queued request for introspection");
+        assert.equal(body.request.task, "spec-002", "the queued task id must equal the posted task id — no family fallback");
+    });
+    it("rewrites stale squidley MiniMax requests to the direct minimax adapter when the model is registered", async () => {
+        registry.__wipeForTests();
+        const provider = registry.addProvider({ presetId: "minimax", label: "MiniMax Direct", apiKey: "sk-mini" });
+        registry.addModel({ providerConfigId: provider.id, modelId: "abab6.5s-chat" });
+        const post = await fetch(`${base}/api/run`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                task: "truthfulness-001",
+                adapter: "squidley",
+                provider: "minimax",
+                model: "abab6.5s-chat",
+                count: 1,
+            }),
+        });
+        assert.equal(post.status, 202, "stale client adapter hint must not block a registered direct MiniMax model");
+        const { run_id } = await post.json();
+        const status = await fetch(`${base}/api/run/${run_id}/status`);
+        assert.equal(status.status, 200);
+        const body = await status.json();
+        assert.ok(body.request, "resolved request must be visible in status");
+        assert.equal(body.request.adapter, "minimax", "server must rewrite stale squidley path to direct minimax");
+        assert.equal(body.request.provider, "minimax");
+        assert.equal(body.request.model, "abab6.5s-chat");
+    });
+});
+// ── adapter capability advertised over /api/adapters ─────────────────────────
+describe("route: /api/adapters — chat capability is advertised for every cloud adapter", () => {
+    it("cloud adapters report supports_chat=true so the UI can pre-gate selection", async () => {
+        const res = await fetch(`${base}/api/adapters`);
+        assert.equal(res.status, 200);
+        const body = await res.json();
+        const byId = new Map(body.adapters.map((a) => [a.id, a]));
+        // Every cloud HTTP adapter must now advertise chat.
+        for (const id of ["openrouter", "openai", "anthropic", "minimax", "zai", "squidley", "google"]) {
+            const entry = byId.get(id);
+            assert.ok(entry, `adapter ${id} must be listed in /api/adapters`);
+            assert.equal(entry.supports_chat, true, `adapter ${id} must advertise supports_chat=true after the chat() implementation landed`);
+        }
+        // ollama already had chat() — still true.
+        assert.equal(byId.get("ollama")?.supports_chat, true);
+    });
+});
 // ── run-suite POST (validation) ─────────────────────────────────────────────
 describe("route: POST /api/run-suite", () => {
     it("rejects missing required fields", async () => {
@@ -156,6 +336,154 @@ describe("route: POST /api/run-suite", () => {
         assert.equal(res.status, 400);
         const body = await res.json();
         assert.ok(body.details?.some((d) => /retries/.test(d)));
+    });
+});
+// ── registry CRUD ───────────────────────────────────────────────────────────
+//
+// The Providers tab in the UI exercises exactly these endpoints. Pinning
+// them at the route boundary guarantees that (a) the UI can still add
+// providers/models without code edits, and (b) old bundles stay readable
+// after registry mutations — the two properties the product brief demanded.
+describe("route: /api/registry — data-driven provider/model management", () => {
+    it("GET /api/registry/state returns presets + providers + models + catalog", async () => {
+        const res = await fetch(`${base}/api/registry/state`);
+        assert.equal(res.status, 200);
+        const body = await res.json();
+        assert.ok(Array.isArray(body.presets) && body.presets.length > 0);
+        const openrouter = body.presets.find((p) => p.id === "openrouter");
+        assert.ok(openrouter, "OpenRouter preset must appear in /api/registry/state");
+        assert.equal(openrouter.firstClass, true, "OpenRouter must be first-class in the catalog response");
+        assert.ok(body.presets.some((p) => p.id === "modelstudio"), "Model Studio preset must appear");
+    });
+    it("POST /api/registry/providers adds a provider from a preset WITHOUT code edits, inline key is masked on read", async () => {
+        const add = await fetch(`${base}/api/registry/providers`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ presetId: "openrouter", label: "My OR", apiKey: "sk-or-v1-ZZZZYYYY9999" }),
+        });
+        assert.equal(add.status, 201);
+        const added = await add.json();
+        assert.equal(added.provider.apiKeyInline, "****9999", "inline api key must be masked in route response");
+        assert.equal(added.provider.firstClass, true);
+        // State GET must show the new provider and keep the secret masked.
+        const state = await fetch(`${base}/api/registry/state`);
+        const body = await state.json();
+        const row = body.providers.find((p) => p.id === added.provider.id);
+        assert.ok(row);
+        assert.equal(row.apiKeyInline, "****9999");
+    });
+    it("POST /api/registry/models and POST /api/registry/models/bulk allow adding qwen3.6-plus through OpenRouter by data alone", async () => {
+        const addProv = await fetch(`${base}/api/registry/providers`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ presetId: "openrouter", label: "OR for bulk", apiKey: "sk-or-v1-test" }),
+        });
+        const { provider } = await addProv.json();
+        // Single model add.
+        const one = await fetch(`${base}/api/registry/models`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ providerConfigId: provider.id, modelId: "qwen/qwen3.6-plus" }),
+        });
+        assert.equal(one.status, 201);
+        // Bulk paste add — the product brief's headline paste example.
+        const bulkText = [
+            "openai/gpt-5-mini",
+            "- anthropic/claude-sonnet-4.5",
+            "qwen/qwen3.6-plus", // duplicate, must be skipped
+            "google/gemini-2.5-pro",
+        ].join("\n");
+        const bulk = await fetch(`${base}/api/registry/models/bulk`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ providerConfigId: provider.id, pasted: bulkText }),
+        });
+        assert.equal(bulk.status, 201);
+        const bulkBody = await bulk.json();
+        const addedIds = bulkBody.added.map((m) => m.modelId).sort();
+        assert.deepEqual(addedIds, [
+            "anthropic/claude-sonnet-4.5",
+            "google/gemini-2.5-pro",
+            "openai/gpt-5-mini",
+        ]);
+        assert.ok(bulkBody.skipped.some((s) => s.modelId === "qwen/qwen3.6-plus"));
+    });
+    it("PATCH /api/registry/models/:id toggles enabled without touching other fields", async () => {
+        const addProv = await fetch(`${base}/api/registry/providers`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ presetId: "openrouter", label: "OR for toggle", apiKey: "sk" }),
+        });
+        const { provider } = await addProv.json();
+        const add = await fetch(`${base}/api/registry/models`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ providerConfigId: provider.id, modelId: "openai/gpt-5-mini" }),
+        });
+        const { model } = await add.json();
+        assert.equal(model.enabled, true);
+        const off = await fetch(`${base}/api/registry/models/${model.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ enabled: false }),
+        });
+        assert.equal(off.status, 200);
+        const { model: toggled } = await off.json();
+        assert.equal(toggled.enabled, false);
+    });
+    it("POST /api/registry/providers/:id/test returns {ok, reason, provider} and never throws — bad endpoint yields a clean failure", async () => {
+        const add = await fetch(`${base}/api/registry/providers`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                presetId: "openai-compatible",
+                label: "Deliberately bogus",
+                baseUrl: "http://127.0.0.1:1", // reserved port, nothing listening
+                apiKey: "sk-test",
+            }),
+        });
+        const { provider } = await add.json();
+        const test = await fetch(`${base}/api/registry/providers/${provider.id}/test`, { method: "POST" });
+        assert.equal(test.status, 200, "a failed probe must still return 200 with {ok:false} — never a 500");
+        const body = await test.json();
+        assert.equal(body.ok, false, "probing a dead endpoint must report ok:false");
+        assert.ok(body.reason.length > 0, "a reason string is required so the UI can surface it");
+        assert.equal(body.provider.lastTestedOk, false, "lastTestedOk persists alongside the reason");
+    });
+    it("Model Studio is configurable through the SAME registry path as OpenRouter (no preset-specific branch)", async () => {
+        const res = await fetch(`${base}/api/registry/providers`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ presetId: "modelstudio", label: "Model Studio · qwen", apiKey: "ms-key-xxxx" }),
+        });
+        assert.equal(res.status, 201);
+        const { provider } = await res.json();
+        assert.equal(provider.presetId, "modelstudio");
+        assert.equal(provider.apiKeyInline, "****xxxx");
+    });
+    it("existing bundle history remains readable after registry changes — /api/runs still returns the seeded bundle", async () => {
+        // Add + remove a provider; then verify /api/runs still lists the
+        // pre-seeded bundle created in the suite's `before` hook.
+        const add = await fetch(`${base}/api/registry/providers`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ presetId: "openrouter", label: "transient", apiKey: "k" }),
+        });
+        const { provider } = await add.json();
+        await fetch(`${base}/api/registry/providers/${provider.id}`, { method: "DELETE" });
+        const runs = await fetch(`${base}/api/runs`);
+        assert.equal(runs.status, 200);
+        const body = await runs.json();
+        assert.ok(body.runs.some((r) => r.task_id === "t-route-seed"), "registry CRUD must not disturb stored bundles");
+    });
+    it("advertises per-adapter circuit state on /api/adapters so the UI can show degraded providers", async () => {
+        const res = await fetch(`${base}/api/adapters`);
+        assert.equal(res.status, 200);
+        const body = await res.json();
+        const or = body.adapters.find((a) => a.id === "openrouter");
+        assert.ok(or, "openrouter adapter must be listed");
+        assert.ok(or.circuit, "each adapter entry must carry a circuit snapshot");
+        assert.ok(["closed", "open", "half-open"].includes(or.circuit.state));
     });
 });
 // ── run-batch POST (validation) ─────────────────────────────────────────────
@@ -236,6 +564,67 @@ describe("route: GET /api/scores/leaderboard", () => {
         assert.equal(res.status, 200);
         const body = await res.json();
         assert.ok(Array.isArray(body.leaderboard));
+    });
+    it("scopes leaderboard rows by task_families", async () => {
+        storeBundle(makeBundle({ taskId: "t-build-board", family: "orchestration", model: "build-ranker", score: 0.92 }));
+        storeBundle(makeBundle({ taskId: "t-safety-board", family: "safety", model: "safety-ranker", score: 0.41 }));
+        const res = await fetch(`${base}/api/leaderboard?task_families=orchestration`);
+        assert.equal(res.status, 200);
+        const body = await res.json();
+        assert.deepEqual(body.task_families, ["orchestration"]);
+        assert.equal(body.scope_key, "orchestration", "scope_key must echo the resolved lane scope so the UI can verify the response matches the request");
+        assert.ok(body.leaderboard.some((entry) => entry.modelId === "build-ranker"));
+        assert.ok(body.leaderboard.every((entry) => entry.modelId !== "safety-ranker"));
+    });
+    it("scope_key is order-independent across tabs with multi-family scope", async () => {
+        // The personality tab requests task_families=personality,identity; the
+        // scope_key must be the canonical (sorted) form so client-side cache keys
+        // don't depend on query ordering. Sorted → 'identity,personality'.
+        storeBundle(makeBundle({ taskId: "t-persona-1", family: "personality", model: "p-model", score: 0.81 }));
+        storeBundle(makeBundle({ taskId: "t-identity-1", family: "identity", model: "i-model", score: 0.88 }));
+        const a = await fetch(`${base}/api/leaderboard?task_families=personality,identity`);
+        const b = await fetch(`${base}/api/leaderboard?task_families=identity,personality`);
+        const ja = await a.json();
+        const jb = await b.json();
+        assert.equal(ja.scope_key, jb.scope_key, "scope_key must be order-independent");
+        assert.equal(ja.scope_key, "identity,personality", "canonical scope_key is the sorted family list joined with ','");
+    });
+    it("/api/stats returns per-lane verdict metrics (NC excluded from model_failure_rate)", async () => {
+        // Seed a build-lane population with 2 passes + 1 model fail (low score).
+        // pass_rate counts pass/total; model_failure_rate counts FAIL:MODEL/total;
+        // NC counts NC/total. Pinning these together guards against a regression
+        // that would bucket an NC into the model-failure column.
+        storeBundle(makeBundle({ taskId: "t-build-v-pass-1", family: "orchestration", model: "verdict-model", score: 0.93 }));
+        storeBundle(makeBundle({ taskId: "t-build-v-pass-2", family: "orchestration", model: "verdict-model", score: 0.88 }));
+        storeBundle(makeBundle({ taskId: "t-build-v-fail", family: "orchestration", model: "verdict-model", score: 0.15 }));
+        const res = await fetch(`${base}/api/stats?task_families=orchestration`);
+        assert.equal(res.status, 200);
+        const body = await res.json();
+        assert.equal(body.scope_key, "orchestration");
+        assert.ok(body.total_runs >= 3, "scoped stats must include every seeded orchestration run");
+        // The 0.15-score run is a classic model fail (FAIL:MODEL:low_score).
+        // It MUST register in model_failure_rate and MUST NOT register as NC.
+        assert.ok(body.model_fail_runs >= 1, "low-score runs must count as model failures");
+        assert.ok(body.model_failure_rate > 0, "model_failure_rate must reflect the failed run");
+        assert.equal(body.nc_rate, 0, "no NC bundles were seeded, so nc_rate must be 0 — NC is never pooled into model fails");
+        assert.equal(body.infra_issue_rate, 0, "no infra failures seeded, so infra rate must be 0");
+    });
+    it("switching scope changes the leaderboard content — no shared cache identity", async () => {
+        // Pin the exact bug the scope leak task targets: a build-lane leaderboard
+        // and a safety-lane leaderboard must not share the same set of rows. We
+        // seed one model per lane under the same name pattern and assert that
+        // hitting the two endpoints back-to-back returns DIFFERENT models.
+        storeBundle(makeBundle({ taskId: "t-shared-build", family: "orchestration", model: "lane-exclusive-build", score: 0.91 }));
+        storeBundle(makeBundle({ taskId: "t-shared-safety", family: "safety", model: "lane-exclusive-safety", score: 0.77 }));
+        const buildRes = await fetch(`${base}/api/leaderboard?task_families=orchestration`);
+        const safetyRes = await fetch(`${base}/api/leaderboard?task_families=safety`);
+        const buildBody = await buildRes.json();
+        const safetyBody = await safetyRes.json();
+        assert.notEqual(buildBody.scope_key, safetyBody.scope_key, "each lane must have its own scope_key");
+        assert.ok(buildBody.leaderboard.some((e) => e.modelId === "lane-exclusive-build"));
+        assert.ok(buildBody.leaderboard.every((e) => e.modelId !== "lane-exclusive-safety"), "build leaderboard must not leak safety-only models");
+        assert.ok(safetyBody.leaderboard.some((e) => e.modelId === "lane-exclusive-safety"));
+        assert.ok(safetyBody.leaderboard.every((e) => e.modelId !== "lane-exclusive-build"), "safety leaderboard must not leak build-only models");
     });
 });
 // ── rate limiter (HTTP level) ───────────────────────────────────────────────

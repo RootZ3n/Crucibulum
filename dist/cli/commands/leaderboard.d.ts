@@ -1,7 +1,7 @@
 /**
- * Crucibulum CLI — leaderboard command
- * crucibulum leaderboard show
- * crucibulum leaderboard submit [bundle_id]
+ * Crucible CLI — leaderboard command
+ * crucible leaderboard show
+ * crucible leaderboard submit [bundle_id]
  */
 export declare function leaderboardCommand(args: string[]): Promise<void>;
 //# sourceMappingURL=leaderboard.d.ts.map

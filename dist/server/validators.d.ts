@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Runtime request-body validation
+ * Crucible — Runtime request-body validation
  *
  * Tiny, dependency-free validators for the handful of POST routes that accept
  * structured payloads. Intentionally not a generic schema framework — every
@@ -89,6 +89,12 @@ export interface ScoreRow {
     costEstimate?: number;
     anomalyFlags?: string[];
     metadata?: Record<string, unknown>;
+    completionState?: string;
+    failureOrigin?: string | null;
+    failureReasonCode?: string;
+    failureReasonSummary?: string;
+    countsTowardModelScore?: boolean;
+    countsTowardFailureRate?: boolean;
 }
 export interface SynthesisRequest {
     run_ids?: string[];

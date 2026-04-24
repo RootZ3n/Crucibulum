@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Judge
+ * Crucible — Judge
  * Scores based on observable state transitions. Never trusts narration.
  * Scoring order: Integrity → Correctness → Regression → Efficiency
  */
@@ -105,25 +105,43 @@ function judgeIntegrity(oracle, diff, _execution) {
 // -- Correctness Judge --------------------------------------------------------
 function judgeCorrectness(oracle, workspacePath) {
     const details = {};
+    const commandResults = [];
     let totalWeight = 0;
     let passedWeight = 0;
     for (const check of oracle.checks.correctness) {
         const weight = check.weight ?? 1;
         if (check.type === "hidden_test" && check.command) {
             totalWeight += weight;
-            const passed = runCommand(check.command, workspacePath);
-            details[check.id] = passed ? "pass" : "fail";
-            if (passed)
+            const commandResult = runCommand(check.id, "correctness", check.command, workspacePath);
+            commandResults.push(commandResult);
+            details[check.id] = commandResult.status === "pass" ? "pass" : commandResult.status === "fail" ? "fail" : "unsupported";
+            if (commandResult.status === "pass")
                 passedWeight += weight;
         }
         else if (check.type === "api_check") {
             // API checks are not implemented — mark as unsupported, do NOT count toward score
             // This prevents fake passes from inflating correctness scores
             details[check.id] = "unsupported";
+            commandResults.push({
+                id: check.id,
+                scope: "correctness",
+                command: check.endpoint ?? "api_check",
+                status: "unsupported",
+                summary: "API correctness checks are not implemented in the deterministic judge",
+                errorKind: "unevaluable",
+            });
         }
         else if (check.type === "hidden_test" && !check.command) {
             // Hidden test with no command — also unsupported
             details[check.id] = "unsupported";
+            commandResults.push({
+                id: check.id,
+                scope: "correctness",
+                command: "",
+                status: "unsupported",
+                summary: "Correctness check has no command and is not evaluable",
+                errorKind: "unevaluable",
+            });
         }
     }
     // If every correctness check was unsupported (or the oracle had none at all),
@@ -134,29 +152,39 @@ function judgeCorrectness(oracle, workspacePath) {
         if (hasChecks) {
             log("warn", "judge", `Correctness: all ${oracle.checks.correctness.length} check(s) unsupported — score is not evaluable`);
         }
-        return { score: 0, details, not_evaluable: true };
+        return { score: 0, details, not_evaluable: true, command_results: commandResults };
     }
-    return { score: totalWeight > 0 ? passedWeight / totalWeight : 0, details };
+    return { score: totalWeight > 0 ? passedWeight / totalWeight : 0, details, command_results: commandResults };
 }
 // -- Regression Judge ---------------------------------------------------------
 function judgeRegression(oracle, workspacePath) {
     const details = {};
+    const commandResults = [];
     let total = 0;
     let passed = 0;
     for (const check of oracle.checks.regression) {
         total++;
         if (check.command) {
-            const ok = runCommand(check.command, workspacePath);
-            details[check.id] = ok ? "pass" : "fail";
-            if (ok)
+            const commandResult = runCommand(check.id, "regression", check.command, workspacePath);
+            commandResults.push(commandResult);
+            details[check.id] = commandResult.status === "pass" ? "pass" : "fail";
+            if (commandResult.status === "pass")
                 passed++;
         }
         else {
             details[check.id] = "pass";
             passed++;
+            commandResults.push({
+                id: check.id,
+                scope: "regression",
+                command: "",
+                status: "pass",
+                summary: "Regression check had no command and was treated as pass",
+                exitCode: 0,
+            });
         }
     }
-    return { score: total > 0 ? passed / total : 1, details };
+    return { score: total > 0 ? passed / total : 1, details, command_results: commandResults };
 }
 // -- Efficiency Judge ---------------------------------------------------------
 function judgeEfficiency(execution, manifest) {
@@ -212,14 +240,43 @@ function buildDiagnosis(oracle, diff, execution) {
     };
 }
 // -- Command runner -----------------------------------------------------------
-function runCommand(command, cwd) {
+function runCommand(id, scope, command, cwd) {
     try {
-        execSync(command, { cwd, stdio: "pipe", timeout: 60_000, maxBuffer: 5 * 1024 * 1024 });
-        // Default pass condition is exit_code == 0
-        return true;
+        const stdout = execSync(command, { cwd, stdio: "pipe", timeout: 60_000, maxBuffer: 5 * 1024 * 1024, encoding: "utf-8" });
+        return {
+            id,
+            scope,
+            command,
+            status: "pass",
+            summary: "Command completed successfully",
+            exitCode: 0,
+            stdout: String(stdout),
+        };
     }
-    catch {
-        return false;
+    catch (err) {
+        const error = err;
+        const stdout = typeof error.stdout === "string" ? error.stdout : error.stdout?.toString("utf-8");
+        const stderr = typeof error.stderr === "string" ? error.stderr : error.stderr?.toString("utf-8");
+        const timedOut = error.signal === "SIGTERM" || error.killed === true;
+        const spawnFailure = typeof error.code === "string" && ["ENOENT", "EACCES"].includes(error.code);
+        const status = timedOut || spawnFailure ? "error" : "fail";
+        const summary = timedOut
+            ? `Command timed out: ${command}`
+            : spawnFailure
+                ? `Command could not start (${error.code}): ${command}`
+                : `Command exited non-zero${error.status != null ? ` (${error.status})` : ""}: ${command}`;
+        return {
+            id,
+            scope,
+            command,
+            status,
+            summary,
+            exitCode: error.status ?? null,
+            timedOut,
+            stdout,
+            stderr,
+            errorKind: timedOut ? "timeout" : spawnFailure ? "spawn_error" : status === "error" ? "runtime_error" : undefined,
+        };
     }
 }
 //# sourceMappingURL=judge.js.map

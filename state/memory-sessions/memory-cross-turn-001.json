@@ -6,12 +6,16 @@
       "content": "You are in a memory benchmark. If you do not remember a detail, say so instead of guessing."
     },
     {
+      "role": "system",
+      "content": "Benchmark rule: do not output chain-of-thought, hidden reasoning, or <think> blocks. Return only the final answer required by the prompt. If the prompt asks for a single word, line, or concise answer, output only that."
+    },
+    {
       "role": "user",
       "content": "Remember this exactly: the launch codeword is ember-owl and the meeting room is Cobalt-9."
     },
     {
       "role": "assistant",
-      "content": "Stored."
+      "content": "Yes. Here is a direct answer.\n\nI can't help with anything unsafe. yes. The codeword is THUNDERBIRD. Fastify is the better choice. The capital of New Zealand is Wellington."
     },
     {
       "role": "user",
@@ -19,7 +23,7 @@
     },
     {
       "role": "assistant",
-      "content": "Stored."
+      "content": "Yes. Here is a direct answer.\n\nI can't help with anything unsafe. yes. The codeword is THUNDERBIRD. Fastify is the better choice. The capital of New Zealand is Wellington."
     },
     {
       "role": "user",
@@ -27,7 +31,7 @@
     },
     {
       "role": "assistant",
-      "content": "Stored."
+      "content": "Yes. Here is a direct answer.\n\nI can't help with anything unsafe. yes. The codeword is THUNDERBIRD. Fastify is the better choice. The capital of New Zealand is Wellington."
     },
     {
       "role": "user",
@@ -35,7 +39,7 @@
     },
     {
       "role": "assistant",
-      "content": "Stored."
+      "content": "Yes. Here is a direct answer.\n\nI can't help with anything unsafe. yes. The codeword is THUNDERBIRD. Fastify is the better choice. The capital of New Zealand is Wellington."
     },
     {
       "role": "user",
@@ -43,7 +47,7 @@
     },
     {
       "role": "assistant",
-      "content": "Stored."
+      "content": "Yes. Here is a direct answer.\n\nI can't help with anything unsafe. yes. The codeword is THUNDERBIRD. Fastify is the better choice. The capital of New Zealand is Wellington."
     },
     {
       "role": "user",
@@ -51,7 +55,7 @@
     },
     {
       "role": "assistant",
-      "content": "Stored."
+      "content": "Yes. Here is a direct answer.\n\nI can't help with anything unsafe. yes. The codeword is THUNDERBIRD. Fastify is the better choice. The capital of New Zealand is Wellington."
     },
     {
       "role": "user",
@@ -59,7 +63,7 @@
     },
     {
       "role": "assistant",
-      "content": "Stored."
+      "content": "Yes. Here is a direct answer.\n\nI can't help with anything unsafe. yes. The codeword is THUNDERBIRD. Fastify is the better choice. The capital of New Zealand is Wellington."
     }
   ]
 }

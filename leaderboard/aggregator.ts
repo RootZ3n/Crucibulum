@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Leaderboard Aggregator
+ * Crucible — Leaderboard Aggregator
  * Aggregates evidence bundles into leaderboard entries.
  * Computes pass@k, failure taxonomy, performance metrics.
  */
@@ -9,6 +9,7 @@ import { join } from "node:path";
 import type { EvidenceBundle } from "../adapters/base.js";
 import { canonicalPercent } from "../types/scores.js";
 import { loadVerifiedBundle } from "../core/bundle.js";
+import { normalizeBundleVerdict } from "../core/verdict.js";
 import { log } from "../utils/logger.js";
 
 const RUNS_DIR = process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs");
@@ -48,6 +49,13 @@ export interface LeaderboardEntry {
     p90_time_sec: number;
     median_steps: number;
     total_cost_usd: number;
+  };
+  verdict_metrics?: {
+    model_failures: number;
+    not_complete: number;
+    completion_rate: number;
+    model_failure_rate: number;
+    nc_rate: number;
   };
   verified: boolean;
 }
@@ -116,8 +124,10 @@ export function buildLeaderboardEntry(modelKey: string, bundles: EvidenceBundle[
   // Failure taxonomy
   const failureTaxonomy: Record<string, number> = {};
   for (const b of bundles) {
-    if (!b.score.pass && b.diagnosis.failure_mode) {
-      failureTaxonomy[b.diagnosis.failure_mode] = (failureTaxonomy[b.diagnosis.failure_mode] ?? 0) + 1;
+    const verdict = normalizeBundleVerdict(b);
+    if (verdict.failureReasonCode !== "pass") {
+      const key = `${verdict.completionState}:${verdict.failureOrigin ?? "NONE"}:${verdict.failureReasonCode}`;
+      failureTaxonomy[key] = (failureTaxonomy[key] ?? 0) + 1;
     }
   }
 
@@ -141,6 +151,9 @@ export function buildLeaderboardEntry(modelKey: string, bundles: EvidenceBundle[
   const p90 = (arr: number[]) => arr.length === 0 ? 0 : arr[Math.floor(arr.length * 0.9)]!;
 
   const totalCost = bundles.reduce((s, b) => s + b.usage.estimated_cost_usd, 0);
+  const verdicts = bundles.map((bundle) => normalizeBundleVerdict(bundle));
+  const modelFailures = verdicts.filter((verdict) => verdict.countsTowardFailureRate).length;
+  const notComplete = verdicts.filter((verdict) => verdict.completionState === "NC").length;
   const disagreementRate = bundles.length === 0 ? 0 : bundles.filter((bundle) => bundle.review?.secondOpinion?.disagreement || bundle.review?.qcReview?.disagreement).length / bundles.length;
   const qcDisagreementRate = bundles.length === 0 ? 0 : bundles.filter((bundle) => bundle.review?.qcReview?.disagreement).length / bundles.length;
   const reviewBlockedRate = bundles.length === 0 ? 0 : bundles.filter((bundle) => !!bundle.review?.security.review_blocked_reason).length / bundles.length;
@@ -183,6 +196,13 @@ export function buildLeaderboardEntry(modelKey: string, bundles: EvidenceBundle[
       p90_time_sec: p90(durations),
       median_steps: median(steps),
       total_cost_usd: Math.round(totalCost * 10000) / 10000,
+    },
+    verdict_metrics: {
+      model_failures: modelFailures,
+      not_complete: notComplete,
+      completion_rate: bundles.length === 0 ? 0 : Math.round(((bundles.length - notComplete) / bundles.length) * 10000) / 10000,
+      model_failure_rate: bundles.length === 0 ? 0 : Math.round((modelFailures / bundles.length) * 10000) / 10000,
+      nc_rate: bundles.length === 0 ? 0 : Math.round((notComplete / bundles.length) * 10000) / 10000,
     },
     verified: allVerified,
   };

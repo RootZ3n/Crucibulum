@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Grimoire CC Adapter
+ * Crucible — Grimoire CC Adapter
  * Routes tasks through Squidley's Grimoire CC mode.
  * CC Mode = non-blocking approval flow, file editing with approval gates.
  * For benchmark runs, auto_approve is set to true.
@@ -15,6 +15,7 @@ import type {
   ExecutionResult,
 } from "./base.js";
 import { Observer } from "../core/observer.js";
+import { makeHttpProviderError, makeProviderFailureError, normalizeProviderError, providerErrorSummary } from "../core/provider-errors.js";
 import { log } from "../utils/logger.js";
 
 const DEFAULT_SQUIDLEY_URL = process.env["SQUIDLEY_URL"] ?? "http://localhost:18791";
@@ -66,15 +67,19 @@ export class GrimoireCCAdapter implements CrucibulumAdapter {
     if (c.model) this.model = c.model;
   }
 
-  async healthCheck(): Promise<{ ok: boolean; reason?: string | undefined }> {
+  async healthCheck() {
     try {
       const res = await fetch(`${this.url}/health`, {
         signal: AbortSignal.timeout(10_000),
       });
-      if (!res.ok) return { ok: false, reason: `Squidley returned ${res.status}` };
+      if (!res.ok) {
+        const providerError = makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "grimoire-cc", adapter: this.id }).structured;
+        return { ok: false, reason: providerErrorSummary(providerError), providerError };
+      }
       return { ok: true };
     } catch (err) {
-      return { ok: false, reason: `Squidley unreachable: ${String(err).slice(0, 100)}` };
+      const providerError = normalizeProviderError(err, { provider: "grimoire-cc", adapter: this.id });
+      return { ok: false, reason: providerErrorSummary(providerError), providerError };
     }
   }
 
@@ -105,17 +110,25 @@ export class GrimoireCCAdapter implements CrucibulumAdapter {
 
       if (!res.ok) {
         const errText = await res.text().catch(() => "");
-        throw new Error(`Grimoire CC returned ${res.status}: ${errText}`);
+        throw makeHttpProviderError(res, errText, { provider: "grimoire-cc", adapter: this.id });
       }
 
       const data = (await res.json()) as { jobId?: string; job_id?: string; id?: string };
       jobId = data.jobId ?? data.job_id ?? data.id ?? "";
-      if (!jobId) throw new Error("No jobId in response");
+      if (!jobId) throw makeProviderFailureError({
+        kind: "INVALID_RESPONSE",
+        origin: "ADAPTER",
+        provider: "grimoire-cc",
+        adapter: this.id,
+        rawMessage: "No jobId in Grimoire CC response",
+        retryable: false,
+      });
 
       log("info", "grimoire-cc", `CC job submitted: ${jobId}`);
     } catch (err) {
-      log("error", "grimoire-cc", `Submit failed: ${String(err).slice(0, 200)}`);
-      observer.recordError(`Submit failed: ${String(err).slice(0, 200)}`);
+      const providerError = normalizeProviderError(err, { provider: "grimoire-cc", adapter: this.id });
+      log("error", "grimoire-cc", `Submit failed: ${providerError.rawMessage.slice(0, 200)}`);
+      observer.recordError(`Submit failed: ${providerError.rawMessage.slice(0, 200)}`, providerError);
       return buildErrorResult(observer, startMs, this);
     }
 
@@ -146,10 +159,18 @@ export class GrimoireCCAdapter implements CrucibulumAdapter {
 
     if (status.status !== "complete" && status.status !== "error") {
       log("warn", "grimoire-cc", `Job timed out after ${Math.round(totalDuration / 1000)}s`);
-      observer.recordError("CC job timed out");
+      observer.recordError("CC job timed out", makeProviderFailureError({
+        kind: "TIMEOUT",
+        origin: "PROVIDER",
+        provider: "grimoire-cc",
+        adapter: this.id,
+        rawMessage: "CC job timed out",
+        retryable: true,
+      }).structured);
       return {
         exit_reason: "timeout",
         timeline: observer.getTimeline(),
+        provider_error: observer.getProviderError() ?? undefined,
         duration_ms: totalDuration,
         steps_used: observer.getStepCount(),
         files_read: [],
@@ -172,6 +193,12 @@ export class GrimoireCCAdapter implements CrucibulumAdapter {
 
     if (result.files_read) result.files_read.forEach(f => observer.fileRead(f));
     if (result.files_written) result.files_written.forEach(f => observer.fileWrite(f));
+    if (status.status === "error") {
+      observer.recordError(
+        result.error ? `CC job failed: ${result.error.slice(0, 200)}` : "CC job failed",
+        normalizeProviderError(result.error ?? "CC job failed", { provider: "grimoire-cc", adapter: this.id }),
+      );
+    }
     if (exitReason === "complete") observer.taskComplete();
 
     log("info", "grimoire-cc", `Run complete: ${exitReason} in ${Math.round(totalDuration / 1000)}s`);
@@ -179,6 +206,7 @@ export class GrimoireCCAdapter implements CrucibulumAdapter {
     return {
       exit_reason: exitReason,
       timeline: observer.getTimeline(),
+      provider_error: observer.getProviderError() ?? undefined,
       duration_ms: totalDuration,
       steps_used: observer.getStepCount(),
       files_read: result.files_read ?? [],
@@ -212,6 +240,7 @@ function buildErrorResult(observer: Observer, startMs: number, adapter: Grimoire
   return {
     exit_reason: "error",
     timeline: observer.getTimeline(),
+    provider_error: observer.getProviderError() ?? undefined,
     duration_ms: Date.now() - startMs,
     steps_used: observer.getStepCount(),
     files_read: [],

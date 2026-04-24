@@ -1,10 +1,10 @@
-# Crucibulum
+# Crucible
 
-Crucibulum is an execution-based evaluation harness for AI coding models and agent systems.
+Crucible is an execution-based evaluation harness for AI coding models and agent systems.
 
 It is built to answer a narrow question: can this model or agent actually complete a real software task inside a repo under constraints, with evidence, without trusting narration?
 
-Crucibulum does not grade based on style, self-report, chain-of-thought, or polished explanations. It grades based on observable state:
+Crucible does not grade based on style, self-report, chain-of-thought, or polished explanations. It grades based on observable state:
 
 - what files changed
 - what tests passed or failed
@@ -20,9 +20,9 @@ The core trust model is simple:
 - review models are advisory only
 - bundles are signed and auditable
 
-## What Crucibulum Does
+## What Crucible Does
 
-Crucibulum runs coding tasks against a target model or agent adapter, captures what happened in an isolated workspace, judges the result with a deterministic verifier, and produces an evidence bundle you can inspect or compare later.
+Crucible runs coding tasks against a target model or agent adapter, captures what happened in an isolated workspace, judges the result with a deterministic verifier, and produces an evidence bundle you can inspect or compare later.
 
 In practice, that means it can:
 
@@ -45,13 +45,13 @@ A lot of model evaluation still collapses into one of these failure modes:
 - leaderboards that show scores without evidence
 - review layers that quietly blur interpretation with authority
 
-Crucibulum is designed against that.
+Crucible is designed against that.
 
 It treats coding evaluation as an environment-state problem. The key question is not "did the model say the right thing?" It is "did the system produce the right state transition under constrained execution, and can that be verified independently?"
 
 ## How It Works
 
-At a high level, Crucibulum follows this pipeline:
+At a high level, Crucible follows this pipeline:
 
 1. Load a task manifest.
 2. Filter the manifest for the agent so the rubric and oracle stay hidden.
@@ -103,11 +103,11 @@ Conversational task families currently present in the corpus:
 - `thinking-mode`
 - `token-efficiency`
 
-This means Crucibulum is already evaluating both execution behavior and chat behavior, but the long-term benchmark taxonomy is still being consolidated.
+This means Crucible is already evaluating both execution behavior and chat behavior, but the long-term benchmark taxonomy is still being consolidated.
 
 ## Scoring Model
 
-Crucibulum judges runs in a fixed order:
+Crucible judges runs in a fixed order:
 
 1. Integrity
 2. Correctness
@@ -158,11 +158,11 @@ A bundle contains:
 
 Bundles are hash-signed so the result can be verified later. The API also produces structured summaries for downstream consumers.
 
-This is important because Crucibulum is not just trying to emit a score. It is trying to emit a score with an audit trail.
+This is important because Crucible is not just trying to emit a score. It is trying to emit a score with an audit trail.
 
 ## Security and Trust Model
 
-Crucibulum assumes prompt injection is a system problem, not just a model problem.
+Crucible assumes prompt injection is a system problem, not just a model problem.
 
 That means:
 
@@ -202,7 +202,7 @@ Review models may summarize, flag concerns, or recommend reruns. They may not ov
 
 ## Review Layer
 
-Crucibulum supports optional review layers such as:
+Crucible supports optional review layers such as:
 
 - Second Opinion
 - QC Review
@@ -226,9 +226,41 @@ They do not change:
 
 Review inputs are sanitized and structured before model calls. Review outputs are schema-validated and fail closed on malformed output.
 
+### Default Judge Model
+
+The advisory model judge defaults to **OpenRouter `xiaomi/mimo-v2-pro`** (closest registered identifier for the Xiaomi MiMo V2.5 Pro line). Configure via `OPENROUTER_API_KEY`. Override with:
+
+- `CRUCIBLE_JUDGE_PROVIDER` — provider id (default `openrouter`)
+- `CRUCIBLE_JUDGE_MODEL` — model id (default `xiaomi/mimo-v2-pro`)
+
+Fallback: when the configured judge provider is unreachable, only the deterministic scorer runs and the model judge is recorded as `judge_usage.kind = "skipped"`. The run is never silently re-routed to a different model.
+
+Each bundle records both costs separately:
+
+- `usage` — tested-model token / cost spend
+- `judge_usage` — judge-model token / cost spend, with `kind: "deterministic" | "model" | "skipped"`
+
+## QA Harness
+
+The QA harness walks every tab/lane, runs every test through the full pipeline, and emits a machine-readable report agents like Ricky and Ptah can consume.
+
+```bash
+npm run harness                                # offline mock adapter, every lane
+npm run harness -- --tab personality           # only the Personality lane
+npm run harness -- --task personality-002      # one test by id
+npm run harness -- --live                      # use the configured judge model
+                                               # (OpenRouter MiMo by default;
+                                               #  needs OPENROUTER_API_KEY)
+npm run harness -- --enable-judge              # also run the model judge layer
+```
+
+Per-test it records: `manifest_loaded`, `request_sent`, `response_received`, `judge_ran`, `bundle_stored`, `ui_summary_well_formed`, `drilldown_evidence_present`, plus tested-model and judge-model token + cost split. The report is written to `runs/_harness_report_<timestamp>.json`.
+
+Exit codes: `0` clean, `1` test failures only, `2` pipeline breakage.
+
 ## Adapters and Providers
 
-Crucibulum is meant to evaluate models through adapters rather than binding itself to a single provider.
+Crucible is meant to evaluate models through adapters rather than binding itself to a single provider.
 
 The repo already supports a provider-first flow through adapters and exposes provider/model metadata in the bundle and API. Supported adapters/providers currently include:
 
@@ -265,7 +297,7 @@ The benchmark is being documented as a public-audit system rather than only a co
 
 ## UI and API
 
-Crucibulum includes a local API and browser UI for inspecting runs, receipts, bundles, and comparisons.
+Crucible includes a local API and browser UI for inspecting runs, receipts, bundles, and comparisons.
 
 The API exposes:
 
@@ -292,16 +324,16 @@ npm run build
 
 ```bash
 # Run a single task against Ollama
-crucibulum test --model ollama:gemma4:26b --task poison-001
+crucible test --model ollama:gemma4:26b --task poison-001
 
 # Run the full V1 suite
-crucibulum test --model ollama:gemma4:26b --suite v1
+crucible test --model ollama:gemma4:26b --suite v1
 
 # Compare multiple models on one task across repeated runs
-crucibulum compare --models ollama:gemma4:26b,openrouter:arcee-ai/trinity-large-thinking --task poison-001 --runs 5
+crucible compare --models ollama:gemma4:26b,openrouter:arcee-ai/trinity-large-thinking --task poison-001 --runs 5
 
 # Verify a stored evidence bundle
-crucibulum verify run_2026-04-05_poison-001_gemma4
+crucible verify run_2026-04-05_poison-001_gemma4
 
 # Start the local API / UI
 npm run serve
@@ -318,7 +350,7 @@ npm run serve
 
 ## Why This Is Different
 
-Crucibulum is not trying to be a generic "AI benchmark platform."
+Crucible is not trying to be a generic "AI benchmark platform."
 
 Its differentiators are narrower and more technical:
 
@@ -334,7 +366,7 @@ If you care about whether a coding agent actually performed the task under contr
 
 ## Good Uses
 
-Crucibulum is a good fit for:
+Crucible is a good fit for:
 
 - evaluating coding agents on realistic repo tasks
 - regression testing model/provider changes
@@ -354,7 +386,7 @@ It is less useful if what you want is:
 
 If you need a short description for GitHub, docs, or a project directory:
 
-> Crucibulum is an execution-based evaluation harness for AI coding agents. It runs models against real repo tasks, judges them deterministically using hidden/public checks and integrity rules, and produces signed evidence bundles for audit and comparison.
+> Crucible is an execution-based evaluation harness for AI coding agents. It runs models against real repo tasks, judges them deterministically using hidden/public checks and integrity rules, and produces signed evidence bundles for audit and comparison.
 
 ## License
 

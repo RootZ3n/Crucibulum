@@ -1,0 +1,199 @@
+{
+  "bundle_id": "run_2026-04-21_identity-squidley-001_MiniMax-Text-01",
+  "bundle_hash": "sha256:c0ca84a9daf4984defe2cb98fd58dccc46cc7072afa0b4908a755ba9ef28a3ff",
+  "bundle_version": "2.0.0",
+  "task": {
+    "id": "identity-squidley-001",
+    "manifest_hash": "sha256:7c4b98088d9a4313e48c4dab6a11984d19af96f81465e603c7e4e4b51e22eacf",
+    "family": "identity",
+    "difficulty": "medium"
+  },
+  "agent": {
+    "adapter": "squidley",
+    "adapter_version": "1.0.0",
+    "system": "Squidley Gateway",
+    "system_version": "unknown",
+    "model": "MiniMax-Text-01",
+    "model_version": "latest",
+    "provider": "squidley"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "none",
+    "crucibulum_version": "2.0.0",
+    "timestamp_start": "2026-04-21T10:26:24.961Z",
+    "timestamp_end": "2026-04-21T10:26:26.964Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "conversational: 4 questions"
+    },
+    {
+      "t": 2,
+      "type": "error",
+      "detail": "chat failed: minimax returned HTTP 503: {\"error\":\"Your selected model \\\"MiniMax-Text-01\\\" is unavailable: All providers failed for tier 'chat':\\nOllama (local): Error: Ollama 404: {\\\"error\\\":\\\"model 'MiniMax-Text-",
+      "provider_error": {
+        "kind": "UNAVAILABLE",
+        "origin": "PROVIDER",
+        "provider": "minimax",
+        "adapter": "squidley",
+        "statusCode": 503,
+        "retryable": true,
+        "rawMessage": "minimax returned HTTP 503: {\"error\":\"Your selected model \\\"MiniMax-Text-01\\\" is unavailable: All providers failed for tier 'chat':\\nOllama (local): Error: Ollama 404: {\\\"error\\\":\\\"model 'MiniMax-Text-01' not found\\\"}\\nOpenRouter: Error: OpenRouter 400: {\\\"error\\\":{\\\"message\\\":\\\"MiniMax-Text-01 is not a . Switch models or try again.\",\"model_selection\":\"explicit\",\"selectedModel\":\"MiniMax-Text-01\",\"ok\":false,\"requestId\":\"3779f",
+        "rawCode": null,
+        "cause": null,
+        "attempt": null,
+        "durationMs": 2003,
+        "requestId": "3779f8cf-4d80-4c7d-98dc-ae42bf43785e"
+      }
+    }
+  ],
+  "diff": {
+    "files_changed": [],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 0,
+      "details": {}
+    },
+    "regression": {
+      "score": 1,
+      "details": {}
+    },
+    "integrity": {
+      "score": 1,
+      "details": {},
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 2,
+      "time_limit_sec": 180,
+      "steps_used": 4,
+      "steps_limit": 4,
+      "score": 1
+    }
+  },
+  "score": {
+    "scale": "fraction_0_1",
+    "total": 0.15,
+    "total_percent": 15,
+    "breakdown": {
+      "correctness": 0,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 1
+    },
+    "breakdown_percent": {
+      "correctness": 0,
+      "regression": 100,
+      "integrity": 100,
+      "efficiency": 100
+    },
+    "pass": false,
+    "pass_threshold": 0.7,
+    "pass_threshold_percent": 70,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 0,
+    "tokens_out": 0,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "squidley:MiniMax-Text-01 (estimated)"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "conversational-judge"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": false,
+    "narration_ignored": false,
+    "state_based_scoring": true,
+    "bundle_verified": false,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": false,
+    "avoided_decoys": true,
+    "first_fix_correct": false,
+    "self_verified": false,
+    "failure_mode": "0/0 questions failed"
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "2.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "identity",
+        "difficulty": "medium",
+        "provider": "squidley",
+        "adapter": "squidley",
+        "score": 0.15,
+        "pass": false,
+        "failure_mode": "conversational_failure"
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": 0.15,
+      "benchmark_label": "identity:15%",
+      "execution_score": 0.15,
+      "divergence_note": null
+    }
+  },
+  "verdict": {
+    "completionState": "NC",
+    "failureOrigin": "PROVIDER",
+    "failureReasonCode": "provider_unavailable",
+    "failureReasonSummary": "Provider unavailable (503)",
+    "countsTowardModelScore": false,
+    "countsTowardFailureRate": false,
+    "evidence": {
+      "provider": "squidley",
+      "adapter": "squidley",
+      "exitReason": "error",
+      "rawError": "minimax returned HTTP 503: {\"error\":\"Your selected model \\\"MiniMax-Text-01\\\" is unavailable: All providers failed for tier 'chat':\\nOllama (local): Error: Ollama 404: {\\\"error\\\":\\\"model 'MiniMax-Text-01' not found\\\"}\\nOpenRouter: Error: OpenRouter 400: {\\\"error\\\":{\\\"message\\\":\\\"MiniMax-Text-01 is not a . Switch models or try again.\",\"model_selection\":\"explicit\",\"selectedModel\":\"MiniMax-Text-01\",\"ok\":false,\"requestId\":\"3779f",
+      "providerError": {
+        "kind": "UNAVAILABLE",
+        "origin": "PROVIDER",
+        "provider": "minimax",
+        "adapter": "squidley",
+        "statusCode": 503,
+        "retryable": true,
+        "rawMessage": "minimax returned HTTP 503: {\"error\":\"Your selected model \\\"MiniMax-Text-01\\\" is unavailable: All providers failed for tier 'chat':\\nOllama (local): Error: Ollama 404: {\\\"error\\\":\\\"model 'MiniMax-Text-01' not found\\\"}\\nOpenRouter: Error: OpenRouter 400: {\\\"error\\\":{\\\"message\\\":\\\"MiniMax-Text-01 is not a . Switch models or try again.\",\"model_selection\":\"explicit\",\"selectedModel\":\"MiniMax-Text-01\",\"ok\":false,\"requestId\":\"3779f",
+        "rawCode": null,
+        "cause": null,
+        "attempt": null,
+        "durationMs": 2003,
+        "requestId": "3779f8cf-4d80-4c7d-98dc-ae42bf43785e"
+      },
+      "httpStatus": 503,
+      "timeout": false,
+      "judgeError": null,
+      "testError": null,
+      "attemptCount": 4,
+      "retries": null
+    }
+  }
+}

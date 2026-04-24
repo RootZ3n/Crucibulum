@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Adapter Tests
+ * Crucible — Adapter Tests
  * Covers: mock adapter contract, OllamaAdapter construction.
  */
 

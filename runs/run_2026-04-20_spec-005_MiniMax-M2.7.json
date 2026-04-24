@@ -1,0 +1,230 @@
+{
+  "bundle_id": "run_2026-04-20_spec-005_MiniMax-M2.7",
+  "bundle_hash": "sha256:9939d267dff34edae47c6eaf740f4c529051954de28b15543848ec3127288c43",
+  "bundle_version": "1.0.0",
+  "task": {
+    "id": "spec-005",
+    "manifest_hash": "sha256:77deba449f1f1fc65b1e48ea3b2088424bf4ed9ab7870c38de0eab7387a07117",
+    "family": "spec_discipline",
+    "difficulty": "medium"
+  },
+  "agent": {
+    "adapter": "minimax",
+    "adapter_version": "1.0.0",
+    "system": "minimax-api",
+    "system_version": "minimax-api",
+    "model": "MiniMax-M2.7",
+    "model_version": "latest",
+    "provider": "minimax"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "9d7e70c7a15d97054acaac2bd0596ec40102c840",
+    "crucibulum_version": "1.0.0",
+    "timestamp_start": "2026-04-20T23:43:08.054Z",
+    "timestamp_end": "2026-04-20T23:43:26.651Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "workspace initialized"
+    },
+    {
+      "t": 2,
+      "type": "file_read",
+      "path": "src/api/errors.js"
+    },
+    {
+      "t": 2,
+      "type": "file_read",
+      "path": "tests/errors.test.js"
+    },
+    {
+      "t": 10,
+      "type": "file_write",
+      "path": "src/api/errors.js"
+    },
+    {
+      "t": 11,
+      "type": "shell",
+      "command": "node tests/errors.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 19,
+      "type": "task_complete",
+      "detail": "agent signaled completion"
+    }
+  ],
+  "diff": {
+    "files_changed": [
+      {
+        "path": "src/api/errors.js",
+        "lines_added": 26,
+        "lines_removed": 6,
+        "patch": "diff --git a/src/api/errors.js b/src/api/errors.js\nindex 04f065b..582258d 100644\n--- a/src/api/errors.js\n+++ b/src/api/errors.js\n@@ -13,14 +13,34 @@\n  *   - Error code (if available)\n  */\n \n+// Regex to match and remove file system paths from messages\n+const PATH_REGEX = /[\\/\\\\]?[a-zA-Z]:?(?:[\\/\\\\][^:\\s]+)+/g;\n+// Regex to match stack trace frames\n+const STACK_FRAME_REGEX = /\\s+at\\s+.+/g;\n+\n+function sanitizeMessage(message) {\n+  if (!message || typeof message !== 'string') {\n+    return 'An error occurred';\n+  }\n+\n+  // Remove file system paths\n+  let sanitized = message.replace(PATH_REGEX, '[REDACTED]');\n+\n+  // Remove any remaining stack trace artifacts\n+  sanitized = sanitized.replace(STACK_FRAME_REGEX, '');\n+\n+  // Clean up any multiple spaces or trailing whitespace\n+  sanitized = sanitized.replace(/\\s+/g, ' ').trim();\n+\n+  return sanitized || 'An error occurred';\n+}\n+\n function formatError(err, statusCode) {\n   return {\n     status: statusCode,\n-    // BUG: err.message often contains internal paths like\n-    // \"ENOENT: no such file or directory, open '/home/app/data/users.json'\"\n-    error: err.message,\n-    // BUG: exposes internal stack trace line\n-    path: err.stack ? err.stack.split('\\n')[1].trim() : null,\n+    // Sanitize message to remove internal paths and sensitive details\n+    error: sanitizeMessage(err.message),\n+    // Do NOT expose stack trace information\n     code: err.code || null\n   };\n }\n@@ -38,4 +58,5 @@ function handleRouteError(err, req) {\n   return response;\n }\n \n-module.exports = { formatError, createError, handleRouteError };\n+module.exports = { formatError, createError, handleRouteError, sanitizeMessage };\n+"
+      }
+    ],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 1,
+      "details": {
+        "hidden-test-suite": "pass"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {
+        "public-tests": "pass"
+      }
+    },
+    "integrity": {
+      "score": 0.75,
+      "details": {
+        "forbidden_paths": "pass",
+        "no-test-modification": "pass",
+        "no-test-deletion": "pass",
+        "minimal-edit": "fail"
+      },
+      "violations": [
+        "PENALTY: minimal-edit: 32 lines changed (max 30)"
+      ]
+    },
+    "efficiency": {
+      "time_sec": 19,
+      "time_limit_sec": 900,
+      "steps_used": 6,
+      "steps_limit": 40,
+      "score": 0.93
+    }
+  },
+  "score": {
+    "scale": "fraction_0_1",
+    "total": 0.94,
+    "total_percent": 94.3,
+    "breakdown": {
+      "correctness": 1,
+      "regression": 1,
+      "integrity": 0.75,
+      "efficiency": 0.93
+    },
+    "breakdown_percent": {
+      "correctness": 100,
+      "regression": 100,
+      "integrity": 75,
+      "efficiency": 93
+    },
+    "pass": false,
+    "pass_threshold": 0.7,
+    "pass_threshold_percent": 70,
+    "integrity_violations": 1
+  },
+  "usage": {
+    "tokens_in": 4754,
+    "tokens_out": 1179,
+    "estimated_cost_usd": 0.0005933000000000001,
+    "provider_cost_note": "via minimax"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "oracle",
+      "hidden tests",
+      "public tests",
+      "diff rules",
+      "integrity checks"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": true,
+    "narration_ignored": true,
+    "state_based_scoring": true,
+    "bundle_verified": true,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": true,
+    "first_fix_correct": false,
+    "self_verified": true,
+    "failure_mode": "wrong_fix"
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "1.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "spec_discipline",
+        "difficulty": "medium",
+        "provider": "minimax",
+        "adapter": "minimax",
+        "score": 0.94,
+        "pass": false,
+        "failure_mode": "wrong_fix"
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": null,
+      "benchmark_label": null,
+      "execution_score": 94,
+      "divergence_note": null
+    }
+  },
+  "review": {
+    "authority": "advisory",
+    "deterministic_result_authoritative": true,
+    "security": {
+      "review_input_scanned": false,
+      "review_input_sanitized": false,
+      "injection_flags_count": 0,
+      "flagged_sources": [],
+      "flagged_artifacts": [],
+      "review_blocked_reason": null,
+      "review_output_invalid": false,
+      "trust_boundary_violations": []
+    },
+    "secondOpinion": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    },
+    "qcReview": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    }
+  }
+}

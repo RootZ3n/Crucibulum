@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Security: Injection Scanner + Anti-Cheat
+ * Crucible — Security: Injection Scanner + Anti-Cheat
  * Velum-grade prompt injection detection.
  */
 export interface ScanResult {

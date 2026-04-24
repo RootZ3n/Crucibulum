@@ -1,5 +1,5 @@
 /**
- * Crucibulum — OpenAI-compatible Adapter
+ * Crucible — OpenAI-compatible Adapter
  * Agentic loop over any OpenAI chat-completions-compatible API.
  * Used for OpenRouter, OpenAI, and any compatible endpoint.
  */
@@ -12,8 +12,12 @@ import type {
   AdapterConfig,
   ExecutionInput,
   ExecutionResult,
+  ChatMessage,
+  ChatResult,
+  ChatOptions,
 } from "./base.js";
 import { Observer } from "../core/observer.js";
+import { makeEmptyResponseError, makeHttpProviderError, makeInvalidResponseError, makeProviderFailureError, normalizeProviderError, providerErrorSummary, providerErrorDetail } from "../core/provider-errors.js";
 import { log } from "../utils/logger.js";
 
 const DEFAULT_OPENROUTER_BASE = "https://openrouter.ai/api/v1";
@@ -61,7 +65,20 @@ export class OpenRouterAdapter implements CrucibulumAdapter {
   }
 
   supportsChat(): boolean {
-    return false;
+    return true;
+  }
+
+  async chat(messages: ChatMessage[], options?: ChatOptions): Promise<ChatResult> {
+    if (!this.apiKey) throw new Error(`${this.name}: ${this.apiKeyEnv} not configured`);
+    const start = Date.now();
+    const result = await this.callAPI(messages, options);
+    return {
+      text: result.text,
+      tokens_in: result.tokensIn,
+      tokens_out: result.tokensOut,
+      duration_ms: Date.now() - start,
+      ...(result.costUsd !== undefined ? { cost_usd: result.costUsd } : {}),
+    };
   }
 
   async init(config: AdapterConfig): Promise<void> {
@@ -74,16 +91,26 @@ export class OpenRouterAdapter implements CrucibulumAdapter {
     }
   }
 
-  async healthCheck(): Promise<{ ok: boolean; reason?: string | undefined }> {
-    if (!this.apiKey) return { ok: false, reason: `${this.apiKeyEnv} not configured` };
+  async healthCheck() {
+    if (!this.apiKey) {
+      const providerError = makeProviderFailureError({ kind: "AUTH", origin: "ADAPTER", provider: this.id, adapter: this.id, rawMessage: `${this.apiKeyEnv} not configured` }).structured;
+      // Use providerErrorDetail so the operator-facing reason names the
+      // exact env var to set ("Authentication failed — OPENROUTER_API_KEY
+      // not configured") instead of the bucket-only "Authentication
+      // failed" — which left operators with no actionable next step.
+      return { ok: false, reason: providerErrorDetail(providerError), providerError };
+    }
     try {
       const res = await fetch(`${this.baseUrl}/models`, {
         headers: { "Authorization": `Bearer ${this.apiKey}` },
         signal: AbortSignal.timeout(10000),
       });
-      return res.ok ? { ok: true } : { ok: false, reason: `${this.name} returned ${res.status}` };
+      if (res.ok) return { ok: true };
+      const providerError = makeHttpProviderError(res, await res.text().catch(() => ""), { provider: this.id, adapter: this.id }).structured;
+      return { ok: false, reason: providerErrorSummary(providerError), providerError };
     } catch (err) {
-      return { ok: false, reason: `${this.name} unreachable: ${String(err).slice(0, 100)}` };
+      const providerError = normalizeProviderError(err, { provider: this.id, adapter: this.id });
+      return { ok: false, reason: providerErrorSummary(providerError), providerError };
     }
   }
 
@@ -137,8 +164,9 @@ export class OpenRouterAdapter implements CrucibulumAdapter {
         totalTokensOut += result.tokensOut;
         log("info", this.id, `[step ${step + 1}] Response (${response.length} chars): ${response.slice(0, 300).replace(/\n/g, "\\n")}${response.length > 300 ? "..." : ""}`);
       } catch (err) {
-        log("error", this.id, `Model call failed: ${String(err).slice(0, 200)}`);
-        observer.recordError(`Model call failed: ${String(err).slice(0, 200)}`);
+        const providerError = normalizeProviderError(err, { provider: this.id, adapter: this.id });
+        log("error", this.id, `Model call failed: ${providerError.rawMessage.slice(0, 200)}`);
+        observer.recordError(`Model call failed: ${providerError.rawMessage.slice(0, 200)}`, providerError);
         exitReason = "error";
         break;
       }
@@ -189,6 +217,7 @@ export class OpenRouterAdapter implements CrucibulumAdapter {
     return {
       exit_reason: exitReason,
       timeline: observer.getTimeline(),
+      provider_error: observer.getProviderError() ?? undefined,
       duration_ms: Date.now() - startMs,
       steps_used: observer.getStepCount(),
       files_read: observer.getFilesRead(),
@@ -205,7 +234,8 @@ export class OpenRouterAdapter implements CrucibulumAdapter {
     };
   }
 
-  private async callAPI(messages: Array<{ role: string; content: string }>): Promise<{ text: string; tokensIn: number; tokensOut: number }> {
+  private async callAPI(messages: Array<{ role: string; content: string }>, options?: ChatOptions): Promise<{ text: string; tokensIn: number; tokensOut: number; costUsd?: number }> {
+    const body = buildOpenRouterChatBody(this.id, this.baseUrl, this.model, messages, options);
     const res = await fetch(`${this.baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
@@ -214,29 +244,42 @@ export class OpenRouterAdapter implements CrucibulumAdapter {
         "HTTP-Referer": "https://crucibulum.local",
         "X-Title": "Crucibulum",
       },
-      body: JSON.stringify({
-        model: this.model,
-        messages,
-        max_tokens: 8192,
-        temperature: 0.1,
-        stream: false,
-      }),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
     });
 
-    if (!res.ok) throw new Error(`${this.name} ${res.status}: ${await res.text().catch(() => "")}`);
+    if (!res.ok) {
+      const rawBody = await res.text().catch(() => "");
+      throw makeHttpProviderError(res, rawBody, { provider: this.id, adapter: this.id }, `${this.name} ${res.status}: ${rawBody}`);
+    }
 
-    const data = await res.json() as {
+    const rawBody = await res.text();
+    let data: {
       choices?: Array<{ message?: { content?: string | null } }>;
-      usage?: { prompt_tokens?: number; completion_tokens?: number };
+      usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number; total_cost?: number };
     };
+    try {
+      data = JSON.parse(rawBody) as typeof data;
+    } catch {
+      throw makeInvalidResponseError({ provider: this.id, adapter: this.id }, `${this.name} returned non-JSON body: ${rawBody.slice(0, 400)}`);
+    }
 
     const text = data.choices?.[0]?.message?.content ?? "";
+    // OpenRouter names the field `cost` post-2025; older payloads used
+    // `total_cost`. Accept both; surface nothing when neither is present
+    // so callers can tell "unknown" apart from "$0.00 confirmed".
+    const costOf = (u?: { cost?: number; total_cost?: number }): number | undefined => {
+      if (!u) return undefined;
+      if (typeof u.cost === "number" && Number.isFinite(u.cost)) return u.cost;
+      if (typeof u.total_cost === "number" && Number.isFinite(u.total_cost)) return u.total_cost;
+      return undefined;
+    };
 
     // Retry once on empty
     if (!text.trim()) {
       log("warn", this.id, "Empty response, retrying...");
       await new Promise(r => setTimeout(r, 1500));
+      const retryBody = { ...body, temperature: 0.2 };
       const retry = await fetch(`${this.baseUrl}/chat/completions`, {
         method: "POST",
         headers: {
@@ -245,28 +288,71 @@ export class OpenRouterAdapter implements CrucibulumAdapter {
           "HTTP-Referer": "https://crucibulum.local",
           "X-Title": "Crucibulum",
         },
-        body: JSON.stringify({ model: this.model, messages, max_tokens: 8192, temperature: 0.2, stream: false }),
+        body: JSON.stringify(retryBody),
         signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
       });
       if (retry.ok) {
-        const retryData = await retry.json() as typeof data;
+        const retryRawBody = await retry.text();
+        let retryData: typeof data;
+        try {
+          retryData = JSON.parse(retryRawBody) as typeof data;
+        } catch {
+          throw makeInvalidResponseError({ provider: this.id, adapter: this.id, attempt: 2 }, `${this.name} returned non-JSON retry body: ${retryRawBody.slice(0, 400)}`);
+        }
         const retryText = retryData.choices?.[0]?.message?.content ?? "";
         if (retryText.trim()) {
+          const firstCost = costOf(data.usage);
+          const retryCost = costOf(retryData.usage);
+          const combined = firstCost != null || retryCost != null ? (firstCost ?? 0) + (retryCost ?? 0) : undefined;
           return {
             text: retryText,
             tokensIn: (data.usage?.prompt_tokens ?? 0) + (retryData.usage?.prompt_tokens ?? 0),
             tokensOut: (data.usage?.completion_tokens ?? 0) + (retryData.usage?.completion_tokens ?? 0),
+            ...(combined !== undefined ? { costUsd: combined } : {}),
           };
         }
       }
+      if (!retry.ok) {
+        throw makeHttpProviderError(retry, await retry.text().catch(() => ""), { provider: this.id, adapter: this.id, attempt: 2 });
+      }
+      throw makeEmptyResponseError({ provider: this.id, adapter: this.id, attempt: 2 }, `${this.name} returned empty response after retry`);
     }
 
+    const cost = costOf(data.usage);
     return {
       text,
       tokensIn: data.usage?.prompt_tokens ?? 0,
       tokensOut: data.usage?.completion_tokens ?? 0,
+      ...(cost !== undefined ? { costUsd: cost } : {}),
     };
   }
+}
+
+export function buildOpenRouterChatBody(
+  adapterId: string,
+  baseUrl: string,
+  model: string,
+  messages: Array<{ role: string; content: string }>,
+  options?: ChatOptions,
+): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    model,
+    messages,
+    max_tokens: 8192,
+    temperature: 0.1,
+    stream: false,
+    usage: { include: true },
+  };
+  const isNativeOpenRouter = /openrouter\.ai/i.test(baseUrl);
+  const requestedReasoning = options?.reasoningEffort;
+  const suppressVisibleReasoning = options?.suppressVisibleReasoning === true;
+  const wantsReasoningOff = requestedReasoning === "off" || (requestedReasoning == null && suppressVisibleReasoning);
+  if (isNativeOpenRouter && (wantsReasoningOff || requestedReasoning === "minimal")) {
+    body.reasoning = wantsReasoningOff
+      ? { exclude: true, effort: "none" }
+      : { effort: "minimal" };
+  }
+  return body;
 }
 
 // ── Re-anchor message ──────────────────────────────────────────────────────

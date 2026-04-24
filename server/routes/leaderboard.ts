@@ -1,22 +1,113 @@
 /**
- * Crucibulum — Leaderboard & Scores Routes
+ * Crucible — Leaderboard & Scores Routes
  * Score queries, leaderboard, synthesis, verum ingest.
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { sendJSON, readBody, parseJsonBody, loadBundles, getBundleById, filterBundlesByFamilies, parseFamiliesParam, canonicalPercent } from "./shared.js";
+import { sendJSON, readBody, parseJsonBody, loadBundles, getBundleById, filterBundlesByTaskFamilies, resolveLaneScope, parseFamiliesParam, canonicalPercent } from "./shared.js";
 import { validateScoresSyncRequest, validateSynthesisRequest } from "../validators.js";
 import type { EvidenceBundle } from "../../adapters/base.js";
 import { storeScores, queryScores, getLeaderboard } from "../../core/score-store.js";
 import { runSynthesis } from "../../core/synthesis.js";
 import { normalizeVerumIngest } from "../../core/verum.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "../../core/judge.js";
+import { summarizeRunSet } from "../contracts.js";
 import {
+  FAMILY_WEIGHTS,
+  LEADERBOARD_MIN_N,
+  SCORE_FAMILIES,
+  SCORE_FAMILY_SPECS,
+  type LeaderboardEntry,
   type ModelScore,
   type ScoreSource,
+  type ScoreFamily,
   type VerumIngestRequest,
 } from "../../types/scores.js";
 import { requireAuth } from "../auth.js";
+
+function scoreFamilyForTaskFamily(taskFamily: string): ScoreFamily | null {
+  for (const family of SCORE_FAMILIES) {
+    if ((SCORE_FAMILY_SPECS[family].taskFamilies as string[]).includes(taskFamily)) {
+      return family;
+    }
+  }
+  if (taskFamily === "poison" || taskFamily === "security") {
+    return "A";
+  }
+  return null;
+}
+
+function buildScopedLeaderboardEntries(bundles: EvidenceBundle[]): LeaderboardEntry[] {
+  const grouped = new Map<string, EvidenceBundle[]>();
+  for (const bundle of bundles) {
+    const group = grouped.get(bundle.agent.model) ?? [];
+    group.push(bundle);
+    grouped.set(bundle.agent.model, group);
+  }
+
+  const entries: LeaderboardEntry[] = [];
+  for (const [modelId, runs] of grouped) {
+    const summary = summarizeRunSet(runs);
+    const familyAverages: Record<ScoreFamily, number | null> = { A: null, B: null, C: null, D: null, E: null, F: null, G: null, H: null, I: null };
+    const weighted: Array<{ family: ScoreFamily; score: number }> = [];
+    for (const family of SCORE_FAMILIES) {
+      const familyRuns = runs.filter((bundle) => scoreFamilyForTaskFamily(bundle.task.family) === family);
+      if (familyRuns.length === 0) continue;
+      const average = Math.round((familyRuns.reduce((sum, bundle) => sum + canonicalPercent(bundle.score.total), 0) / familyRuns.length) * 100) / 100;
+      familyAverages[family] = average;
+      weighted.push({ family, score: average });
+    }
+    const weightedSum = weighted.reduce((sum, item) => sum + item.score * FAMILY_WEIGHTS[item.family], 0);
+    const totalWeight = weighted.reduce((sum, item) => sum + FAMILY_WEIGHTS[item.family], 0);
+    const composite = totalWeight > 0
+      ? Math.round((weightedSum / totalWeight) * 100) / 100
+      : Math.round(summary.avg_score * 100) / 100;
+    const averagePassRate = summary.run_count > 0 ? Math.round((summary.passes / summary.run_count) * 100) / 100 : 0;
+    const stabilityScore = Math.round(Math.abs(averagePassRate - 0.5) * 2 * 100) / 100;
+    const sampleAdequate = summary.run_count >= LEADERBOARD_MIN_N;
+    const samplePenalty = sampleAdequate ? 1 : Math.max(0, summary.run_count) / LEADERBOARD_MIN_N;
+    const reliabilityScore = Math.round((composite * (0.5 + stabilityScore * 0.5) * samplePenalty) * 100) / 100;
+    const confidence: "high" | "medium" | "low" = !sampleAdequate
+      ? "low"
+      : averagePassRate >= 0.95 && stabilityScore >= 0.8
+        ? "high"
+        : averagePassRate >= 0.7 || stabilityScore >= 0.5
+          ? "medium"
+          : "low";
+    const lastRun = runs.reduce((latest, bundle) => bundle.environment.timestamp_start > latest ? bundle.environment.timestamp_start : latest, "");
+
+    entries.push({
+      modelId,
+      composite,
+      families: familyAverages,
+      totalRuns: summary.run_count,
+      completedRuns: summary.run_count - summary.not_complete,
+      notCompleteRuns: summary.not_complete,
+      lastRun,
+      source: "crucibulum",
+      average_pass_rate: averagePassRate,
+      model_failure_rate: summary.run_count > 0 ? Math.round((summary.failures / summary.run_count) * 100) / 100 : 0,
+      completion_rate: summary.run_count > 0 ? Math.round(((summary.run_count - summary.not_complete) / summary.run_count) * 100) / 100 : 0,
+      nc_rate: summary.run_count > 0 ? Math.round((summary.not_complete / summary.run_count) * 100) / 100 : 0,
+      stability_score: stabilityScore,
+      reliability_score: reliabilityScore,
+      confidence,
+      sample_adequate: sampleAdequate,
+      sample_penalty: Math.round(samplePenalty * 100) / 100,
+    });
+  }
+
+  entries.sort((a, b) => {
+    const aRel = a.reliability_score ?? a.composite;
+    const bRel = b.reliability_score ?? b.composite;
+    if (bRel !== aRel) return bRel - aRel;
+    if ((b.average_pass_rate ?? 0) !== (a.average_pass_rate ?? 0)) return (b.average_pass_rate ?? 0) - (a.average_pass_rate ?? 0);
+    if ((b.stability_score ?? 0) !== (a.stability_score ?? 0)) return (b.stability_score ?? 0) - (a.stability_score ?? 0);
+    if (b.composite !== a.composite) return b.composite - a.composite;
+    return a.modelId.localeCompare(b.modelId);
+  });
+  return entries;
+}
 
 export async function handleScoresSync(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (!requireAuth(req, res)) return;
@@ -71,9 +162,27 @@ export async function handleScoresQuery(req: IncomingMessage, res: ServerRespons
 }
 
 export async function handleLeaderboard(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
+  const scope = resolveLaneScope(url);
+  if (scope.taskFamilies && scope.taskFamilies.length > 0) {
+    // Lane-scoped path: filter the full bundle set by the requested task
+    // families BEFORE ranking, so best/worst/reliability are computed over the
+    // same lane the UI asked for. We deliberately do not fall back to the
+    // shared score-store on this path — that DB is populated by external
+    // ingest (verum/crucibulum sync) and would cross-contaminate a scoped
+    // leaderboard with rows that don't belong to any of the requested lanes.
+    const bundles = filterBundlesByTaskFamilies(loadBundles(), scope.taskFamilies);
+    sendJSON(res, 200, {
+      leaderboard: buildScopedLeaderboardEntries(bundles),
+      task_families: scope.taskFamilies,
+      scope_key: scope.scopeKey,
+    });
+    return;
+  }
+  // Global ("all lanes") path: legacy score-family filter into the score-store.
+  // This is the dashboard/overview view; lane tabs never hit this branch.
   const families = parseFamiliesParam(url);
   const entries = getLeaderboard(families ?? undefined);
-  sendJSON(res, 200, { leaderboard: entries, families });
+  sendJSON(res, 200, { leaderboard: entries, families, task_families: null, scope_key: "all" });
 }
 
 export async function handleSynthesis(req: IncomingMessage, res: ServerResponse): Promise<void> {

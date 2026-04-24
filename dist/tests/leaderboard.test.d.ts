@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Leaderboard Aggregator Tests
+ * Crucible — Leaderboard Aggregator Tests
  * Covers: aggregateByModel, buildLeaderboardEntry, pass@k correctness.
  */
 export {};

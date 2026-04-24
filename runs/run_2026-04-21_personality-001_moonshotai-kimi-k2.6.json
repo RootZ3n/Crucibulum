@@ -1,0 +1,186 @@
+{
+  "bundle_id": "run_2026-04-21_personality-001_moonshotai-kimi-k2.6",
+  "bundle_hash": "sha256:2384fc1ad86b72e7ac2ab3056f56ab5d0fbb3b57ffa65458ce3ac03be33340f4",
+  "bundle_version": "2.0.0",
+  "task": {
+    "id": "personality-001",
+    "manifest_hash": "sha256:7742a8a49ebc67e8907e1d293663d0d700144e0def849ae13e5387d433662465",
+    "family": "personality",
+    "difficulty": "medium"
+  },
+  "agent": {
+    "adapter": "openrouter",
+    "adapter_version": "1.0.0",
+    "system": "OpenRouter",
+    "system_version": "unknown",
+    "model": "moonshotai/kimi-k2.6",
+    "model_version": "latest",
+    "provider": "openrouter"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "none",
+    "crucibulum_version": "2.0.0",
+    "timestamp_start": "2026-04-21T11:56:44.597Z",
+    "timestamp_end": "2026-04-21T11:56:57.460Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "conversational: 3 questions"
+    },
+    {
+      "t": 5,
+      "type": "task_complete",
+      "detail": "P1-Q1: PASS"
+    },
+    {
+      "t": 8,
+      "type": "task_complete",
+      "detail": "P1-Q2: PASS"
+    },
+    {
+      "t": 13,
+      "type": "task_complete",
+      "detail": "P1-Q3: PASS"
+    }
+  ],
+  "diff": {
+    "files_changed": [],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 1,
+      "details": {
+        "P1-Q1": "pass",
+        "P1-Q2": "pass",
+        "P1-Q3": "pass"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {}
+    },
+    "integrity": {
+      "score": 1,
+      "details": {},
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 12.86,
+      "time_limit_sec": 135,
+      "steps_used": 3,
+      "steps_limit": 3,
+      "score": 1
+    }
+  },
+  "score": {
+    "scale": "fraction_0_1",
+    "total": 1,
+    "total_percent": 100,
+    "breakdown": {
+      "correctness": 1,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 1
+    },
+    "breakdown_percent": {
+      "correctness": 100,
+      "regression": 100,
+      "integrity": 100,
+      "efficiency": 100
+    },
+    "pass": true,
+    "pass_threshold": 0.7,
+    "pass_threshold_percent": 70,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 315,
+    "tokens_out": 1139,
+    "estimated_cost_usd": 0.00484,
+    "provider_cost_note": "openrouter:moonshotai/kimi-k2.6 (provider-reported)"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "conversational-judge"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": false,
+    "narration_ignored": false,
+    "state_based_scoring": true,
+    "bundle_verified": false,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": true,
+    "first_fix_correct": true,
+    "self_verified": false,
+    "failure_mode": null
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "2.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "personality",
+        "difficulty": "medium",
+        "provider": "openrouter",
+        "adapter": "openrouter",
+        "score": 1,
+        "pass": true,
+        "failure_mode": null
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": 1,
+      "benchmark_label": "personality:100%",
+      "execution_score": 1,
+      "divergence_note": null
+    }
+  },
+  "verdict": {
+    "completionState": "PASS",
+    "failureOrigin": null,
+    "failureReasonCode": "pass",
+    "failureReasonSummary": "Run completed and passed evaluation",
+    "countsTowardModelScore": true,
+    "countsTowardFailureRate": false,
+    "evidence": {
+      "provider": "openrouter",
+      "adapter": "openrouter",
+      "exitReason": "complete",
+      "rawError": null,
+      "providerError": null,
+      "httpStatus": null,
+      "timeout": false,
+      "judgeError": null,
+      "testError": null,
+      "attemptCount": 3,
+      "retries": null
+    }
+  }
+}

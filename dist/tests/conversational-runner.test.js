@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { computeConversationalEfficiency } from "../core/conversational-runner.js";
+import { computeConversationalEfficiency, sanitizeVisibleReasoning, shouldSuppressVisibleReasoning } from "../core/conversational-runner.js";
 function manifest(overrides = {}) {
     return {
         id: "conv-test-001",
@@ -69,6 +69,20 @@ describe("computeConversationalEfficiency", () => {
         const result = computeConversationalEfficiency(costManifest, 30_000, 1200, 900);
         assert.equal(result.time_limit_sec, 90);
         assert.ok(result.score < 0.8, `expected tighter token budget to matter, got ${result.score}`);
+    });
+});
+describe("conversational benchmark reasoning policy", () => {
+    it("strips visible <think> blocks before scoring", () => {
+        const sanitized = sanitizeVisibleReasoning("<think> The user is asking a question </think>question");
+        assert.equal(sanitized.text, "question");
+        assert.equal(sanitized.strippedVisibleReasoning, true);
+    });
+    it("suppresses visible reasoning for normal benchmark families", () => {
+        assert.equal(shouldSuppressVisibleReasoning(manifest({ family: "personality" })), true);
+        assert.equal(shouldSuppressVisibleReasoning(manifest({ family: "classification" })), true);
+    });
+    it("keeps thinking-mode tasks opt-in so the dedicated lane can still compare policies", () => {
+        assert.equal(shouldSuppressVisibleReasoning(manifest({ family: "thinking-mode" })), false);
     });
 });
 //# sourceMappingURL=conversational-runner.test.js.map

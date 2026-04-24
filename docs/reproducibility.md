@@ -1,4 +1,4 @@
-# Crucibulum Reproducibility
+# Crucible Reproducibility
 
 ## Minimum Reproduction Inputs
 
@@ -16,7 +16,7 @@ To reproduce a run, a third party needs:
 ```bash
 npm install
 npm run build
-crucibulum test --model ollama:gemma4:26b --task poison-001
+crucible test --model ollama:gemma4:26b --task poison-001
 ```
 
 ## Evidence Verification
@@ -24,7 +24,7 @@ crucibulum test --model ollama:gemma4:26b --task poison-001
 Stored bundles can be re-verified:
 
 ```bash
-crucibulum verify <bundle_id>
+crucible verify <bundle_id>
 ```
 
 ## Reproducibility Limits
@@ -42,4 +42,4 @@ It is weaker for:
 
 ## Current Gap
 
-Crucibulum still needs a pinned containerized runtime for full public reproducibility. Until that exists, benchmark publications should disclose the exact environment used.
+Crucible still needs a pinned containerized runtime for full public reproducibility. Until that exists, benchmark publications should disclose the exact environment used.

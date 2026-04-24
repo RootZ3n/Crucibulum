@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Crucibulum CLI — Entry Point
+ * Crucible CLI — Entry Point
  */
 export {};
 //# sourceMappingURL=main.d.ts.map

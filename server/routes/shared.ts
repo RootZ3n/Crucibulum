@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Shared Route Helpers
+ * Crucible — Shared Route Helpers
  * Common utilities for route handlers.
  */
 
@@ -8,11 +8,13 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { EvidenceBundle } from "../../adapters/base.js";
 import { log } from "../../utils/logger.js";
-import { canonicalPercent, type ScoreFamily } from "../../types/scores.js";
+import { canonicalPercent, taskFamiliesForScoreFamilies, type ScoreFamily } from "../../types/scores.js";
 import { summarizeBundle, countRepeatRuns, getRelatedBundles } from "../contracts.js";
 import { readCrucibleLink } from "../validation-links.js";
 import { loadManifestRaw, listTasks } from "../../core/manifest.js";
 import { loadVerifiedBundle } from "../../core/bundle.js";
+import { normalizeBundleVerdict } from "../../core/verdict.js";
+import { resolveDisplayName } from "../../core/test-names.js";
 
 const RUNS_DIR = process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs");
 const UI_PATH = join(import.meta.dirname, "..", "..", "ui", "index.html");
@@ -21,7 +23,7 @@ export function sendJSON(res: ServerResponse, status: number, data: unknown): vo
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
   });
   res.end(JSON.stringify(data));
@@ -108,6 +110,47 @@ export function parseFamiliesParam(url: URL): ScoreFamily[] | null {
   return families.length > 0 ? families : null;
 }
 
+export function parseTaskFamiliesParam(url: URL): string[] | null {
+  const raw = (url.searchParams.get("task_families") ?? "").trim();
+  if (!raw) return null;
+  const families = [...new Set(raw.split(",").map((family) => family.trim()).filter(Boolean))];
+  return families.length > 0 ? families : null;
+}
+
+export function parseBundleTaskFamiliesParam(url: URL): string[] | null {
+  const taskFamilies = parseTaskFamiliesParam(url);
+  if (taskFamilies && taskFamilies.length > 0) {
+    return taskFamilies;
+  }
+  const scoreFamilies = parseFamiliesParam(url);
+  const mapped = taskFamiliesForScoreFamilies(scoreFamilies);
+  return mapped.length > 0 ? mapped : null;
+}
+
+/**
+ * Resolved lane scope echoed back on every lane-aware endpoint so clients can
+ * verify the response matches the request. `taskFamilies` is the canonical
+ * filter; `scopeKey` is a stable, order-independent string the UI can use as a
+ * cache key ("all" when nothing is applied).
+ *
+ * Scope flows end-to-end through one name — `task_families` — and this
+ * helper is the single parsing point. Anything that branches on scope must go
+ * through here; do NOT read searchParams for lane filtering anywhere else.
+ */
+export interface LaneScope {
+  taskFamilies: string[] | null;
+  scopeKey: string;
+}
+
+export function resolveLaneScope(url: URL): LaneScope {
+  const taskFamilies = parseBundleTaskFamiliesParam(url);
+  if (!taskFamilies || taskFamilies.length === 0) {
+    return { taskFamilies: null, scopeKey: "all" };
+  }
+  const normalized = [...taskFamilies].sort();
+  return { taskFamilies: normalized, scopeKey: normalized.join(",") };
+}
+
 export function filterBundlesByFamilies(bundles: EvidenceBundle[], families: ScoreFamily[] | null): EvidenceBundle[] {
   if (!families || families.length === 0) return bundles;
   const familySet = new Set(families);
@@ -122,15 +165,26 @@ export function filterBundlesByFamilies(bundles: EvidenceBundle[], families: Sco
   });
 }
 
+export function filterBundlesByTaskFamilies(bundles: EvidenceBundle[], taskFamilies: string[] | null): EvidenceBundle[] {
+  if (!taskFamilies || taskFamilies.length === 0) return bundles;
+  const familySet = new Set(taskFamilies);
+  return bundles.filter((bundle) => familySet.has(bundle.task.family));
+}
+
 export function listTaskDetails(): Array<Record<string, unknown>> {
   return listTasks().map((task) => {
     const manifest = loadManifestRaw(task.id);
     const isConversational = manifest.execution_mode === "conversational" || !manifest.task;
+    const displayName = resolveDisplayName(manifest);
     return {
       id: manifest.id,
       suite_id: "v1",
       family: manifest.family,
+      // `title` retained for backwards-compat with anything that still reads
+      // it as the prominent label. New callers should prefer `display_name`,
+      // which is the human-readable name (always defined).
       title: manifest.task?.title ?? manifest.description ?? manifest.id,
+      display_name: displayName,
       difficulty: manifest.difficulty,
       execution_mode: manifest.execution_mode ?? "repo",
       time_limit_sec: manifest.constraints?.time_limit_sec ?? null,
@@ -153,7 +207,7 @@ export function listSuites(): Array<Record<string, unknown>> {
   }
   return [{
     id: "v1",
-    label: "Crucibulum v1",
+    label: "Crucible v1",
     task_count: tasks.length,
     families: Array.from(byFamily.entries()).map(([family, count]) => ({ family, count })),
   }];
@@ -167,16 +221,35 @@ export function bundleSummary(bundle: EvidenceBundle, allBundles: EvidenceBundle
 
 export function getStats(bundles: EvidenceBundle[]): Record<string, unknown> {
   const totalRuns = bundles.length;
-  const passedRuns = bundles.filter(b => b.score.pass).length;
+  const verdicts = bundles.map((bundle) => normalizeBundleVerdict(bundle));
+  const passedRuns = verdicts.filter((verdict) => verdict.completionState === "PASS").length;
+  const modelFails = verdicts.filter((verdict) => verdict.completionState === "FAIL" && verdict.failureOrigin === "MODEL").length;
+  const notCompleteRuns = verdicts.filter((verdict) => verdict.completionState === "NC").length;
+  const infraIssueRuns = verdicts.filter((verdict) => verdict.completionState === "NC" && ["PROVIDER", "NETWORK", "HARNESS", "UNKNOWN"].includes(verdict.failureOrigin ?? "")).length;
+  const testJudgeIssueRuns = verdicts.filter((verdict) => verdict.completionState === "NC" && ["TEST", "JUDGE"].includes(verdict.failureOrigin ?? "")).length;
   const totalCost = bundles.reduce((sum, b) => sum + (b.usage.estimated_cost_usd ?? 0), 0);
   const totalTokens = bundles.reduce((sum, b) => sum + (b.usage.tokens_in ?? 0) + (b.usage.tokens_out ?? 0), 0);
   const uniqueModels = new Set(bundles.map(b => b.agent.model)).size;
   const uniqueTasks = new Set(bundles.map(b => b.task.id)).size;
-  const avgScore = totalRuns > 0 ? bundles.reduce((sum, b) => sum + canonicalPercent(b.score.total), 0) / totalRuns : 0;
+  const scoredBundles = bundles.filter((bundle, index) => {
+    const verdict = verdicts[index];
+    return verdict.completionState !== "NC";
+  });
+  const avgScore = scoredBundles.length > 0 ? scoredBundles.reduce((sum, b) => sum + canonicalPercent(b.score.total), 0) / scoredBundles.length : 0;
   return {
     total_runs: totalRuns,
     passed_runs: passedRuns,
     pass_rate: totalRuns > 0 ? Math.round((passedRuns / totalRuns) * 100) : 0,
+    model_fail_runs: modelFails,
+    model_failure_rate: totalRuns > 0 ? Math.round((modelFails / totalRuns) * 100) : 0,
+    infra_issue_runs: infraIssueRuns,
+    infra_issue_rate: totalRuns > 0 ? Math.round((infraIssueRuns / totalRuns) * 100) : 0,
+    test_judge_issue_runs: testJudgeIssueRuns,
+    test_judge_issue_rate: totalRuns > 0 ? Math.round((testJudgeIssueRuns / totalRuns) * 100) : 0,
+    not_complete_runs: notCompleteRuns,
+    completion_rate: totalRuns > 0 ? Math.round(((totalRuns - notCompleteRuns) / totalRuns) * 100) : 0,
+    nc_rate: totalRuns > 0 ? Math.round((notCompleteRuns / totalRuns) * 100) : 0,
+    scored_runs: scoredBundles.length,
     avg_score: Math.round(avgScore * 100) / 100,
     total_cost_usd: Math.round(totalCost * 10000) / 10000,
     total_tokens: totalTokens,

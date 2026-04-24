@@ -1,6 +1,6 @@
 /**
- * Crucibulum — Unified Score Schema
- * Shared between Crucible (Squidley) and Crucibulum (standalone).
+ * Crucible — Unified Score Schema
+ * Shared between the Squidley Crucible module and the standalone Crucible product.
  *
  * Public score APIs use 0-100 percentages.
  * Internal run bundles still use 0-1 fractions until the bundle schema is migrated.

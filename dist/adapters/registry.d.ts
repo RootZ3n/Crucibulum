@@ -1,5 +1,6 @@
 import type { AdapterConfig, CrucibulumAdapter } from "./base.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "../core/judge.js";
+import { type CircuitState } from "../core/circuit-breaker.js";
 export type AdapterRuntimeKind = "local" | "cloud" | "subprocess";
 export interface ProviderCatalogEntry {
     id: string;
@@ -48,10 +49,17 @@ export interface AdapterCatalogEntry {
     available: boolean;
     reason: string | null;
     supports_tool_calls: boolean;
+    supports_chat: boolean;
     supports_custom_model: boolean;
     provider_options: AdapterProviderOption[];
     models: AdapterModelOption[];
     judge: typeof DETERMINISTIC_JUDGE_METADATA;
+    /** Circuit breaker snapshot — degraded providers surface state:"open" here. */
+    circuit: {
+        state: CircuitState;
+        failures: number;
+        lastFailureAt: number | null;
+    };
 }
 export interface RegistryDefinition {
     id: string;
@@ -74,6 +82,7 @@ export declare function getAdapterCatalog(): Promise<AdapterCatalogEntry[]>;
 export declare function listFlattenedModels(): Promise<Array<AdapterModelOption & {
     adapter: string;
     adapter_name: string;
+    supports_chat: boolean;
 }>>;
 export declare function instantiateAdapterForRun(input: {
     adapter: string;

@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Structured Logger
+ * Crucible — Structured Logger
  */
 const LEVEL_ORDER = { debug: 0, info: 1, warn: 2, error: 3 };
 let currentLevel = process.env["CRUCIBULUM_LOG_LEVEL"] ?? "info";

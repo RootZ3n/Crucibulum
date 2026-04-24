@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://crucibulum.local/schemas/task_manifest.schema.json",
-  "title": "Crucibulum Task Manifest",
-  "description": "Validates the full task manifest format for a Crucibulum benchmark task.",
+  "title": "Crucible Task Manifest",
+  "description": "Validates the full task manifest format for a Crucible benchmark task.",
   "type": "object",
   "required": ["id", "version", "family", "difficulty", "repo", "task", "constraints", "verification", "scoring", "oracle_ref", "metadata", "seed"],
   "additionalProperties": false,

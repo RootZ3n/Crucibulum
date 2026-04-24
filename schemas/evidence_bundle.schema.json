@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://crucibulum.local/schemas/evidence_bundle.schema.json",
-  "title": "Crucibulum Evidence Bundle",
+  "title": "Crucible Evidence Bundle",
   "description": "Validates evidence bundles produced by the judge after a benchmark run.",
   "type": "object",
   "required": [

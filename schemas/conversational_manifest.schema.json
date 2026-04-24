@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://crucibulum.local/schemas/conversational_manifest.schema.json",
-  "title": "Crucibulum Conversational Manifest",
+  "title": "Crucible Conversational Manifest",
   "description": "Validates conversational benchmark task manifests.",
   "type": "object",
   "required": ["id", "version", "family", "execution_mode", "difficulty", "description", "questions", "scoring", "metadata"],

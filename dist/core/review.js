@@ -1,11 +1,12 @@
 /**
- * Crucibulum — Review Layer
+ * Crucible — Review Layer
  *
  * Optional model-assisted review that sits ON TOP of deterministic judging.
  * Deterministic scoring remains authoritative. Review is advisory only.
  */
 import { scanForInjection } from "../security/velum.js";
 import { log } from "../utils/logger.js";
+import { resolveJudgeConfig } from "./judge-config.js";
 export const DISABLED_REVIEW = {
     enabled: false,
     provider: "",
@@ -21,6 +22,22 @@ export const DEFAULT_REVIEW_CONFIG = {
     secondOpinion: { enabled: false, provider: "", model: "" },
     qcReview: { enabled: false, provider: "", model: "" },
 };
+/**
+ * Build a review config seeded from the configured judge model
+ * (`CRUCIBLE_JUDGE_PROVIDER` / `CRUCIBLE_JUDGE_MODEL`, defaulting to
+ * OpenRouter Xiaomi MiMo V2 Pro). Callers pass `enable: true` for the
+ * channels they want to run.
+ *
+ * Provider/model can still be overridden per-call (CLI flag, request body)
+ * but the default no longer hardcodes Opus.
+ */
+export function buildReviewConfigFromJudge(enable = {}, override) {
+    const cfg = resolveJudgeConfig(override);
+    return {
+        secondOpinion: { enabled: !!enable.secondOpinion, provider: cfg.provider, model: cfg.model },
+        qcReview: { enabled: !!enable.qcReview, provider: cfg.provider, model: cfg.model },
+    };
+}
 const REVIEW_ALLOWED_FIELDS = new Set(["summary", "flags", "confidence", "recommendation"]);
 const MAX_TEXT_SNIPPET = 220;
 const MAX_FLAGS_PER_SOURCE = 3;
@@ -204,7 +221,7 @@ export function sanitizeReviewInput(bundle, context = {}) {
     return prepareReviewInput(bundle, context);
 }
 export function buildSecondOpinionPrompt(evidence) {
-    return `You are a second-opinion reviewer for Crucibulum.
+    return `You are a second-opinion reviewer for Crucible.
 
 Role:
 - You are not the judge of record.
@@ -229,7 +246,7 @@ Output:
 }`;
 }
 export function buildQCReviewPrompt(evidence) {
-    return `You are a QC review challenger for Crucibulum.
+    return `You are a QC review challenger for Crucible.
 
 Role:
 - You are not the judge of record.

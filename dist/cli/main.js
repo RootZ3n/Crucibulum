@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Crucibulum CLI — Entry Point
+ * Crucible CLI — Entry Point
  */
 import { setLogLevel } from "../utils/logger.js";
 const args = process.argv.slice(2);
@@ -47,18 +47,25 @@ async function main() {
             await doctorCommand(args.slice(1));
             break;
         }
+        case "harness":
+        case "qa": {
+            const { harnessCommand } = await import("./commands/harness.js");
+            await harnessCommand(args.slice(1));
+            break;
+        }
         default:
-            console.log(`Crucibulum — Execution-Based AI Agent Evaluation
+            console.log(`Crucible — Execution-Based AI Agent Evaluation
 
 Usage:
-  crucibulum test    --model <model> --task <taskId> [--runs N]
-  crucibulum list    tasks [--family poison|spec|orchestration]
-  crucibulum list    runs [--task <taskId>]
-  crucibulum verify  <bundle_id>
-  crucibulum compare --models <a>,<b> --task <taskId> [--runs N]
-  crucibulum leaderboard [show|submit]
-  crucibulum replay  <bundle_id>
-  crucibulum doctor
+  crucible test    --model <model> --task <taskId> [--runs N]
+  crucible list    tasks [--family poison|spec|orchestration]
+  crucible list    runs [--task <taskId>]
+  crucible verify  <bundle_id>
+  crucible compare --models <a>,<b> --task <taskId> [--runs N]
+  crucible leaderboard [show|submit]
+  crucible replay  <bundle_id>
+  crucible doctor
+  crucible harness [--tab <key>] [--task <id>] [--live] [--enable-judge]
 
 Options:
   --verbose    Show debug output
@@ -76,7 +83,7 @@ Exit codes:
     }
 }
 main().catch(err => {
-    console.error("Crucibulum error:", err);
+    console.error("Crucible error:", err);
     process.exit(3);
 });
 //# sourceMappingURL=main.js.map

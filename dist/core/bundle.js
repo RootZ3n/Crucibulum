@@ -1,5 +1,5 @@
 /**
- * Crucibulum — Evidence Bundle Builder
+ * Crucible — Evidence Bundle Builder
  * Builds, signs (SHA256), and stores immutable evidence bundles.
  */
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -12,6 +12,7 @@ import { log } from "../utils/logger.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
 import { canonicalPercent } from "../types/scores.js";
 import { resolveScoringWeights, resolvePassThreshold } from "./suite-loader.js";
+import { normalizeVerdict } from "./verdict.js";
 export function buildBundle(input) {
     const { manifest, executionResult, diff, judgeResult, security, startTime, endTime, workspace, adapter, model } = input;
     // Resolve effective scoring weights: task-level > suite-level > defaults
@@ -85,6 +86,18 @@ export function buildBundle(input) {
             estimated_cost_usd: costUsd,
             provider_cost_note: provider === "local" ? "local inference — no API cost" : `via ${provider}`,
         },
+        // Deterministic judge: zero cost. Bundle still records this so the UI/CLI
+        // can print "Judge cost: $0 (deterministic)" alongside model cost without
+        // having to special-case the absence of the field.
+        judge_usage: {
+            provider: "",
+            model: "",
+            tokens_in: 0,
+            tokens_out: 0,
+            estimated_cost_usd: 0,
+            kind: "deterministic",
+            note: "deterministic judge — no model cost",
+        },
         judge: DETERMINISTIC_JUDGE_METADATA,
         trust: {
             rubric_hidden: true,
@@ -123,6 +136,12 @@ export function buildBundle(input) {
             },
         },
     };
+    bundle.verdict = normalizeVerdict({
+        bundle,
+        executionMode: "repo",
+        exitReason: executionResult.exit_reason,
+        providerError: executionResult.provider_error ?? null,
+    });
     // Compute and set bundle hash
     const hashInput = { ...bundle, bundle_hash: "" };
     bundle.bundle_hash = sha256Object(hashInput);
@@ -187,6 +206,7 @@ export function loadVerifiedBundle(raw, sourceLabel) {
     else {
         bundle.trust = { ...bundle.trust, bundle_verified: true };
     }
+    bundle.verdict = bundle.verdict ?? normalizeVerdict({ bundle });
     return bundle;
 }
 //# sourceMappingURL=bundle.js.map

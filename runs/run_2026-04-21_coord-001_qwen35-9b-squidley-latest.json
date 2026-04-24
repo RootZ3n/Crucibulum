@@ -1,0 +1,406 @@
+{
+  "bundle_id": "run_2026-04-21_coord-001_qwen35-9b-squidley-latest",
+  "bundle_hash": "sha256:9fba537261ded244ecb91ee885a9c0699e235a61b924f135f7299fd11910737d",
+  "bundle_version": "1.0.0",
+  "task": {
+    "id": "coord-001",
+    "manifest_hash": "sha256:c19f45f4deaec4d68aacd2caa5271a5f4146d41948e2be8468bb50476f6c3670",
+    "family": "orchestration",
+    "difficulty": "medium"
+  },
+  "agent": {
+    "adapter": "ollama",
+    "adapter_version": "1.0.0",
+    "system": "0.21.0",
+    "system_version": "0.21.0",
+    "model": "qwen35-9b-squidley:latest",
+    "model_version": "latest",
+    "provider": "ollama"
+  },
+  "environment": {
+    "os": "linux-x64",
+    "arch": "x64",
+    "repo_commit": "2229b9f8f25dd5b47587b9c2d6207c24e6b7b3ae",
+    "crucibulum_version": "1.0.0",
+    "timestamp_start": "2026-04-21T01:27:24.752Z",
+    "timestamp_end": "2026-04-21T01:31:57.735Z"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "task_start",
+      "detail": "workspace initialized"
+    },
+    {
+      "t": 8,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 9,
+      "type": "file_read",
+      "path": "src/users/validate.js"
+    },
+    {
+      "t": 10,
+      "type": "file_read",
+      "path": "src/users/store.js"
+    },
+    {
+      "t": 11,
+      "type": "file_read",
+      "path": "tests/register.test.js"
+    },
+    {
+      "t": 26,
+      "type": "shell",
+      "command": "node tests/register.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 33,
+      "type": "file_write",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 34,
+      "type": "shell",
+      "command": "node tests/register.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 35,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 37,
+      "type": "shell",
+      "command": "node tests/register.test.js",
+      "exit_code": 1
+    },
+    {
+      "t": 39,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 43,
+      "type": "file_write",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 44,
+      "type": "shell",
+      "command": "node tests/register.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 47,
+      "type": "file_read",
+      "path": "src/users/validate.js"
+    },
+    {
+      "t": 48,
+      "type": "file_read",
+      "path": "src/users/store.js"
+    },
+    {
+      "t": 49,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 50,
+      "type": "file_read",
+      "path": "tests/register.test.js"
+    },
+    {
+      "t": 61,
+      "type": "shell",
+      "command": "node tests/register.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 63,
+      "type": "file_read",
+      "path": "src/users/validate.js"
+    },
+    {
+      "t": 64,
+      "type": "file_read",
+      "path": "src/users/store.js"
+    },
+    {
+      "t": 65,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 66,
+      "type": "file_read",
+      "path": "tests/register.test.js"
+    },
+    {
+      "t": 92,
+      "type": "shell",
+      "command": "node tests/register.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 94,
+      "type": "file_read",
+      "path": "src/users/validate.js"
+    },
+    {
+      "t": 95,
+      "type": "file_read",
+      "path": "src/users/store.js"
+    },
+    {
+      "t": 96,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 97,
+      "type": "file_read",
+      "path": "tests/register.test.js"
+    },
+    {
+      "t": 112,
+      "type": "shell",
+      "command": "node tests/register.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 114,
+      "type": "file_read",
+      "path": "src/users/validate.js"
+    },
+    {
+      "t": 115,
+      "type": "file_read",
+      "path": "src/users/store.js"
+    },
+    {
+      "t": 116,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 119,
+      "type": "file_read",
+      "path": "tests/register.test.js"
+    },
+    {
+      "t": 131,
+      "type": "shell",
+      "command": "node tests/register.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 133,
+      "type": "file_read",
+      "path": "src/users/validate.js"
+    },
+    {
+      "t": 134,
+      "type": "file_read",
+      "path": "src/users/store.js"
+    },
+    {
+      "t": 136,
+      "type": "file_read",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 136,
+      "type": "file_read",
+      "path": "tests/register.test.js"
+    },
+    {
+      "t": 271,
+      "type": "file_write",
+      "path": "src/users/register.js"
+    },
+    {
+      "t": 272,
+      "type": "shell",
+      "command": "node tests/register.test.js",
+      "exit_code": 0
+    },
+    {
+      "t": 273,
+      "type": "task_complete",
+      "detail": "agent signaled completion"
+    }
+  ],
+  "diff": {
+    "files_changed": [
+      {
+        "path": "src/users/register.js",
+        "lines_added": 9,
+        "lines_removed": 2,
+        "patch": "diff --git a/src/users/register.js b/src/users/register.js\nindex 71846f8..9135a72 100644\n--- a/src/users/register.js\n+++ b/src/users/register.js\n@@ -1,15 +1,22 @@\n const { validate } = require('./validate');\n-const { saveUser } = require('./store');\n+const { saveUser, findByEmail } = require('./store');\n \n /**\n  * Registers a new user.\n  * Validates the email, then saves the user to the store.\n  */\n async function register(email, name) {\n-  const validation = validate(email);\n+  const validation = await validate(email);\n   if (validation.error) {\n     return { success: false, error: validation.error };\n   }\n+  \n+  // Check if user with this email already exists\n+  const existingUser = await findByEmail(email);\n+  if (existingUser) {\n+    return { success: false, error: 'Email already registered' };\n+  }\n+  \n   const user = await saveUser({ email, name });\n   return { success: true, user };\n }"
+      }
+    ],
+    "files_created": [],
+    "files_deleted": [],
+    "forbidden_paths_touched": []
+  },
+  "security": {
+    "injection_scan": "clean",
+    "forbidden_paths_violations": 0,
+    "anti_cheat_violations": 0,
+    "workspace_escape_attempts": 0
+  },
+  "verification_results": {
+    "correctness": {
+      "score": 1,
+      "details": {
+        "hidden-test-suite": "pass"
+      }
+    },
+    "regression": {
+      "score": 1,
+      "details": {
+        "public-tests": "pass"
+      }
+    },
+    "integrity": {
+      "score": 1,
+      "details": {
+        "forbidden_paths": "pass",
+        "no-test-modification": "pass",
+        "no-test-deletion": "pass",
+        "minimal-edit": "pass"
+      },
+      "violations": []
+    },
+    "efficiency": {
+      "time_sec": 273,
+      "time_limit_sec": 900,
+      "steps_used": 40,
+      "steps_limit": 40,
+      "score": 0.42
+    }
+  },
+  "score": {
+    "scale": "fraction_0_1",
+    "total": 0.94,
+    "total_percent": 94.2,
+    "breakdown": {
+      "correctness": 1,
+      "regression": 1,
+      "integrity": 1,
+      "efficiency": 0.42
+    },
+    "breakdown_percent": {
+      "correctness": 100,
+      "regression": 100,
+      "integrity": 100,
+      "efficiency": 42
+    },
+    "pass": true,
+    "pass_threshold": 0.7,
+    "pass_threshold_percent": 70,
+    "integrity_violations": 0
+  },
+  "usage": {
+    "tokens_in": 54339,
+    "tokens_out": 16000,
+    "estimated_cost_usd": 0,
+    "provider_cost_note": "via ollama"
+  },
+  "judge": {
+    "kind": "deterministic",
+    "label": "Judge: deterministic",
+    "description": "oracle + hidden/public tests + integrity checks",
+    "verifier_model": null,
+    "components": [
+      "oracle",
+      "hidden tests",
+      "public tests",
+      "diff rules",
+      "integrity checks"
+    ]
+  },
+  "trust": {
+    "rubric_hidden": true,
+    "narration_ignored": true,
+    "state_based_scoring": true,
+    "bundle_verified": true,
+    "deterministic_judge_authoritative": true,
+    "review_layer_advisory": true
+  },
+  "diagnosis": {
+    "localized_correctly": true,
+    "avoided_decoys": true,
+    "first_fix_correct": false,
+    "self_verified": true,
+    "failure_mode": "wrong_fix"
+  },
+  "integrations": {
+    "veritor": {
+      "contract_version": "1.0.0",
+      "consumable": true
+    },
+    "paedagogus": {
+      "contract_version": "1.0.0",
+      "consumable": true,
+      "routing_signals": {
+        "task_family": "orchestration",
+        "difficulty": "medium",
+        "provider": "ollama",
+        "adapter": "ollama",
+        "score": 0.94,
+        "pass": true,
+        "failure_mode": "wrong_fix"
+      }
+    },
+    "crucible": {
+      "profile_id": null,
+      "benchmark_score": null,
+      "benchmark_label": null,
+      "execution_score": 94,
+      "divergence_note": null
+    }
+  },
+  "review": {
+    "authority": "advisory",
+    "deterministic_result_authoritative": true,
+    "security": {
+      "review_input_scanned": false,
+      "review_input_sanitized": false,
+      "injection_flags_count": 0,
+      "flagged_sources": [],
+      "flagged_artifacts": [],
+      "review_blocked_reason": null,
+      "review_output_invalid": false,
+      "trust_boundary_violations": []
+    },
+    "secondOpinion": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    },
+    "qcReview": {
+      "enabled": false,
+      "provider": "",
+      "model": "",
+      "status": "skipped",
+      "summary": "",
+      "flags": [],
+      "confidence": "high",
+      "recommendation": null,
+      "disagreement": false
+    }
+  }
+}
