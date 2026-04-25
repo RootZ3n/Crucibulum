@@ -25,6 +25,7 @@ import type {
   TimelineEvent,
   SanitizedChatText,
   ChatOptions,
+  ProviderAttemptRecord,
 } from "../adapters/base.js";
 import { scoreConversationalQuestion, judgeConversational } from "./conversational-judge.js";
 import { sha256Object } from "../utils/hashing.js";
@@ -35,6 +36,7 @@ import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
 import { canonicalPercent } from "../types/scores.js";
 import { runWithProtection } from "./circuit-breaker.js";
 import { normalizeVerdict } from "./verdict.js";
+import { interpretBundleResult } from "./interpretation.js";
 import type { StructuredProviderError } from "../types/provider-error.js";
 import { normalizeProviderError } from "./provider-errors.js";
 import { runReviewLayer, DISABLED_REVIEW, type RunReviewConfig } from "./review.js";
@@ -143,25 +145,121 @@ export interface ConversationalEfficiencyResult {
 }
 
 export function shouldSuppressVisibleReasoning(manifest: ConversationalManifest): boolean {
+  // Manifest can pin policy explicitly. "preserve" keeps the model's
+  // reasoning visible (used for the thinking-mode lane); "off"/"minimal"
+  // both mean we want no visible chain-of-thought when scoring.
+  if (manifest.thinking_mode === "preserve") return false;
+  if (manifest.thinking_mode === "off" || manifest.thinking_mode === "minimal") return true;
+  // Default: every family except the dedicated thinking-mode lane suppresses
+  // visible reasoning. The lane's whole point is to compare reasoning
+  // policies, so we never strip its outputs.
   return manifest.family !== "thinking-mode";
 }
 
 function benchmarkChatOptions(manifest: ConversationalManifest): ChatOptions {
+  const suppress = shouldSuppressVisibleReasoning(manifest);
+  // When the manifest explicitly asks for "off" we forward that to the
+  // adapter; "minimal" forwards a lighter effort. Otherwise the family
+  // default applies (off when sanitizing, default when preserving).
+  const explicit = manifest.thinking_mode;
+  const reasoningEffort: ChatOptions["reasoningEffort"] =
+    explicit === "minimal" ? "minimal"
+      : explicit === "off" ? "off"
+        : explicit === "preserve" ? "default"
+          : suppress ? "off" : "default";
   return {
     benchmarkMode: true,
-    suppressVisibleReasoning: shouldSuppressVisibleReasoning(manifest),
-    reasoningEffort: shouldSuppressVisibleReasoning(manifest) ? "off" : "default",
+    suppressVisibleReasoning: suppress,
+    reasoningEffort,
   };
 }
 
+// Block-shaped thinking/reasoning patterns. Each entry's regex is run
+// against the entire response; a match means a model leaked chain-of-thought
+// into its visible answer and we strip it before scoring. Code fences are
+// excluded by construction — we only match known reasoning markers, never
+// generic ``` blocks. The list errs on the side of *known* leak shapes so
+// regular prose is never accidentally cut.
+const THINKING_BLOCK_PATTERNS: Array<{ tag: string; regex: RegExp }> = [
+  // <think>…</think> — DeepSeek, Qwen, MiniMax-M2, …
+  { tag: "think", regex: /<think\b[^>]*>[\s\S]*?<\/think\s*>/gi },
+  // <thinking>…</thinking>
+  { tag: "thinking", regex: /<thinking\b[^>]*>[\s\S]*?<\/thinking\s*>/gi },
+  // <reasoning>…</reasoning>
+  { tag: "reasoning_tag", regex: /<reasoning\b[^>]*>[\s\S]*?<\/reasoning\s*>/gi },
+  // <thought>…</thought>
+  { tag: "thought_tag", regex: /<thought\b[^>]*>[\s\S]*?<\/thought\s*>/gi },
+  // <reflection>…</reflection>
+  { tag: "reflection_tag", regex: /<reflection\b[^>]*>[\s\S]*?<\/reflection\s*>/gi },
+  // <analysis>…</analysis>
+  { tag: "analysis_tag", regex: /<analysis\b[^>]*>[\s\S]*?<\/analysis\s*>/gi },
+  // <scratchpad>…</scratchpad>
+  { tag: "scratchpad_tag", regex: /<scratchpad\b[^>]*>[\s\S]*?<\/scratchpad\s*>/gi },
+  // [thinking]…[/thinking] / [thought]…[/thought] — alt MiniMax/Qwen style
+  { tag: "bracket_thinking", regex: /\[(?:thinking|thought|reasoning)\][\s\S]*?\[\/(?:thinking|thought|reasoning)\]/gi },
+  // Channel-tag chain-of-thought (OpenAI o-series style):
+  //   <|channel|>analysis<|message|>…<|channel|>final<|message|>RESPONSE
+  // Match the analysis channel and drop everything up to the final channel.
+  { tag: "channel_analysis", regex: /<\|channel\|>analysis<\|message\|>[\s\S]*?(?=<\|channel\|>final<\|message\|>|$)/gi },
+];
+
+// Trailing/dangling thinking-tag fragments that survive the block strip
+// (e.g. opening `<think>` with no close, or a stray `</think>`).
+const DANGLING_TAG_PATTERNS: Array<{ tag: string; regex: RegExp }> = [
+  { tag: "think", regex: /<\/?think\b[^>]*>/gi },
+  { tag: "thinking", regex: /<\/?thinking\b[^>]*>/gi },
+  { tag: "reasoning_tag", regex: /<\/?reasoning\b[^>]*>/gi },
+  { tag: "thought_tag", regex: /<\/?thought\b[^>]*>/gi },
+  { tag: "reflection_tag", regex: /<\/?reflection\b[^>]*>/gi },
+  { tag: "analysis_tag", regex: /<\/?analysis\b[^>]*>/gi },
+  { tag: "scratchpad_tag", regex: /<\/?scratchpad\b[^>]*>/gi },
+];
+
+// Markdown-style "Thinking:" preface — only matched at the very start of the
+// response (before any other content) so that legitimate paragraphs that
+// happen to use the word "thinking" later in the text are never affected.
+// Examples it strips:
+//   "Thinking: Let me consider the options.\n\nThe answer is 4."
+//   "**Thought process:** I need to count the words.\n\nFinal answer: 5"
+//   "Reasoning: The user wants a single word.\n\nWord."
+const PREAMBLE_HEADER_PATTERN = /^(?:\s*\*{0,2}(?:thinking|thought process|reasoning|analysis|reflection|let me think|let'?s think)\*{0,2}\s*[:：—-]\s*)([\s\S]*?)(?:\n\s*\n|(?=\n\s*(?:final answer|answer|response)\b))/i;
+
 export function sanitizeVisibleReasoning(text: string): SanitizedChatText {
-  const withoutClosedBlocks = text.replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, " ");
-  const withoutTags = withoutClosedBlocks.replace(/<\/?think\b[^>]*>/gi, " ");
-  const collapsed = withoutTags.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
-  const stripped = collapsed !== text.trim() && (/<\/?think\b/i.test(text) || /<think\b[\s\S]*<\/think>/i.test(text));
+  const tags = new Set<string>();
+  let cleaned = text;
+
+  for (const { tag, regex } of THINKING_BLOCK_PATTERNS) {
+    if (regex.test(cleaned)) {
+      tags.add(tag);
+      cleaned = cleaned.replace(regex, " ");
+    }
+  }
+  for (const { tag, regex } of DANGLING_TAG_PATTERNS) {
+    if (regex.test(cleaned)) {
+      tags.add(tag);
+      cleaned = cleaned.replace(regex, " ");
+    }
+  }
+
+  // Markdown preface like "Thinking: …\n\n<answer>" — only at the very start
+  // of the response. We never strip from inside running prose, so a code
+  // block that *contains* the word "thinking" later in the answer is safe.
+  const preambleMatch = cleaned.match(PREAMBLE_HEADER_PATTERN);
+  if (preambleMatch && preambleMatch.index === 0) {
+    tags.add("markdown_heading");
+    cleaned = cleaned.slice(preambleMatch[0].length);
+  }
+
+  // Strip "<|channel|>final<|message|>" wrapper if it survived the block strip
+  cleaned = cleaned.replace(/<\|channel\|>final<\|message\|>/gi, "");
+
+  const collapsed = cleaned.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  const finalText = collapsed || cleaned.trim();
   return {
-    text: collapsed || text.trim(),
-    strippedVisibleReasoning: stripped,
+    text: finalText,
+    strippedVisibleReasoning: tags.size > 0,
+    rawText: text,
+    tags: Array.from(tags),
   };
 }
 
@@ -236,6 +334,7 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
   const runStartMs = Date.now();
   let terminalChatError: string | null = null;
   let terminalProviderError: StructuredProviderError | null = null;
+  const providerAttempts: ProviderAttemptRecord[] = [];
 
   timeline.push({ t: 0, type: "task_start", detail: `conversational: ${manifest.questions.length} questions` });
 
@@ -283,6 +382,10 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
       messages.push({ role: "user", content: question.setup });
       try {
         const setupResult = await adapter.chat(messages, chatOptions);
+        for (const attempt of setupResult.provider_attempts ?? []) {
+          providerAttempts.push(attempt);
+          timeline.push({ t: t(), type: "provider_attempt", attempt: attempt.attempt, detail: attempt.error_type ? `${attempt.error_type}: ${attempt.retry_decision}` : "success", provider_error: attempt.provider_error, retry_decision: attempt.retry_decision });
+        }
         const sanitizedSetup = shouldSuppressVisibleReasoning(manifest) ? sanitizeVisibleReasoning(setupResult.text) : { text: setupResult.text, strippedVisibleReasoning: false };
         messages.push({ role: "assistant", content: sanitizedSetup.text });
         totalTokensIn += setupResult.tokens_in;
@@ -309,6 +412,10 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
         messages.push({ role: "user", content: gapFillers[i]! });
         try {
           const gapResult = await adapter.chat(messages, chatOptions);
+          for (const attempt of gapResult.provider_attempts ?? []) {
+            providerAttempts.push(attempt);
+            timeline.push({ t: t(), type: "provider_attempt", attempt: attempt.attempt, detail: attempt.error_type ? `${attempt.error_type}: ${attempt.retry_decision}` : "success", provider_error: attempt.provider_error, retry_decision: attempt.retry_decision });
+          }
           const sanitizedGap = shouldSuppressVisibleReasoning(manifest) ? sanitizeVisibleReasoning(gapResult.text) : { text: gapResult.text, strippedVisibleReasoning: false };
           messages.push({ role: "assistant", content: sanitizedGap.text });
           totalTokensIn += gapResult.tokens_in;
@@ -333,12 +440,24 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
     messages.push({ role: "user", content: question.question });
 
     let response: string;
+    let rawResponse: string = "";
+    let strippedVisibleReasoning = false;
+    let sanitizationTags: string[] = [];
     let qTokensIn = 0;
     let qTokensOut = 0;
     try {
       const chatResult = await runWithProtection(adapter.id, () => adapter.chat!(messages, chatOptions));
-      const sanitized = shouldSuppressVisibleReasoning(manifest) ? sanitizeVisibleReasoning(chatResult.text) : { text: chatResult.text, strippedVisibleReasoning: false };
+      for (const attempt of chatResult.provider_attempts ?? []) {
+        providerAttempts.push(attempt);
+        timeline.push({ t: t(), type: "provider_attempt", attempt: attempt.attempt, detail: attempt.error_type ? `${attempt.error_type}: ${attempt.retry_decision}` : "success", provider_error: attempt.provider_error, retry_decision: attempt.retry_decision });
+      }
+      rawResponse = chatResult.text;
+      const sanitized = shouldSuppressVisibleReasoning(manifest)
+        ? sanitizeVisibleReasoning(chatResult.text)
+        : { text: chatResult.text, strippedVisibleReasoning: false, rawText: chatResult.text, tags: [] };
       response = sanitized.text;
+      strippedVisibleReasoning = sanitized.strippedVisibleReasoning;
+      sanitizationTags = sanitized.tags;
       qTokensIn = chatResult.tokens_in;
       qTokensOut = chatResult.tokens_out;
       totalTokensIn += qTokensIn;
@@ -346,7 +465,7 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
       if (typeof chatResult.cost_usd === "number") { reportedCostUsd += chatResult.cost_usd; reportedCostSeen = true; }
       messages.push({ role: "assistant", content: response });
       if (sanitized.strippedVisibleReasoning) {
-        timeline.push({ t: t(), type: "task_start", detail: `${question.id}: stripped visible reasoning before scoring` });
+        timeline.push({ t: t(), type: "task_start", detail: `${question.id}: stripped visible reasoning before scoring (${sanitizationTags.join(",")})` });
       }
     } catch (err) {
       response = "";
@@ -364,10 +483,19 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
 
     // 4. Score the response
     const scored = scoreConversationalQuestion(question, response);
+    const lineCount = response.length === 0 ? 0 : response.split(/\r?\n/).length;
     const result: ConversationalResult = {
       question_id: scored.question_id,
       question: scored.question,
       response: scored.response,
+      // Preserve the pre-sanitization output so the receipt/drilldown can
+      // show *why* visible answer differs from what the model emitted.
+      // Stays unset when sanitization didn't run (saves bundle bytes when
+      // it would just duplicate `response`).
+      raw_response: rawResponse !== response ? rawResponse : undefined,
+      stripped_visible_reasoning: strippedVisibleReasoning,
+      sanitization_tags: sanitizationTags.length > 0 ? sanitizationTags : undefined,
+      line_count: lineCount,
       passed: scored.passed,
       score: scored.score,
       weight: scored.weight,
@@ -410,6 +538,7 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
     reportedCostUsd: reportedCostSeen ? reportedCostUsd : null,
     terminalChatError,
     terminalProviderError,
+    providerAttempts,
   });
 
   // 7. Optional review/judge model layer. Only runs when explicitly enabled
@@ -421,6 +550,7 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
       taskDescription: manifest.description,
     });
     applyReviewJudgeUsage(bundle);
+    bundle.interpretation = interpretBundleResult(bundle);
     bundle.bundle_hash = sha256Object({ ...bundle, bundle_hash: "" });
   }
 
@@ -449,10 +579,11 @@ interface ConversationalBundleInput {
   reportedCostUsd: number | null;
   terminalChatError: string | null;
   terminalProviderError: StructuredProviderError | null;
+  providerAttempts: ProviderAttemptRecord[];
 }
 
 function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBundle {
-  const { manifest, judgeResult, timeline, adapter, model, startTime, endTime, totalTokensIn, totalTokensOut, totalDurationMs, reportedCostUsd, terminalChatError, terminalProviderError } = input;
+  const { manifest, judgeResult, timeline, adapter, model, startTime, endTime, totalTokensIn, totalTokensOut, totalDurationMs, reportedCostUsd, terminalChatError, terminalProviderError, providerAttempts } = input;
 
   const bundleId = `run_${new Date().toISOString().slice(0, 10)}_${manifest.id}_${model.replace(/[/:]/g, "-")}`;
 
@@ -494,6 +625,7 @@ function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBu
       timestamp_end: endTime,
     },
     timeline,
+    provider_attempts: providerAttempts,
     diff: {
       files_changed: [],
       files_created: [],
@@ -611,6 +743,12 @@ function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBu
     providerError: terminalProviderError,
     attemptCount: manifest.questions.length,
   });
+  bundle.interpretation = interpretBundleResult(bundle);
+
+  // Per-question conversational evidence — exposes raw vs sanitized
+  // responses, sanitization tags, and line counts to receipts so callers
+  // can tell adapter/sanitizer issues apart from real capability failures.
+  bundle.conversational = { results: judgeResult.results };
 
   // Sign the bundle
   bundle.bundle_hash = sha256Object({ ...bundle, bundle_hash: "" });

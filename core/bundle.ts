@@ -18,6 +18,7 @@ import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
 import { canonicalPercent, type SuiteScoringWeights } from "../types/scores.js";
 import { resolveScoringWeights, resolvePassThreshold } from "./suite-loader.js";
 import { normalizeVerdict } from "./verdict.js";
+import { interpretBundleResult } from "./interpretation.js";
 
 export interface BundleBuildInput {
   manifest: TaskManifest;
@@ -94,6 +95,16 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
       timestamp_end: endTime,
     },
     timeline: executionResult.timeline,
+    provider_attempts: executionResult.provider_attempts ?? executionResult.timeline
+      .filter((event) => event.type === "provider_attempt")
+      .map((event) => ({
+        attempt: event.attempt ?? 1,
+        started_at: startTime,
+        duration_ms: event.provider_error?.durationMs ?? 0,
+        error_type: event.provider_error?.kind ?? null,
+        retry_decision: event.retry_decision ?? (event.provider_error ? "stop" : "success"),
+        ...(event.provider_error ? { provider_error: event.provider_error } : {}),
+      })),
     diff,
     security,
     verification_results: v,
@@ -181,6 +192,7 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
     exitReason: executionResult.exit_reason,
     providerError: executionResult.provider_error ?? null,
   });
+  bundle.interpretation = interpretBundleResult(bundle);
 
   // Compute and set bundle hash
   const hashInput = { ...bundle, bundle_hash: "" };

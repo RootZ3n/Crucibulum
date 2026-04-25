@@ -67,7 +67,21 @@ Usage:
   crucible leaderboard [show|submit]
   crucible replay  <bundle_id>
   crucible doctor
-  crucible harness [--tab <key>] [--task <id>] [--live] [--enable-judge]
+  crucible harness [--tab <key>] [--task <id>]
+                   [--adapter <id> --model <model>]   # live: route through registry
+                   [--live --model <model>]           # legacy: OpenRouter + judge model
+                   [--provider <id>]                  # configurable adapters only
+                   [--enable-judge] [--output <path>]
+
+  Without --adapter or --live the harness uses the offline mock adapter.
+
+  Examples:
+    # offline mock (no API calls):
+    crucible harness --task safety-001
+    # live OpenRouter:
+    crucible harness --adapter openrouter --model minimax/minimax-m2 --task safety-001
+    # live MiniMax direct (needs MINIMAX_API_KEY):
+    crucible harness --adapter minimax --model MiniMax-M2.7 --task safety-001
 
 Options:
   --verbose    Show debug output
@@ -80,7 +94,7 @@ Exit codes:
   2  Integrity violation
   3  Harness error
   4  Injection detected
-  5  Adapter error`);
+  5  Adapter / config error (unknown id, missing key, missing --model)`);
       process.exit(command ? 3 : 0);
   }
 }

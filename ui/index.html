@@ -1382,6 +1382,7 @@ function normalizeRunForDisplay(run){
   const overall=overallKnown?scorePct(rawOverall):0;
   const verdict=normalizedVerdict(run);
   const verdictView=verdictBadge(verdict,overall);
+  const interpretation=pick(run,'interpretation')||null;
   const description=pick(run,'model_description','description')||`Run completed through ${provider}.`;
   const rawCategories=pick(run,'category_breakdown','categories','categoryScores')
     ||outcome?.score_breakdown
@@ -1461,6 +1462,7 @@ function normalizeRunForDisplay(run){
     verdictOriginCls:verdictView.originCls,
     verdictGlyph:verdictView.glyph,
     verdictHint:verdictView.hint,
+    interpretation,
     completionState:verdictView.state,
     failureOrigin:verdictView.origin,
     isModelFailure:!!verdictView.isModelFailure,
@@ -2669,7 +2671,7 @@ function renderFocusedRun(tabKey){
 
     <div class="subpanel">
       <div class="section-head"><div><div class="mini-label">LAYER C</div><h3>Test Review Explorer</h3></div><span class="chip dim">${(result.details||[]).length} TEST${(result.details||[]).length===1?'':'S'}</span></div>
-      ${result.verdictSummary?`<div class="fact-list" style="margin-bottom:10px"><div class="fact-strip"><div class="fs-label">NORMALIZED VERDICT</div><div class="fs-value ${result.verdictClass||''}">${esc(result.verdictLabel)} · ${esc(result.verdictSummary)}</div></div>${result.verdict?.evidence?.providerError?`<div class="fact-strip"><div class="fs-label">STRUCTURED ERROR</div><div class="fs-value dim">${esc(String(result.verdict.evidence.providerError.origin||'UNKNOWN'))} · ${esc(String(result.verdict.evidence.providerError.kind||'UNKNOWN'))}${result.verdict.evidence.providerError.statusCode?` · ${esc(String(result.verdict.evidence.providerError.statusCode))}`:''}</div></div>`:''}${result.verdict?.evidence?.rawError?`<div class="fact-strip"><div class="fs-label">RAW ERROR</div><div class="fs-value dim">${esc(String(result.verdict.evidence.rawError).slice(0,220))}</div></div>`:''}</div>`:''}
+      ${result.verdictSummary?`<div class="fact-list" style="margin-bottom:10px"><div class="fact-strip"><div class="fs-label">NORMALIZED VERDICT</div><div class="fs-value ${result.verdictClass||''}">${esc(result.verdictLabel)} · ${esc(result.verdictSummary)}</div></div>${result.interpretation?`<div class="fact-strip"><div class="fs-label">INTERPRETATION</div><div class="fs-value dim">${esc(String(result.interpretation.recommended_interpretation||result.interpretation.reason||''))}</div></div><div class="fact-strip"><div class="fs-label">MODEL CAPABILITY</div><div class="fs-value ${result.interpretation.reflects_model_capability?'ok':'warn'}">${result.interpretation.reflects_model_capability?'yes':'no'}${result.interpretation.provider_or_retry_affected_confidence?' · retry/provider affected confidence':''}</div></div>`:''}${result.verdict?.evidence?.providerError?`<div class="fact-strip"><div class="fs-label">STRUCTURED ERROR</div><div class="fs-value dim">${esc(String(result.verdict.evidence.providerError.origin||'UNKNOWN'))} · ${esc(String(result.verdict.evidence.providerError.kind||'UNKNOWN'))}${result.verdict.evidence.providerError.statusCode?` · ${esc(String(result.verdict.evidence.providerError.statusCode))}`:''}</div></div>`:''}${result.verdict?.evidence?.rawError?`<div class="fact-strip"><div class="fs-label">RAW ERROR</div><div class="fs-value dim">${esc(String(result.verdict.evidence.rawError).slice(0,220))}</div></div>`:''}</div>`:''}
       ${renderDrilldownExplorer(tabKey,result)}
     </div>
   </section>`;

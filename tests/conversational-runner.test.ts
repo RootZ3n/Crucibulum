@@ -90,6 +90,78 @@ describe("conversational benchmark reasoning policy", () => {
     const sanitized = sanitizeVisibleReasoning("<think> The user is asking a question </think>question");
     assert.equal(sanitized.text, "question");
     assert.equal(sanitized.strippedVisibleReasoning, true);
+    assert.deepEqual(sanitized.tags, ["think"]);
+    assert.equal(sanitized.rawText, "<think> The user is asking a question </think>question");
+  });
+
+  it("strips alternate thinking-block shapes (reasoning/thought/analysis/scratchpad)", () => {
+    const variants: Array<[string, string, string]> = [
+      ["<reasoning>let me think</reasoning>final", "final", "reasoning_tag"],
+      ["<thought>plan</thought>final", "final", "thought_tag"],
+      ["<analysis>weigh options</analysis>final", "final", "analysis_tag"],
+      ["<scratchpad>scratch</scratchpad>final", "final", "scratchpad_tag"],
+      ["<thinking>blah</thinking>final", "final", "thinking"],
+    ];
+    for (const [input, expected, expectedTag] of variants) {
+      const s = sanitizeVisibleReasoning(input);
+      assert.equal(s.text, expected, `${input} -> "${s.text}"`);
+      assert.equal(s.strippedVisibleReasoning, true, input);
+      assert.ok(s.tags.includes(expectedTag), `${input} should tag ${expectedTag}`);
+    }
+  });
+
+  it("strips bracket-style [thinking]…[/thinking] blocks", () => {
+    const s = sanitizeVisibleReasoning("[thinking]plan plan[/thinking]ANSWER");
+    assert.equal(s.text, "ANSWER");
+    assert.equal(s.strippedVisibleReasoning, true);
+    assert.ok(s.tags.includes("bracket_thinking"));
+  });
+
+  it("strips OpenAI channel-style analysis chain-of-thought", () => {
+    const input = "<|channel|>analysis<|message|>let me think about this carefully<|channel|>final<|message|>RESULT";
+    const s = sanitizeVisibleReasoning(input);
+    assert.equal(s.text, "RESULT");
+    assert.equal(s.strippedVisibleReasoning, true);
+    assert.ok(s.tags.includes("channel_analysis"));
+  });
+
+  it("strips dangling/half-closed thinking tags", () => {
+    const s = sanitizeVisibleReasoning("<think>partial leak\nactual answer");
+    assert.ok(!s.text.includes("<think"));
+    assert.equal(s.strippedVisibleReasoning, true);
+    assert.ok(s.tags.includes("think"));
+  });
+
+  it("strips a markdown 'Thinking:' preamble at the start of the response", () => {
+    const s = sanitizeVisibleReasoning("Thinking: I should compute 2+2.\n\nThe answer is 4.");
+    assert.equal(s.text, "The answer is 4.");
+    assert.equal(s.strippedVisibleReasoning, true);
+    assert.ok(s.tags.includes("markdown_heading"));
+  });
+
+  it("preserves raw text and reports no strip when content is plain prose", () => {
+    const s = sanitizeVisibleReasoning("Hello, the answer is 4.");
+    assert.equal(s.text, "Hello, the answer is 4.");
+    assert.equal(s.strippedVisibleReasoning, false);
+    assert.deepEqual(s.tags, []);
+    assert.equal(s.rawText, "Hello, the answer is 4.");
+  });
+
+  it("does not damage code blocks that mention 'thinking' inside the body", () => {
+    // A code task that legitimately uses the word "thinking" later in the
+    // response must not be cut. The sanitizer only touches block-shaped
+    // markers and a top-of-response markdown preface — never running prose.
+    const code = "Here's the patch:\n\n```js\nfunction think(thinking) { return 2 + 2; }\n```\n\nThe function returns 4.";
+    const s = sanitizeVisibleReasoning(code);
+    assert.equal(s.text, code);
+    assert.equal(s.strippedVisibleReasoning, false);
+  });
+
+  it("does not strip inner code that contains XML-like words 'analysis' as identifiers", () => {
+    const code = "Use this function:\n\n```js\nfunction analysis(x){return x*2;}\n```";
+    const s = sanitizeVisibleReasoning(code);
+    assert.equal(s.text, code);
+    assert.equal(s.strippedVisibleReasoning, false);
   });
 
   it("suppresses visible reasoning for normal benchmark families", () => {
@@ -99,5 +171,19 @@ describe("conversational benchmark reasoning policy", () => {
 
   it("keeps thinking-mode tasks opt-in so the dedicated lane can still compare policies", () => {
     assert.equal(shouldSuppressVisibleReasoning(manifest({ family: "thinking-mode" })), false);
+  });
+
+  it("respects manifest-level thinking_mode = preserve override", () => {
+    assert.equal(
+      shouldSuppressVisibleReasoning(manifest({ family: "personality", thinking_mode: "preserve" })),
+      false,
+    );
+  });
+
+  it("respects manifest-level thinking_mode = off override even on a thinking-mode family", () => {
+    assert.equal(
+      shouldSuppressVisibleReasoning(manifest({ family: "thinking-mode", thinking_mode: "off" })),
+      true,
+    );
   });
 });

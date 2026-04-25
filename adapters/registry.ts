@@ -511,6 +511,8 @@ export async function instantiateAdapterForRun(input: {
   adapter: string;
   model: string;
   provider?: string | null;
+  timeout_ms?: number | null;
+  retries?: number | null;
 }): Promise<{ adapter: CrucibulumAdapter; config: AdapterConfig; registry: RegistryDefinition }> {
   const registry = resolveAdapter(input.adapter);
   hydrateEnvFromRegistry(registry.id);
@@ -519,6 +521,8 @@ export async function instantiateAdapterForRun(input: {
     model: input.model,
     provider: input.provider ?? registry.fixed_provider,
   });
+  if (typeof input.timeout_ms === "number" && input.timeout_ms > 0) config.timeout_ms = input.timeout_ms;
+  if (typeof input.retries === "number" && input.retries >= 0) config.retries = input.retries;
   await adapter.init(config);
   return { adapter, config, registry };
 }

@@ -116,10 +116,17 @@ export interface Oracle {
   version: string;
   hash: string;
   ground_truth: {
-    bug_location: string;
-    bug_line_range: [number, number];
+    /**
+     * Path to the buggy file. Multi-bug tasks (e.g. coord-003 with two
+     * interacting bugs across different files) declare this as an array;
+     * single-bug tasks keep the original string shape. The judge handles
+     * both forms.
+     */
+    bug_location: string | string[];
+    bug_line_range: [number, number] | Array<[number, number]>;
     bug_description: string;
-    correct_fix_pattern: string;
+    /** Same shape rule as bug_location — string or array of strings. */
+    correct_fix_pattern: string | string[];
   };
   checks: {
     correctness: OracleCheck[];
@@ -138,6 +145,7 @@ export interface Oracle {
 
 export interface AdapterConfig {
   timeout_ms?: number | undefined;
+  retries?: number | undefined;
   extra_flags?: string[] | undefined;
   env?: Record<string, string> | undefined;
 }
@@ -161,11 +169,25 @@ export interface ExecutionInput {
 
 export interface TimelineEvent {
   t: number;
-  type: "file_read" | "file_write" | "shell" | "search" | "task_start" | "task_complete" | "error";
+  type: "file_read" | "file_write" | "shell" | "search" | "task_start" | "task_complete" | "provider_attempt" | "error";
   path?: string | undefined;
   command?: string | undefined;
+  sanitized_command?: string | undefined;
+  cwd?: string | undefined;
   exit_code?: number | undefined;
   detail?: string | undefined;
+  provider_error?: StructuredProviderError | undefined;
+  retry_decision?: "retry" | "stop" | "not_retryable" | "success" | undefined;
+  attempt?: number | undefined;
+  error_kind?: string | undefined;
+}
+
+export interface ProviderAttemptRecord {
+  attempt: number;
+  started_at: string;
+  duration_ms: number;
+  error_type: string | null;
+  retry_decision: "retry" | "stop" | "not_retryable" | "success";
   provider_error?: StructuredProviderError | undefined;
 }
 
@@ -173,6 +195,7 @@ export interface ExecutionResult {
   exit_reason: "complete" | "timeout" | "budget_exceeded" | "error" | "injection_detected";
   timeline: TimelineEvent[];
   provider_error?: StructuredProviderError | undefined;
+  provider_attempts?: ProviderAttemptRecord[] | undefined;
   duration_ms: number;
   steps_used: number;
   files_read: string[];
@@ -200,6 +223,7 @@ export interface ChatResult {
   tokens_in: number;
   tokens_out: number;
   duration_ms: number;
+  provider_attempts?: ProviderAttemptRecord[] | undefined;
   /**
    * USD cost if the provider surfaces it (OpenRouter does when the request
    * opts into usage metadata). Stays `undefined` for providers that don't
@@ -209,14 +233,31 @@ export interface ChatResult {
 }
 
 export interface SanitizedChatText {
+  /** Final visible text used for scoring. */
   text: string;
+  /** True when at least one thinking/reasoning block was stripped. */
   strippedVisibleReasoning: boolean;
+  /**
+   * Original input to the sanitizer, preserved verbatim. Carried back to
+   * the runner so per-question evidence can record both raw and visible
+   * outputs without callers having to clone the input themselves.
+   */
+  rawText: string;
+  /**
+   * Names of the thinking-block patterns that fired (e.g. ["think",
+   * "reasoning_tag", "markdown_heading"]). Empty when nothing was
+   * stripped. Surfaced in evidence so the drilldown can explain raw
+   * vs. visible drift.
+   */
+  tags: string[];
 }
 
 export interface ChatOptions {
   benchmarkMode?: boolean | undefined;
   suppressVisibleReasoning?: boolean | undefined;
   reasoningEffort?: "off" | "minimal" | "default" | undefined;
+  retries?: number | undefined;
+  timeoutMs?: number | undefined;
 }
 
 // ── Conversational task types ─────────────────────────────────────────────
@@ -283,6 +324,22 @@ export interface ConversationalManifest {
   difficulty: "easy" | "medium" | "hard";
   description: string;
   system_prompt?: string | undefined;
+  /**
+   * Per-task thinking-mode policy. Lets a manifest opt out of visible
+   * reasoning explicitly without globally disabling thinking for everyone.
+   *   "off"     — request `reasoning_effort=off` at the adapter where
+   *               supported (OpenRouter native, MiniMax, etc.) AND fall
+   *               back to sanitization. Used for short-answer
+   *               conversational tasks.
+   *   "minimal" — request the lightest reasoning effort the provider
+   *               offers. Sanitization still runs.
+   *   "default" — leave reasoning policy to the family default.
+   *   "preserve"— do not strip thinking tags, even for non-thinking-mode
+   *               families. Used by the dedicated thinking-mode lane.
+   * Unset = inherit family default (currently: thinking-mode preserves,
+   * everything else sanitizes).
+   */
+  thinking_mode?: "off" | "minimal" | "default" | "preserve" | undefined;
   /** Gap filler messages for recall tests */
   gap_fillers?: string[] | undefined;
   /**
@@ -317,7 +374,29 @@ export interface ConversationalManifest {
 export interface ConversationalResult {
   question_id: string;
   question: string;
+  /** Visible response after sanitization — what the deterministic judge sees. */
   response: string;
+  /**
+   * Original adapter response, preserved verbatim before any sanitization.
+   * Stays in evidence so audits can reproduce what the model actually
+   * emitted (including stripped `<think>` blocks).
+   */
+  raw_response?: string | undefined;
+  /** True when sanitization removed visible chain-of-thought before scoring. */
+  stripped_visible_reasoning?: boolean | undefined;
+  /**
+   * Names the patterns the sanitizer matched (e.g. ["think", "reasoning"]).
+   * Empty when nothing was stripped. Carried in evidence so the drilldown
+   * can explain *why* raw and visible diverge instead of leaving operators
+   * to spot the diff manually.
+   */
+  sanitization_tags?: string[] | undefined;
+  /**
+   * Number of newline-separated lines in the visible response. Set on
+   * regex_match scoring (line-budget tasks) so the drilldown can expose
+   * "X lines, max Y" without re-counting from raw text.
+   */
+  line_count?: number | undefined;
   passed: boolean;
   score: number;
   weight: number;
@@ -411,6 +490,7 @@ export interface EvidenceBundle {
     timestamp_end: string;
   };
   timeline: TimelineEvent[];
+  provider_attempts?: ProviderAttemptRecord[] | undefined;
   diff: {
     files_changed: DiffEntry[];
     files_created: string[];
@@ -568,7 +648,29 @@ export interface EvidenceBundle {
     };
   };
   verdict?: NormalizedVerdict | undefined;
+  interpretation?: {
+    verdict: "pass" | "fail" | "skipped" | "provider-failed" | "runner-failed" | "judge-failed";
+    reason: string;
+    evidence_summary: string;
+    reflects_model_capability: boolean;
+    provider_or_retry_affected_confidence: boolean;
+    cost_usd: number;
+    duration_ms: number;
+    recommended_interpretation: string;
+  } | undefined;
   synthesis?: SynthesisReport | undefined;
+  /**
+   * Per-question conversational evidence. Only populated for conversational
+   * runs. Carries raw and sanitized responses, sanitization tags and line
+   * counts so the receipt/drilldown can show why a refusal counted, why a
+   * line-budget task tripped, or whether thinking-mode bloat was the cause.
+   * Populating this on the bundle (and not as opaque correctness.details)
+   * is what lets us separate adapter/sanitizer issues from real model
+   * capability failures during calibration.
+   */
+  conversational?: {
+    results: ConversationalResult[];
+  } | undefined;
 }
 
 // ── Synthesis Layer (Veritor Mode) ────────────────────────────────────────

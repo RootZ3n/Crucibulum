@@ -17,6 +17,10 @@
     },
     "description": { "type": "string" },
     "system_prompt": { "type": "string" },
+    "thinking_mode": {
+      "type": "string",
+      "enum": ["off", "minimal", "default", "preserve"]
+    },
     "gap_fillers": {
       "type": "array",
       "items": { "type": "string" }

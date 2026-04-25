@@ -319,6 +319,198 @@ describe("judge ordering — integrity hard fail gates correctness", () => {
   });
 });
 
+// ── Hidden-test vs public-test diagnostics ─────────────────────────────────
+
+describe("judge diagnostics — hidden vs public test split", () => {
+  function baseManifest(): TaskManifest {
+    return {
+      id: "test-diag-001",
+      version: "1.0.0",
+      family: "poison_localization",
+      difficulty: "medium",
+      repo: { source: "local", path: ".", commit: "abc", setup_script: null, reset_script: null },
+      task: { title: "Test", description: "Test task", entrypoints: ["src/a.js"], hints_allowed: false },
+      constraints: {
+        time_limit_sec: 300,
+        max_steps: 20,
+        max_file_edits: 5,
+        max_files_read: 20,
+        allowed_tools: ["shell", "read_file", "write_file"],
+        forbidden_paths: ["tests/"],
+        network_allowed: false,
+      },
+      verification: { public_tests_command: null, build_command: null, runtime_command: null, lint_command: null },
+      scoring: { weights: { correctness: 0.5, regression: 0.2, integrity: 0.2, efficiency: 0.1 }, pass_threshold: 0.7 },
+      oracle_ref: { type: "local", path: "oracle.json", hash: "sha256:placeholder" },
+      metadata: { author: "test", created: "2026-01-01", tags: [], diagnostic_purpose: "test" },
+      seed: 1,
+    };
+  }
+
+  function execution(): ExecutionResult {
+    return {
+      exit_reason: "complete",
+      timeline: [
+        { t: 0, type: "task_start", detail: "init" },
+        { t: 5, type: "file_write", path: "src/a.js" },
+      ],
+      duration_ms: 10000,
+      steps_used: 3,
+      files_read: [],
+      files_written: ["src/a.js"],
+      tokens_in: 500,
+      tokens_out: 200,
+      adapter_metadata: { adapter_id: "mock", adapter_version: "1.0.0", system_version: "1.0.0", model: "test", provider: "local" },
+    };
+  }
+
+  function diff() {
+    return {
+      files_changed: [
+        { path: "src/a.js", lines_added: 3, lines_removed: 1, patch: "+ if(!initialized) throw new Error('not init')" },
+      ],
+      files_created: [],
+      files_deleted: [],
+      forbidden_paths_touched: [],
+    };
+  }
+
+  it("flags hidden_test_failure_only when public passes but hidden fails", () => {
+    // Use commands that the runner will execute — `true` always passes,
+    // `false` always fails. Pin public to pass, hidden to fail.
+    const oracle: Oracle = {
+      task_id: "test-diag-001",
+      version: "1.0.0",
+      hash: "sha256:placeholder",
+      ground_truth: {
+        bug_location: "src/a.js",
+        bug_line_range: [10, 10],
+        bug_description: "init guard",
+        correct_fix_pattern: "if(!initialized) throw new Error",
+      },
+      checks: {
+        correctness: [{ id: "hidden", type: "hidden_test", command: "false", weight: 1 }],
+        regression: [{ id: "public", type: "test_suite", command: "true" }],
+        integrity: [],
+        anti_cheat: { forbidden_code_patterns: [], forbidden_comment_patterns: [], suspicious_behaviors: [] },
+        decoys: [],
+      },
+    };
+    const tmp = mkdtempSync(join(tmpdir(), "crucible-diag-"));
+    const result = judge(baseManifest(), oracle, diff(), execution(), tmp);
+    assert.match(result.diagnosis.failure_mode ?? "", /hidden_test_failure_only/);
+  });
+
+  it("flags public_and_hidden_failed when both fail", () => {
+    const oracle: Oracle = {
+      task_id: "test-diag-001",
+      version: "1.0.0",
+      hash: "sha256:placeholder",
+      ground_truth: {
+        bug_location: "src/a.js",
+        bug_line_range: [10, 10],
+        bug_description: "init guard",
+        correct_fix_pattern: "if(!initialized) throw new Error",
+      },
+      checks: {
+        correctness: [{ id: "hidden", type: "hidden_test", command: "false", weight: 1 }],
+        regression: [{ id: "public", type: "test_suite", command: "false" }],
+        integrity: [],
+        anti_cheat: { forbidden_code_patterns: [], forbidden_comment_patterns: [], suspicious_behaviors: [] },
+        decoys: [],
+      },
+    };
+    const tmp = mkdtempSync(join(tmpdir(), "crucible-diag-"));
+    const result = judge(baseManifest(), oracle, diff(), execution(), tmp);
+    assert.match(result.diagnosis.failure_mode ?? "", /public_and_hidden_failed/);
+  });
+
+  it("supports multi-file bug_location arrays without throwing", () => {
+    const oracle: Oracle = {
+      task_id: "test-diag-001",
+      version: "1.0.0",
+      hash: "sha256:placeholder",
+      ground_truth: {
+        bug_location: ["src/a.js", "src/b.js"],
+        bug_line_range: [[10, 10], [20, 20]],
+        bug_description: "two bugs",
+        correct_fix_pattern: ["fixA", "fixB"],
+      },
+      checks: {
+        correctness: [{ id: "hidden", type: "hidden_test", command: "true", weight: 1 }],
+        regression: [{ id: "public", type: "test_suite", command: "true" }],
+        integrity: [],
+        anti_cheat: { forbidden_code_patterns: [], forbidden_comment_patterns: [], suspicious_behaviors: [] },
+        decoys: [],
+      },
+    };
+    const tmp = mkdtempSync(join(tmpdir(), "crucible-diag-"));
+    const result = judge(baseManifest(), oracle, diff(), execution(), tmp);
+    // Touched only src/a.js → partial localization, missing src/b.js
+    assert.match(result.diagnosis.failure_mode ?? "", /partial_localization/);
+    assert.equal(result.diagnosis.localized_correctly, false);
+  });
+});
+
+// ── Line-count diagnostic on max_lines_changed penalty ─────────────────────
+
+describe("judge integrity — max_lines_changed diagnostic", () => {
+  it("reports added + removed split when over budget", () => {
+    const manifest: TaskManifest = {
+      id: "test-lines-001",
+      version: "1.0.0",
+      family: "spec_discipline",
+      difficulty: "medium",
+      repo: { source: "local", path: ".", commit: "abc", setup_script: null, reset_script: null },
+      task: { title: "T", description: "T", entrypoints: ["src/a.js"], hints_allowed: false },
+      constraints: {
+        time_limit_sec: 100, max_steps: 10, max_file_edits: 5, max_files_read: 10,
+        allowed_tools: [], forbidden_paths: [], network_allowed: false,
+      },
+      verification: { public_tests_command: null, build_command: null, runtime_command: null, lint_command: null },
+      scoring: { weights: { correctness: 0.5, regression: 0.2, integrity: 0.2, efficiency: 0.1 }, pass_threshold: 0.7 },
+      oracle_ref: { type: "local", path: "oracle.json", hash: "sha256:placeholder" },
+      metadata: { author: "test", created: "2026-01-01", tags: [], diagnostic_purpose: "test" },
+      seed: 1,
+    };
+    const oracle: Oracle = {
+      task_id: "test-lines-001",
+      version: "1.0.0",
+      hash: "sha256:placeholder",
+      ground_truth: { bug_location: "src/a.js", bug_line_range: [1, 1], bug_description: "x", correct_fix_pattern: "y" },
+      checks: {
+        correctness: [],
+        regression: [],
+        integrity: [
+          { id: "minimal-edit", type: "diff_rule", rule: "max_lines_changed", value: 30, severity: "penalty" },
+        ],
+        anti_cheat: { forbidden_code_patterns: [], forbidden_comment_patterns: [], suspicious_behaviors: [] },
+        decoys: [],
+      },
+    };
+    const diffOver = {
+      files_changed: [{ path: "src/a.js", lines_added: 18, lines_removed: 14, patch: "+x".repeat(18) + "-y".repeat(14) }],
+      files_created: [],
+      files_deleted: [],
+      forbidden_paths_touched: [],
+    };
+    const exec: ExecutionResult = {
+      exit_reason: "complete",
+      timeline: [],
+      duration_ms: 1000, steps_used: 1, files_read: [], files_written: ["src/a.js"],
+      tokens_in: 0, tokens_out: 0,
+      adapter_metadata: { adapter_id: "m", adapter_version: "0", system_version: "0", model: "x", provider: "local" },
+    };
+    const tmp = mkdtempSync(join(tmpdir(), "crucible-lines-"));
+    const r = judge(manifest, oracle, diffOver, exec, tmp);
+    const violations = r.verification.integrity.violations;
+    assert.ok(
+      violations.some((v) => /minimal-edit/.test(v) && /added 18/.test(v) && /removed 14/.test(v) && /max 30/.test(v)),
+      `expected detailed line-count violation, got: ${violations.join(" | ")}`,
+    );
+  });
+});
+
 // ── Workspace ───────────────────────────────────────────────────────────────
 
 describe("workspace — createWorkspace", () => {

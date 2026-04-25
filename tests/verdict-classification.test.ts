@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import type { EvidenceBundle } from "../adapters/base.js";
 import { normalizeVerdict } from "../core/verdict.js";
+import { interpretBundleResult } from "../core/interpretation.js";
 import { summarizeRunSet } from "../server/contracts.js";
 import { buildLeaderboardEntry } from "../leaderboard/aggregator.js";
 
@@ -192,9 +193,23 @@ describe("verdict-aware aggregation", () => {
     const leaderboard = buildLeaderboardEntry("openrouter:openrouter:model", bundles);
     assert.equal(summary.failures, 1);
     assert.equal(summary.not_complete, 1);
+    assert.equal(summary.failed_provider, 1);
+    assert.equal(summary.failed_runner, 0);
+    assert.equal(summary.failed_judge, 0);
     assert.equal(summary.model_failure_rate, 33.3333);
     assert.equal(summary.nc_rate, 33.3333);
     assert.equal(leaderboard.verdict_metrics?.model_failures, 1);
     assert.equal(leaderboard.verdict_metrics?.not_complete, 1);
+  });
+});
+
+describe("result interpretation layer", () => {
+  it("marks provider failures as not model capability", () => {
+    const bundle = makeBundle({ pass: false, total: 0, rawError: "OpenAI returned 429" });
+    bundle.verdict = normalizeVerdict({ bundle, executionMode: "repo", exitReason: "error", rawError: "OpenAI returned 429" });
+    const interpretation = interpretBundleResult(bundle);
+    assert.equal(interpretation.verdict, "provider-failed");
+    assert.equal(interpretation.reflects_model_capability, false);
+    assert.match(interpretation.recommended_interpretation, /Do not treat this as model quality/);
   });
 });

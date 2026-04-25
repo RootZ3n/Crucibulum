@@ -1,3 +1,55 @@
-node_modules/\ndist/\n.env\nruns/\n*.db
-runs/ws_*/
+# Dependencies
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+yarn-error.log
+
+# Build output
+# dist/ is source-first: regenerate with `npm run build` (or `npm test`,
+# which `pretest`s a clean rebuild). Do not commit it — committed artifacts
+# are how we got stale `dist/tests/*.js` running vitest after the source
+# moved to node:test.
+dist/
+*.tsbuildinfo
+
+# Environment / secrets
 .env
+.env.*
+!.env.example
+
+# Runtime data — never commit.
+# Everything Crucible writes at run time lives in one of these dirs:
+#   runs/   — evidence bundles emitted by the runner / harness
+#   state/  — auth tokens, sessions, provider registry, score-store DB
+runs/
+runs_old_backup/
+state/
+.workspace/
+.aedis/
+.aedis-cache/
+
+# Per-task workspace clones (created by core/workspace.ts during a run)
+runs/ws_*/
+.crucibulum-workspaces/
+
+# SQLite WAL/SHM artifacts in case anything writes them outside state/
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Auth/session/token state in case something writes outside state/
+auth-token
+auth-sessions.json
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+.claude/
+.codex
+*.log

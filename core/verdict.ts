@@ -206,7 +206,7 @@ function classifyStructuredProviderFailure(error: StructuredProviderError): Fail
     case "INVALID_RESPONSE":
       return { origin: "PROVIDER", code: "provider_invalid_response", summary: "Provider returned an invalid response payload" };
     case "PROCESS_ERROR":
-      return { origin: "PROVIDER", code: "provider_process_error", summary: "Local runtime process failed before the run completed" };
+      return { origin: "HARNESS", code: "runner_environment_error", summary: "Local runner environment failed before the run completed" };
     case "CANCELLED":
       return { origin: "UNKNOWN", code: "cancelled", summary: "Run was cancelled before completion" };
     default:

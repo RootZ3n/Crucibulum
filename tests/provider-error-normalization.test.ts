@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import type { EvidenceBundle } from "../adapters/base.js";
+import type { EvidenceBundle, ProviderAttemptRecord } from "../adapters/base.js";
 import {
   makeEmptyResponseError,
   makeHttpProviderError,
@@ -10,6 +10,7 @@ import {
   normalizeProviderError,
 } from "../core/provider-errors.js";
 import { normalizeVerdict } from "../core/verdict.js";
+import { withProviderRetries } from "../core/retry.js";
 
 function makeBundle(overrides: Partial<EvidenceBundle> & {
   pass?: boolean;
@@ -200,7 +201,8 @@ describe("structured provider verdict integration", () => {
     assert.equal(rateLimit.failureReasonCode, "provider_rate_limited");
     assert.equal(invalid.failureReasonCode, "provider_invalid_response");
     assert.equal(empty.failureReasonCode, "provider_empty_response");
-    assert.equal(processError.failureReasonCode, "provider_process_error");
+    assert.equal(processError.failureOrigin, "HARNESS");
+    assert.equal(processError.failureReasonCode, "runner_environment_error");
     assert.equal(processError.completionState, "NC");
   });
 
@@ -225,5 +227,29 @@ describe("structured provider verdict integration", () => {
     });
     assert.equal(verdict.completionState, "NC");
     assert.equal(verdict.failureReasonCode, "network_connection_reset");
+  });
+});
+
+describe("provider retry receipts", () => {
+  it("records retry decision and final success without hiding the transient error", async () => {
+    const attempts: ProviderAttemptRecord[] = [];
+    let calls = 0;
+    const result = await withProviderRetries(async (attempt) => {
+      calls++;
+      if (attempt === 1) {
+        throw makeHttpProviderError(new Response("slow down", { status: 429 }), "slow down", { provider: "openrouter", adapter: "openrouter", attempt });
+      }
+      return "ok";
+    }, { provider: "openrouter", adapter: "openrouter" }, {
+      retries: 1,
+      baseDelayMs: 0,
+      jitterMs: 0,
+      onAttempt: (attempt) => attempts.push(attempt),
+    });
+    assert.equal(result.value, "ok");
+    assert.equal(calls, 2);
+    assert.equal(attempts[0]?.error_type, "RATE_LIMIT");
+    assert.equal(attempts[0]?.retry_decision, "retry");
+    assert.equal(attempts[1]?.retry_decision, "success");
   });
 });

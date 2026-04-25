@@ -18,6 +18,7 @@ import type {
 } from "./base.js";
 import { Observer } from "../core/observer.js";
 import { makeEmptyResponseError, makeHttpProviderError, makeInvalidResponseError, makeProviderFailureError, normalizeProviderError, providerErrorSummary, providerErrorDetail } from "../core/provider-errors.js";
+import { withProviderRetries } from "../core/retry.js";
 import { log } from "../utils/logger.js";
 
 const DEFAULT_OPENROUTER_BASE = "https://openrouter.ai/api/v1";
@@ -46,6 +47,8 @@ export class OpenRouterAdapter implements CrucibulumAdapter {
   private apiKeyEnv: string;
   private apiKey: string;
   private model: string;
+  private timeoutMs = MODEL_TIMEOUT_MS;
+  private retries = 1;
 
   constructor(opts?: OpenAICompatibleAdapterOpts) {
     this.id = opts?.id ?? "openrouter";
@@ -69,7 +72,9 @@ export class OpenRouterAdapter implements CrucibulumAdapter {
   }
 
   async chat(messages: ChatMessage[], options?: ChatOptions): Promise<ChatResult> {
-    if (!this.apiKey) throw new Error(`${this.name}: ${this.apiKeyEnv} not configured`);
+    if (!this.apiKey) {
+      throw makeProviderFailureError({ kind: "AUTH", origin: "ADAPTER", provider: this.id, adapter: this.id, rawMessage: `${this.name}: ${this.apiKeyEnv} not configured` });
+    }
     const start = Date.now();
     const result = await this.callAPI(messages, options);
     return {
@@ -77,6 +82,7 @@ export class OpenRouterAdapter implements CrucibulumAdapter {
       tokens_in: result.tokensIn,
       tokens_out: result.tokensOut,
       duration_ms: Date.now() - start,
+      provider_attempts: result.attempts,
       ...(result.costUsd !== undefined ? { cost_usd: result.costUsd } : {}),
     };
   }
@@ -86,6 +92,8 @@ export class OpenRouterAdapter implements CrucibulumAdapter {
     if (c.api_key) this.apiKey = c.api_key;
     if (c.model) this.model = c.model;
     if (c.base_url) this.baseUrl = c.base_url;
+    if (typeof c.timeout_ms === "number" && c.timeout_ms > 0) this.timeoutMs = c.timeout_ms;
+    if (typeof c.retries === "number" && c.retries >= 0) this.retries = Math.floor(c.retries);
     if (!this.apiKey) {
       log("debug", this.id, `No API key set — set ${this.apiKeyEnv}`);
     }
@@ -159,6 +167,15 @@ export class OpenRouterAdapter implements CrucibulumAdapter {
       let response: string;
       try {
         const result = await this.callAPI(messages);
+        for (const attempt of result.attempts) {
+          observer.record({
+            type: "provider_attempt",
+            attempt: attempt.attempt,
+            detail: attempt.error_type ? `${attempt.error_type}: ${attempt.retry_decision}` : "success",
+            provider_error: attempt.provider_error,
+            retry_decision: attempt.retry_decision,
+          });
+        }
         response = stripModelArtifacts(result.text);
         totalTokensIn += result.tokensIn;
         totalTokensOut += result.tokensOut;
@@ -234,53 +251,14 @@ export class OpenRouterAdapter implements CrucibulumAdapter {
     };
   }
 
-  private async callAPI(messages: Array<{ role: string; content: string }>, options?: ChatOptions): Promise<{ text: string; tokensIn: number; tokensOut: number; costUsd?: number }> {
+  private async callAPI(messages: Array<{ role: string; content: string }>, options?: ChatOptions): Promise<{ text: string; tokensIn: number; tokensOut: number; costUsd?: number; attempts: NonNullable<ChatResult["provider_attempts"]> }> {
     const body = buildOpenRouterChatBody(this.id, this.baseUrl, this.model, messages, options);
-    const res = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://crucibulum.local",
-        "X-Title": "Crucibulum",
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
-    });
+    const attempts: NonNullable<ChatResult["provider_attempts"]> = [];
+    const timeoutMs = options?.timeoutMs ?? this.timeoutMs;
+    const retries = options?.retries ?? this.retries;
 
-    if (!res.ok) {
-      const rawBody = await res.text().catch(() => "");
-      throw makeHttpProviderError(res, rawBody, { provider: this.id, adapter: this.id }, `${this.name} ${res.status}: ${rawBody}`);
-    }
-
-    const rawBody = await res.text();
-    let data: {
-      choices?: Array<{ message?: { content?: string | null } }>;
-      usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number; total_cost?: number };
-    };
-    try {
-      data = JSON.parse(rawBody) as typeof data;
-    } catch {
-      throw makeInvalidResponseError({ provider: this.id, adapter: this.id }, `${this.name} returned non-JSON body: ${rawBody.slice(0, 400)}`);
-    }
-
-    const text = data.choices?.[0]?.message?.content ?? "";
-    // OpenRouter names the field `cost` post-2025; older payloads used
-    // `total_cost`. Accept both; surface nothing when neither is present
-    // so callers can tell "unknown" apart from "$0.00 confirmed".
-    const costOf = (u?: { cost?: number; total_cost?: number }): number | undefined => {
-      if (!u) return undefined;
-      if (typeof u.cost === "number" && Number.isFinite(u.cost)) return u.cost;
-      if (typeof u.total_cost === "number" && Number.isFinite(u.total_cost)) return u.total_cost;
-      return undefined;
-    };
-
-    // Retry once on empty
-    if (!text.trim()) {
-      log("warn", this.id, "Empty response, retrying...");
-      await new Promise(r => setTimeout(r, 1500));
-      const retryBody = { ...body, temperature: 0.2 };
-      const retry = await fetch(`${this.baseUrl}/chat/completions`, {
+    const result = await withProviderRetries(async (attempt) => {
+      const res = await fetch(`${this.baseUrl}/chat/completions`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${this.apiKey}`,
@@ -288,44 +266,48 @@ export class OpenRouterAdapter implements CrucibulumAdapter {
           "HTTP-Referer": "https://crucibulum.local",
           "X-Title": "Crucibulum",
         },
-        body: JSON.stringify(retryBody),
-        signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
+        body: JSON.stringify(attempt === 1 ? body : { ...body, temperature: 0.2 }),
+        signal: AbortSignal.timeout(timeoutMs),
       });
-      if (retry.ok) {
-        const retryRawBody = await retry.text();
-        let retryData: typeof data;
-        try {
-          retryData = JSON.parse(retryRawBody) as typeof data;
-        } catch {
-          throw makeInvalidResponseError({ provider: this.id, adapter: this.id, attempt: 2 }, `${this.name} returned non-JSON retry body: ${retryRawBody.slice(0, 400)}`);
-        }
-        const retryText = retryData.choices?.[0]?.message?.content ?? "";
-        if (retryText.trim()) {
-          const firstCost = costOf(data.usage);
-          const retryCost = costOf(retryData.usage);
-          const combined = firstCost != null || retryCost != null ? (firstCost ?? 0) + (retryCost ?? 0) : undefined;
-          return {
-            text: retryText,
-            tokensIn: (data.usage?.prompt_tokens ?? 0) + (retryData.usage?.prompt_tokens ?? 0),
-            tokensOut: (data.usage?.completion_tokens ?? 0) + (retryData.usage?.completion_tokens ?? 0),
-            ...(combined !== undefined ? { costUsd: combined } : {}),
-          };
-        }
-      }
-      if (!retry.ok) {
-        throw makeHttpProviderError(retry, await retry.text().catch(() => ""), { provider: this.id, adapter: this.id, attempt: 2 });
-      }
-      throw makeEmptyResponseError({ provider: this.id, adapter: this.id, attempt: 2 }, `${this.name} returned empty response after retry`);
-    }
 
-    const cost = costOf(data.usage);
-    return {
-      text,
-      tokensIn: data.usage?.prompt_tokens ?? 0,
-      tokensOut: data.usage?.completion_tokens ?? 0,
-      ...(cost !== undefined ? { costUsd: cost } : {}),
-    };
+      if (!res.ok) {
+        const rawBody = await res.text().catch(() => "");
+        throw makeHttpProviderError(res, rawBody, { provider: this.id, adapter: this.id, attempt }, `${this.name} ${res.status}: ${rawBody}`);
+      }
+
+      const rawBody = await res.text();
+      let data: {
+        choices?: Array<{ message?: { content?: string | null } }>;
+        usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number; total_cost?: number };
+      };
+      try {
+        data = JSON.parse(rawBody) as typeof data;
+      } catch {
+        throw makeInvalidResponseError({ provider: this.id, adapter: this.id, attempt }, `${this.name} returned non-JSON body: ${rawBody.slice(0, 400)}`);
+      }
+
+      const text = data.choices?.[0]?.message?.content ?? "";
+      if (!text.trim()) {
+        throw makeEmptyResponseError({ provider: this.id, adapter: this.id, attempt }, `${this.name} returned empty response. Raw body: ${rawBody.slice(0, 400)}`);
+      }
+
+      const cost = costOf(data.usage);
+      return {
+        text,
+        tokensIn: data.usage?.prompt_tokens ?? 0,
+        tokensOut: data.usage?.completion_tokens ?? 0,
+        ...(cost !== undefined ? { costUsd: cost } : {}),
+      };
+    }, { provider: this.id, adapter: this.id }, { retries, onAttempt: (record) => attempts.push(record) });
+    return { ...result.value, attempts };
   }
+}
+
+function costOf(u?: { cost?: number; total_cost?: number }): number | undefined {
+  if (!u) return undefined;
+  if (typeof u.cost === "number" && Number.isFinite(u.cost)) return u.cost;
+  if (typeof u.total_cost === "number" && Number.isFinite(u.total_cost)) return u.total_cost;
+  return undefined;
 }
 
 export function buildOpenRouterChatBody(
@@ -641,7 +623,7 @@ function executeToolCalls(
         timeout: 30_000,
         maxBuffer: 1024 * 1024,
       });
-      observer.shell(command, 0);
+      observer.shell(command, 0, { cwd: workspacePath, sanitizedCommand: sanitizeShellCommand(command) });
       const truncated = output.length > 2000 ? output.slice(0, 2000) + "\n[truncated]" : output;
       feedback.push(`$ ${command}\n${truncated}`);
       log("debug", "chatloop", `SHELL exit 0: ${output.slice(0, 200).replace(/\n/g, "\\n")}`);
@@ -650,7 +632,18 @@ function executeToolCalls(
       const stderr = (err as { stderr?: string }).stderr ?? "";
       const stdout = (err as { stdout?: string }).stdout ?? "";
       const output = (stderr || stdout || String(err)).slice(0, 1000);
-      observer.shell(command, exitCode);
+      const errorKind = classifyShellEnvironmentError(command, output);
+      observer.shell(command, exitCode, { cwd: workspacePath, sanitizedCommand: sanitizeShellCommand(command), errorKind });
+      if (errorKind === "runner_environment_error") {
+        observer.recordError(`Runner environment error while executing shell command: ${output.slice(0, 200)}`, makeProviderFailureError({
+          kind: "PROCESS_ERROR",
+          origin: "LOCAL_RUNTIME",
+          provider: "openrouter",
+          adapter: "openrouter",
+          rawMessage: output || String(err),
+          rawCode: (err as { code?: string }).code ?? null,
+        }).structured);
+      }
       feedback.push(`$ ${command}\nExit code: ${exitCode}\n${output}`);
       log("debug", "chatloop", `SHELL exit ${exitCode}: ${output.slice(0, 200).replace(/\n/g, "\\n")}`);
     }
@@ -666,6 +659,23 @@ function executeToolCalls(
   }
 
   return { done, feedback: feedback.join("\n\n"), commandsFound };
+}
+
+function sanitizeShellCommand(command: string): string {
+  return command
+    .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]")
+    .replace(/(api[_-]?key|token|password)=\S+/gi, "$1=[redacted]");
+}
+
+function classifyShellEnvironmentError(command: string, output: string): "runner_environment_error" | "model_tool_command_misuse" | "command_failed" {
+  const text = `${command}\n${output}`.toLowerCase();
+  if (/\/proc\/\d+\/fd\/pipe/.test(text) || (text.includes("/proc/") && text.includes("/fd/") && text.includes("enoent"))) {
+    return "runner_environment_error";
+  }
+  if (/\bcd\s+\/home\/user\b/.test(command) || text.includes("can't cd to /home/user") || text.includes("cd: /home/user")) {
+    return "model_tool_command_misuse";
+  }
+  return "command_failed";
 }
 
 // ── Model artifact stripping ───────────────────────────────────────────────

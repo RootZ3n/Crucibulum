@@ -62,7 +62,15 @@ export function judge(
   const efficiency = judgeEfficiency(execution, manifest);
 
   // -- 5. DIAGNOSIS (agent trace — for audit, NOT scoring) --------------------
-  const diagnosis = buildDiagnosis(oracle, diff, execution);
+  // Hidden vs public pass split — used to distinguish "fixed the easy bug,
+  // missed the hidden one" from "couldn't pass the public tests at all".
+  // Set to undefined when the bucket has no checks so the diagnosis
+  // builder treats it as "not measured" instead of "failed".
+  const correctnessChecks = oracle.checks.correctness.length;
+  const regressionChecks = oracle.checks.regression.length;
+  const hiddenPassed = correctnessChecks > 0 ? correctness.score >= 1 : undefined;
+  const publicPassed = regressionChecks > 0 ? regression.score >= 1 : undefined;
+  const diagnosis = buildDiagnosis(oracle, diff, execution, publicPassed, hiddenPassed);
 
   return {
     verification: { correctness, regression, integrity, efficiency },
@@ -119,10 +127,22 @@ function judgeIntegrity(
       }
 
       if (check.rule === "max_lines_changed" && check.value != null) {
-        const totalChanged = diff.files_changed.reduce((sum, f) => sum + f.lines_added + f.lines_removed, 0);
+        // Deterministic line accounting:
+        //   lines_changed_total = sum of (added + removed) across all files
+        //   per the unified diff. This is the same definition the corpus
+        //   has always used, but we now expose the breakdown so the
+        //   receipt/drilldown can show:
+        //     "minimal-edit: 32 lines changed (added 18 / removed 14, max 30)"
+        //   instead of just "fail" — turning a vague penalty into an
+        //   actionable diagnostic the operator can verify by hand.
+        const totalAdded = diff.files_changed.reduce((sum, f) => sum + f.lines_added, 0);
+        const totalRemoved = diff.files_changed.reduce((sum, f) => sum + f.lines_removed, 0);
+        const totalChanged = totalAdded + totalRemoved;
         if (totalChanged > check.value) {
           details[check.id] = "fail";
-          violations.push(`${check.severity === "hard_fail" ? "HARD_FAIL" : "PENALTY"}: ${check.id}: ${totalChanged} lines changed (max ${check.value})`);
+          violations.push(
+            `${check.severity === "hard_fail" ? "HARD_FAIL" : "PENALTY"}: ${check.id}: ${totalChanged} lines changed (added ${totalAdded} + removed ${totalRemoved}, max ${check.value})`,
+          );
         } else {
           details[check.id] = "pass";
         }
@@ -268,20 +288,32 @@ function buildDiagnosis(
   oracle: Oracle,
   diff: DiffData,
   execution: ExecutionResult,
+  publicPassed?: boolean,
+  hiddenPassed?: boolean,
 ): JudgeResult["diagnosis"] {
-  const bugFile = oracle.ground_truth.bug_location;
+  // bug_location may be a string (single-bug task) or an array of strings
+  // (multi-file orchestration tasks like coord-003). Both shapes appear in
+  // the corpus oracles, and the diagnostic comparison must accept either —
+  // a multi-bug task that fixes one file and not another is exactly what
+  // hidden-test-passes-but-public-fails diagnostics need to surface.
+  const groundTruth = oracle.ground_truth.bug_location as unknown;
+  const bugLocations: string[] = Array.isArray(groundTruth) ? (groundTruth as string[]) : [groundTruth as string];
   const changedPaths = diff.files_changed.map(f => f.path);
-  const localizedCorrectly = changedPaths.includes(bugFile);
+  const touchedBugFiles = bugLocations.filter((p) => changedPaths.includes(p));
+  const localizedCorrectly = touchedBugFiles.length === bugLocations.length;
+  const localizedPartially = touchedBugFiles.length > 0 && !localizedCorrectly;
 
   const decoyPaths = oracle.checks.decoys.map(d => d.path);
   const touchedDecoys = changedPaths.filter(p => decoyPaths.includes(p));
   const avoidedDecoys = touchedDecoys.length === 0;
 
-  // Check if fix matches expected pattern
-  const bugFileDiff = diff.files_changed.find(f => f.path === bugFile);
-  const firstFixCorrect = bugFileDiff
-    ? bugFileDiff.patch.includes(oracle.ground_truth.correct_fix_pattern)
-    : false;
+  // Fix-pattern check accepts either a single string (one bug) or a list
+  // of patterns (multi-bug tasks where each fix has its own marker). All
+  // patterns must appear in the diff for first_fix_correct to be true.
+  const groundFix = oracle.ground_truth.correct_fix_pattern as unknown;
+  const fixPatterns: string[] = Array.isArray(groundFix) ? (groundFix as string[]) : [groundFix as string];
+  const allPatches = diff.files_changed.map((f) => f.patch).join("\n");
+  const firstFixCorrect = fixPatterns.every((p) => allPatches.includes(p));
 
   // Check if agent ran tests after fixing (self-verification)
   const timeline = execution.timeline;
@@ -293,10 +325,33 @@ function buildDiagnosis(
     e.type === "shell" && (e.command?.includes("test") || e.command?.includes("jest") || e.command?.includes("npm test")),
   );
 
+  // Layered failure-mode classification. Earlier values are more
+  // diagnostic; later values more generic. Hidden-vs-public split is the
+  // signal we use to tell "model fixed the obvious bug but missed the
+  // adversarial one" (capability) apart from "model couldn't even pass
+  // the public tests it was given" (prompt/baseline).
   let failureMode: string | null = null;
-  if (!localizedCorrectly) failureMode = "localization_failure";
-  else if (!avoidedDecoys) failureMode = "decoy_distraction";
-  else if (!firstFixCorrect) failureMode = "wrong_fix";
+  if (!localizedCorrectly) {
+    failureMode = localizedPartially ? "partial_localization" : "localization_failure";
+  } else if (!avoidedDecoys) {
+    failureMode = "decoy_distraction";
+  } else if (!firstFixCorrect) {
+    failureMode = "wrong_fix";
+  }
+
+  if (publicPassed === true && hiddenPassed === false) {
+    // The agent satisfied the public tests but tripped a hidden oracle
+    // case. This is the canonical "missed an interacting bug" signature —
+    // surface it explicitly so calibration runs can distinguish capability
+    // limits from harness issues.
+    failureMode = failureMode ? `${failureMode}; hidden_test_failure_only` : "hidden_test_failure_only";
+  } else if (publicPassed === false && hiddenPassed === false) {
+    failureMode = failureMode ? `${failureMode}; public_and_hidden_failed` : "public_and_hidden_failed";
+  } else if (publicPassed === false && hiddenPassed === true) {
+    // Rare but real — usually means the agent regressed something on the
+    // public side while satisfying the hidden oracle. Worth flagging.
+    failureMode = failureMode ? `${failureMode}; regression_on_public_tests` : "regression_on_public_tests";
+  }
 
   return {
     localized_correctly: localizedCorrectly,

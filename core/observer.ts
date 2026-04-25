@@ -66,8 +66,15 @@ export class Observer {
   }
 
   /** Record a shell command */
-  shell(command: string, exitCode: number): void {
-    this.record({ type: "shell", command, exit_code: exitCode });
+  shell(command: string, exitCode: number, opts?: { cwd?: string; sanitizedCommand?: string; errorKind?: string }): void {
+    this.record({
+      type: "shell",
+      command,
+      sanitized_command: opts?.sanitizedCommand ?? command,
+      cwd: opts?.cwd,
+      exit_code: exitCode,
+      error_kind: opts?.errorKind,
+    });
   }
 
   /** Get the full timeline */

@@ -37,8 +37,8 @@ import { storeBundle } from "../../core/bundle.js";
 import { runTask } from "../../core/runner.js";
 import { isConversationalTask, runConversationalTask, loadConversationalManifest } from "../../core/conversational-runner.js";
 import { HarnessMockAdapter } from "../../adapters/harness-mock.js";
-import { OpenRouterAdapter } from "../../adapters/openrouter.js";
-import { resolveJudgeConfig, describeDefaultJudge } from "../../core/judge-config.js";
+import { instantiateAdapterForRun, resolveAdapter, listRegisteredAdapters } from "../../adapters/registry.js";
+import { describeDefaultJudge } from "../../core/judge-config.js";
 import { buildReviewConfigFromJudge } from "../../core/review.js";
 import { resolveDisplayName } from "../../core/test-names.js";
 import { log } from "../../utils/logger.js";
@@ -70,25 +70,41 @@ export const HARNESS_LANES: LaneSpec[] = [
 
 // ── Argv parsing ────────────────────────────────────────────────────────────
 
-interface HarnessArgs {
+export interface HarnessArgs {
   tabs: string[] | null;
   taskIds: string[] | null;
+  /**
+   * Deprecated alias for `adapter: openrouter` + the configured judge
+   * model. Kept for backwards compatibility — `--adapter <id> --model <id>`
+   * is the preferred form.
+   */
   live: boolean;
+  /** Adapter id from the registry (`openrouter`, `minimax`, `ollama`, …). */
+  adapter: string | null;
+  /** Provider id override (only used by configurable adapters like Squidley). */
+  provider: string | null;
+  /** Model id passed to the adapter. Free-form; the adapter decides if it's valid. */
+  model: string | null;
   outputPath: string | null;
   verbose: boolean;
-  modelOverride: string | null;
   enableJudge: boolean;
+  retries?: number;
+  timeoutMs?: number | null;
 }
 
-function parseArgs(args: string[]): HarnessArgs {
+export function parseArgs(args: string[]): HarnessArgs {
   const out: HarnessArgs = {
     tabs: null,
     taskIds: null,
     live: false,
+    adapter: null,
+    provider: null,
+    model: null,
     outputPath: null,
     verbose: false,
-    modelOverride: null,
     enableJudge: false,
+    retries: 1,
+    timeoutMs: null,
   };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
@@ -104,8 +120,24 @@ function parseArgs(args: string[]): HarnessArgs {
     } else if (arg === "--enable-judge") {
       // Run the optional model judge layer (counts toward judge_usage cost).
       out.enableJudge = true;
+    } else if (arg === "--adapter" && next) {
+      out.adapter = next;
+      i++;
+    } else if (arg === "--provider" && next) {
+      out.provider = next;
+      i++;
     } else if (arg === "--model" && next) {
-      out.modelOverride = next;
+      out.model = next;
+      i++;
+    } else if (arg === "--retries" && next) {
+      const parsed = Number(next);
+      if (!Number.isInteger(parsed) || parsed < 0) throw new Error("harness: --retries must be a non-negative integer");
+      out.retries = parsed;
+      i++;
+    } else if (arg === "--timeout-ms" && next) {
+      const parsed = Number(next);
+      if (!Number.isInteger(parsed) || parsed <= 0) throw new Error("harness: --timeout-ms must be a positive integer");
+      out.timeoutMs = parsed;
       i++;
     } else if (arg === "--output" && next) {
       out.outputPath = next;
@@ -119,19 +151,133 @@ function parseArgs(args: string[]): HarnessArgs {
 
 // ── Adapter selection ───────────────────────────────────────────────────────
 
-function buildAdapter(args: HarnessArgs): { adapter: CrucibulumAdapter; model: string; mode: "mock" | "live" } {
-  if (!args.live) {
-    return { adapter: new HarnessMockAdapter(), model: "harness-mock", mode: "mock" };
+/**
+ * Per-adapter env-var requirements. The harness checks these *before* it
+ * instantiates anything, so a missing key produces a precise error message
+ * naming the env var instead of a downstream "Authentication failed".
+ * Adapter ids that aren't in this table either need no key (local) or
+ * surface their own check via `healthCheck()`.
+ */
+const REQUIRED_ENV_BY_ADAPTER: Record<string, string> = {
+  openrouter: "OPENROUTER_API_KEY",
+  openai: "OPENAI_API_KEY",
+  anthropic: "ANTHROPIC_API_KEY",
+  minimax: "MINIMAX_API_KEY",
+  zai: "ZAI_API_KEY",
+  google: "GOOGLE_AI_API_KEY",
+};
+
+export interface ResolvedHarnessAdapter {
+  adapter: CrucibulumAdapter;
+  /** Adapter id used for routing (matches registry id). */
+  adapterId: string;
+  /** Provider id reported in evidence (registry's fixed_provider, or override). */
+  provider: string;
+  /** Model id forwarded to the adapter. */
+  model: string;
+  /** "mock" only when the harness mock was selected; "live" otherwise. */
+  mode: "mock" | "live";
+}
+
+/**
+ * Decide selection mode without doing any I/O.
+ *
+ * Selection rules, applied in order:
+ *
+ *   1. `--adapter <id>` is explicit → live mode with that adapter. Fails
+ *      if the id is unknown, if `--model` is missing on a registry that
+ *      requires it, or if a known env var is unset for cloud adapters.
+ *      Never falls back to mock.
+ *
+ *   2. `--live` (no `--adapter`) is the legacy form → live mode using
+ *      OpenRouter + the configured judge model (CRUCIBLE_JUDGE_MODEL or
+ *      the static default). Fails if OPENROUTER_API_KEY is missing.
+ *
+ *   3. No flag → mock mode. The harness mock adapter runs a deterministic
+ *      offline replay. This is the only path that returns the mock.
+ *
+ * Splitting this from `buildAdapter` lets tests assert the routing
+ * decision without touching the network or hitting the registry.
+ */
+export type AdapterPlan =
+  | { kind: "mock"; reason: string }
+  | { kind: "live"; adapterId: string; model: string; provider: string | null; sourceFlag: "adapter" | "live" };
+
+export function planAdapter(args: HarnessArgs): AdapterPlan {
+  if (args.adapter) {
+    // Explicit adapter — never silently fall back to mock.
+    const reg = resolveAdapter(args.adapter); // throws on unknown id
+    if (reg.supports_custom_model && !args.model) {
+      throw new Error(
+        `harness: --adapter ${args.adapter} requires --model <id>. ` +
+        `Available registered adapters: ${listRegisteredAdapters().map((r) => r.id).join(", ")}.`,
+      );
+    }
+    return {
+      kind: "live",
+      adapterId: reg.id,
+      model: args.model ?? "",
+      provider: args.provider ?? reg.fixed_provider,
+      sourceFlag: "adapter",
+    };
   }
-  const cfg = resolveJudgeConfig({ model: args.modelOverride ?? undefined });
-  if (cfg.provider !== "openrouter") {
-    throw new Error(`harness --live currently supports OpenRouter only. Configured provider: ${cfg.provider}`);
+  if (args.live) {
+    // Legacy `--live` form: OpenRouter + judge default.
+    const judgeModel =
+      args.model
+      ?? process.env["CRUCIBLE_JUDGE_MODEL"]?.trim()
+      ?? process.env["OPENROUTER_JUDGE_MODEL"]?.trim()
+      ?? "xiaomi/mimo-v2-pro";
+    return {
+      kind: "live",
+      adapterId: "openrouter",
+      model: judgeModel,
+      provider: "openrouter",
+      sourceFlag: "live",
+    };
   }
-  if (!process.env["OPENROUTER_API_KEY"]) {
-    throw new Error("harness --live needs OPENROUTER_API_KEY in the environment");
+  return { kind: "mock", reason: "no --adapter or --live flag" };
+}
+
+export async function buildAdapter(args: HarnessArgs): Promise<ResolvedHarnessAdapter> {
+  const plan = planAdapter(args);
+  if (plan.kind === "mock") {
+    const adapter = new HarnessMockAdapter();
+    return { adapter, adapterId: "harness-mock", provider: "harness-mock", model: "harness-mock", mode: "mock" };
   }
-  const adapter = new OpenRouterAdapter({ defaultModel: cfg.model });
-  return { adapter, model: cfg.model, mode: "live" };
+
+  // Live mode — fail loud when the env var the operator obviously needs
+  // is missing, before we instantiate anything that could swallow the
+  // failure as a generic "auth error" later.
+  const envKey = REQUIRED_ENV_BY_ADAPTER[plan.adapterId];
+  if (envKey && !process.env[envKey]) {
+    throw new Error(
+      `harness: --adapter ${plan.adapterId} needs ${envKey} in the environment. ` +
+      `Set it (export ${envKey}=...) or run with no flags for the offline mock.`,
+    );
+  }
+
+  const runConfig: {
+    adapter: string;
+    model: string;
+    provider: string | null;
+    retries: number;
+    timeout_ms?: number | null;
+  } = {
+    adapter: plan.adapterId,
+    model: plan.model,
+    provider: plan.provider,
+    retries: args.retries ?? 1,
+  };
+  if (args.timeoutMs != null) runConfig.timeout_ms = args.timeoutMs;
+  const { adapter, registry } = await instantiateAdapterForRun(runConfig);
+  return {
+    adapter,
+    adapterId: registry.id,
+    provider: plan.provider ?? registry.fixed_provider ?? registry.id,
+    model: plan.model,
+    mode: "live",
+  };
 }
 
 // ── Result records ──────────────────────────────────────────────────────────
@@ -170,6 +316,10 @@ interface HarnessTestResult {
   judge_cost_usd: number;
   total_cost_usd: number;
   // Anomaly + diagnosis.
+  completion_state: string | null;
+  failure_origin: string | null;
+  failure_reason_code: string | null;
+  interpretation: EvidenceBundle["interpretation"] | null;
   anomaly_flags: string[];
   suspicious_flags: string[];
   error_details: string | null;
@@ -181,12 +331,23 @@ interface HarnessTestResult {
 interface HarnessReport {
   generated_at: string;
   mode: "mock" | "live";
+  /** Adapter id actually used for this run (`openrouter`, `minimax`, `harness-mock`, …). */
+  adapter: string;
+  /** Provider id (registry's fixed_provider, or override for configurable adapters). */
+  provider: string;
+  /** Model id forwarded to the adapter. */
+  model: string;
   judge_config: ReturnType<typeof describeDefaultJudge>;
   totals: {
     tabs_run: number;
     tests_run: number;
     tests_passed: number;
     tests_failed: number;
+    failed_model: number;
+    failed_provider: number;
+    failed_runner: number;
+    failed_judge: number;
+    skipped_config: number;
     tests_with_anomalies: number;
     pipeline_breaks: number;
     model_cost_usd: number;
@@ -281,10 +442,12 @@ async function runOneTest(opts: {
   tabLabel: string;
   adapter: CrucibulumAdapter;
   model: string;
+  /** Provider id reported in the per-test row — not always identical to `adapter.id`. */
+  provider: string;
   enableJudge: boolean;
   args: HarnessArgs;
 }): Promise<HarnessTestResult> {
-  const { taskId, family, tabKey, tabLabel, adapter, model, enableJudge } = opts;
+  const { taskId, family, tabKey, tabLabel, adapter, model, provider, enableJudge } = opts;
   const start = Date.now();
   const isConversational = isConversationalTask(taskId);
   const reviewConfig = enableJudge
@@ -326,7 +489,7 @@ async function runOneTest(opts: {
     bundle_id: null,
     bundle_hash: null,
     model,
-    provider: adapter.id,
+    provider,
     prompt_tokens: 0,
     completion_tokens: 0,
     model_cost_usd: 0,
@@ -336,6 +499,10 @@ async function runOneTest(opts: {
     judge_completion_tokens: 0,
     judge_cost_usd: 0,
     total_cost_usd: 0,
+    completion_state: null,
+    failure_origin: null,
+    failure_reason_code: null,
+    interpretation: null,
     anomaly_flags: [],
     suspicious_flags: [],
     error_details: null,
@@ -392,6 +559,10 @@ async function runOneTest(opts: {
 
     // Anomaly flags from conversational judge.
     const verdict = normalizeBundleVerdict(bundle);
+    baseRecord.completion_state = verdict.completionState;
+    baseRecord.failure_origin = verdict.failureOrigin;
+    baseRecord.failure_reason_code = verdict.failureReasonCode;
+    baseRecord.interpretation = bundle.interpretation ?? null;
     if (verdict.failureReasonCode === "judge_not_evaluable" || verdict.failureReasonCode === "judge_failure") {
       baseRecord.suspicious_flags.push(`JUDGE_UNEVALUABLE: ${verdict.failureReasonCode}`);
     }
@@ -505,8 +676,23 @@ export async function harnessCommand(rawArgs: string[]): Promise<void> {
     process.exit(3);
   }
 
-  const { adapter, model, mode } = buildAdapter(args);
-  await adapter.init({});
+  let resolved: ResolvedHarnessAdapter;
+  try {
+    resolved = await buildAdapter(args);
+  } catch (err) {
+    // CLI-level config errors (unknown adapter, missing key, missing
+    // --model) — exit 5 so callers can tell harness errors (3) apart
+    // from adapter/config errors (5).
+    console.error(String((err as Error).message ?? err));
+    process.exit(5);
+  }
+  const { adapter, adapterId, provider, model, mode } = resolved;
+  // Adapters are already initialised by instantiateAdapterForRun for the
+  // live path; the mock adapter takes a no-op init. Calling init twice on
+  // a live adapter resets credentials, so only run it for the mock path.
+  if (mode === "mock") {
+    await adapter.init({});
+  }
   const health = await adapter.healthCheck();
   if (!health.ok) {
     console.error(`harness adapter health check failed: ${health.reason ?? "unknown"}`);
@@ -515,6 +701,12 @@ export async function harnessCommand(rawArgs: string[]): Promise<void> {
 
   console.log("=".repeat(72));
   console.log(` Crucible Harness — ${mode === "live" ? "LIVE" : "MOCK"} adapter (${adapter.name} / ${model})`);
+  console.log(`   adapter id : ${adapterId}`);
+  console.log(`   provider   : ${provider}`);
+  console.log(`   model      : ${model}`);
+  console.log(`   mode       : ${mode}`);
+  console.log(`   retries    : ${args.retries ?? 1}`);
+  console.log(`   timeout ms : ${args.timeoutMs ?? "adapter default"}`);
   console.log(` Tests:  ${selected.length}`);
   console.log(` Lanes:  ${[...new Set(selected.map((s) => s.tabLabel))].join(", ")}`);
   console.log(` Judge:  ${describeDefaultJudge().provider}/${describeDefaultJudge().model}${args.enableJudge ? " (live, advisory)" : " (deterministic only)"}`);
@@ -530,6 +722,7 @@ export async function harnessCommand(rawArgs: string[]): Promise<void> {
       tabLabel: item.tabLabel,
       adapter,
       model,
+      provider,
       enableJudge: args.enableJudge,
       args,
     });
@@ -543,6 +736,11 @@ export async function harnessCommand(rawArgs: string[]): Promise<void> {
     tests_run: results.length,
     tests_passed: results.filter((r) => r.pass).length,
     tests_failed: results.filter((r) => !r.pass).length,
+    failed_model: results.filter((r) => r.completion_state === "FAIL" && r.failure_origin === "MODEL").length,
+    failed_provider: results.filter((r) => r.completion_state === "NC" && (r.failure_origin === "PROVIDER" || r.failure_origin === "NETWORK")).length,
+    failed_runner: results.filter((r) => r.completion_state === "NC" && (r.failure_origin === "HARNESS" || r.failure_origin === "UNKNOWN")).length,
+    failed_judge: results.filter((r) => r.completion_state === "NC" && (r.failure_origin === "JUDGE" || r.failure_origin === "TEST")).length,
+    skipped_config: results.filter((r) => !!r.error_details && !r.bundle_stored).length,
     tests_with_anomalies: results.filter((r) => r.suspicious_flags.length > 0 || r.anomaly_flags.length > 0).length,
     pipeline_breaks: results.filter((r) => !r.bundle_stored || !r.ui_summary_well_formed || !r.judge_ran).length,
     model_cost_usd: Math.round(results.reduce((sum, r) => sum + r.model_cost_usd, 0) * 1_000_000) / 1_000_000,
@@ -555,6 +753,9 @@ export async function harnessCommand(rawArgs: string[]): Promise<void> {
   const report: HarnessReport = {
     generated_at: new Date().toISOString(),
     mode,
+    adapter: adapterId,
+    provider,
+    model,
     judge_config: describeDefaultJudge(),
     totals,
     failing_tests: results.filter((r) => !r.pass || r.suspicious_flags.length > 0),
@@ -569,6 +770,7 @@ export async function harnessCommand(rawArgs: string[]): Promise<void> {
 
   console.log("=".repeat(72));
   console.log(` Tests:    ${totals.tests_passed} passed / ${totals.tests_failed} failed (${totals.tests_run} total)`);
+  console.log(` Outcomes: model=${totals.failed_model} provider=${totals.failed_provider} runner=${totals.failed_runner} judge=${totals.failed_judge} skipped/config=${totals.skipped_config}`);
   console.log(` Anomalies: ${totals.tests_with_anomalies}`);
   console.log(` Pipeline breaks: ${totals.pipeline_breaks}`);
   console.log(` Model cost:  ${formatCost(totals.model_cost_usd)}`);

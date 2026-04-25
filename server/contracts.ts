@@ -35,6 +35,10 @@ export interface RunSetSummary {
   passes: number;
   failures: number;
   not_complete: number;
+  failed_provider: number;
+  failed_runner: number;
+  failed_judge: number;
+  skipped_config: number;
   pass_rate: number;
   completion_rate: number;
   model_failure_rate: number;
@@ -113,6 +117,7 @@ export interface EvaluationSummary {
     ended_at: string;
     duration_sec: number;
   };
+  interpretation: EvidenceBundle["interpretation"] | null;
   repeat_run_count: number;
   pass_at: PassAtSummary;
   reliability: ReliabilitySummary;
@@ -152,6 +157,9 @@ export function summarizeRunSet(bundles: EvidenceBundle[]): RunSetSummary {
   const passes = verdicts.filter((verdict) => verdict.completionState === "PASS").length;
   const failures = verdicts.filter((verdict) => verdict.completionState === "FAIL" && verdict.failureOrigin === "MODEL").length;
   const notComplete = verdicts.filter((verdict) => verdict.completionState === "NC").length;
+  const failedProvider = verdicts.filter((verdict) => verdict.completionState === "NC" && (verdict.failureOrigin === "PROVIDER" || verdict.failureOrigin === "NETWORK")).length;
+  const failedRunner = verdicts.filter((verdict) => verdict.completionState === "NC" && (verdict.failureOrigin === "HARNESS" || verdict.failureOrigin === "UNKNOWN")).length;
+  const failedJudge = verdicts.filter((verdict) => verdict.completionState === "NC" && (verdict.failureOrigin === "JUDGE" || verdict.failureOrigin === "TEST")).length;
   const passRate = runCount > 0 ? round4((passes / runCount) * 100) : 0;
   const passAt: PassAtSummary = {
     pass_at_1: sorted[0]?.score.pass ?? false,
@@ -194,6 +202,10 @@ export function summarizeRunSet(bundles: EvidenceBundle[]): RunSetSummary {
     passes,
     failures,
     not_complete: notComplete,
+    failed_provider: failedProvider,
+    failed_runner: failedRunner,
+    failed_judge: failedJudge,
+    skipped_config: 0,
     pass_rate: passRate,
     completion_rate: runCount > 0 ? round4(((runCount - notComplete) / runCount) * 100) : 0,
     model_failure_rate: runCount > 0 ? round4((failures / runCount) * 100) : 0,
@@ -354,6 +366,7 @@ export function summarizeBundle(
       ended_at: bundle.environment.timestamp_end,
       duration_sec: durationSec,
     },
+    interpretation: bundle.interpretation ?? null,
     repeat_run_count: repeatRunCount,
     pass_at: runSet.pass_at,
     reliability: runSet.reliability,

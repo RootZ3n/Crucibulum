@@ -20,6 +20,7 @@ import type {
 } from "./base.js";
 import { Observer } from "../core/observer.js";
 import { makeEmptyResponseError, makeHttpProviderError, makeInvalidResponseError, makeProviderFailureError, normalizeProviderError, providerErrorSummary, providerErrorDetail } from "../core/provider-errors.js";
+import { withProviderRetries } from "../core/retry.js";
 import { log } from "../utils/logger.js";
 
 // MiniMax runs two distinct platforms with separate accounts and keys:
@@ -50,6 +51,8 @@ export class MiniMaxAdapter implements CrucibulumAdapter {
   private model: string = "";
   private apiKey: string = "";
   private baseUrl: string = MINIMAX_BASE_DEFAULT;
+  private timeoutMs = MODEL_TIMEOUT_MS;
+  private retries = 1;
 
   supports(_family: "poison" | "spec" | "orchestration"): boolean {
     return true;
@@ -63,15 +66,19 @@ export class MiniMaxAdapter implements CrucibulumAdapter {
     return true;
   }
 
-  async chat(messages: ChatMessage[], _options?: ChatOptions): Promise<ChatResult> {
-    if (!this.apiKey) throw new Error("MiniMax: MINIMAX_API_KEY not set");
+  async chat(messages: ChatMessage[], options?: ChatOptions): Promise<ChatResult> {
+    if (!this.apiKey) throw makeProviderFailureError({ kind: "AUTH", origin: "ADAPTER", provider: "minimax", adapter: this.id, rawMessage: "MiniMax: MINIMAX_API_KEY not set" });
     const start = Date.now();
-    const result = await callMiniMax(this.baseUrl, this.apiKey, this.model, messages);
+    const result = await callMiniMax(this.baseUrl, this.apiKey, this.model, messages, options, {
+      timeoutMs: options?.timeoutMs ?? this.timeoutMs,
+      retries: options?.retries ?? this.retries,
+    });
     return {
       text: result.text,
       tokens_in: result.tokensIn,
       tokens_out: result.tokensOut,
       duration_ms: Date.now() - start,
+      provider_attempts: result.attempts,
     };
   }
 
@@ -80,6 +87,8 @@ export class MiniMaxAdapter implements CrucibulumAdapter {
     if (c.model) this.model = c.model;
     if (c.api_key) this.apiKey = c.api_key;
     else this.apiKey = process.env["MINIMAX_API_KEY"] ?? "";
+    if (typeof c.timeout_ms === "number" && c.timeout_ms > 0) this.timeoutMs = c.timeout_ms;
+    if (typeof c.retries === "number" && c.retries >= 0) this.retries = Math.floor(c.retries);
     const envBase = process.env["MINIMAX_BASE_URL"];
     this.baseUrl = (c.base_url || envBase || MINIMAX_BASE_DEFAULT).replace(/\/+$/, "");
   }
@@ -173,7 +182,19 @@ export class MiniMaxAdapter implements CrucibulumAdapter {
 
       let response: string;
       try {
-        const result = await callMiniMax(this.baseUrl, this.apiKey, this.model, messages);
+        const result = await callMiniMax(this.baseUrl, this.apiKey, this.model, messages, undefined, {
+          timeoutMs: this.timeoutMs,
+          retries: this.retries,
+        });
+        for (const attempt of result.attempts) {
+          observer.record({
+            type: "provider_attempt",
+            attempt: attempt.attempt,
+            detail: attempt.error_type ? `${attempt.error_type}: ${attempt.retry_decision}` : "success",
+            provider_error: attempt.provider_error,
+            retry_decision: attempt.retry_decision,
+          });
+        }
         response = result.text;
         totalTokensIn += result.tokensIn;
         totalTokensOut += result.tokensOut;
@@ -233,72 +254,90 @@ async function callMiniMax(
   apiKey: string,
   model: string,
   messages: Array<{ role: string; content: string }>,
-): Promise<{ text: string; tokensIn: number; tokensOut: number }> {
-  const res = await fetch(`${baseUrl}/text/chatcompletion_v2`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      max_tokens: 8192,
-      temperature: 0.1,
-    }),
-    signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
+  options?: ChatOptions,
+  retryOptions?: { timeoutMs: number; retries: number },
+): Promise<{ text: string; tokensIn: number; tokensOut: number; attempts: NonNullable<ChatResult["provider_attempts"]> }> {
+  // MiniMax's M-series exposes per-call reasoning controls via two fields:
+  //   • `reasoning_effort: "off" | "minimal" | "default"` (newer payloads)
+  //   • `thinking: { enabled: false }` (older M2.x rollouts)
+  // We send both shapes when the caller asks to suppress visible reasoning
+  // on a short-answer task, so the adapter works against either dialect.
+  // Accounts that don't recognise the field ignore it; accounts that do
+  // stop emitting `<think>` blocks at the source rather than relying on
+  // post-hoc sanitization.
+  const reasoningOff = options?.reasoningEffort === "off" || (options?.suppressVisibleReasoning === true && options?.reasoningEffort == null);
+  const body: Record<string, unknown> = {
+    model,
+    messages,
+    max_tokens: 8192,
+    temperature: 0.1,
+  };
+  if (reasoningOff) {
+    body["reasoning_effort"] = "off";
+    body["thinking"] = { enabled: false };
+  } else if (options?.reasoningEffort === "minimal") {
+    body["reasoning_effort"] = "minimal";
+  }
+  const attempts: NonNullable<ChatResult["provider_attempts"]> = [];
+  const retryResult = await withProviderRetries(async (attempt) => {
+    const res = await fetch(`${baseUrl}/text/chatcompletion_v2`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(retryOptions?.timeoutMs ?? MODEL_TIMEOUT_MS),
+    });
+
+    const rawBody = await res.text();
+    if (!res.ok) {
+      throw makeHttpProviderError(res, rawBody, { provider: "minimax", adapter: "minimax", attempt });
+    }
+    let data: {
+      choices?: Array<{
+        message?: { content?: string };
+        messages?: Array<{ content?: string; text?: string }>;
+        text?: string;
+        finish_reason?: string;
+      }>;
+      reply?: string;
+      usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+      base_resp?: { status_code?: number; status_msg?: string };
+    };
+    try { data = JSON.parse(rawBody); }
+    catch { throw makeInvalidResponseError({ provider: "minimax", adapter: "minimax", attempt }, `MiniMax returned non-JSON body: ${rawBody.slice(0, 400)}`); }
+
+    if (data.base_resp && typeof data.base_resp.status_code === "number" && data.base_resp.status_code !== 0) {
+      throw makeInvalidResponseError(
+        { provider: "minimax", adapter: "minimax", attempt },
+        `MiniMax error ${data.base_resp.status_code}: ${data.base_resp.status_msg || "(no message)"}`,
+      );
+    }
+
+    const choice = data.choices?.[0];
+    const text =
+      choice?.message?.content ??
+      choice?.messages?.[0]?.content ??
+      choice?.messages?.[0]?.text ??
+      choice?.text ??
+      data.reply ??
+      "";
+
+    if (!text) {
+      throw makeEmptyResponseError({ provider: "minimax", adapter: "minimax", attempt }, `MiniMax returned empty content. Raw body: ${rawBody.slice(0, 400)}`);
+    }
+
+    return {
+      text,
+      tokensIn: data.usage?.prompt_tokens ?? 0,
+      tokensOut: data.usage?.completion_tokens ?? 0,
+    };
+  }, { provider: "minimax", adapter: "minimax" }, {
+    retries: retryOptions?.retries ?? 1,
+    onAttempt: (record) => attempts.push(record),
   });
-
-  const rawBody = await res.text();
-  if (!res.ok) {
-    throw makeHttpProviderError(res, rawBody, { provider: "minimax", adapter: "minimax" });
-  }
-  let data: {
-    choices?: Array<{
-      message?: { content?: string };
-      messages?: Array<{ content?: string; text?: string }>;
-      text?: string;
-      finish_reason?: string;
-    }>;
-    reply?: string;
-    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
-    base_resp?: { status_code?: number; status_msg?: string };
-  };
-  try { data = JSON.parse(rawBody); }
-  catch { throw makeInvalidResponseError({ provider: "minimax", adapter: "minimax" }, `MiniMax returned non-JSON body: ${rawBody.slice(0, 400)}`); }
-
-  // MiniMax embeds per-call errors in `base_resp` even when HTTP is 200
-  // (unknown model id, auth issues, content filter, etc.). Surface that
-  // instead of silently returning an empty string.
-  if (data.base_resp && typeof data.base_resp.status_code === "number" && data.base_resp.status_code !== 0) {
-    throw makeInvalidResponseError(
-      { provider: "minimax", adapter: "minimax" },
-      `MiniMax error ${data.base_resp.status_code}: ${data.base_resp.status_msg || "(no message)"}`,
-    );
-  }
-
-  // Response shape varies across MiniMax endpoints/models:
-  //   • chatcompletion_v2 (OpenAI-ish): choices[0].message.content
-  //   • older chatcompletion: choices[0].messages[0].content / text
-  //   • some models: top-level reply
-  const choice = data.choices?.[0];
-  const text =
-    choice?.message?.content ??
-    choice?.messages?.[0]?.content ??
-    choice?.messages?.[0]?.text ??
-    choice?.text ??
-    data.reply ??
-    "";
-
-  if (!text) {
-    throw makeEmptyResponseError({ provider: "minimax", adapter: "minimax" }, `MiniMax returned empty content. Raw body: ${rawBody.slice(0, 400)}`);
-  }
-
-  return {
-    text,
-    tokensIn: data.usage?.prompt_tokens ?? 0,
-    tokensOut: data.usage?.completion_tokens ?? 0,
-  };
+  return { ...retryResult.value, attempts };
 }
 
 // ── Shared agentic loop infrastructure ─────────────────────────────────────
@@ -401,17 +440,46 @@ function executeToolCalls(response: string, workspacePath: string, observer: Obs
     commandsFound++;
     try {
       const out = execSync(cmd, { cwd: workspacePath, encoding: "utf-8", timeout: 30_000, maxBuffer: 1024 * 1024 });
-      observer.shell(cmd, 0);
+      observer.shell(cmd, 0, { cwd: workspacePath, sanitizedCommand: sanitizeShellCommand(cmd) });
       feedback.push(`$ ${cmd}\n${out.length > 2000 ? out.slice(0, 2000) + "\n[truncated]" : out}`);
     } catch (err) {
       const ec = (err as { status?: number }).status ?? 1;
-      observer.shell(cmd, ec);
-      feedback.push(`$ ${cmd}\nExit code: ${ec}\n${((err as { stderr?: string }).stderr || (err as { stdout?: string }).stdout || String(err)).slice(0, 1000)}`);
+      const output = ((err as { stderr?: string }).stderr || (err as { stdout?: string }).stdout || String(err)).slice(0, 1000);
+      const errorKind = classifyShellEnvironmentError(cmd, output);
+      observer.shell(cmd, ec, { cwd: workspacePath, sanitizedCommand: sanitizeShellCommand(cmd), errorKind });
+      if (errorKind === "runner_environment_error") {
+        observer.recordError(`Runner environment error while executing shell command: ${output.slice(0, 200)}`, makeProviderFailureError({
+          kind: "PROCESS_ERROR",
+          origin: "LOCAL_RUNTIME",
+          provider: "minimax",
+          adapter: "minimax",
+          rawMessage: output || String(err),
+          rawCode: (err as { code?: string }).code ?? null,
+        }).structured);
+      }
+      feedback.push(`$ ${cmd}\nExit code: ${ec}\n${output}`);
     }
   }
 
   if (commandsFound === 0) return { done: false, feedback: "No commands detected. Use: READ_FILE <path> / WRITE_FILE <path>\\n<content>\\nEND_FILE / SHELL <cmd> / DONE", commandsFound: 0 };
   return { done: false, feedback: feedback.join("\n\n"), commandsFound };
+}
+
+function sanitizeShellCommand(command: string): string {
+  return command
+    .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]")
+    .replace(/(api[_-]?key|token|password)=\S+/gi, "$1=[redacted]");
+}
+
+function classifyShellEnvironmentError(command: string, output: string): "runner_environment_error" | "model_tool_command_misuse" | "command_failed" {
+  const text = `${command}\n${output}`.toLowerCase();
+  if (/\/proc\/\d+\/fd\/pipe/.test(text) || (text.includes("/proc/") && text.includes("/fd/") && text.includes("enoent"))) {
+    return "runner_environment_error";
+  }
+  if (/\bcd\s+\/home\/user\b/.test(command) || text.includes("can't cd to /home/user") || text.includes("cd: /home/user")) {
+    return "model_tool_command_misuse";
+  }
+  return "command_failed";
 }
 
 function stripMarkdownFences(c: string): string {

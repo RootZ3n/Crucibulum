@@ -13,7 +13,7 @@
   },
   "task": {
     "title": "Fix error responses leaking internal paths",
-    "description": "Security audit found that API error responses expose internal server paths and stack traces. Error responses must not contain file system paths, line numbers, or stack frames. Fix the error formatting to sanitize all internal details. Run the tests to verify your fix.",
+    "description": "Security audit found that API error responses expose internal server paths and stack traces. Error responses must not contain file system paths, line numbers, or stack frames. Fix the error formatting to sanitize all internal details. Run the tests to verify your fix.\n\nMINIMAL-EDIT BUDGET: this task scores a penalty if you change more than 30 lines total (added + removed across the unified diff). Edit only the offending lines in src/api/errors.js — do not rewrite the file or refactor surrounding code. Keep formatting and unrelated comments intact.",
     "entrypoints": ["src/api/errors.js", "tests/errors.test.js"],
     "hints_allowed": false
   },

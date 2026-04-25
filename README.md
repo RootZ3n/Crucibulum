@@ -320,17 +320,22 @@ npm install
 npm run build
 ```
 
-## Quick Start
+## Public Quick Start
 
 ```bash
-# Run a single task against Ollama
-crucible test --model ollama:gemma4:26b --task poison-001
+# Offline pipeline validation only. This is mock mode, not model evidence.
+node dist/cli/main.js harness --task safety-001
 
-# Run the full V1 suite
-crucible test --model ollama:gemma4:26b --suite v1
+# OpenRouter live run. May incur provider cost.
+export OPENROUTER_API_KEY=...
+node dist/cli/main.js harness --adapter openrouter --model xiaomi/mimo-v2.5-pro --task safety-001
 
-# Compare multiple models on one task across repeated runs
-crucible compare --models ollama:gemma4:26b,openrouter:arcee-ai/trinity-large-thinking --task poison-001 --runs 5
+# MiniMax direct live run. May incur provider cost.
+export MINIMAX_API_KEY=...
+node dist/cli/main.js harness --adapter minimax --model MiniMax-M2.7 --task safety-001
+
+# Tune conservative live-call resilience.
+node dist/cli/main.js harness --adapter openrouter --model xiaomi/mimo-v2.5-pro --task safety-001 --retries 2 --timeout-ms 120000
 
 # Verify a stored evidence bundle
 crucible verify run_2026-04-05_poison-001_gemma4
@@ -338,6 +343,53 @@ crucible verify run_2026-04-05_poison-001_gemma4
 # Start the local API / UI
 npm run serve
 ```
+
+Crucible is an evaluation harness, not a guarantee of model safety. Passing a task means the model passed that task under this harness, with this adapter, at that time. It does not prove the model is universally safe or reliable.
+
+Mock mode is for offline pipeline validation only. Mock results must not be cited as live model evidence.
+
+## Live Adapter Setup
+
+OpenRouter:
+
+```bash
+export OPENROUTER_API_KEY=...
+node dist/cli/main.js harness --adapter openrouter --model xiaomi/mimo-v2.5-pro --task safety-001
+```
+
+MiniMax direct:
+
+```bash
+export MINIMAX_API_KEY=...
+export MINIMAX_BASE_URL=https://api.minimax.io/v1   # optional
+node dist/cli/main.js harness --adapter minimax --model MiniMax-M2.7 --task safety-001
+```
+
+Unknown adapters, missing keys, and missing required model ids fail loudly. Crucible does not silently fall back to mock when live mode was requested.
+
+## Interpreting Results
+
+Every bundle and summary separates model failures from provider, runner, and judge failures.
+
+- `PASS`: the task completed and met the pass threshold.
+- `FAIL/MODEL`: the model completed the task but violated requirements or scored below threshold.
+- `NC/PROVIDER` or `NC/NETWORK`: provider rate limit, timeout, empty response, auth, 5xx, network, or unavailable errors. Do not treat these as model quality.
+- `NC/HARNESS`: runner or local environment failure. Inspect diagnostics before rerunning.
+- `NC/JUDGE` or `NC/TEST`: evaluator or test harness could not produce a reliable verdict.
+
+Bundles include `interpretation` with a one-sentence reason, evidence summary, whether the result reflects model capability, retry/provider confidence notes, cost, duration, and recommended interpretation.
+
+Live runs may incur cost. Cost fields are transparent but provider-reported costs are only as accurate as the provider response; otherwise Crucible records an estimate.
+
+## Adding Tasks and Adapters
+
+To add a task, create a manifest under `tasks/<family>/<task-id>/manifest.json`. Repo-execution tasks include a fixture repo and oracle file under `oracles/`; conversational tasks define questions and deterministic scoring rules directly in the manifest.
+
+To add an adapter, implement `CrucibulumAdapter` from `adapters/base.ts`, register it in `adapters/registry.ts`, and ensure the bundle records adapter, provider, model, usage, provider attempts, and structured provider errors.
+
+## Release Limitations
+
+Crucible currently emphasizes deterministic, auditable evaluation over broad benchmark coverage. Safety tasks are caveated diagnostics, not a proof of universal safety. Provider behavior, model versions, and pricing can change. Repeat runs are recommended before making claims.
 
 ## Exit Codes
 

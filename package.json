@@ -7,6 +7,29 @@
   "bin": {
     "crucible": "dist/cli/main.js"
   },
+  "files": [
+    "tsconfig.json",
+    "adapters/",
+    "cli/",
+    "core/",
+    "leaderboard/",
+    "security/",
+    "server/",
+    "types/",
+    "utils/",
+    "tests/",
+    "dist/",
+    "!dist/tests/",
+    "tasks/",
+    "oracles/",
+    "schemas/",
+    "suites/",
+    "ui/",
+    "docs/",
+    "README.md",
+    "LICENSE",
+    ".env.example"
+  ],
   "scripts": {
     "build": "tsc",
     "build:clean": "rm -rf dist && tsc",

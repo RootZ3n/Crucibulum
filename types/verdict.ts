@@ -43,6 +43,7 @@ export type FailureReasonCode =
   | "judge_failure"
   | "harness_preflight_failure"
   | "harness_runtime_failure"
+  | "runner_environment_error"
   | "cancelled"
   | "unknown_failure";
 
