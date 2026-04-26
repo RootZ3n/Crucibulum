@@ -3,6 +3,7 @@
  * Builds, signs (SHA256), and stores immutable evidence bundles.
  */
 
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { platform, arch } from "node:os";
@@ -19,10 +20,12 @@ import { canonicalPercent, type SuiteScoringWeights } from "../types/scores.js";
 import { resolveScoringWeights, resolvePassThreshold } from "./suite-loader.js";
 import { normalizeVerdict } from "./verdict.js";
 import { interpretBundleResult } from "./interpretation.js";
+import type { OracleIntegrity } from "./oracle.js";
 
 export interface BundleBuildInput {
   manifest: TaskManifest;
   oracle: Oracle;
+  oracleIntegrity?: OracleIntegrity | undefined;
   executionResult: ExecutionResult;
   diff: {
     files_changed: DiffEntry[];
@@ -43,6 +46,54 @@ export interface BundleBuildInput {
   suiteId?: string | undefined;
   adapter: CrucibulumAdapter;
   model: string;
+}
+
+export type BundleSignatureStatus = "valid" | "forged" | "legacy_unverified" | "unsigned_key_missing" | "tampered";
+
+export interface BundleVerificationResult {
+  /** True only when both the content hash and HMAC signature verify. */
+  valid: boolean;
+  /** Content-hash verification remains exposed for legacy inspection. */
+  hash_valid: boolean;
+  expected: string;
+  computed: string;
+  signature_status: BundleSignatureStatus;
+  expected_signature: string | null;
+  computed_signature: string | null;
+}
+
+function hmacKey(): string | null {
+  const key = process.env["CRUCIBLE_HMAC_KEY"];
+  return key && key.length > 0 ? key : null;
+}
+
+function bundleHashInput(bundle: EvidenceBundle): EvidenceBundle {
+  return { ...bundle, bundle_hash: "", signature: undefined };
+}
+
+export function computeBundleHash(bundle: EvidenceBundle): string {
+  return sha256Object(bundleHashInput(bundle));
+}
+
+function computeBundleSignature(bundleId: string, bundleHash: string, key: string): string {
+  const digest = createHmac("sha256", key).update(`${bundleId}.${bundleHash}`).digest("hex");
+  return `hmac-sha256:${digest}`;
+}
+
+function secureEqual(a: string, b: string): boolean {
+  const aBuf = Buffer.from(a);
+  const bBuf = Buffer.from(b);
+  return aBuf.length === bBuf.length && timingSafeEqual(aBuf, bBuf);
+}
+
+export function signBundle(bundle: EvidenceBundle): EvidenceBundle {
+  bundle.signature = undefined;
+  bundle.bundle_hash = computeBundleHash(bundle);
+  const key = hmacKey();
+  if (key) {
+    bundle.signature = computeBundleSignature(bundle.bundle_id, bundle.bundle_hash, key);
+  }
+  return bundle;
 }
 
 export function buildBundle(input: BundleBuildInput): EvidenceBundle {
@@ -77,6 +128,7 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
       family: manifest.family,
       difficulty: manifest.difficulty,
     },
+    oracle_integrity: input.oracleIntegrity,
     agent: {
       adapter: adapter.id,
       adapter_version: adapter.version,
@@ -194,9 +246,9 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
   });
   bundle.interpretation = interpretBundleResult(bundle);
 
-  // Compute and set bundle hash
-  const hashInput = { ...bundle, bundle_hash: "" };
-  bundle.bundle_hash = sha256Object(hashInput);
+  // Compute and set bundle hash. HMAC signing happens at write time so the
+  // signature reflects the final persisted payload.
+  bundle.bundle_hash = computeBundleHash(bundle);
 
   return bundle;
 }
@@ -209,6 +261,7 @@ export function storeBundle(bundle: EvidenceBundle): string {
   mkdirSync(runsDir, { recursive: true });
 
   const filePath = join(runsDir, `${bundle.bundle_id}.json`);
+  signBundle(bundle);
   writeFileSync(filePath, JSON.stringify(bundle, null, 2) + "\n", "utf-8");
 
   // Store hash separately for verification
@@ -228,11 +281,36 @@ export function storeBundle(bundle: EvidenceBundle): string {
  * `loadVerifiedBundle`) on every read from disk and trust the result, not
  * the flag already inside the file.
  */
-export function verifyBundle(bundle: EvidenceBundle): { valid: boolean; expected: string; computed: string } {
+export function verifyBundle(bundle: EvidenceBundle): BundleVerificationResult {
   const stored = bundle.bundle_hash;
-  const hashInput = { ...bundle, bundle_hash: "" };
-  const computed = sha256Object(hashInput);
-  return { valid: stored === computed, expected: stored, computed };
+  const computed = computeBundleHash(bundle);
+  const hashValid = stored === computed;
+  const key = hmacKey();
+  const storedSignature = typeof bundle.signature === "string" ? bundle.signature : null;
+  const computedSignature = key ? computeBundleSignature(bundle.bundle_id, computed, key) : null;
+
+  let signatureStatus: BundleSignatureStatus;
+  if (!storedSignature) {
+    signatureStatus = hashValid ? "legacy_unverified" : "tampered";
+  } else if (!key) {
+    signatureStatus = hashValid ? "unsigned_key_missing" : "tampered";
+  } else if (!secureEqual(storedSignature, computedSignature ?? "")) {
+    signatureStatus = "forged";
+  } else if (!hashValid) {
+    signatureStatus = "tampered";
+  } else {
+    signatureStatus = "valid";
+  }
+
+  return {
+    valid: hashValid && signatureStatus === "valid",
+    hash_valid: hashValid,
+    expected: stored,
+    computed,
+    signature_status: signatureStatus,
+    expected_signature: storedSignature,
+    computed_signature: computedSignature,
+  };
 }
 
 /**
@@ -256,7 +334,7 @@ export function loadVerifiedBundle(raw: string, sourceLabel?: string): EvidenceB
   }
   const result = verifyBundle(bundle);
   if (!result.valid) {
-    log("warn", "bundle", `Hash mismatch on ${sourceLabel ?? bundle.bundle_id} — expected ${result.expected.slice(0, 20)}…, got ${result.computed.slice(0, 20)}…`);
+    log("warn", "bundle", `Bundle verification ${result.signature_status} on ${sourceLabel ?? bundle.bundle_id} — expected ${result.expected.slice(0, 20)}…, got ${result.computed.slice(0, 20)}…`);
     // Never let a tampered bundle claim bundle_verified=true downstream.
     bundle.trust = { ...bundle.trust, bundle_verified: false };
   } else {

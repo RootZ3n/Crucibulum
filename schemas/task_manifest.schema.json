@@ -180,6 +180,10 @@
         "hash": {
           "type": "string",
           "description": "SHA-256 hash of the oracle file for tamper detection."
+        },
+        "hash_required": {
+          "type": "boolean",
+          "description": "Test-fixture escape hatch only. Release manifests must require oracle hashes."
         }
       }
     },

@@ -1532,6 +1532,7 @@ function normalizeRunForDisplay(run){
     difficulty:pick(run,'difficulty'),
     passThreshold:scorePct(pick(run,'pass_threshold')||pick(run,'outcome')?.pass_threshold),
     judge:pick(run,'judge')||{},
+    oracleIntegrity:pick(run,'oracle_integrity')||{},
     // Judge model spend, separate from tested-model spend. Always defined so
     // the UI can render "Judge cost: $0 (deterministic)" without branching.
     judgeUsage:pick(run,'judge_usage')||{provider:'',model:'',tokens_in:0,tokens_out:0,estimated_cost_usd:0,kind:'deterministic',note:'deterministic judge — no model cost'},
@@ -2576,9 +2577,15 @@ function renderFocusedRun(tabKey){
         ? 'TEST/JUDGE'
         : (result.completionState==='PASS'?'—':(result.failureOrigin||'UNKNOWN'));
   const originCls=result.isModelFailure?'red':result.isInfraIssue?'':result.isTestOrJudgeIssue?'cyan':'dim';
+  const sigStatus=String(result.trust?.bundle_signature_status||'legacy_unverified');
+  const sigCls=sigStatus==='valid'?'teal':sigStatus==='forged'||sigStatus==='tampered'?'red':'warn';
+  const oracleStatus=String(result.oracleIntegrity?.oracle_hash_status||'unknown');
+  const oracleCls=oracleStatus==='valid'?'teal':oracleStatus==='unknown'||oracleStatus==='not_required'?'dim':'red';
   const provenanceFacts=[
     {label:'BUNDLE',value:String(result.bundleId||result.runId||'unknown')},
     {label:'HASH',value:String(result.bundleHash||'unknown').slice(0,16),cls:'teal'},
+    {label:'AUTH',value:sigStatus.toUpperCase(),cls:sigCls},
+    {label:'ORACLE',value:oracleStatus.toUpperCase(),cls:oracleCls},
     {label:'TARGET',value:`${result.provider}/${result.model}`},
     {label:'TESTED MODEL',value:`${result.provider}/${result.model}`,cls:'teal'},
     {label:'JUDGE MODEL',value:result.judgeUsage?.kind==='deterministic'?'deterministic (no model)':`${result.judgeUsage?.provider||''}/${result.judgeUsage?.model||''}`,cls:result.judgeUsage?.kind==='deterministic'?'dim':'cyan'},
@@ -2596,6 +2603,7 @@ function renderFocusedRun(tabKey){
     {label:'SUITE',value:String(result.suiteId||'v1')},
     {label:'JUDGE',value:String(result.judge?.label||'deterministic'),cls:'teal'},
     {label:'HASH OK',value:result.trust?.bundle_hash_verified?'VERIFIED':'UNCHECKED',cls:result.trust?.bundle_hash_verified?'teal':''},
+    {label:'SIGNED',value:result.trust?.bundle_authenticated?'VERIFIED':'NO PROOF',cls:result.trust?.bundle_authenticated?'teal':sigCls},
     {label:'RUBRIC',value:result.trust?.rubric_hidden?'HIDDEN':'VISIBLE',cls:'dim'}
   ];
 

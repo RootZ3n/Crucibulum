@@ -74,7 +74,9 @@ export interface TaskManifest {
   oracle_ref: {
     type: string;
     path: string;
-    hash: string;
+    hash?: string | undefined;
+    /** Test fixtures may opt out explicitly; release manifests must not. */
+    hash_required?: boolean | undefined;
   };
   metadata: {
     author: string;
@@ -465,6 +467,8 @@ export interface VerificationResults {
 export interface EvidenceBundle {
   bundle_id: string;
   bundle_hash: string;
+  /** HMAC-SHA256 over `${bundle_id}.${bundle_hash}`. Missing means legacy/unverified. */
+  signature?: string | undefined;
   bundle_version: string;
   task: {
     id: string;
@@ -472,6 +476,12 @@ export interface EvidenceBundle {
     family: string;
     difficulty: string;
   };
+  oracle_integrity?: {
+    oracle_hash_verified: boolean;
+    oracle_hash_status: "valid" | "missing" | "mismatch" | "malformed" | "placeholder" | "not_required";
+    oracle_hash_expected: string | null;
+    oracle_hash_actual: string | null;
+  } | undefined;
   agent: {
     adapter: string;
     adapter_version: string;

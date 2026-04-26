@@ -49,6 +49,11 @@ async function main(): Promise<void> {
       await doctorCommand(args.slice(1));
       break;
     }
+    case "oracle-hash": {
+      const { oracleHashCommand } = await import("./commands/oracle-hash.js");
+      await oracleHashCommand(args.slice(1));
+      break;
+    }
     case "harness":
     case "qa": {
       const { harnessCommand } = await import("./commands/harness.js");
@@ -66,6 +71,7 @@ Usage:
   crucible compare --models <a>,<b> --task <taskId> [--runs N]
   crucible leaderboard [show|submit]
   crucible replay  <bundle_id>
+  crucible oracle-hash [--write|--check|--dry-run]
   crucible doctor
   crucible harness [--tab <key>] [--task <id>]
                    [--adapter <id> --model <model>]   # live: route through registry

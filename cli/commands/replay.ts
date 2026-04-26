@@ -70,7 +70,17 @@ export async function replayCommand(args: string[]): Promise<void> {
   console.log("");
 
   // Trust indicators
-  console.log(`  ${D}Trust${X}     ${G}✓${X} Rubric Hidden  ${G}✓${X} Narration Ignored  ${G}✓${X} State-Based  ${integrity.valid ? G + "✓" : R + "✗"}${X} Bundle ${integrity.valid ? "Verified" : "TAMPERED"}`);
+  const proofLabel = integrity.valid
+    ? "Verified"
+    : integrity.signature_status === "forged"
+      ? "FORGED"
+      : integrity.signature_status === "legacy_unverified"
+        ? "Legacy Unverified"
+        : integrity.signature_status === "unsigned_key_missing"
+          ? "Signature Key Missing"
+          : "TAMPERED";
+  const proofColor = integrity.valid ? G : (integrity.signature_status === "legacy_unverified" || integrity.signature_status === "unsigned_key_missing" ? Y : R);
+  console.log(`  ${D}Trust${X}     ${G}✓${X} Rubric Hidden  ${G}✓${X} Narration Ignored  ${G}✓${X} State-Based  ${proofColor}${integrity.valid ? "✓" : "✗"}${X} Bundle ${proofLabel}`);
   console.log("");
 
   // Score breakdown

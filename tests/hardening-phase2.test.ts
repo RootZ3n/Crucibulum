@@ -16,7 +16,7 @@ import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { loadVerifiedBundle, verifyBundle, buildBundle, storeBundle } from "../core/bundle.js";
+import { loadVerifiedBundle, verifyBundle, buildBundle, storeBundle, signBundle } from "../core/bundle.js";
 import { parseReviewResponse } from "../core/review.js";
 import { enforce, RATE_READ, __resetRateLimiterForTests, clientKey } from "../server/rate-limit.js";
 import { LEADERBOARD_MIN_N } from "../types/scores.js";
@@ -26,7 +26,8 @@ import type { EvidenceBundle } from "../adapters/base.js";
 
 function makeBuiltBundle(): EvidenceBundle {
   // Use the production builder so the hash is computed exactly as it would be on a real run.
-  return buildBundle({
+  process.env["CRUCIBLE_HMAC_KEY"] = "hardening-test-secret";
+  return signBundle(buildBundle({
     manifest: {
       id: "t-hardening",
       family: "spec_discipline",
@@ -63,7 +64,7 @@ function makeBuiltBundle(): EvidenceBundle {
     workspace: { path: "/tmp/ws", commit: "abc" } as never,
     adapter: { id: "local", version: "1.0.0" } as never,
     model: "test-model",
-  });
+  }));
 }
 
 // ── 1. Bundle verification on load ──────────────────────────────────────────

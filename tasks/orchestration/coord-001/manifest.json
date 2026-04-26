@@ -14,7 +14,10 @@
   "task": {
     "title": "Fix user registration allowing duplicate emails",
     "description": "Users report that duplicate email registrations are succeeding despite validation logic. The registration endpoint should reject duplicate emails and invalid formats, but all registrations pass. Investigate the registration pipeline and fix the root cause. Run the tests to verify your fix.",
-    "entrypoints": ["src/users/register.js", "tests/register.test.js"],
+    "entrypoints": [
+      "src/users/register.js",
+      "tests/register.test.js"
+    ],
     "hints_allowed": false
   },
   "constraints": {
@@ -22,8 +25,16 @@
     "max_steps": 40,
     "max_file_edits": 10,
     "max_files_read": 50,
-    "allowed_tools": ["shell", "read_file", "write_file", "search"],
-    "forbidden_paths": [".crucibulum/", "oracles/"],
+    "allowed_tools": [
+      "shell",
+      "read_file",
+      "write_file",
+      "search"
+    ],
+    "forbidden_paths": [
+      ".crucibulum/",
+      "oracles/"
+    ],
     "network_allowed": false
   },
   "verification": {
@@ -34,22 +45,27 @@
   },
   "scoring": {
     "weights": {
-      "correctness": 0.50,
-      "regression": 0.20,
-      "integrity": 0.20,
-      "efficiency": 0.10
+      "correctness": 0.5,
+      "regression": 0.2,
+      "integrity": 0.2,
+      "efficiency": 0.1
     },
-    "pass_threshold": 0.70
+    "pass_threshold": 0.7
   },
   "oracle_ref": {
     "type": "local",
     "path": "../../oracles/coord-001.oracle.json",
-    "hash": "sha256:placeholder"
+    "hash": "sha256:551aa3bbe8cfc81d1d7fffb445dcbec6d784412106121043ea2ff584549a6ec5"
   },
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-04-05",
-    "tags": ["async", "validation", "orchestration", "multi-file"],
+    "tags": [
+      "async",
+      "validation",
+      "orchestration",
+      "multi-file"
+    ],
     "diagnostic_purpose": "Tests whether agent reads across 3 files to discover that validate() is async and must be awaited"
   },
   "seed": 101

@@ -13,7 +13,7 @@ import { sha256, sha256Hex, sha256Object } from "../utils/hashing.js";
 import { scanForInjection, scanDiffForAntiCheat, isPathForbidden } from "../security/velum.js";
 import { enforceWorkspaceSecurity } from "../core/security.js";
 import { Observer } from "../core/observer.js";
-import { verifyBundle } from "../core/bundle.js";
+import { signBundle, verifyBundle } from "../core/bundle.js";
 import { judge } from "../core/judge.js";
 import type { EvidenceBundle, Oracle, TaskManifest, ExecutionResult } from "../adapters/base.js";
 
@@ -160,6 +160,13 @@ describe("Observer", () => {
 // ── Bundle verification ─────────────────────────────────────────────────────
 
 describe("bundle verification", () => {
+  const originalHmacKey = process.env["CRUCIBLE_HMAC_KEY"];
+
+  function setHmacKey(value: string | undefined): void {
+    if (value === undefined) delete process.env["CRUCIBLE_HMAC_KEY"];
+    else process.env["CRUCIBLE_HMAC_KEY"] = value;
+  }
+
   function makeBundle(): EvidenceBundle {
     const bundle: EvidenceBundle = {
       bundle_id: "test_bundle_001",
@@ -217,18 +224,52 @@ describe("bundle verification", () => {
   }
 
   it("verifyBundle returns valid for untampered bundle", () => {
+    setHmacKey("test-secret");
     const bundle = makeBundle();
+    signBundle(bundle);
     const result = verifyBundle(bundle);
     assert.equal(result.valid, true);
+    assert.equal(result.hash_valid, true);
+    assert.equal(result.signature_status, "valid");
     assert.equal(result.expected, result.computed);
+    setHmacKey(originalHmacKey);
   });
 
-  it("verifyBundle returns invalid for tampered bundle", () => {
+  it("verifyBundle returns invalid for modified signed bundle", () => {
+    setHmacKey("test-secret");
     const bundle = makeBundle();
+    signBundle(bundle);
     bundle.score.total = 0.1; // tamper
     const result = verifyBundle(bundle);
     assert.equal(result.valid, false);
+    assert.equal(result.hash_valid, false);
+    assert.equal(result.signature_status, "forged");
     assert.notEqual(result.expected, result.computed);
+    setHmacKey(originalHmacKey);
+  });
+
+  it("verifyBundle marks recomputed unsigned edits as forged", () => {
+    setHmacKey("test-secret");
+    const bundle = makeBundle();
+    signBundle(bundle);
+    bundle.score.total = 0.1;
+    const hashInput = { ...bundle, bundle_hash: "", signature: undefined };
+    bundle.bundle_hash = sha256Object(hashInput);
+    const result = verifyBundle(bundle);
+    assert.equal(result.valid, false);
+    assert.equal(result.hash_valid, true);
+    assert.equal(result.signature_status, "forged");
+    setHmacKey(originalHmacKey);
+  });
+
+  it("verifyBundle marks legacy bundles unverified instead of valid proof", () => {
+    setHmacKey(undefined);
+    const bundle = makeBundle();
+    const result = verifyBundle(bundle);
+    assert.equal(result.valid, false);
+    assert.equal(result.hash_valid, true);
+    assert.equal(result.signature_status, "legacy_unverified");
+    setHmacKey(originalHmacKey);
   });
 });
 

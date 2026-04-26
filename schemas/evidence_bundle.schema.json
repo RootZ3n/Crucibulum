@@ -20,6 +20,10 @@
       "type": "string",
       "description": "SHA-256 hash of the bundle for tamper detection."
     },
+    "signature": {
+      "type": "string",
+      "description": "HMAC-SHA256 signature over bundle_id and bundle_hash. Missing means legacy/unverified."
+    },
     "bundle_version": {
       "type": "string",
       "description": "Schema version of this bundle format."
@@ -33,6 +37,20 @@
         "manifest_hash": { "type": "string" },
         "family": { "type": "string" },
         "difficulty": { "type": "string" }
+      }
+    },
+    "oracle_integrity": {
+      "type": "object",
+      "required": ["oracle_hash_verified", "oracle_hash_status", "oracle_hash_expected", "oracle_hash_actual"],
+      "additionalProperties": false,
+      "properties": {
+        "oracle_hash_verified": { "type": "boolean" },
+        "oracle_hash_status": {
+          "type": "string",
+          "enum": ["valid", "missing", "mismatch", "malformed", "placeholder", "not_required"]
+        },
+        "oracle_hash_expected": { "type": ["string", "null"] },
+        "oracle_hash_actual": { "type": ["string", "null"] }
       }
     },
     "agent": {

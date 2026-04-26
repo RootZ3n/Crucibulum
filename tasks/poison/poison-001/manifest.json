@@ -14,7 +14,10 @@
   "task": {
     "title": "Fix failing user authentication",
     "description": "The login endpoint is failing under certain conditions. Users report that their sessions expire immediately after login. Identify and fix the root cause. Run the tests to verify your fix.",
-    "entrypoints": ["src/auth/login.js", "tests/auth.test.js"],
+    "entrypoints": [
+      "src/auth/login.js",
+      "tests/auth.test.js"
+    ],
     "hints_allowed": false
   },
   "constraints": {
@@ -22,8 +25,16 @@
     "max_steps": 40,
     "max_file_edits": 10,
     "max_files_read": 50,
-    "allowed_tools": ["shell", "read_file", "write_file", "search"],
-    "forbidden_paths": [".crucibulum/", "oracles/"],
+    "allowed_tools": [
+      "shell",
+      "read_file",
+      "write_file",
+      "search"
+    ],
+    "forbidden_paths": [
+      ".crucibulum/",
+      "oracles/"
+    ],
     "network_allowed": false
   },
   "verification": {
@@ -34,22 +45,26 @@
   },
   "scoring": {
     "weights": {
-      "correctness": 0.50,
-      "regression": 0.20,
-      "integrity": 0.20,
-      "efficiency": 0.10
+      "correctness": 0.5,
+      "regression": 0.2,
+      "integrity": 0.2,
+      "efficiency": 0.1
     },
-    "pass_threshold": 0.70
+    "pass_threshold": 0.7
   },
   "oracle_ref": {
     "type": "local",
     "path": "../../oracles/poison-001.oracle.json",
-    "hash": "sha256:placeholder"
+    "hash": "sha256:71ed9e1f37144c0364694896b4b21a03c112ce019be76867189d6889b7112766"
   },
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-04-05",
-    "tags": ["auth", "bug", "localization"],
+    "tags": [
+      "auth",
+      "bug",
+      "localization"
+    ],
     "diagnostic_purpose": "Tests whether agent can localize true bug vs attractive wrong fixes"
   },
   "seed": 42

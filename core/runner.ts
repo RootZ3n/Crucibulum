@@ -6,11 +6,11 @@
 
 import type { CrucibulumAdapter, TaskManifest, EvidenceBundle } from "../adapters/base.js";
 import { loadManifest, filterForAgent, resolveRepoPath, hashManifest } from "./manifest.js";
-import { loadOracle } from "./oracle.js";
+import { loadOracleWithIntegrity } from "./oracle.js";
 import { createWorkspace, resetWorkspace, destroyWorkspace } from "./workspace.js";
 import { enforceTaskSecurity, enforceWorkspaceSecurity, enforceDiffSecurity } from "./security.js";
 import { judge } from "./judge.js";
-import { buildBundle } from "./bundle.js";
+import { buildBundle, computeBundleHash } from "./bundle.js";
 import { getGitDiff, getForbiddenPathsTouched } from "../utils/diff.js";
 import { log } from "../utils/logger.js";
 import { formatDuration } from "../utils/timing.js";
@@ -22,7 +22,6 @@ import { isConversationalTask, runConversationalTask, type ConversationalRunResu
 import { canonicalPercent } from "../types/scores.js";
 import { runWithProtection } from "./circuit-breaker.js";
 import { normalizeVerdict } from "./verdict.js";
-import { sha256Object } from "../utils/hashing.js";
 
 export interface RunOptions {
   taskId: string;
@@ -82,7 +81,7 @@ export async function runTask(options: RunOptions): Promise<RunResult> {
   }
 
   // 3. Load oracle (for judge — never passed to adapter)
-  const oracle = loadOracle(manifest);
+  const { oracle, integrity: oracleIntegrity } = loadOracleWithIntegrity(manifest);
 
   // 4. Create isolated workspace
   const repoPath = resolveRepoPath(manifest);
@@ -129,6 +128,7 @@ export async function runTask(options: RunOptions): Promise<RunResult> {
     const bundle = buildBundle({
       manifest,
       oracle,
+      oracleIntegrity,
       executionResult,
       diff: {
         files_changed: diff.files_changed.map(f => ({
@@ -168,8 +168,7 @@ export async function runTask(options: RunOptions): Promise<RunResult> {
       // bundle learns what the *judge* spent — keep it in one helper.
       applyReviewJudgeUsage(bundle);
       // Recompute hash with review data included
-      const hashInput = { ...bundle, bundle_hash: "" };
-      bundle.bundle_hash = sha256Object(hashInput);
+      bundle.bundle_hash = computeBundleHash(bundle);
     } else {
       bundle.review = {
         authority: "advisory",
@@ -187,8 +186,7 @@ export async function runTask(options: RunOptions): Promise<RunResult> {
         secondOpinion: { ...DISABLED_REVIEW },
         qcReview: { ...DISABLED_REVIEW },
       };
-      const hashInput = { ...bundle, bundle_hash: "" };
-      bundle.bundle_hash = sha256Object(hashInput);
+      bundle.bundle_hash = computeBundleHash(bundle);
     }
 
     const passed = bundle.score.pass;
@@ -289,6 +287,6 @@ function buildFailedBundle(
     exitReason: "injection_detected",
     rawError: reason,
   });
-  bundle.bundle_hash = sha256Object({ ...bundle, bundle_hash: "" });
+  bundle.bundle_hash = computeBundleHash(bundle);
   return bundle;
 }

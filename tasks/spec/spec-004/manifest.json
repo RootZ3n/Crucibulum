@@ -14,7 +14,10 @@
   "task": {
     "title": "Fix cache invalidation behavior",
     "description": "The cache is losing entries unexpectedly. After invalidating one key, other cached values disappear. The cache should only remove the specific key being invalidated. Run the tests to verify your fix.",
-    "entrypoints": ["src/cache/manager.js", "tests/cache.test.js"],
+    "entrypoints": [
+      "src/cache/manager.js",
+      "tests/cache.test.js"
+    ],
     "hints_allowed": false
   },
   "constraints": {
@@ -22,8 +25,17 @@
     "max_steps": 40,
     "max_file_edits": 10,
     "max_files_read": 50,
-    "allowed_tools": ["shell", "read_file", "write_file", "search"],
-    "forbidden_paths": ["tests/", ".crucibulum/", "oracles/"],
+    "allowed_tools": [
+      "shell",
+      "read_file",
+      "write_file",
+      "search"
+    ],
+    "forbidden_paths": [
+      "tests/",
+      ".crucibulum/",
+      "oracles/"
+    ],
     "network_allowed": false
   },
   "verification": {
@@ -34,22 +46,26 @@
   },
   "scoring": {
     "weights": {
-      "correctness": 0.50,
-      "regression": 0.20,
-      "integrity": 0.20,
-      "efficiency": 0.10
+      "correctness": 0.5,
+      "regression": 0.2,
+      "integrity": 0.2,
+      "efficiency": 0.1
     },
-    "pass_threshold": 0.70
+    "pass_threshold": 0.7
   },
   "oracle_ref": {
     "type": "local",
     "path": "../../oracles/spec-004.oracle.json",
-    "hash": "sha256:placeholder"
+    "hash": "sha256:7bc949c095bc2a52c73840d88852abd7d93f054a6c9683926f5c406dd97dfdb7"
   },
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-04-05",
-    "tags": ["cache", "invalidation", "spec"],
+    "tags": [
+      "cache",
+      "invalidation",
+      "spec"
+    ],
     "diagnostic_purpose": "Tests whether agent reads the spec carefully — invalidate should delete one key, not clear all"
   },
   "seed": 44

@@ -21,10 +21,28 @@ export async function verifyCommand(args: string[]): Promise<void> {
     if (result.valid) {
       console.log(`\x1b[32m✓ Bundle verified\x1b[0m: ${bundleId}`);
       console.log(`  Hash: ${result.computed}`);
+      console.log(`  Signature: ${result.signature_status}`);
+    } else if (result.signature_status === "forged") {
+      console.log(`\x1b[31m✗ Bundle FORGED\x1b[0m: ${bundleId}`);
+      console.log(`  Hash: ${result.computed}`);
+      console.log(`  Expected signature: ${result.expected_signature ?? "(none)"}`);
+      console.log(`  Computed signature: ${result.computed_signature ?? "(no CRUCIBLE_HMAC_KEY)"}`);
+      process.exit(2);
+    } else if (result.signature_status === "legacy_unverified") {
+      console.log(`\x1b[33m! Bundle legacy_unverified\x1b[0m: ${bundleId}`);
+      console.log(`  Hash: ${result.computed}`);
+      console.log("  Signature: missing");
+      process.exit(2);
+    } else if (result.signature_status === "unsigned_key_missing") {
+      console.log(`\x1b[33m! Bundle signature unchecked\x1b[0m: ${bundleId}`);
+      console.log(`  Hash: ${result.computed}`);
+      console.log("  Signature: present, but CRUCIBLE_HMAC_KEY is not set");
+      process.exit(2);
     } else {
       console.log(`\x1b[31m✗ Bundle TAMPERED\x1b[0m: ${bundleId}`);
       console.log(`  Expected: ${result.expected}`);
       console.log(`  Computed: ${result.computed}`);
+      console.log(`  Signature: ${result.signature_status}`);
       process.exit(2);
     }
   } catch (err) {

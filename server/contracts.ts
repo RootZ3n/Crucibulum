@@ -60,6 +60,7 @@ export interface EvaluationSummary {
   bundle_id: string;
   bundle_hash: string;
   task_id: string;
+  oracle_integrity: NonNullable<EvidenceBundle["oracle_integrity"]> | null;
   suite_id: string;
   family: string;
   difficulty: string;
@@ -85,7 +86,11 @@ export interface EvaluationSummary {
     deterministic_judge_authoritative: true;
     review_layer_advisory: true;
   };
-  trust: EvidenceBundle["trust"] & { bundle_hash_verified: boolean };
+  trust: EvidenceBundle["trust"] & {
+    bundle_hash_verified: boolean;
+    bundle_authenticated: boolean;
+    bundle_signature_status: ReturnType<typeof verifyBundle>["signature_status"];
+  };
   usage: {
     tokens_in: number;
     tokens_out: number;
@@ -301,6 +306,7 @@ export function summarizeBundle(
     bundle_id: bundle.bundle_id,
     bundle_hash: bundle.bundle_hash,
     task_id: bundle.task.id,
+    oracle_integrity: bundle.oracle_integrity ?? null,
     suite_id: "v1",
     family: bundle.task.family,
     difficulty: bundle.task.difficulty,
@@ -340,7 +346,9 @@ export function summarizeBundle(
         deterministic_judge_authoritative: true,
         review_layer_advisory: true,
       }),
-      bundle_hash_verified: validity.valid,
+      bundle_hash_verified: validity.hash_valid,
+      bundle_authenticated: validity.valid,
+      bundle_signature_status: validity.signature_status,
     },
     usage: {
       tokens_in: bundle.usage.tokens_in,

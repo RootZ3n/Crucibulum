@@ -41,6 +41,7 @@ import type { StructuredProviderError } from "../types/provider-error.js";
 import { normalizeProviderError } from "./provider-errors.js";
 import { runReviewLayer, DISABLED_REVIEW, type RunReviewConfig } from "./review.js";
 import { applyReviewJudgeUsage } from "./judge-usage.js";
+import { computeBundleHash } from "./bundle.js";
 
 // ── Default gap fillers for recall tests ──────────────────────────────────
 
@@ -551,7 +552,7 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
     });
     applyReviewJudgeUsage(bundle);
     bundle.interpretation = interpretBundleResult(bundle);
-    bundle.bundle_hash = sha256Object({ ...bundle, bundle_hash: "" });
+    bundle.bundle_hash = computeBundleHash(bundle);
   }
 
   const exitCode = bundle.verdict?.completionState === "PASS" ? 0 : bundle.verdict?.completionState === "FAIL" ? 1 : 3;
@@ -751,7 +752,7 @@ function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBu
   bundle.conversational = { results: judgeResult.results };
 
   // Sign the bundle
-  bundle.bundle_hash = sha256Object({ ...bundle, bundle_hash: "" });
+  bundle.bundle_hash = computeBundleHash(bundle);
 
   return bundle;
 }

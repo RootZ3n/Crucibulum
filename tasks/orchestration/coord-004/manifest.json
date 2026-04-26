@@ -14,7 +14,10 @@
   "task": {
     "title": "Fix search performance degradation",
     "description": "The search function works correctly for small datasets but becomes unusably slow with production-sized data. Users report searches taking 5+ seconds. Profile and fix the performance bottleneck. The fix must maintain correctness. Run the tests to verify.",
-    "entrypoints": ["src/search/engine.js", "tests/search.test.js"],
+    "entrypoints": [
+      "src/search/engine.js",
+      "tests/search.test.js"
+    ],
     "hints_allowed": false
   },
   "constraints": {
@@ -22,8 +25,17 @@
     "max_steps": 40,
     "max_file_edits": 10,
     "max_files_read": 50,
-    "allowed_tools": ["shell", "read_file", "write_file", "search"],
-    "forbidden_paths": ["tests/", ".crucibulum/", "oracles/"],
+    "allowed_tools": [
+      "shell",
+      "read_file",
+      "write_file",
+      "search"
+    ],
+    "forbidden_paths": [
+      "tests/",
+      ".crucibulum/",
+      "oracles/"
+    ],
     "network_allowed": false
   },
   "verification": {
@@ -34,22 +46,27 @@
   },
   "scoring": {
     "weights": {
-      "correctness": 0.50,
-      "regression": 0.20,
-      "integrity": 0.20,
-      "efficiency": 0.10
+      "correctness": 0.5,
+      "regression": 0.2,
+      "integrity": 0.2,
+      "efficiency": 0.1
     },
-    "pass_threshold": 0.70
+    "pass_threshold": 0.7
   },
   "oracle_ref": {
     "type": "local",
     "path": "../../oracles/coord-004.oracle.json",
-    "hash": "sha256:placeholder"
+    "hash": "sha256:786660f401a700f7cc9a1a700d72c77f4fd52066c814bd8f2dcaaf197bbff69d"
   },
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-04-05",
-    "tags": ["performance", "search", "optimization", "orchestration"],
+    "tags": [
+      "performance",
+      "search",
+      "optimization",
+      "orchestration"
+    ],
     "diagnostic_purpose": "Tests whether agent can identify O(n^2) hotspot and optimize without breaking correctness"
   },
   "seed": 84

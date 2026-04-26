@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { summarizeBundle, countRepeatRuns, summarizeRunSet } from "../server/contracts.js";
 import { writeCrucibleLink, readCrucibleLink } from "../server/validation-links.js";
-import { sha256Object } from "../utils/hashing.js";
+import { signBundle } from "../core/bundle.js";
 import type { EvidenceBundle } from "../adapters/base.js";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -14,6 +14,12 @@ function makeBundle(overrides: Partial<EvidenceBundle> = {}): EvidenceBundle {
     bundle_hash: "",
     bundle_version: "1.0.0",
     task: { id: "poison-001", manifest_hash: "sha256:abc", family: "poison_localization", difficulty: "medium" },
+    oracle_integrity: {
+      oracle_hash_verified: true,
+      oracle_hash_status: "valid",
+      oracle_hash_expected: `sha256:${"a".repeat(64)}`,
+      oracle_hash_actual: `sha256:${"a".repeat(64)}`,
+    },
     agent: { adapter: "openrouter", adapter_version: "1.0.0", system: "openrouter-v1", system_version: "openrouter-v1", model: "openai/gpt-4.1-mini", model_version: "latest", provider: "openrouter" },
     environment: { os: "linux-x64", arch: "x64", repo_commit: "abc123", crucibulum_version: "1.0.0", timestamp_start: "2026-04-05T00:00:00Z", timestamp_end: "2026-04-05T00:02:00Z" },
     timeline: [{ t: 0, type: "task_start", detail: "start" }],
@@ -58,7 +64,8 @@ function makeBundle(overrides: Partial<EvidenceBundle> = {}): EvidenceBundle {
     },
     ...overrides,
   };
-  bundle.bundle_hash = sha256Object({ ...bundle, bundle_hash: "" });
+  process.env["CRUCIBLE_HMAC_KEY"] = "contracts-test-secret";
+  signBundle(bundle);
   return bundle;
 }
 
@@ -115,10 +122,14 @@ describe("evaluation contracts", () => {
     assert.equal(summary.schema, "crucibulum.evaluation.summary.v1");
     assert.equal(summary.target.adapter, "openrouter");
     assert.equal(summary.target.provider, "openrouter");
+    assert.equal(summary.oracle_integrity?.oracle_hash_verified, true);
+    assert.equal(summary.oracle_integrity?.oracle_hash_status, "valid");
     assert.equal(summary.judge.kind, "deterministic");
     assert.equal(summary.authority.deterministic_judge_authoritative, true);
     assert.equal(summary.authority.review_layer_advisory, true);
     assert.equal(summary.trust.bundle_hash_verified, true);
+    assert.equal(summary.trust.bundle_authenticated, true);
+    assert.equal(summary.trust.bundle_signature_status, "valid");
     assert.equal(summary.review_input_sanitized, true);
     assert.equal(summary.injection_flags_count, 2);
     assert.deepEqual(summary.flagged_sources, ["diff", "timeline"]);
