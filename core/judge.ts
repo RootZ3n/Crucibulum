@@ -9,6 +9,7 @@ import type { Oracle, TaskManifest, ExecutionResult, VerificationResults, DiffEn
 import type { JudgeCommandResult } from "./verdict.js";
 import { log } from "../utils/logger.js";
 
+// Coordinated by Aedis
 export const DETERMINISTIC_JUDGE_METADATA = {
   kind: "deterministic" as const,
   label: "Judge: deterministic",
