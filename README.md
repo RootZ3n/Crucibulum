@@ -1,8 +1,56 @@
 # Crucible
 
-Crucible is an execution-based evaluation harness for AI coding models and agent systems.
+Crucible turns model and agent trial outputs into auditable scoreboards, receipts, and comparison views.
 
-It is built to answer a narrow question: can this model or agent actually complete a real software task inside a repo under constraints, with evidence, without trusting narration?
+It helps operators inspect observed behavior by task family, provider, model, adapter, and run evidence. Crucible is not a safety certification, not a universal model ranking, and not a replacement for Colosseum-style trial generation.
+
+In the current release sequence, Crucible is the benchmark, scoreboard, and evidence-viewer layer. It can still run local harness flows for smoke testing and development, but its public role is to make existing run evidence understandable without overstating what the evidence can support.
+
+## How Crucible Fits With The Other Tools
+
+- **Colosseum** generates trial runs and receipts. Use it as the proving ground when you need to create fresh trial evidence.
+- **Crucible** views, compares, scores, and explains run evidence. Use it to inspect receipts, compare models/providers/adapters, and understand why a run is or is not ranked.
+- **Verum** is adversarial and probing-oriented. Its outputs can be normalized into Crucible score/evidence views when the integration path is used.
+- **Aedis** is governed build orchestration. It can drive controlled workflows that later produce evidence for inspection.
+- **Squidley Public** is the broader user-facing AI control surface. Crucible is one evidence and scoreboard layer inside that wider release path.
+- **Crucibulum** appears in environment variables, schemas, and API names as the older/internal protocol name for Crucible-compatible run and score exchange. Public docs should treat it as compatibility naming, not a separate public product unless the project is split later.
+
+## What Crucible Is / Is Not
+
+Crucible is:
+
+- a local scoreboard and evidence viewer
+- a lane-scoped comparison UI
+- a provenance and receipt inspection layer
+- an observed-behavior comparison tool
+- a way to preserve adapter/provider/model identity while reviewing results
+
+Crucible is not:
+
+- a universal model benchmark
+- a safety certification
+- proof that a model is safe
+- a replacement for external audits
+- a guarantee of local or cloud isolation
+- the primary trial-generation harness when Colosseum owns that role
+
+## Public Leaderboard Trust
+
+Default public leaderboard views rank only verified eligible evidence bundles.
+
+Tampered, forged, legacy, unsigned, unauthenticated, mock/demo, malformed, or otherwise unverified bundles are quarantined and are not ranked. Quarantined evidence may be inspected through safe metadata views such as `/api/leaderboard/quarantine`, but it is labeled `NOT RANKED` and does not influence default scores.
+
+Local historical runs may exist in `runs/`. They are local state, ignored by git, and not treated as public leaderboard evidence unless they pass the current eligibility gate.
+
+## First-Run Mental Model
+
+A fresh checkout does not ship with public ranking data. The offline harness path uses the mock adapter for pipeline validation only; those results are deliberately quarantined from public rankings as mock/demo evidence. Live or imported evidence must be verified before it can appear in the default public leaderboard.
+
+Current desktop and mobile screenshots are in `docs/screenshots/`. Additional GIFs are planned before the final public announcement.
+
+## Evidence Model
+
+Crucible is built around a narrow question: what did this model or agent do under a defined task, adapter, provider, and scoring policy, and what evidence supports that observation?
 
 Crucible does not grade based on style, self-report, chain-of-thought, or polished explanations. It grades based on observable state:
 
@@ -22,12 +70,15 @@ The core trust model is simple:
 
 ## What Crucible Does
 
-Crucible runs coding tasks against a target model or agent adapter, captures what happened in an isolated workspace, judges the result with a deterministic verifier, and produces an evidence bundle you can inspect or compare later.
+Crucible ingests or creates model/agent run evidence, applies deterministic scoring where configured, and turns that evidence into local scoreboards, receipts, and comparison views.
 
 In practice, that means it can:
 
-- run a single task against a model
-- run an entire benchmark suite
+- inspect run bundles and receipts
+- compare models across task families and lanes
+- show why evidence is eligible or quarantined
+- run local smoke tasks against a model when needed
+- run a local suite for development and regression checks
 - compare multiple models across repeated runs
 - score outcomes using hidden and public checks
 - enforce integrity constraints like forbidden-path edits and anti-cheat patterns
@@ -47,7 +98,7 @@ A lot of model evaluation still collapses into one of these failure modes:
 
 Crucible is designed against that.
 
-It treats coding evaluation as an environment-state problem. The key question is not "did the model say the right thing?" It is "did the system produce the right state transition under constrained execution, and can that be verified independently?"
+It treats evaluation as an evidence problem. The key question is not "did the model say the right thing?" It is "what behavior was observed, under what conditions, and can the evidence be inspected independently?"
 
 ## How It Works
 
@@ -74,7 +125,7 @@ The principle behind the system is explicit in the code:
 
 - score is based on observable state transitions
 - narration is not trusted
-- the deterministic judge is the source of truth
+- the deterministic judge is the authoritative scoring source for configured checks
 
 ## Benchmark Coverage
 
@@ -103,7 +154,7 @@ Conversational task families currently present in the corpus:
 - `thinking-mode`
 - `token-efficiency`
 
-This means Crucible is already evaluating both execution behavior and chat behavior, but the long-term benchmark taxonomy is still being consolidated.
+This means Crucible can inspect both execution behavior and chat behavior. The current taxonomy is release-candidate level and versioned, but it should still be cited with the repository commit, task IDs, and scoring policy used for a given comparison. The test corpus is lightweight by design (intentional minimum for bootstrap); use `npm run oracle:hash -- --write` after adding oracles to register them in the corpus.
 
 ## Scoring Model
 
@@ -178,6 +229,7 @@ Trusted:
 
 - deterministic judge results
 - hidden oracle data
+- benchmark provenance: source, public/private status, oracle visibility, gold-solution visibility, contamination risk, and known scoring limitations
 - integrity checks
 - system metadata
 
@@ -198,7 +250,7 @@ Recent hardening added a Velum-style review defense layer:
 - advisory-only review status and disagreement signals
 - review security telemetry in bundles, summaries, and receipts
 
-Review models may summarize, flag concerns, or recommend reruns. They may not override scoring, mutate pass/fail, or rewrite authoritative truth.
+Review models may summarize, flag concerns, or recommend reruns. They may not override scoring, mutate pass/fail, or rewrite authoritative evidence.
 
 ## Review Layer
 
@@ -222,7 +274,7 @@ They do not change:
 - score breakdown
 - hidden/public test outcomes
 - integrity verdicts
-- bundle truth
+- bundle evidence
 
 Review inputs are sanitized and structured before model calls. Review outputs are schema-validated and fail closed on malformed output.
 
@@ -256,7 +308,7 @@ npm run harness -- --enable-judge              # also run the model judge layer
 
 Per-test it records: `manifest_loaded`, `request_sent`, `response_received`, `judge_ran`, `bundle_stored`, `ui_summary_well_formed`, `drilldown_evidence_present`, plus tested-model and judge-model token + cost split. The report is written to `runs/_harness_report_<timestamp>.json`.
 
-Exit codes: `0` clean, `1` test failures only, `2` pipeline breakage.
+Exit codes: `0` clean, `1` test failures only, `2` pipeline breakage, `3` conversational task incomplete (verdict neither PASS nor FAIL).
 
 ## Adapters and Providers
 
@@ -288,7 +340,7 @@ without losing track of who actually ran the task and under what identity.
 
 ## Methodology and Trust Docs
 
-The benchmark is being documented as a public-audit system rather than only a codebase. Start here:
+Crucible is being documented as a public audit and evidence-inspection system rather than only a codebase. Start here:
 
 - [docs/methodology.md](docs/methodology.md)
 - [docs/scoring.md](docs/scoring.md)
@@ -297,7 +349,7 @@ The benchmark is being documented as a public-audit system rather than only a co
 
 ## UI and API
 
-Crucible includes a local API and browser UI for inspecting runs, receipts, bundles, and comparisons.
+Crucible includes a local API and browser UI for inspecting runs, receipts, bundles, quarantined evidence, and comparisons.
 
 The API exposes:
 
@@ -310,43 +362,147 @@ The API exposes:
 - receipts
 - stats
 - compare views
+- leaderboard quarantine metadata
 
 The UI is there to make evidence inspection practical, but the trust model does not depend on the UI. The source of record remains the bundle and the deterministic judge output.
 
 ## Install
 
+Requirements:
+
+- Node.js 20 or newer
+- npm 10 or newer
+- Git, if you are cloning from source
+
+This release has been verified on Linux with Node `v22.22.2` and npm `10.8.2`. Linux, macOS, and WSL2 are the intended first-run environments. Native Windows PowerShell commands are documented, but native Windows has not been fully verified for this release.
+
+Install dependencies and build:
+
 ```bash
-npm install
+npm ci
 npm run build
 ```
 
 ## Public Quick Start
 
+Linux, macOS, or WSL2:
+
 ```bash
-# Offline pipeline validation only. This is mock mode, not model evidence.
-node dist/cli/main.js harness --task safety-001
+# Install and compile
+npm ci
+npm run build
 
-# OpenRouter live run. May incur provider cost.
-export OPENROUTER_API_KEY=...
-node dist/cli/main.js harness --adapter openrouter --model xiaomi/mimo-v2.5-pro --task safety-001
-
-# MiniMax direct live run. May incur provider cost.
-export MINIMAX_API_KEY=...
-node dist/cli/main.js harness --adapter minimax --model MiniMax-M2.7 --task safety-001
-
-# Tune conservative live-call resilience.
-node dist/cli/main.js harness --adapter openrouter --model xiaomi/mimo-v2.5-pro --task safety-001 --retries 2 --timeout-ms 120000
-
-# Verify a stored evidence bundle
-crucible verify run_2026-04-05_poison-001_gemma4
+# Run the deterministic offline smoke test
+npm run smoke
 
 # Start the local API / UI
 npm run serve
 ```
 
-Crucible is an evaluation harness, not a guarantee of model safety. Passing a task means the model passed that task under this harness, with this adapter, at that time. It does not prove the model is universally safe or reliable.
+Windows PowerShell:
+
+```powershell
+# Install and compile
+npm ci
+npm run build
+
+# Run the deterministic offline smoke test
+npm run smoke
+
+# Start the local API / UI
+npm run serve
+```
+
+Expected smoke output includes:
+
+```text
+Crucible smoke test: deterministic offline mock run.
+Crucible Harness - MOCK adapter
+Tests:    1 passed / 0 failed (1 total)
+Smoke passed.
+```
+
+The smoke path uses a deterministic mock adapter and writes temporary smoke state under the operating system temp directory. It does not require provider API keys, Colosseum, Squidley, private services, or pre-existing `runs/` data. Smoke output is mock/demo evidence and is excluded from public ranking.
+
+By default, a fresh checkout has no verified public ranking data. The leaderboard may be empty until you import or generate verified eligible evidence. Old local runs do not silently become public rankings; tampered, unsigned, legacy, mock/demo, malformed, or unverified bundles are quarantined and labeled `NOT RANKED`.
+
+`npm run serve` binds to `127.0.0.1` by default and prints the UI URL:
+
+```text
+Crucible server running on http://127.0.0.1:18795
+UI: http://127.0.0.1:18795/
+API: http://127.0.0.1:18795/api/
+```
+
+Set `CRUCIBLE_PORT` to use a different port. Set `CRUCIBLE_HOST=0.0.0.0` only when you intentionally want the server reachable beyond the local machine and have reviewed `SECURITY.md`.
+
+## Common Commands
+
+```bash
+# Type-check without emitting build output
+npm run typecheck
+
+# Build
+npm run build
+
+# Run the full test suite
+npm test
+
+# Run deterministic offline smoke
+npm run smoke
+
+# Run the release verification bundle
+npm run verify:release
+
+# Check npm advisories at moderate severity and above
+npm run audit:release
+
+# Verify oracle hashes
+npm run oracle:hash -- --check
+```
+
+Live adapter examples:
+
+```bash
+# Offline pipeline validation only. This is mock mode, not model evidence.
+npm run harness -- --task safety-001
+
+# OpenRouter live run. May incur provider cost.
+export OPENROUTER_API_KEY=...
+npm run harness -- --adapter openrouter --model xiaomi/mimo-v2.5-pro --task safety-001
+
+# MiniMax direct live run. May incur provider cost.
+export MINIMAX_API_KEY=...
+npm run harness -- --adapter minimax --model MiniMax-M2.7 --task safety-001
+
+# Tune conservative live-call resilience.
+npm run harness -- --adapter openrouter --model xiaomi/mimo-v2.5-pro --task safety-001 --retries 2 --timeout-ms 120000
+
+# Verify a stored evidence bundle
+npm run cli -- verify run_2026-04-05_poison-001_gemma4
+```
+
+Crucible is an evidence viewer and local evaluation layer, not a guarantee of model safety. Passing a task means the model passed that task under this harness, with this adapter, at that time. It does not show that the model is universally safe or reliable.
 
 Mock mode is for offline pipeline validation only. Mock results must not be cited as live model evidence.
+
+## Clearing Local State
+
+Crucible writes local runs and state to ignored directories by default:
+
+- `runs/` for generated evidence bundles and harness reports
+- `state/` for auth/session/provider registry data
+
+To clear local/demo state, stop the server first, then remove those directories with your normal file manager or shell. Do not delete imported evidence you still need. No public script deletes user data automatically.
+
+## Troubleshooting First Run
+
+- **Port already in use:** run with a different port, for example `CRUCIBLE_PORT=18895 npm run serve` on Linux/macOS/WSL2 or `$env:CRUCIBLE_PORT=18895; npm run serve` in PowerShell.
+- **Missing env vars:** offline `npm run smoke` needs no provider keys. Live adapters fail loudly and name the required key, such as `OPENROUTER_API_KEY` or `MINIMAX_API_KEY`.
+- **PowerShell path issues:** use npm scripts (`npm run smoke`, `npm run serve`, `npm run harness -- --task safety-001`) instead of invoking files under `dist/` directly.
+- **Malformed or tampered runs:** Crucible quarantines them. Inspect safe metadata at `/api/leaderboard/quarantine`; do not cite them as public leaderboard evidence.
+- **Empty leaderboard:** this is expected on a fresh checkout. Default leaderboards rank only verified eligible evidence, so mock/demo/local historical data may be visible as quarantined but will not create public rankings.
+- **Need remote access:** default binding is local-only. Set `CRUCIBLE_HOST=0.0.0.0` deliberately, configure auth, and read `SECURITY.md` first.
 
 ## Live Adapter Setup
 
@@ -385,11 +541,15 @@ Live runs may incur cost. Cost fields are transparent but provider-reported cost
 
 To add a task, create a manifest under `tasks/<family>/<task-id>/manifest.json`. Repo-execution tasks include a fixture repo and oracle file under `oracles/`; conversational tasks define questions and deterministic scoring rules directly in the manifest.
 
-To add an adapter, implement `CrucibulumAdapter` from `adapters/base.ts`, register it in `adapters/registry.ts`, and ensure the bundle records adapter, provider, model, usage, provider attempts, and structured provider errors.
+Every release task must declare `metadata.benchmark_provenance` with `source`, `public_status`, `oracle_visibility`, `gold_solution_visibility`, `contamination_risk`, and at least one `known_scoring_limitations` entry. The manifest loader treats missing or empty provenance as a release-gate failure, and bundles, reports, and the UI surface these fields so benchmark claims remain auditable.
+
+To add an adapter, implement `CrucibulumAdapter` from `adapters/base.ts`, register it in `adapters/registry.ts`, and ensure the bundle records adapter, provider, model, usage, provider attempts, and structured provider errors. The `CrucibulumAdapter` name is compatibility naming from the older/internal protocol layer.
 
 ## Release Limitations
 
-Crucible currently emphasizes deterministic, auditable evaluation over broad benchmark coverage. Safety tasks are caveated diagnostics, not a proof of universal safety. Provider behavior, model versions, and pricing can change. Repeat runs are recommended before making claims.
+Crucible currently emphasizes deterministic, auditable evidence over broad benchmark coverage. Safety tasks are caveated diagnostics, not a certification or proof of universal safety. Provider behavior, model versions, and pricing can change. Repeat runs are recommended before making claims.
+
+See `SECURITY.md` for the public security policy and trust model, and `CHANGELOG.md` for release notes. The included `crucible.service` is an advanced Linux/systemd example only; it is not required for the local quickstart.
 
 ## Exit Codes
 
@@ -438,7 +598,7 @@ It is less useful if what you want is:
 
 If you need a short description for GitHub, docs, or a project directory:
 
-> Crucible is an execution-based evaluation harness for AI coding agents. It runs models against real repo tasks, judges them deterministically using hidden/public checks and integrity rules, and produces signed evidence bundles for audit and comparison.
+> Crucible turns model and agent trial outputs into auditable scoreboards, receipts, and comparison views, with verified evidence gates for public rankings.
 
 ## License
 

@@ -2,9 +2,9 @@
 
 ## Context
 
-Crucible is the truth engine / evaluation system in the Squidley ecosystem. It runs tasks against AI models, evaluates results with a deterministic judge, and produces evidence bundles. Three critical issues must be fixed before it can be trusted as the foundation layer.
+Crucible is the evidence and evaluation layer in the Squidley ecosystem. It runs tasks against AI models, evaluates results with a deterministic judge, and produces evidence bundles. Three critical issues must be fixed before it can be trusted as a foundation layer.
 
-**Repo:** `/mnt/ai/crucible`
+**Repo:** `<crucible-repo>`
 **Port:** 18795
 **Stack:** TypeScript, Node.js, native HTTP server (no Express/Fastify)
 
@@ -18,7 +18,7 @@ The system advertises "custom" scoring but there's no registry/loader/implementa
 ### Solution
 Build a scorer registry that:
 1. Defines a `ScorerPlugin` interface
-2. Loads scorer plugins from a configurable directory (`/mnt/ai/crucible/scorers/`)
+2. Loads scorer plugins from a configurable directory (`<crucible-repo>/scorers/`)
 3. Validates scorer exports at load time (fail loud, not silent)
 4. Integrates with the existing judge pipeline
 

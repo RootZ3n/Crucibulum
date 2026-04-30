@@ -1,8 +1,11 @@
 {
   "name": "crucible",
-  "version": "1.0.0",
-  "description": "Execution-based AI agent evaluation harness",
+  "version": "0.1.0",
+  "description": "Auditable scoreboard, receipt, and evidence viewer for model and agent trial outputs",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "main": "dist/server/api.js",
   "bin": {
     "crucible": "dist/cli/main.js"
@@ -24,22 +27,30 @@
     "oracles/",
     "schemas/",
     "suites/",
+    "scripts/",
     "ui/",
     "docs/",
     "README.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
     "LICENSE",
-    ".env.example"
+    ".env.example",
+    "crucible.service"
   ],
   "scripts": {
     "build": "tsc",
-    "build:clean": "rm -rf dist && tsc",
+    "build:clean": "node scripts/build-clean.mjs",
     "dev": "tsc --watch",
     "start": "node dist/server/api.js",
     "serve": "node dist/server/api.js",
     "cli": "node dist/cli/main.js",
-    "pretest": "rm -rf dist && tsc",
-    "test": "node --test dist/tests/*.test.js",
-    "lint": "tsc --noEmit",
+    "pretest": "node scripts/build-clean.mjs",
+    "test": "node scripts/test.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "npm run typecheck",
+    "smoke": "node scripts/smoke.mjs",
+    "verify:release": "node scripts/verify-release.mjs",
+    "audit:release": "npm audit --audit-level=moderate",
     "oracle:hash": "node dist/cli/main.js oracle-hash",
     "harness": "node dist/cli/main.js harness",
     "qa": "node dist/cli/main.js qa"

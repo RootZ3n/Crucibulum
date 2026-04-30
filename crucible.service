@@ -2,11 +2,18 @@
 Description=Crucible standalone (web UI + API server)
 After=network.target
 
+# Advanced Linux/systemd example only.
+# Adjust User, WorkingDirectory, and Environment paths for your deployment.
+# The repository quickstart uses npm commands and does not require systemd.
+
 [Service]
 Type=simple
-User=zen
-WorkingDirectory=/mnt/ai/crucible
+User=crucible
+WorkingDirectory=/opt/crucible
 Environment=NODE_ENV=production
+Environment=CRUCIBLE_HOST=127.0.0.1
+Environment=CRUCIBLE_PORT=18795
+Environment=CRUCIBLE_STATE_ROOT=/var/lib/crucible
 ExecStart=/usr/bin/node dist/server/api.js
 Restart=on-failure
 RestartSec=3
