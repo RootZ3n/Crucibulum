@@ -123,6 +123,10 @@ export interface VerumIngestResponse extends ScoreSyncResponse {
 
 export interface LeaderboardEntry {
   modelId: string;
+  identity_key?: string | undefined;
+  adapter?: string | undefined;
+  provider?: string | undefined;
+  model?: string | undefined;
   composite: number;
   families: Record<ScoreFamily, number | null>;
   totalRuns: number;

@@ -1,6 +1,16 @@
 /**
  * Crucible — Evidence Bundle Builder
  * Builds, signs (SHA256), and stores immutable evidence bundles.
+ *
+ * Integrity model:
+ * - Content hash (SHA256) is always computed and stored in bundle_hash.
+ * - HMAC signature (HMAC-SHA256) is computed when CRUCIBLE_HMAC_KEY is set.
+ *   Bundles without an HMAC signature are marked "unsigned_key_missing" during
+ *   verification — they are NOT automatically trusted. Callers must decide
+ *   whether to accept them based on their threat model.
+ *
+ * To enforce HMAC signatures in production, set CRUCIBLE_HMAC_KEY.
+ * Without it, the bundle_hash provides content-integrity but not authenticity.
  */
 
 import { createHmac, timingSafeEqual } from "node:crypto";
@@ -68,7 +78,11 @@ function hmacKey(): string | null {
 }
 
 function bundleHashInput(bundle: EvidenceBundle): EvidenceBundle {
-  return { ...bundle, bundle_hash: "", signature: undefined };
+  const trust = bundle.trust
+    ? { ...(bundle.trust as EvidenceBundle["trust"] & { bundle_signature_status?: BundleSignatureStatus }) }
+    : bundle.trust;
+  if (trust) delete trust.bundle_signature_status;
+  return { ...bundle, trust, bundle_hash: "", signature: undefined };
 }
 
 export function computeBundleHash(bundle: EvidenceBundle): string {
@@ -127,6 +141,7 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
       manifest_hash: hashManifest(manifest),
       family: manifest.family,
       difficulty: manifest.difficulty,
+      benchmark_provenance: manifest.metadata.benchmark_provenance,
     },
     oracle_integrity: input.oracleIntegrity,
     agent: {
@@ -336,9 +351,9 @@ export function loadVerifiedBundle(raw: string, sourceLabel?: string): EvidenceB
   if (!result.valid) {
     log("warn", "bundle", `Bundle verification ${result.signature_status} on ${sourceLabel ?? bundle.bundle_id} — expected ${result.expected.slice(0, 20)}…, got ${result.computed.slice(0, 20)}…`);
     // Never let a tampered bundle claim bundle_verified=true downstream.
-    bundle.trust = { ...bundle.trust, bundle_verified: false };
+    bundle.trust = { ...bundle.trust, bundle_verified: false, bundle_signature_status: result.signature_status } as EvidenceBundle["trust"];
   } else {
-    bundle.trust = { ...bundle.trust, bundle_verified: true };
+    bundle.trust = { ...bundle.trust, bundle_verified: true, bundle_signature_status: result.signature_status } as EvidenceBundle["trust"];
   }
   bundle.verdict = bundle.verdict ?? normalizeVerdict({ bundle });
   return bundle;

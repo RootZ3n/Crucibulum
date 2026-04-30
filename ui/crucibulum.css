@@ -71,8 +71,8 @@
   --ink-cold:#cbd7ea;                /* rare neutral for value cells */
   --ink-ghost:rgba(203,215,234,.32);
 
-  --body:'Space Grotesk',sans-serif;
-  --mono:'DM Mono',monospace;
+  --body:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  --mono:"SFMono-Regular",Consolas,"Liberation Mono","Courier New",monospace;
 
   --shadow-deep:0 40px 120px rgba(0,0,0,.85),0 0 80px rgba(20,60,120,.25);
   --shadow-panel:0 24px 80px rgba(0,0,0,.72),0 0 0 1px rgba(20,40,80,.6);
@@ -91,6 +91,8 @@
 html,body{
   margin:0;
   min-height:100%;
+  max-width:100%;
+  overflow-x:hidden;
   overscroll-behavior-y:none;
   background:
     radial-gradient(ellipse 70% 55% at 50% 42%,transparent 24%,rgba(0,0,4,.82) 100%),
@@ -149,9 +151,11 @@ body::after{
   z-index:0;
 }
 
-#app{min-height:100vh;padding:22px;position:relative;z-index:1}
+#app{min-height:100vh;padding:22px;position:relative;z-index:1;max-width:100%;overflow-x:hidden}
 .app-shell{
   max-width:1580px;
+  min-width:0;
+  width:100%;
   margin:0 auto;
   display:grid;
   gap:18px;
@@ -768,6 +772,8 @@ body::after{
     inset 0 0 30px rgba(20,60,120,.35),
     0 18px 50px rgba(0,0,0,.5);
   position:relative;
+  min-width:0;
+  flex-wrap:wrap;
 }
 .nav-band::before{
   content:"";
@@ -781,12 +787,15 @@ body::after{
   flex-wrap:wrap;
   gap:4px;
   padding:3px;
+  min-width:0;
+  flex:1 1 320px;
   border-radius:999px;
   border:1px solid rgba(120,200,255,.12);
   background:rgba(1,5,16,.5);
 }
 .tab{
   flex:1 1 auto;
+  min-width:0;
   border:1px solid transparent;
   border-radius:999px;
   background:transparent;
@@ -1716,6 +1725,8 @@ body::after{
 }
 .comparison-head{display:grid;gap:4px;min-width:0}
 .comparison-model{font-family:var(--body);font-size:13px;font-weight:700;color:var(--orange);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.comparison-row,.run-strip,.winner-row,.winner-chip,.overview-card,.vital,.glyph,.scope-note,.sys-status{min-width:0}
+.comparison-model,.winner-model,.rs-model,.mb-primary-value,.mb-context-name,.chip,.tag,.badge{overflow-wrap:anywhere}
 .comparison-meta{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
 .comparison-bar,.mini-bar-track{
   height:8px;
@@ -1735,6 +1746,14 @@ body::after{
 .comparison-row.warn .comparison-score{color:var(--orange)}
 .comparison-row.fail .comparison-score{color:var(--red)}
 .comparison-tags{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end}
+.data-error{
+  color:var(--amber);
+  border-color:rgba(255,207,107,.34);
+  background:rgba(255,207,107,.07);
+  overflow-wrap:anywhere;
+}
+.boot-soft .ab-title{color:var(--amber);text-shadow:0 0 24px rgba(255,207,107,.32)}
+.boot-soft .ab-sub{max-width:760px}
 /* ─── Score matrix (model × category heatmap) ─────────────────── */
 .matrix-head{display:grid;gap:8px;align-items:end;padding:0 6px 6px}
 .mx-corner{font-family:var(--mono);font-size:9px;letter-spacing:.24em;color:var(--ink-dim);text-transform:uppercase}
@@ -2376,24 +2395,60 @@ tr:hover td{background:rgba(111,217,255,.05)}
   .run-strip .rs-task,.run-strip .rs-bar{display:none}
 }
 @media (max-width:720px){
-  #app{padding:10px}
+  #app{padding:8px}
+  .app-shell{gap:10px}
+  .abyss-banner{padding:16px 14px;border-radius:18px}
+  .ab-title{font-size:clamp(28px,10vw,52px);line-height:.95;overflow-wrap:anywhere}
+  .ab-sub{font-size:12px;line-height:1.45;max-width:100%;overflow-wrap:anywhere}
+  .ab-telemetry,.nav-band,.sys-status{align-items:flex-start}
+  .nav-band{padding:8px;border-radius:18px}
+  .tabbar{width:100%;border-radius:16px}
+  .tab{flex:1 1 calc(50% - 4px);padding:9px 8px;font-size:9px;letter-spacing:.12em;text-align:center}
+  .auth-disclosure{max-width:100%;white-space:normal}
+  .panel,.subpanel,.metric-card,.result-card{border-radius:16px}
+  .section-head{align-items:flex-start;flex-wrap:wrap}
+  .scope-note{align-items:flex-start}
+  .scope-note-body{font-size:10px;line-height:1.45;overflow-wrap:anywhere}
   .vitals{grid-template-columns:1fr}
   .overview-grid,.mission-grid,.live-counts,.category-review-grid{grid-template-columns:1fr}
   .comparison-row{grid-template-columns:minmax(0,1fr)}
   .comparison-bar{order:3}
   .comparison-score{text-align:left}
   .comparison-tags{justify-content:flex-start}
+  .comparison-model{white-space:normal;line-height:1.25}
+  .winner-row{grid-template-columns:1fr;align-items:start}
+  .winner-label,.winner-score{width:fit-content}
+  .matrix-head,.mx-row{grid-template-columns:1fr!important}
+  .mx-col-heads{display:none!important}
+  .mx-cells{overflow-x:auto;padding-bottom:4px}
+  .run-strip{grid-template-columns:12px minmax(0,1fr) auto;gap:8px;padding:10px}
+  .run-strip .rs-score{font-size:13px;text-align:right}
+  .run-strip .rs-badge{grid-column:2/-1;justify-self:start;max-width:100%;white-space:normal}
+  .run-strip .rs-model{white-space:normal;line-height:1.25}
+  .empty-lane{padding:16px 14px}
+  .empty-lane .empty-title{letter-spacing:.14em;line-height:1.35}
   /* Narrow viewport: drop the bar + the denominator hint, keep label+rate
    * so the meaning ("CRITICAL FAILURE RATE · N%") is never ambiguous. */
-  .status-strip{grid-template-columns:auto minmax(0,1fr) auto;gap:10px;padding:12px 16px}
+  .status-strip{grid-template-columns:auto minmax(0,1fr) auto;gap:10px;padding:12px 10px}
   .status-strip .ss-bar,.status-strip .ss-sub{display:none}
-  .status-strip .ss-mid{font-size:10.5px;letter-spacing:.18em}
+  .status-strip .ss-mid{font-size:10px;letter-spacing:.1em;line-height:1.35;overflow-wrap:anywhere}
   .status-strip .ss-score{font-size:20px;min-width:56px}
+  .sys-status{position:static;display:grid;grid-template-columns:1fr;gap:6px;padding:8px 10px}
+  .sys-left,.sys-mid,.sys-right{width:100%;min-width:0;flex-wrap:wrap}
+  .sys-right{justify-content:flex-start}
+  .sys-chip{max-width:100%;white-space:normal;line-height:1.35}
   .button-grid{grid-template-columns:1fr}
   .tel-row{grid-template-columns:repeat(2,minmax(0,1fr))}
   .test-toggle{grid-template-columns:14px minmax(0,1fr);grid-template-rows:auto auto;row-gap:4px}
   .test-toggle .tt-meta{grid-column:2;justify-content:flex-start}
   .test-list{max-height:260px}
+}
+
+@media (max-width:420px){
+  .tab{flex-basis:100%}
+  .pair-btn,.auth-disclosure,.button{width:100%}
+  .chip,.tag,.badge{max-width:100%;white-space:normal;text-align:left}
+  .comparison-row{padding:10px}
 }
 
 /* ─── Auth gate ─────────────────────────────────────────────────────

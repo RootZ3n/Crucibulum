@@ -4,9 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Crucible</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/crucibulum.css">
 </head>
 <body>
@@ -161,6 +158,7 @@ function apiUrl(path,scope){
   if(Array.isArray(scope)&&scope.length)url.searchParams.set('families',scope.join(','));
   else if(scope&&Array.isArray(scope.taskFamilies)&&scope.taskFamilies.length)url.searchParams.set('task_families',scope.taskFamilies.join(','));
   else if(scope&&Array.isArray(scope.families)&&scope.families.length)url.searchParams.set('families',scope.families.join(','));
+  if(scope&&scope.includeQuarantined)url.searchParams.set('include_quarantined','1');
   return url.toString();
 }
 // Stable, order-independent scope key used for tabData cache tagging and
@@ -285,7 +283,7 @@ function diagnoseReasonHint(reasonText,modelId){
   }
   return null;
 }
-function defaultTabState(){return{selectedTask:'',selectedTasks:[],runCount:'all',taskFilter:'',taskOnlySelected:false,selectedModels:[],selectedProvider:'',selectedAdapter:'',stats:{},leaderboard:[],runs:[],scopeKey:null}}
+function defaultTabState(){return{selectedTask:'',selectedTasks:[],runCount:'all',taskFilter:'',taskOnlySelected:false,selectedModels:[],selectedProvider:'',selectedAdapter:'',stats:{},leaderboard:[],leaderboardMeta:{ranking_mode:'public_verified',eligible_count:0,quarantined_count:0,filters_applied:{}},runs:[],scopeKey:null,dataError:null}}
 function normalizeId(v){return String(v||'').trim().toLowerCase()}
 function normalizeKey(v){return normalizeId(v).replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')}
 function pick(obj,...keys){for(const key of keys){const v=obj?.[key];if(v!==undefined&&v!==null)return v}return undefined}
@@ -804,12 +802,22 @@ async function loadBootData(){
 async function refreshTabData(tabKey){
   const config=TAB_CONFIG[tabKey];
   const scope=config.taskFamilies&&config.taskFamilies.length?{taskFamilies:config.taskFamilies}:null;
+  const leaderboardScope=scope?{...scope,includeQuarantined:true}:{includeQuarantined:true};
   const expectedScopeKey=laneScopeKey(tabKey);
-  const [stats,leaderboard,runs]=await Promise.all([
-    fetchJSON(apiUrl('/api/stats',scope)),
-    fetchJSON(apiUrl('/api/leaderboard',scope)),
-    fetchJSON(apiUrl('/api/runs',scope))
-  ]);
+  let stats,leaderboard,runs;
+  try{
+    [stats,leaderboard,runs]=await Promise.all([
+      fetchJSON(apiUrl('/api/stats',scope)),
+      fetchJSON(apiUrl('/api/leaderboard',leaderboardScope)),
+      fetchJSON(apiUrl('/api/runs',scope))
+    ]);
+  }catch(err){
+    const next=reconcileTabSelection(tabKey,state.tabData[tabKey]||defaultTabState());
+    const kind=classifyError(err,'data_refresh');
+    const status=err instanceof HTTPError?err.status:null;
+    state.tabData[tabKey]={...next,dataError:{kind,status,message:String(err&&err.message||err||'data refresh failed'),at:new Date().toISOString()},stats:next.stats||{},leaderboard:next.leaderboard||[],leaderboardMeta:{...(next.leaderboardMeta||{}),ranking_mode:'public_verified',rankings_incomplete:true,error_kind:kind,error_status:status},runs:next.runs||[],scopeKey:expectedScopeKey};
+    return;
+  }
   // Scope integrity: every lane-aware response echoes the resolved scope
   // (scope_key / task_families). If any arrived with a different scope — a
   // racing refresh, a cache rewrite, a proxy that stripped the query — we
@@ -823,7 +831,7 @@ async function refreshTabData(tabKey){
     }
   }
   const next=reconcileTabSelection(tabKey,state.tabData[tabKey]||defaultTabState());
-  state.tabData[tabKey]={...next,stats,leaderboard:leaderboard.leaderboard||[],runs:runs.runs||[],scopeKey:expectedScopeKey};
+  state.tabData[tabKey]={...next,stats,leaderboard:leaderboard.leaderboard||[],leaderboardMeta:{ranking_mode:leaderboard.ranking_mode||'public_verified',eligible_count:Number(leaderboard.eligible_count||0),quarantined_count:Number(leaderboard.quarantined_count||leaderboard.ineligible_count||0),malformed_count:Number(leaderboard.malformed_count||leaderboard.malformed_count_in_scope||0),malformed_count_total:Number(leaderboard.malformed_count_total||0),malformed_count_unknown_scope:Number(leaderboard.malformed_count_unknown_scope||0),filters_applied:leaderboard.filters_applied||{},reason_buckets:leaderboard.quarantine_reason_buckets||{},quarantine_examples:leaderboard.quarantine_examples||[],excluded_mock_demo:leaderboard.excluded_mock_demo===true,excluded_unverified_or_tampered:leaderboard.excluded_unverified_or_tampered===true},runs:runs.runs||[],scopeKey:expectedScopeKey,dataError:null};
   if(!state.focusedResult[tabKey]&&state.tabData[tabKey].runs[0])state.focusedResult[tabKey]=normalizeRunForDisplay(state.tabData[tabKey].runs[0]);
 }
 
@@ -910,6 +918,18 @@ function taskScoringNote(task){
   if(task.max_steps)parts.push(`${task.max_steps} step max`);
   return parts.join(' · ')||'Scored automatically';
 }
+function taskProvenanceFacts(task){
+  const p=task?.benchmark_provenance||{};
+  const limits=Array.isArray(p.known_scoring_limitations)?p.known_scoring_limitations:[];
+  return [
+    p.source?`Source: ${p.source}`:'',
+    p.public_status?`Status: ${String(p.public_status).toUpperCase()}`:'',
+    p.oracle_visibility?`Oracle: ${String(p.oracle_visibility).toUpperCase()}`:'',
+    p.gold_solution_visibility?`Gold: ${String(p.gold_solution_visibility).toUpperCase()}`:'',
+    p.contamination_risk?`Risk: ${String(p.contamination_risk).toUpperCase()}`:'',
+    limits.length?`Limit: ${limits[0]}`:''
+  ].filter(Boolean);
+}
 function renderTaskBrief(tabKey){
   const tabState=state.tabData[tabKey]||defaultTabState();
   const selected=tabState.selectedTasks||[];
@@ -920,6 +940,7 @@ function renderTaskBrief(tabKey){
   const purpose=describeTask(task);
   const mode=taskExecLabel(task);
   const scoring=taskScoringNote(task);
+  const provenance=taskProvenanceFacts(task);
   const tags=(task.tags||[]).slice(0,5);
   const diff=task.difficulty||'';
   const diffCls=diff==='easy'?'teal':diff==='hard'?'red':'orange';
@@ -930,6 +951,7 @@ function renderTaskBrief(tabKey){
       <span class="chip dim">${esc(mode)}</span>
       <span class="chip dim">${esc(scoring)}</span>
     </div>
+    ${provenance.length?`<div class="tb-tags">${provenance.map(t=>`<span class="tag dim">${esc(t)}</span>`).join('')}</div>`:''}
     ${tags.length?`<div class="tb-tags">${tags.map(t=>`<span class="tag dim">${esc(t)}</span>`).join('')}</div>`:''}
   </div>`;
 }
@@ -1533,6 +1555,7 @@ function normalizeRunForDisplay(run){
     passThreshold:scorePct(pick(run,'pass_threshold')||pick(run,'outcome')?.pass_threshold),
     judge:pick(run,'judge')||{},
     oracleIntegrity:pick(run,'oracle_integrity')||{},
+    benchmarkProvenance:pick(run,'benchmark_provenance')||pick(run,'task')?.benchmark_provenance||{},
     // Judge model spend, separate from tested-model spend. Always defined so
     // the UI can render "Judge cost: $0 (deterministic)" without branching.
     judgeUsage:pick(run,'judge_usage')||{provider:'',model:'',tokens_in:0,tokens_out:0,estimated_cost_usd:0,kind:'deterministic',note:'deterministic judge — no model cost'},
@@ -1544,6 +1567,23 @@ function normalizeRunForDisplay(run){
     suiteId:pick(run,'suite_id')||'v1',
     authority:pick(run,'authority')||{}
   };
+}
+
+function runEligibilityMeta(run){
+  const n=run?.n||run||{};
+  const raw=run?.raw||run||{};
+  const trust=n.trust||raw.trust||{};
+  const sig=String(trust.bundle_signature_status||'legacy_unverified').toLowerCase();
+  const values=[n.adapter,n.provider,n.model,raw.adapter,raw.provider,raw.model,raw.target?.adapter,raw.target?.provider,raw.target?.model]
+    .map(v=>String(v||'').toLowerCase());
+  const isMock=values.some(v=>v.includes('harness-mock')||v.includes('mock')||v.includes('demo'));
+  const verified=trust.bundle_verified===true&&trust.bundle_authenticated===true&&sig==='valid'&&!isMock;
+  if(verified)return{ranked:true,label:'ELIGIBLE FOR PUBLIC RANKING',cls:'teal'};
+  if(isMock)return{ranked:false,label:'MOCK/DEMO · NOT RANKED',cls:'dim'};
+  if(sig==='tampered'||sig==='forged')return{ranked:false,label:'TAMPERED · NOT RANKED',cls:'red'};
+  if(sig==='legacy_unverified')return{ranked:false,label:'LEGACY · UNVERIFIED · NOT RANKED',cls:'warn'};
+  if(sig==='unsigned_key_missing')return{ranked:false,label:'UNSIGNED · NOT RANKED',cls:'warn'};
+  return{ranked:false,label:'UNVERIFIED · NOT RANKED',cls:'warn'};
 }
 
 async function hydrateFocusedRun(tabKey,runId){
@@ -1898,11 +1938,12 @@ function renderLeaderboard(tabKey){
     passRate:0,
     avgOverall:scorePct(entry.composite),
     costAvg:0,
-    durationAvg:0
+    durationAvg:0,
+    eligible:entry.ranking_eligible!==false&&entry.sample_adequate===true
   }));
-  if(!entries.length)return'<div class="empty">NO SIGNAL</div>';
+  if(!entries.length)return renderLeaderboardEmpty(tabKey);
   const top=Math.max(...entries.map((entry)=>entry.avgOverall),1);
-  return `<div class="comparison-chart leaderboard-shell">${entries.map((entry,index)=>{const score=entry.avgOverall;const width=Math.max(6,Math.round((score/top)*100));const cls=score>=80?'pass':score>=55?'warn':'fail';return`<div class="comparison-row ${cls}"><div class="comparison-head"><div class="comparison-model">${esc(entry.model)}</div><div class="comparison-meta">${entry.runs}R ${index===0?'· leader':''}</div></div><div class="comparison-bar"><div class="comparison-fill" style="width:${width}%"></div></div><div class="comparison-score">${score}%</div><div class="comparison-tags">${index===0?'<span class="tag teal">BEST</span>':''}</div></div>`}).join('')}</div>`;
+  return `<div class="comparison-chart leaderboard-shell">${entries.map((entry,index)=>{const score=entry.avgOverall;const width=Math.max(6,Math.round((score/top)*100));const cls=score>=80?'pass':score>=55?'warn':'fail';const tag=index===0&&entry.eligible?'<span class="tag teal">BEST</span>':(index===0?'<span class="tag dim">TOP · NOT VERIFIED</span>':'');return`<div class="comparison-row ${cls}"><div class="comparison-head"><div class="comparison-model">${esc(entry.model)}</div><div class="comparison-meta">${entry.runs}R ${index===0?'· leader':''}</div></div><div class="comparison-bar"><div class="comparison-fill" style="width:${width}%"></div></div><div class="comparison-score">${score}%</div><div class="comparison-tags">${tag}</div></div>`}).join('')}</div>`;
 }
 function currentRunState(){
   return state.runState[state.activeTab]||state.runState.dashboard||null;
@@ -2222,6 +2263,47 @@ function laneDimensionObjects(tabKey,rollups){
   return dims.slice(0,8);
 }
 function aggregateModelInsights(tabKey){
+  const backend=state.tabData?.[tabKey]?.leaderboard;
+  if(Array.isArray(backend)&&backend.length){
+    return backend.map((entry)=>{
+      const avgOverall=scorePct(entry.composite);
+      const runs=Number(entry.totalRuns||0);
+      const passRate=Math.round(Number(entry.average_pass_rate||0)*100);
+      const model=entry.model||entry.modelId||'unknown-model';
+      return{
+        model,
+        provider:entry.provider||entry.source||'',
+        adapter:entry.adapter||'',
+        runs,
+        total:avgOverall*runs,
+        passes:Math.round((passRate/100)*runs),
+        failures:Math.round(Number(entry.model_failure_rate||0)*runs),
+        duration:0,
+        cost:0,
+        categories:{},
+        scoreValues:[avgOverall],
+        avgOverall,
+        passRate,
+        durationAvg:0,
+        costAvg:0,
+        range:0,
+        valueScore:avgOverall,
+        sampleAdequate:entry.sample_adequate===true&&entry.ranking_eligible!==false,
+        dimensions:{
+          overall:avgOverall,
+          correctness:avgOverall,
+          reasoning:0,
+          workflow:0,
+          prompt_sensitivity:0,
+          role_stress:0,
+          context_degradation:0,
+          efficiency:0,
+          speed:0,
+        },
+      };
+    }).sort((a,b)=>b.avgOverall-a.avgOverall||b.passRate-a.passRate||b.runs-a.runs);
+  }
+  if(state.tabData?.[tabKey]?.leaderboardMeta?.ranking_mode==='public_verified')return[];
   const grouped=new Map();
   for(const run of scopeNormalizedRuns(tabKey)){
     const key=normalizeId(run.model);
@@ -2338,13 +2420,20 @@ function renderOverviewCards(tabKey){
 }
 function renderComparisonBars(tabKey,title,entries,metricKey='avgOverall'){
   const scope=laneScopeDescriptor(tabKey);
+  const meta=state.tabData?.[tabKey]?.leaderboardMeta||{};
+  const dataError=state.tabData?.[tabKey]?.dataError||null;
+  const errorBanner=dataError?renderDataErrorState(tabKey,dataError):'';
   if(!entries.length){
-    const emptyMsg=scope.kind==='lane'
-      ? `No evaluable ${scope.tabLabel.toLowerCase()} runs yet.`
+    const q=Number(meta.quarantined_count||0);
+    const emptyMsg=dataError
+      ? errorGuidance(dataError)
+      : scope.kind==='lane'
+      ? `No verified eligible ${scope.tabLabel.toLowerCase()} runs are available for public ranking.${q?` ${q} run${q===1?' is':'s are'} quarantined as unverified, tampered, legacy, mock, or demo evidence.`:''}`
       : scope.kind==='global'
-        ? 'No evaluable runs across any lane yet.'
+        ? `No verified eligible runs are available for public ranking across any lane.${q?` ${q} run${q===1?' is':'s are'} quarantined as unverified, tampered, legacy, mock, or demo evidence.`:''}`
         : 'No comparable data in this view.';
-    return`<section class="panel" style="padding:14px"><div class="section-head"><div><div class="mini-label">GRAPH FIRST</div><h3>${esc(title)}</h3></div><span class="chip dim scope-chip" data-scope-kind="${scope.kind}" title="${esc(scope.familiesLabel)}">SCOPE · ${esc(scope.scopeLabel)}</span></div><div class="empty empty-lane"><div class="empty-title">NO DATA · SCOPE · ${esc(scope.scopeLabel)}</div><div class="empty-body">${esc(emptyMsg)}</div></div></section>`;
+    const emptyTitle=dataError?`${failureReasonLabel(dataError.kind).toUpperCase()} · RANKINGS INCOMPLETE`:`NO VERIFIED RUNS · SCOPE · ${scope.scopeLabel}`;
+    return`<section class="panel" style="padding:14px"><div class="section-head"><div><div class="mini-label">GRAPH FIRST</div><h3>${esc(title)}</h3></div><span class="chip dim scope-chip" data-scope-kind="${scope.kind}" title="${esc(scope.familiesLabel)}">SCOPE · ${esc(scope.scopeLabel)}</span></div>${errorBanner}<div class="empty empty-lane"><div class="empty-title">${esc(emptyTitle)}</div><div class="empty-body">${esc(emptyMsg)}</div></div></section>`;
   }
   const top=Math.max(...entries.map((entry)=>Number(entry[metricKey]||0)),1);
   // "BEST" badge is only meaningful when at least one row clears the sample
@@ -2356,11 +2445,45 @@ function renderComparisonBars(tabKey,title,entries,metricKey='avgOverall'){
   const provisionalBanner=scope.kind==='lane'&&scope.provisional
     ? `<div class="inline-warn" style="color:var(--amber,#d97706);border-color:rgba(217,119,6,.32);background:rgba(217,119,6,.06)">PROVISIONAL · ${scope.sampleSize} run${scope.sampleSize===1?'':'s'} in scope · fewer than ${LEADERBOARD_MIN_N_UI} meet the sample threshold — treat rankings as indicative, not authoritative.</div>`
     : '';
+  const quarantineBanner=Number(meta.quarantined_count||0)>0
+    ? `<div class="inline-warn" style="color:var(--orange);border-color:rgba(251,146,60,.32);background:rgba(251,146,60,.06)">PUBLIC RANKING · ${Number(meta.eligible_count||entries.length)} verified eligible run${Number(meta.eligible_count||entries.length)===1?'':'s'} ranked · ${Number(meta.quarantined_count||0)} quarantined as unverified, tampered, legacy, mock, or demo.</div>`
+    : '';
+  const buckets=meta.reason_buckets||{};
+  const bucketText=Object.entries(buckets).filter(([,v])=>Number(v)>0).map(([k,v])=>`${String(k).replace(/_/g,' ').toUpperCase()} ${Number(v)}`).join(' · ');
+  const quarantinePanel=Number(meta.quarantined_count||0)>0
+    ? `<div class="inline-warn" style="color:var(--muted);border-color:var(--border);background:rgba(255,255,255,.03)">NOT RANKED · ${bucketText||'unverified evidence quarantined'}${Number(meta.malformed_count_unknown_scope||0)>0?` · ${Number(meta.malformed_count_unknown_scope)} malformed file${Number(meta.malformed_count_unknown_scope)===1?'':'s'} have unknown scope`:''}</div>`
+    : '';
   return`<section class="panel" style="padding:14px">
     <div class="section-head"><div><div class="mini-label">GRAPH FIRST</div><h3>${esc(title)}</h3></div><span class="chip ${scope.kind==='lane'?'teal':'dim'} scope-chip" data-scope-kind="${scope.kind}" title="${esc(scope.familiesLabel)}">SCOPE · ${esc(scope.scopeLabel)}</span></div>
+    ${errorBanner}
     ${provisionalBanner}
+    ${quarantineBanner}
+    ${quarantinePanel}
     <div class="comparison-chart">${entries.map((entry,index)=>{const score=Math.round(Number(entry[metricKey]||0));const width=Math.max(6,Math.round((score/top)*100));const cls=score>=80?'pass':score>=55?'warn':'fail';const tooFewRuns=Number(entry.runs||0)<LEADERBOARD_MIN_N_UI;const bestTag=index===0&&canCrownBest?'<span class="tag teal">BEST</span>':(index===0?'<span class="tag dim" title="Leading, but sample is under the provisional threshold">TOP · n='+Number(entry.runs||0)+'</span>':'');const nTag=tooFewRuns?'<span class="tag dim" title="Under '+LEADERBOARD_MIN_N_UI+' runs — provisional">n='+Number(entry.runs||0)+'</span>':'';return`<div class="comparison-row ${cls}"><div class="comparison-head"><div class="comparison-model">${esc(entry.model)}</div><div class="comparison-meta">${entry.runs||0}R · ${entry.passRate||0}% pass</div></div><div class="comparison-bar"><div class="comparison-fill" style="width:${width}%"></div></div><div class="comparison-score">${score}%</div><div class="comparison-tags">${bestTag}${nTag}${entry.costAvg>0?`<span class="tag dim">${esc(fmtMoney(entry.costAvg))}</span>`:''}${entry.durationAvg>0?`<span class="tag dim">${esc(fmtMs(entry.durationAvg))}</span>`:''}</div></div>`}).join('')}</div>
   </section>`;
+}
+
+function renderLeaderboardEmpty(tabKey){
+  const meta=state.tabData?.[tabKey]?.leaderboardMeta||{};
+  const dataError=state.tabData?.[tabKey]?.dataError||null;
+  const q=Number(meta.quarantined_count||0);
+  if(dataError)return`<div class="empty empty-lane"><div class="empty-title">${esc(failureReasonLabel(dataError.kind).toUpperCase())} · RANKINGS INCOMPLETE</div><div class="empty-body">${esc(errorGuidance(dataError))}</div></div>`;
+  return`<div class="empty empty-lane"><div class="empty-title">NO VERIFIED RUNS AVAILABLE</div><div class="empty-body">Default public rankings require verified eligible evidence.${q?` ${q} quarantined run${q===1?' is':'s are'} visible only as NOT RANKED metadata.`:' Run the smoke path for a local demo, or import verified evidence to rank models.'}</div></div>`;
+}
+
+function errorGuidance(err){
+  const kind=err?.kind||'other';
+  if(kind==='rate_limited')return'Crucible was rate-limited while loading this view. Cached/local content may be incomplete. Wait a moment, then refresh this lane.';
+  if(kind==='auth')return'This request needs a valid session. Sign in again, then refresh the view.';
+  if(kind==='network')return'The local API could not be reached. Confirm the server is still running and refresh.';
+  if(kind==='timeout')return'The local API did not respond before the timeout. The view may be incomplete; retry after the server settles.';
+  return'Crucible could not load this view completely. Existing data is preserved, but rankings may be incomplete until refresh succeeds.';
+}
+
+function renderDataErrorState(tabKey,err){
+  const scope=laneScopeDescriptor(tabKey);
+  const label=failureReasonLabel(err?.kind||'other').toUpperCase();
+  return`<div class="inline-warn data-error" role="status" aria-live="polite">RANKINGS INCOMPLETE · ${esc(label)} · ${esc(scope.scopeLabel)} · ${esc(errorGuidance(err))}</div>`;
 }
 function renderCategoryReview(tabKey){
   // Score Matrix — dense model×category heatmap. One row per model (top
@@ -2380,7 +2503,7 @@ function renderCategoryReview(tabKey){
       const cls=cellCls(score);
       return`<div class="mx-cell ${cls}" title="${esc(m.model)} · ${esc(d.label)} · ${score}%"><div class="mx-cell-fill" style="height:${score}%"></div><div class="mx-cell-num">${score||'—'}</div></div>`;
     }).join('');
-    const badge=rowIndex===0?'<span class="tag teal">BEST</span>':'';
+    const badge=rowIndex===0&&m.sampleAdequate?'<span class="tag teal">BEST</span>':(rowIndex===0?'<span class="tag dim">TOP · NOT VERIFIED</span>':'');
     return`<div class="mx-row"><div class="mx-row-label"><span class="mx-model">${esc(m.model)}</span>${badge}<span class="mx-runs">${m.runs}R · ${m.passRate}% pass</span></div><div class="mx-cells" style="grid-template-columns:repeat(${dims.length},minmax(0,1fr))">${cells}</div></div>`;
   }).join('');
   const laneLabel=TAB_CONFIG[tabKey]?.label||'Lane';
@@ -2407,13 +2530,15 @@ function aggregateLeaderboard(tabKey='dashboard',limit=6){
   const backend=state.tabData?.[tabKey]?.leaderboard;
   if(Array.isArray(backend)&&backend.length){
     return backend.slice(0,limit).map((entry)=>({
-      model:entry.modelId,
+      model:entry.model||entry.modelId,
       runs:Number(entry.totalRuns||0),
       score:scorePct(entry.composite),
       provider:entry.source||'',
-      last:entry.lastRun||''
+      last:entry.lastRun||'',
+      sampleAdequate:entry.sample_adequate===true&&entry.ranking_eligible!==false
     }));
   }
+  if(state.tabData?.[tabKey]?.leaderboardMeta?.ranking_mode==='public_verified')return[];
   const grouped=new Map();
   for(const run of scopeRuns(tabKey)){
     const normalized=normalizeRunForDisplay(run);
@@ -2524,12 +2649,14 @@ function renderHero(){
   const status=activeHeroStatus();
   const stats=statsForTab(state.activeTab);
   const best=aggregateLeaderboard(state.activeTab,1)[0];
-  const score=Math.round(stats.avgScore||0);
+  const meta=state.tabData?.[state.activeTab]?.leaderboardMeta||{};
+  const hasPublicRanking=Number(meta.eligible_count||0)>0&&!!best;
+  const score=hasPublicRanking?Math.round(best.score||stats.avgScore||0):'—';
   const passRate=Math.round(stats.passRate||0);
   const totalRuns=stats.totalRuns||0;
   const statusCls=status==='complete'?'teal':status==='error'?'red':status==='idle'?'dim':'orange';
-  const topModel=best?best.model:'—';
-  const topScore=best?best.score:null;
+  const topModel=hasPublicRanking?best.model:'NO VERIFIED RANK';
+  const topScore=hasPublicRanking?best.score:null;
   const scope=laneScopeDescriptor(state.activeTab);
   const activeLaneLabel=scope.tabLabel;
   // Scope chip: explicit, authoritative answer to "what am I looking at?".
@@ -2546,7 +2673,12 @@ function renderHero(){
   const provisionalChip=scope.kind==='lane'&&scope.provisional
     ? `<div class="chip amber hot" title="Fewer than ${LEADERBOARD_MIN_N_UI} runs meet the sample threshold in this lane — treat rankings as provisional.">PROVISIONAL · n=${scope.sampleSize}</div>`
     : '';
-  return`<section class="abyss-banner"><div class="ab-squid" aria-hidden="true"><img src="squidley.png" alt=""><div class="ab-squid-halo"></div></div><div class="ab-callsign"><div class="ab-mark">CRCB · ${esc(activeLaneLabel.toUpperCase())}</div><div class="ab-title">CRUCIBLE</div><div class="ab-sub">BIOLUMINESCENT EVALUATION LATTICE</div><div class="ab-score-inline"><div class="ab-score-row"><span class="ab-score-label">LAB SCORE</span><span class="ab-score-inline-num">${score}</span><span class="ab-score-runs">${totalRuns} RUN${totalRuns===1?'':'S'}</span></div><div class="ab-score-bar"><div class="ab-score-fill" style="width:${score}%"></div></div></div><div class="view-toggle"><button class="${state.viewMode==='simple'?'active':''}" onclick="setViewMode('simple')">SIMPLE</button><button class="${state.viewMode==='expert'?'active':''}" onclick="setViewMode('expert')">EXPERT</button></div></div><div class="ab-telemetry">${scopeChip}${provisionalChip}<div class="chip ${statusCls} hot">● ${esc(status.toUpperCase())}</div><div class="chip teal">PASS ${passRate}%</div><div class="chip orange">TOP ${esc(String(topModel).slice(0,16).toUpperCase())}${topScore!=null?' · '+topScore+'%':''}</div><div class="chip dim">RUNS ${totalRuns}</div></div></section>`;
+  const scoreWidth=typeof score==='number'?score:0;
+  const scoreLabel=hasPublicRanking?'PUBLIC SCORE':'PUBLIC SCORE';
+  const topChip=hasPublicRanking
+    ? `<div class="chip orange">TOP ${esc(String(topModel).slice(0,16).toUpperCase())}${topScore!=null?' · '+topScore+'%':''}</div>`
+    : `<div class="chip orange" title="Default public ranking excludes unverified, tampered, legacy, mock, and demo bundles.">NO VERIFIED RANK</div>`;
+  return`<section class="abyss-banner"><div class="ab-squid" aria-hidden="true"><img src="squidley.png" alt=""><div class="ab-squid-halo"></div></div><div class="ab-callsign"><div class="ab-mark">CRCB · ${esc(activeLaneLabel.toUpperCase())}</div><div class="ab-title">CRUCIBLE</div><div class="ab-sub">BIOLUMINESCENT EVALUATION LATTICE</div><div class="ab-score-inline"><div class="ab-score-row"><span class="ab-score-label">${scoreLabel}</span><span class="ab-score-inline-num">${score}</span><span class="ab-score-runs">${totalRuns} RUN${totalRuns===1?'':'S'} INDEXED</span></div><div class="ab-score-bar"><div class="ab-score-fill" style="width:${scoreWidth}%"></div></div></div><div class="view-toggle"><button class="${state.viewMode==='simple'?'active':''}" onclick="setViewMode('simple')">SIMPLE</button><button class="${state.viewMode==='expert'?'active':''}" onclick="setViewMode('expert')">EXPERT</button></div></div><div class="ab-telemetry">${scopeChip}${provisionalChip}<div class="chip ${statusCls} hot">● ${esc(status.toUpperCase())}</div><div class="chip teal">PASS ${passRate}%</div>${topChip}<div class="chip dim">RUNS ${totalRuns}</div></div></section>`;
 }
 function evidenceValue(label,value){
   if(value===undefined||value===null||value==='')return'';
@@ -2579,13 +2711,20 @@ function renderFocusedRun(tabKey){
   const originCls=result.isModelFailure?'red':result.isInfraIssue?'':result.isTestOrJudgeIssue?'cyan':'dim';
   const sigStatus=String(result.trust?.bundle_signature_status||'legacy_unverified');
   const sigCls=sigStatus==='valid'?'teal':sigStatus==='forged'||sigStatus==='tampered'?'red':'warn';
+  const eligibility=runEligibilityMeta(result);
   const oracleStatus=String(result.oracleIntegrity?.oracle_hash_status||'unknown');
   const oracleCls=oracleStatus==='valid'?'teal':oracleStatus==='unknown'||oracleStatus==='not_required'?'dim':'red';
+  const bp=result.benchmarkProvenance||{};
+  const scoringLimits=Array.isArray(bp.known_scoring_limitations)?bp.known_scoring_limitations:[];
   const provenanceFacts=[
     {label:'BUNDLE',value:String(result.bundleId||result.runId||'unknown')},
+    {label:'RANKING',value:eligibility.label,cls:eligibility.cls},
     {label:'HASH',value:String(result.bundleHash||'unknown').slice(0,16),cls:'teal'},
     {label:'AUTH',value:sigStatus.toUpperCase(),cls:sigCls},
     {label:'ORACLE',value:oracleStatus.toUpperCase(),cls:oracleCls},
+    {label:'SOURCE',value:String(bp.source||'unknown')},
+    {label:'PUBLIC',value:String(bp.public_status||'unknown').toUpperCase(),cls:bp.public_status==='private'?'teal':bp.public_status==='public'?'warn':'dim'},
+    {label:'CONTAM RISK',value:String(bp.contamination_risk||'unknown').toUpperCase(),cls:bp.contamination_risk==='low'?'teal':bp.contamination_risk==='high'?'red':'warn'},
     {label:'TARGET',value:`${result.provider}/${result.model}`},
     {label:'TESTED MODEL',value:`${result.provider}/${result.model}`,cls:'teal'},
     {label:'JUDGE MODEL',value:result.judgeUsage?.kind==='deterministic'?'deterministic (no model)':`${result.judgeUsage?.provider||''}/${result.judgeUsage?.model||''}`,cls:result.judgeUsage?.kind==='deterministic'?'dim':'cyan'},
@@ -2604,7 +2743,10 @@ function renderFocusedRun(tabKey){
     {label:'JUDGE',value:String(result.judge?.label||'deterministic'),cls:'teal'},
     {label:'HASH OK',value:result.trust?.bundle_hash_verified?'VERIFIED':'UNCHECKED',cls:result.trust?.bundle_hash_verified?'teal':''},
     {label:'SIGNED',value:result.trust?.bundle_authenticated?'VERIFIED':'NO PROOF',cls:result.trust?.bundle_authenticated?'teal':sigCls},
-    {label:'RUBRIC',value:result.trust?.rubric_hidden?'HIDDEN':'VISIBLE',cls:'dim'}
+    {label:'RUBRIC',value:result.trust?.rubric_hidden?'HIDDEN':'VISIBLE',cls:'dim'},
+    {label:'ORACLE VIS',value:String(bp.oracle_visibility||'unknown').toUpperCase(),cls:'dim'},
+    {label:'GOLD VIS',value:String(bp.gold_solution_visibility||'unknown').toUpperCase(),cls:'dim'},
+    {label:'LIMITS',value:scoringLimits.length?scoringLimits.join(' | '):'unknown',cls:scoringLimits.length?'warn':'dim'}
   ];
 
   // When overall score can't be resolved (e.g. hydrated payload missing it),
@@ -2769,8 +2911,10 @@ function renderRuns(tabKey){
     const famKey=raw.family||n.family||'';
     const famLabel=famKey?(TASK_FAMILY_LABELS[famKey]||famKey):'';
     const famChip=famLabel?`<span class="tag dim rs-family">${esc(famLabel.toUpperCase())}</span>`:'';
+    const eligibility=runEligibilityMeta({raw,n});
+    const eligibilityTag=`<span class="tag ${eligibility.cls} rs-eligibility">${esc(eligibility.label)}</span>`;
     const reason=n.verdictSummary?`<div class="rs-reason">${esc(n.verdictSummary)}</div>`:'';
-    return`<button class="run-strip ${cls} ${originCls}" title="${esc(hint)}" onclick="focusRunFromHistory('${tabKey}','${esc(rid)}')"><div class="rs-dot" aria-hidden="true">${esc(glyph)}</div><div class="rs-model">${esc(n.model)}</div><div class="rs-task">${taskName}${famChip}${reason}</div><div class="rs-bar"><div class="rs-fill" style="width:${n.overall}%"></div></div><div class="rs-score">${n.overall}%</div><div class="rs-badge badge ${cls} ${originCls}">${esc(word)}</div></button>`;
+    return`<button class="run-strip ${cls} ${originCls}" title="${esc(hint)}" onclick="focusRunFromHistory('${tabKey}','${esc(rid)}')"><div class="rs-dot" aria-hidden="true">${esc(glyph)}</div><div class="rs-model">${esc(n.model)}</div><div class="rs-task">${taskName}${famChip}${eligibilityTag}${reason}</div><div class="rs-bar"><div class="rs-fill" style="width:${n.overall}%"></div></div><div class="rs-score">${n.overall}%</div><div class="rs-badge badge ${cls} ${originCls}">${esc(word)}</div></button>`;
   };
   const filterBar=['all','pass','fail','nc','model','infra','testjudge'].map((key)=>`<button class="filter-chip ${filter===key?'on':''}" onclick="setArchiveFilter('${tabKey}','${key}')">${archiveFilterLabel(key)}</button>`).join('');
   const moreCount=filtered.length-visible.length;
@@ -2878,7 +3022,7 @@ function renderDashboard(){
   // Vitals wall — 4 compact telemetry meters, hero-adjacent.
   // Each meter has a label, big orange readout, and a fill bar.
   const vitals=[
-    {label:'LAB SCORE',value:String(avgScore),unit:'%',barWidth:avgScore,cls:'teal'},
+    {label:'OBSERVED SCORE',value:String(avgScore),unit:'%',barWidth:avgScore,cls:'teal'},
     {label:'PASS RATE',value:String(passRate),unit:'%',barWidth:passRate},
     {label:'TOTAL RUNS',value:String(stats.totalRuns||0),unit:'',barWidth:Math.min(100,stats.totalRuns*5)},
     {label:'AVG TIME',value:fmtMs(stats.avgTime).replace(/\s+/g,''),unit:'',barWidth:Math.min(100,Math.max(8,stats.avgTime/150))}
@@ -3348,7 +3492,19 @@ async function tryBootstrapLocal(){
 function renderBootError(err){
   const app=document.getElementById('app');
   if(!app)return;
-  app.innerHTML=`<div class="app-shell"><section class="abyss-banner" style="grid-template-columns:1fr"><div class="ab-callsign"><div class="ab-mark">CRCB · ERR</div><div class="ab-title" style="color:var(--red);text-shadow:0 0 24px rgba(255,68,68,.4)">BOOT FAILURE</div><div class="ab-sub">${esc(String(err).slice(0,140))}</div></div></section></div>`;
+  app.innerHTML=bootErrorMarkup(err);
+}
+
+function bootErrorMarkup(err){
+  const kind=classifyError(err,'boot');
+  const rateLimited=kind==='rate_limited'||(err instanceof HTTPError&&err.status===429);
+  const title=rateLimited?'STARTUP LIMITED':'STARTUP INCOMPLETE';
+  const mark=rateLimited?'CRCB · 429':'CRCB · ERR';
+  const guidance=rateLimited
+    ? 'The local API returned RATE_LIMITED during boot. The app shell is safe, but ranking data may be incomplete. Wait a moment and refresh.'
+    : 'Crucible could not finish loading all first-run data. Check the local server, then refresh.';
+  const detail=String(err&&err.message||err||'unknown error').slice(0,180);
+  return`<div class="app-shell"><section class="abyss-banner boot-soft" style="grid-template-columns:1fr"><div class="ab-callsign"><div class="ab-mark">${esc(mark)}</div><div class="ab-title">${esc(title)}</div><div class="ab-sub">${esc(guidance)}</div><div class="inline-warn data-error">DETAIL · ${esc(detail)}</div><button class="button secondary" onclick="boot()">RETRY LOAD</button></div></section></div>`;
 }
 
 function renderAuthScreen(){

@@ -42,6 +42,8 @@ type LoadedUi = {
       stats?: Record<string, unknown>;
       runs?: unknown[];
       leaderboard?: Array<{ modelId: string; sample_adequate?: boolean; totalRuns?: number }>;
+      leaderboardMeta?: Record<string, unknown>;
+      dataError?: Record<string, unknown> | null;
       selectedTasks?: string[];
       selectedModels?: string[];
     }>;
@@ -77,7 +79,9 @@ type LoadedUi = {
   renderLane: (tabKey: string) => string;
   renderLiveStatus: (tabKey: string) => string;
   renderRuns: (tabKey: string) => string;
+  renderLeaderboard: (tabKey: string) => string;
   renderComparisonBars: (tabKey: string, title: string, entries: Array<Record<string, unknown>>, metricKey?: string) => string;
+  bootErrorMarkup: (err: unknown) => string;
 };
 
 function loadUi(): LoadedUi {
@@ -110,7 +114,7 @@ function loadUi(): LoadedUi {
   sandbox.globalThis = sandbox;
   const prelude = "function render(){}\n";
   const withoutRender = script.replace(/function render\(\)\{[\s\S]*?\n\}\n/, "/* render stubbed */\n");
-  const exporter = "\n;globalThis.__ui={state,TAB_CONFIG,laneScopeDescriptor,verdictBadge,renderHero,renderDashboard,renderLane,renderLiveStatus,renderRuns,renderComparisonBars};\n";
+  const exporter = "\n;globalThis.__ui={state,TAB_CONFIG,laneScopeDescriptor,verdictBadge,renderHero,renderDashboard,renderLane,renderLiveStatus,renderRuns,renderLeaderboard,renderComparisonBars,bootErrorMarkup};\n";
   const context = vm.createContext(sandbox);
   vm.runInContext(prelude + withoutRender + exporter, context, { filename: "ui/index.html::script" });
   return (sandbox as { __ui: LoadedUi }).__ui;
@@ -335,6 +339,36 @@ describe("archive (renderRuns): scope + origin glyphs + honest empty", () => {
     assert.match(html, /FAIL · MODEL/);
     assert.match(html, /NC · PROVIDER/);
   });
+
+  it("archive rows label ineligible local evidence as not ranked", () => {
+    const ui = loadUi();
+    const legacyRun = {
+      bundle_id: "legacy1",
+      task_id: "t-legacy",
+      family: "orchestration",
+      model: "old-local",
+      score: 90,
+      pass: true,
+      verdict: { completionState: "PASS" },
+      trust: { bundle_verified: false, bundle_authenticated: false, bundle_signature_status: "legacy_unverified" },
+    };
+    const eligibleRun = {
+      bundle_id: "eligible1",
+      task_id: "t-good",
+      family: "orchestration",
+      model: "signed-local",
+      score: 91,
+      pass: true,
+      verdict: { completionState: "PASS" },
+      trust: { bundle_verified: true, bundle_authenticated: true, bundle_signature_status: "valid" },
+    };
+    ui.state.tabData.build = { runs: [legacyRun, eligibleRun] };
+    const html = ui.renderRuns("build");
+    assert.match(html, /LEGACY · UNVERIFIED · NOT RANKED/);
+    assert.match(html, /ELIGIBLE FOR PUBLIC RANKING/);
+    assert.doesNotMatch(html, /class="tag teal">BEST/);
+    assert.doesNotMatch(html, />TOP</);
+  });
 });
 
 // ── leaderboard: provisional banner + BEST suppression ─────────────────────
@@ -373,10 +407,91 @@ describe("leaderboard: provisional warning, BEST suppressed on tiny N", () => {
 
   it("an empty lane leaderboard renders a lane-aware 'no evaluable runs' copy", () => {
     const ui = loadUi();
-    ui.state.tabData.memory = { runs: [], leaderboard: [] };
+    ui.state.tabData.memory = { runs: [], leaderboard: [], leaderboardMeta: { ranking_mode: "public_verified", eligible_count: 0, quarantined_count: 2 } };
     const html = ui.renderComparisonBars("memory", "Memory Leaderboard", [], "avgOverall");
     assert.match(html, /SCOPE · LANE · MEMORY/i);
-    assert.match(html, /No evaluable memory runs yet/i);
+    assert.match(html, /No verified eligible memory runs are available/i);
+    assert.match(html, /2 runs are quarantined/i);
+    assert.doesNotMatch(html, /class="tag teal">BEST/);
+  });
+
+  it("leaderboard quarantine panel shows reason buckets without ranking badges", () => {
+    const ui = loadUi();
+    ui.state.tabData.safety = {
+      runs: [],
+      leaderboard: [],
+      leaderboardMeta: {
+        ranking_mode: "public_verified",
+        eligible_count: 0,
+        quarantined_count: 3,
+        malformed_count_unknown_scope: 1,
+        reason_buckets: { legacy_unverified: 1, mock_or_demo: 1, malformed: 1 },
+      },
+    };
+    const html = ui.renderComparisonBars("safety", "Safety Leaderboard", [{ model: "verified", runs: 3, avgOverall: 88, passRate: 100 }], "avgOverall");
+    assert.match(html, /NOT RANKED/);
+    assert.match(html, /LEGACY UNVERIFIED 1/);
+    assert.match(html, /MOCK OR DEMO 1/);
+    assert.match(html, /MALFORMED 1/);
+    assert.doesNotMatch(html, /MOCK\/DEMO[^<]*BEST/);
+  });
+
+  it("legacy compact leaderboard does not crown BEST for ineligible or undersampled rows", () => {
+    const ui = loadUi();
+    ui.state.tabData.safety = {
+      runs: [],
+      leaderboard: [
+        { modelId: "demo-model", sample_adequate: false, totalRuns: 9 },
+      ],
+      leaderboardMeta: { ranking_mode: "public_verified", eligible_count: 0, quarantined_count: 1 },
+    };
+    const html = ui.renderLeaderboard("safety");
+    assert.doesNotMatch(html, /class="tag teal">BEST/);
+    assert.match(html, /TOP · NOT VERIFIED/);
+  });
+
+  it("rate-limited leaderboard state is a soft incomplete-data message, not BOOT FAILURE", () => {
+    const ui = loadUi();
+    ui.state.tabData.benchmark = {
+      runs: [],
+      leaderboard: [],
+      leaderboardMeta: { ranking_mode: "public_verified", eligible_count: 0, quarantined_count: 0, rankings_incomplete: true },
+      dataError: { kind: "rate_limited", status: 429, message: "RATE_LIMITED" },
+    };
+    const html = ui.renderComparisonBars("benchmark", "Benchmark Leaderboard", [], "avgOverall");
+    assert.match(html, /RANKINGS INCOMPLETE/i);
+    assert.match(html, /RATE-LIMITED/i);
+    assert.match(html, /Wait a moment/i);
+    assert.doesNotMatch(html, /BOOT FAILURE/i);
+  });
+
+  it("boot rate limit renders STARTUP LIMITED with retry guidance", () => {
+    const ui = loadUi();
+    const err = Object.assign(new Error("RATE_LIMITED"), { status: 429 });
+    const html = ui.bootErrorMarkup(err);
+    assert.match(html, /STARTUP LIMITED/);
+    assert.match(html, /RATE_LIMITED/);
+    assert.match(html, /RETRY LOAD/);
+    assert.doesNotMatch(html, /BOOT FAILURE/);
+  });
+});
+
+describe("offline-first UI shell", () => {
+  it("does not depend on remote Google Fonts", () => {
+    assert.doesNotMatch(uiHtml, /fonts\.googleapis|fonts\.gstatic|Space Grotesk|DM Mono/);
+  });
+
+  it("dashboard vitals do not label local historical data as LAB SCORE", () => {
+    const ui = loadUi();
+    ui.state.activeTab = "dashboard";
+    ui.state.tabData.dashboard = {
+      runs: [{ bundle_id: "local", model: "local historical model", score: 91, pass: true }],
+      leaderboard: [],
+      leaderboardMeta: { ranking_mode: "public_verified", eligible_count: 0, quarantined_count: 1 },
+    };
+    const html = ui.renderDashboard();
+    assert.doesNotMatch(html, /LAB SCORE/);
+    assert.match(html, /OBSERVED SCORE|PUBLIC SCORE/);
   });
 });
 

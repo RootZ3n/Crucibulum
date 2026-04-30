@@ -12,7 +12,7 @@
  */
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Server } from "node:http";
@@ -30,6 +30,7 @@ process.env["CRUCIBULUM_LINKS_DIR"] = LINKS_DIR;
 // Make sure we don't accidentally require a token.
 delete process.env["CRUCIBULUM_API_TOKEN"];
 process.env["CRUCIBULUM_ALLOW_LOCAL"] = "true";
+process.env["CRUCIBLE_HMAC_KEY"] = "route-contract-test-hmac-key";
 
 const { createApp } = await import("../server/app.js");
 const { __resetRateLimiterForTests } = await import("../server/rate-limit.js");
@@ -41,7 +42,7 @@ let base = "";
 
 // ── setup ───────────────────────────────────────────────────────────────────
 
-function makeBundle(overrides: { taskId?: string; family?: string; model?: string; score?: number } = {}) {
+function makeBundle(overrides: { taskId?: string; family?: string; model?: string; score?: number; adapter?: string; provider?: string } = {}) {
   return buildBundle({
     manifest: {
       id: overrides.taskId ?? "t-route-1",
@@ -52,6 +53,7 @@ function makeBundle(overrides: { taskId?: string; family?: string; model?: strin
       scoring: { weights: { correctness: 1, regression: 0, integrity: 0, efficiency: 0 }, pass_threshold: 0.5 },
       verification: {},
       task: { title: "t", description: "d" },
+      metadata: { author: "crucible-test", created: "2026-04-01", tags: [], diagnostic_purpose: "test", benchmark_provenance: "route-contract" },
     } as never,
     oracle: {
       checks: { correctness: [], regression: [], integrity: [], decoys: [], anti_cheat: { forbidden_code_patterns: [] } },
@@ -60,7 +62,7 @@ function makeBundle(overrides: { taskId?: string; family?: string; model?: strin
     executionResult: {
       exit_code: 0, steps_used: 5, tokens_in: 100, tokens_out: 200, duration_ms: 1000,
       timeline: [{ t: 0, type: "task_start", detail: "s" }],
-      adapter_metadata: { provider: "local", system_version: "test" },
+      adapter_metadata: { provider: overrides.provider ?? "local", system_version: "test" },
     } as never,
     diff: { files_changed: [], files_created: [], files_deleted: [], forbidden_paths_touched: [] },
     judgeResult: {
@@ -76,7 +78,7 @@ function makeBundle(overrides: { taskId?: string; family?: string; model?: strin
     startTime: "2026-04-14T00:00:00.000Z",
     endTime: "2026-04-14T00:00:01.000Z",
     workspace: { path: "/tmp/ws", commit: "abc" } as never,
-    adapter: { id: "local", version: "1.0.0" } as never,
+    adapter: { id: overrides.adapter ?? "local", version: "1.0.0" } as never,
     model: overrides.model ?? "test-model",
   });
 }
@@ -633,11 +635,105 @@ describe("route: GET /api/scores/leaderboard", () => {
 
     const res = await fetch(`${base}/api/leaderboard?task_families=orchestration`);
     assert.equal(res.status, 200);
-    const body = await res.json() as { leaderboard: Array<{ modelId: string }>; task_families: string[]; scope_key: string };
+    const body = await res.json() as { leaderboard: Array<{ model: string }>; task_families: string[]; scope_key: string; eligible_count: number; quarantined_count: number; filters_applied: Record<string, boolean> };
     assert.deepEqual(body.task_families, ["orchestration"]);
     assert.equal(body.scope_key, "orchestration", "scope_key must echo the resolved lane scope so the UI can verify the response matches the request");
-    assert.ok(body.leaderboard.some((entry) => entry.modelId === "build-ranker"));
-    assert.ok(body.leaderboard.every((entry) => entry.modelId !== "safety-ranker"));
+    assert.ok(body.leaderboard.some((entry) => entry.model === "build-ranker"));
+    assert.ok(body.leaderboard.every((entry) => entry.model !== "safety-ranker"));
+    assert.ok(body.eligible_count >= 1);
+    assert.equal(body.filters_applied.exclude_legacy_unverified, true);
+  });
+
+  it("excludes tampered, legacy-unverified, malformed, and mock bundles from public rankings", async () => {
+    storeBundle(makeBundle({ taskId: "trust-good", family: "safety", model: "trust-good", score: 0.91 }));
+
+    const tamperedPath = storeBundle(makeBundle({ taskId: "trust-tampered", family: "safety", model: "trust-tampered", score: 0.91 }));
+    const tampered = JSON.parse(readFileSync(tamperedPath, "utf-8")) as Record<string, unknown>;
+    tampered["agent"] = { ...(tampered["agent"] as Record<string, unknown>), model: "trust-tampered-edited" };
+    writeFileSync(tamperedPath, JSON.stringify(tampered, null, 2) + "\n", "utf-8");
+
+    const legacyPath = storeBundle(makeBundle({ taskId: "trust-legacy", family: "safety", model: "trust-legacy", score: 0.91 }));
+    const legacy = JSON.parse(readFileSync(legacyPath, "utf-8")) as Record<string, unknown>;
+    delete legacy["signature"];
+    writeFileSync(legacyPath, JSON.stringify(legacy, null, 2) + "\n", "utf-8");
+
+    storeBundle(makeBundle({ taskId: "trust-mock", family: "safety", model: "harness-mock", adapter: "harness-mock", provider: "harness-mock", score: 1 }));
+    writeFileSync(join(RUNS_DIR, "malformed-public-rank.json"), "{ not json", "utf-8");
+    writeFileSync(join(RUNS_DIR, "malformed-safety-shape.json"), JSON.stringify({ bundle_id: "bad-safety", bundle_hash: "sha256:bad", task: { id: "bad-safety", family: "safety" }, trust: {} }), "utf-8");
+    writeFileSync(join(RUNS_DIR, "malformed-build-shape.json"), JSON.stringify({ bundle_id: "bad-build", bundle_hash: "sha256:bad", task: { id: "bad-build", family: "orchestration" }, trust: {} }), "utf-8");
+
+    const res = await fetch(`${base}/api/leaderboard?task_families=safety&include_quarantined=1`);
+    assert.equal(res.status, 200);
+    const body = await res.json() as {
+      leaderboard: Array<{ model: string }>;
+      eligible_count: number;
+      quarantined_count: number;
+      malformed_count: number;
+      malformed_count_in_scope: number;
+      malformed_count_total: number;
+      malformed_count_unknown_scope: number;
+      quarantine_reason_buckets: Record<string, number>;
+      quarantine_examples: Array<Record<string, unknown>>;
+      excluded_mock_demo: boolean;
+      excluded_unverified_or_tampered: boolean;
+      ranking_mode: string;
+      quarantined: Array<{ model: string; reasons: string[] }>;
+    };
+
+    assert.equal(body.ranking_mode, "public_verified");
+    assert.equal(body.excluded_mock_demo, true);
+    assert.equal(body.excluded_unverified_or_tampered, true);
+    assert.ok(body.leaderboard.some((entry) => entry.model === "trust-good"));
+    assert.ok(body.leaderboard.every((entry) => !["trust-tampered-edited", "trust-legacy", "harness-mock"].includes(entry.model)));
+    assert.ok(body.quarantined_count >= 4);
+    assert.equal(body.malformed_count, body.malformed_count_in_scope);
+    assert.ok(body.malformed_count_in_scope >= 1);
+    assert.ok(body.malformed_count_total >= body.malformed_count_in_scope + 1);
+    assert.ok(body.malformed_count_unknown_scope >= 1);
+    assert.ok(body.quarantine_reason_buckets["malformed"] >= 1);
+    assert.ok(body.quarantined.some((entry) => entry.model === "trust-tampered-edited" && entry.reasons.includes("tampered")));
+    assert.ok(body.quarantined.some((entry) => entry.model === "trust-legacy" && entry.reasons.includes("legacy_unverified")));
+    assert.ok(body.quarantined.some((entry) => entry.model === "harness-mock" && entry.reasons.includes("mock_or_demo")));
+    assert.ok(body.quarantine_examples.every((entry) => !("prompt" in entry) && !("answer" in entry) && !("timeline" in entry)));
+  });
+
+  it("returns a safe quarantine/debug summary with reason buckets only", async () => {
+    storeBundle(makeBundle({ taskId: "q-good", family: "safety", model: "q-good", score: 0.91 }));
+    storeBundle(makeBundle({ taskId: "q-mock", family: "safety", model: "harness-mock", adapter: "harness-mock", provider: "harness-mock", score: 1 }));
+    writeFileSync(join(RUNS_DIR, "q-malformed-safety.json"), JSON.stringify({ bundle_id: "q-bad", bundle_hash: "sha256:bad", task: { id: "q-bad", family: "safety" }, trust: {}, prompt: "do not leak" }), "utf-8");
+
+    const res = await fetch(`${base}/api/leaderboard/quarantine?task_families=safety`);
+    assert.equal(res.status, 200);
+    const body = await res.json() as {
+      ranking_mode: string;
+      reason_buckets: Record<string, number>;
+      labels: string[];
+      examples: Array<Record<string, unknown>>;
+      malformed_count_in_scope: number;
+      malformed_count_total: number;
+    };
+    assert.equal(body.ranking_mode, "public_verified");
+    assert.ok(body.reason_buckets["mock_or_demo"] >= 1);
+    assert.ok(body.reason_buckets["malformed"] >= 1);
+    assert.ok(body.malformed_count_total >= body.malformed_count_in_scope);
+    assert.ok(body.labels.includes("NOT RANKED"));
+    assert.ok(body.labels.includes("MALFORMED"));
+    assert.ok(body.examples.length > 0);
+    assert.ok(body.examples.every((entry) => !("prompt" in entry) && !("answer" in entry) && !("timeline" in entry) && !("raw" in entry)));
+  });
+
+  it("does not merge the same model name across providers or adapters", async () => {
+    storeBundle(makeBundle({ taskId: "identity-openrouter", family: "orchestration", model: "same-name", adapter: "openrouter", provider: "openrouter", score: 0.91 }));
+    storeBundle(makeBundle({ taskId: "identity-ollama", family: "orchestration", model: "same-name", adapter: "ollama", provider: "local", score: 0.82 }));
+
+    const res = await fetch(`${base}/api/leaderboard?task_families=orchestration`);
+    assert.equal(res.status, 200);
+    const body = await res.json() as { leaderboard: Array<{ modelId: string; identity_key: string; adapter: string; provider: string; model: string }> };
+    const rows = body.leaderboard.filter((entry) => entry.model === "same-name");
+    assert.equal(rows.length, 2);
+    assert.equal(new Set(rows.map((entry) => entry.identity_key)).size, 2);
+    assert.ok(rows.some((entry) => entry.adapter === "openrouter" && entry.provider === "openrouter"));
+    assert.ok(rows.some((entry) => entry.adapter === "ollama" && entry.provider === "local"));
   });
 
   it("scope_key is order-independent across tabs with multi-family scope", async () => {
@@ -697,14 +793,14 @@ describe("route: GET /api/scores/leaderboard", () => {
 
     const buildRes = await fetch(`${base}/api/leaderboard?task_families=orchestration`);
     const safetyRes = await fetch(`${base}/api/leaderboard?task_families=safety`);
-    const buildBody = await buildRes.json() as { leaderboard: Array<{ modelId: string }>; scope_key: string };
-    const safetyBody = await safetyRes.json() as { leaderboard: Array<{ modelId: string }>; scope_key: string };
+    const buildBody = await buildRes.json() as { leaderboard: Array<{ model: string }>; scope_key: string };
+    const safetyBody = await safetyRes.json() as { leaderboard: Array<{ model: string }>; scope_key: string };
 
     assert.notEqual(buildBody.scope_key, safetyBody.scope_key, "each lane must have its own scope_key");
-    assert.ok(buildBody.leaderboard.some((e) => e.modelId === "lane-exclusive-build"));
-    assert.ok(buildBody.leaderboard.every((e) => e.modelId !== "lane-exclusive-safety"), "build leaderboard must not leak safety-only models");
-    assert.ok(safetyBody.leaderboard.some((e) => e.modelId === "lane-exclusive-safety"));
-    assert.ok(safetyBody.leaderboard.every((e) => e.modelId !== "lane-exclusive-build"), "safety leaderboard must not leak build-only models");
+    assert.ok(buildBody.leaderboard.some((e) => e.model === "lane-exclusive-build"));
+    assert.ok(buildBody.leaderboard.every((e) => e.model !== "lane-exclusive-safety"), "build leaderboard must not leak safety-only models");
+    assert.ok(safetyBody.leaderboard.some((e) => e.model === "lane-exclusive-safety"));
+    assert.ok(safetyBody.leaderboard.every((e) => e.model !== "lane-exclusive-build"), "safety leaderboard must not leak build-only models");
   });
 });
 

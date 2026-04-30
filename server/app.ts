@@ -19,6 +19,7 @@ import { join } from "node:path";
 import { log } from "../utils/logger.js";
 import { sendJSON } from "./routes/shared.js";
 import { requireAuth, ensureTokenConfigured } from "./auth.js";
+import { envValue } from "../utils/env.js";
 import { loadAllScorers } from "../core/scorer-registry.js";
 import { enforce, RATE_READ, RATE_RUN, RATE_INGEST } from "./rate-limit.js";
 
@@ -30,7 +31,8 @@ import * as auth from "./routes/auth.js";
 import * as registry from "./routes/registry.js";
 import { handleRunBatch } from "./routes/batch.js";
 
-const DEFAULT_PORT = parseInt(process.env["CRUCIBULUM_PORT"] ?? "18795", 10);
+const DEFAULT_PORT = parseInt(envValue("CRUCIBLE_PORT", "CRUCIBULUM_PORT") ?? "18795", 10);
+const DEFAULT_HOST = envValue("CRUCIBLE_HOST", "CRUCIBULUM_HOST") ?? "127.0.0.1";
 const UI_DIR = join(import.meta.dirname, "..", "..", "ui");
 const UI_PATH = join(UI_DIR, "index.html");
 const CRUCIBULUM_CSS_PATH = join(UI_DIR, "crucibulum.css");
@@ -42,7 +44,14 @@ export interface CreateAppOptions {
 
 async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: CreateAppOptions): Promise<void> {
   const url = new URL(req.url ?? "/", `http://localhost:${DEFAULT_PORT}`);
-  const path = url.pathname;
+  const rawPath = url.pathname;
+  // Reject paths with double-slash (path normalization bypass) or empty segments.
+  // Also normalize all redundant consecutive slashes to prevent bypass attempts.
+  if (rawPath.includes("//") || rawPath !== rawPath.replace(/\/\/+/g, "/")) {
+    sendJSON(res, 400, { error: "Invalid path" });
+    return;
+  }
+  const path = rawPath.replace(/\/\/+/g, "/");
   const method = req.method ?? "GET";
 
   if (method === "OPTIONS") {
@@ -92,7 +101,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Cr
       }
     }
 
-    const isApi = path.startsWith("/api/") && path !== "/api/health";
+    const isApi = path.startsWith("/api/") || ["runs", "stats", "receipts", "leaderboard", "health"].some((p) => path === `/${p}`);
     const isHealthAlias = path === "/health";
     // Auth-surface endpoints bypass the global auth gate. Each implements its
     // own policy: /auth/status is public; /auth/bootstrap* is loopback-only;
@@ -197,6 +206,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Cr
     if (path === "/api/scores/sync" && method === "POST") return void await leaderboard.handleScoresSync(req, res);
     if (path === "/api/verum/ingest" && method === "POST") return void await leaderboard.handleVerumIngest(req, res);
     if (path === "/api/scores" && method === "GET") return void await leaderboard.handleScoresQuery(req, res, url);
+    if (path === "/api/leaderboard/quarantine" && method === "GET") return void await leaderboard.handleLeaderboardQuarantine(req, res, url);
     if ((path === "/api/scores/leaderboard" || path === "/api/leaderboard" || path === "/leaderboard") && method === "GET") return void await leaderboard.handleLeaderboard(req, res, url);
     if (path === "/api/synthesis" && method === "POST") return void await leaderboard.handleSynthesis(req, res);
     if (path === "/api/run-batch" && method === "POST") return void await handleRunBatch(req, res);
@@ -228,7 +238,7 @@ export function createApp(options: CreateAppOptions = {}): Server {
  * Returns the listening server so callers can hold a reference for tests or
  * shutdown hooks.
  */
-export async function startServer(port: number = DEFAULT_PORT): Promise<Server> {
+export async function startServer(port: number = DEFAULT_PORT, host: string = DEFAULT_HOST): Promise<Server> {
   const server = createApp();
   // Resolve/generate the auth token and log the bootstrap banner if one was
   // just auto-generated. Done before listen() so the banner appears above
@@ -243,9 +253,11 @@ export async function startServer(port: number = DEFAULT_PORT): Promise<Server> 
   } catch (err) {
     log("error", "api", `Failed to initialize scorer registry: ${String(err)}`);
   }
-  await new Promise<void>((resolve) => server.listen(port, "0.0.0.0", () => resolve()));
-  log("info", "api", `Crucible server running on http://localhost:${port}`);
-  log("info", "api", `UI: http://localhost:${port}/`);
-  log("info", "api", `API: http://localhost:${port}/api/`);
+  await new Promise<void>((resolve) => server.listen(port, host, () => resolve()));
+  const displayHost = host === "0.0.0.0" ? "localhost" : host;
+  log("info", "api", `Crucible server running on http://${displayHost}:${port}`);
+  log("info", "api", `Bind host: ${host}`);
+  log("info", "api", `UI: http://${displayHost}:${port}/`);
+  log("info", "api", `API: http://${displayHost}:${port}/api/`);
   return server;
 }
