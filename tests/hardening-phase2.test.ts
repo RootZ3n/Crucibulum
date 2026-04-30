@@ -37,6 +37,7 @@ function makeBuiltBundle(): EvidenceBundle {
       scoring: { weights: { correctness: 1, regression: 0, integrity: 0, efficiency: 0 }, pass_threshold: 0.5 },
       verification: {},
       task: { title: "t", description: "d" },
+      metadata: { author: "crucible-test", created: "2026-04-01", tags: [], diagnostic_purpose: "test", benchmark_provenance: "hardening-test" },
     } as never,
     oracle: { checks: { correctness: [], regression: [], integrity: [], decoys: [], anti_cheat: { forbidden_code_patterns: [] } }, ground_truth: { bug_location: "", correct_fix_pattern: "" } } as never,
     executionResult: {

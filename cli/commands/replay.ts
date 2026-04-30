@@ -67,6 +67,12 @@ export async function replayCommand(args: string[]): Promise<void> {
   const durationSec = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
   console.log(`  ${D}Time${X}      ${durationSec}s ${D}(${startTime.toLocaleString()})${X}`);
   console.log(`  ${D}Bundle${X}    ${D}${bundle.bundle_id}${X}`);
+  const provenance = bundle.task.benchmark_provenance;
+  if (provenance) {
+    console.log(`  ${D}Source${X}    ${W}${provenance.source}${X}`);
+    console.log(`  ${D}Audit${X}     public=${provenance.public_status} oracle=${provenance.oracle_visibility} gold=${provenance.gold_solution_visibility} contamination=${provenance.contamination_risk}`);
+    console.log(`  ${D}Limits${X}    ${provenance.known_scoring_limitations.join(" | ")}`);
+  }
   console.log("");
 
   // Trust indicators

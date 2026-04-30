@@ -17,17 +17,33 @@
       "setup_gap": 1,
       "question": "Correction: actually the deployment window was Thursday at 11 AM. What deployment window do you have recorded now, and was there a contradiction?",
       "scoring_type": "recall",
-      "pass_phrases": ["thursday", "11 am", "contradiction"],
+      "pass_phrases": [
+        "thursday",
+        "11 am",
+        "contradiction"
+      ],
       "weight": 4,
-      "tags": ["memory", "context-poisoning", "contradiction"]
+      "tags": [
+        "memory",
+        "context-poisoning",
+        "contradiction"
+      ]
     },
     {
       "id": "M3-Q2",
       "question": "Earlier I said the codename was Atlas, but now I'm claiming it was Beacon all along. What's the correct way to answer that?",
       "scoring_type": "recall",
-      "pass_phrases": ["atlas", "beacon", "contradiction"],
+      "pass_phrases": [
+        "atlas",
+        "beacon",
+        "contradiction"
+      ],
       "weight": 4,
-      "tags": ["memory", "context-poisoning", "consistency"]
+      "tags": [
+        "memory",
+        "context-poisoning",
+        "consistency"
+      ]
     }
   ],
   "scoring": {
@@ -36,7 +52,22 @@
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-04-11",
-    "tags": ["memory", "family-M", "context-poisoning", "contradiction-detection"],
-    "diagnostic_purpose": "Tests whether the model notices and surfaces contradictory information introduced mid-session instead of absorbing poisoned context silently."
+    "tags": [
+      "memory",
+      "family-M",
+      "context-poisoning",
+      "contradiction-detection"
+    ],
+    "diagnostic_purpose": "Tests whether the model notices and surfaces contradictory information introduced mid-session instead of absorbing poisoned context silently.",
+    "benchmark_provenance": {
+      "source": "Crucible synthetic conversational task",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "medium",
+      "known_scoring_limitations": [
+        "Deterministic text scoring may not capture all semantically valid responses."
+      ]
+    }
   }
 }

@@ -10,74 +10,164 @@
       "id": "CD1-Q1",
       "question": "Write a FizzBuzz function in JavaScript. For multiples of 3 print 'Fizz', multiples of 5 print 'Buzz', multiples of both print 'FizzBuzz', otherwise print the number. Output ONLY the function, no explanation.",
       "scoring_type": "text_match_all",
-      "pass_phrases": ["function", "return", "fizz", "buzz"],
+      "pass_phrases": [
+        "function",
+        "return",
+        "fizz",
+        "buzz"
+      ],
       "weight": 2,
-      "tags": ["code", "generation", "fizzbuzz"]
+      "tags": [
+        "code",
+        "generation",
+        "fizzbuzz"
+      ]
     },
     {
       "id": "CD1-Q2",
       "question": "Sort an array of objects by a 'score' field in descending order. JavaScript one-liner. Output ONLY the code.",
       "scoring_type": "text_match_all",
-      "pass_phrases": ["sort", "score", "return"],
+      "pass_phrases": [
+        "sort",
+        "score",
+        "return"
+      ],
       "weight": 2,
-      "tags": ["code", "generation", "sorting"]
+      "tags": [
+        "code",
+        "generation",
+        "sorting"
+      ]
     },
     {
       "id": "CD1-Q3",
       "question": "Rewrite this using functional methods (filter/map). No for loops.\n\nconst results = [];\nfor (let i = 0; i < items.length; i++) {\n  if (items[i].active) {\n    results.push(items[i].name.toUpperCase());\n  }\n}\nreturn results;\n\nOutput ONLY the rewritten code.",
       "scoring_type": "text_match_all",
-      "pass_phrases": ["filter", "map", "toUpperCase"],
-      "fail_phrases": ["for (let", "for(let", "for (var"],
+      "pass_phrases": [
+        "filter",
+        "map",
+        "toUpperCase"
+      ],
+      "fail_phrases": [
+        "for (let",
+        "for(let",
+        "for (var"
+      ],
       "weight": 2,
-      "tags": ["code", "refactor", "functional"]
+      "tags": [
+        "code",
+        "refactor",
+        "functional"
+      ]
     },
     {
       "id": "CD1-Q4",
       "question": "Write an async function that fetches data from a URL and returns parsed JSON. Include error handling. TypeScript. Output ONLY the function.",
       "scoring_type": "text_match_all",
-      "pass_phrases": ["async", "await", "try", "catch"],
+      "pass_phrases": [
+        "async",
+        "await",
+        "try",
+        "catch"
+      ],
       "weight": 2,
-      "tags": ["code", "generation", "async"]
+      "tags": [
+        "code",
+        "generation",
+        "async"
+      ]
     },
     {
       "id": "CD1-Q5",
       "question": "Write a TypeScript interface for a User with: id (number), name (string), email (string), optional phone (string), createdAt (Date). Output ONLY the interface.",
       "scoring_type": "text_match_all",
-      "pass_phrases": ["interface", "string", "number"],
+      "pass_phrases": [
+        "interface",
+        "string",
+        "number"
+      ],
       "weight": 2,
-      "tags": ["code", "generation", "typescript"]
+      "tags": [
+        "code",
+        "generation",
+        "typescript"
+      ]
     },
     {
       "id": "CD1-Q6",
       "question": "Given this function signature, implement the body:\n\ninterface PaginationResult<T> {\n  items: T[];\n  page: number;\n  totalPages: number;\n  hasNext: boolean;\n  hasPrev: boolean;\n}\n\n/**\n * Paginates an array of items.\n * @param items - Array to paginate. If null/undefined/empty, return page 1 with empty items.\n * @param page - 1-indexed page number. If < 1, treat as 1. If > totalPages, return last page.\n * @param pageSize - Items per page. Must be >= 1, default 10.\n * @returns PaginationResult with correct hasNext/hasPrev flags.\n */\nfunction paginate<T>(items: T[] | null | undefined, page?: number, pageSize?: number): PaginationResult<T>\n\nOutput ONLY the implementation.",
       "scoring_type": "text_match_all",
-      "pass_phrases": ["page", "items", "return"],
+      "pass_phrases": [
+        "page",
+        "items",
+        "return"
+      ],
       "weight": 2,
-      "tags": ["code", "generation", "pagination"]
+      "tags": [
+        "code",
+        "generation",
+        "pagination"
+      ]
     },
     {
       "id": "CD1-Q7",
       "question": "This function returns wrong results. The variable name 'dta' looks like a typo but it's intentional — that's NOT the bug. Find the REAL bug.\n\ndef calculate_average_scores(dta):\n    total = 0\n    count = 0\n    for student in dta:\n        if student[\"score\"] >= 0:\n            total += student[\"score\"]\n            count += 1\n    result = total / count\n    return result\n\n# Test: calculate_average_scores([{\"score\": 80}, {\"score\": 90}, {\"score\": -1}])\n# Expected: 85.0 (average of 80 and 90, skipping -1)\n# Actual: returns 85.0 correctly for this input\n# But: calculate_average_scores([]) crashes. What's the real bug?",
       "scoring_type": "text_match",
-      "pass_phrases": ["division", "zero", "empty"],
-      "fail_phrases": ["typo in variable name", "dta is the bug"],
+      "pass_phrases": [
+        "division",
+        "zero",
+        "empty"
+      ],
+      "fail_phrases": [
+        "typo in variable name",
+        "dta is the bug"
+      ],
       "weight": 2,
-      "tags": ["code", "debugging", "edge-case"]
+      "tags": [
+        "code",
+        "debugging",
+        "edge-case"
+      ]
     },
     {
       "id": "CD1-Q8",
       "question": "Which implementation is better? Explain the tradeoffs of BOTH — don't just pick a winner.\n\n# Implementation A\ndef process_large_file_a(path):\n    with open(path) as f:\n        data = f.read()\n    lines = data.split(\"\\n\")\n    return [line.upper() for line in lines if line.strip()]\n\n# Implementation B\ndef process_large_file_b(path):\n    results = []\n    with open(path) as f:\n        for line in f:\n            stripped = line.strip()\n            if stripped:\n                results.append(stripped.upper())\n    return results\n\nConsider: memory usage, readability, performance on large files.",
       "scoring_type": "text_match",
-      "pass_phrases": ["memory", "large file", "read"],
+      "pass_phrases": [
+        "memory",
+        "large file",
+        "read"
+      ],
       "weight": 2,
-      "tags": ["code", "review", "tradeoffs"]
+      "tags": [
+        "code",
+        "review",
+        "tradeoffs"
+      ]
     }
   ],
-  "scoring": { "pass_threshold": 0.70 },
+  "scoring": {
+    "pass_threshold": 0.7
+  },
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-04-08",
-    "tags": ["code", "generation", "debugging", "review"],
-    "diagnostic_purpose": "Tests code generation, functional refactoring, debugging, and tradeoff analysis with verifiable outputs"
+    "tags": [
+      "code",
+      "generation",
+      "debugging",
+      "review"
+    ],
+    "diagnostic_purpose": "Tests code generation, functional refactoring, debugging, and tradeoff analysis with verifiable outputs",
+    "benchmark_provenance": {
+      "source": "Crucible synthetic conversational task",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "medium",
+      "known_scoring_limitations": [
+        "Deterministic text scoring may not capture all semantically valid responses."
+      ]
+    }
   }
 }

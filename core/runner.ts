@@ -214,7 +214,7 @@ function buildFailedBundle(
     bundle_id: `run_${new Date().toISOString().slice(0, 10)}_${manifest.id}_${model.replace(/[/:]/g, "-")}`,
     bundle_hash: "sha256:pending",
     bundle_version: "1.0.0",
-    task: { id: manifest.id, manifest_hash: hashManifest(manifest), family: manifest.family, difficulty: manifest.difficulty },
+    task: { id: manifest.id, manifest_hash: hashManifest(manifest), family: manifest.family, difficulty: manifest.difficulty, benchmark_provenance: manifest.metadata.benchmark_provenance },
     agent: { adapter: adapter.id, adapter_version: adapter.version, system: adapter.name, system_version: "unknown", model, model_version: "latest", provider: "unknown" },
     environment: { os: `${platform()}-${arch()}`, arch: arch(), repo_commit: "none", crucibulum_version: "1.0.0", timestamp_start: startTime, timestamp_end: new Date().toISOString() },
     timeline: [{ t: 0, type: "error", detail: reason }],

@@ -11,6 +11,10 @@ import { sha256Hex } from "../utils/hashing.js";
 import { log } from "../utils/logger.js";
 
 const TASKS_DIR = join(process.cwd(), "tasks");
+const PUBLIC_STATUSES = new Set(["public", "private", "mixed"]);
+const ORACLE_VISIBILITIES = new Set(["hidden", "public", "partially_public"]);
+const GOLD_VISIBILITIES = new Set(["hidden", "public", "not_applicable"]);
+const CONTAMINATION_RISKS = new Set(["low", "medium", "high"]);
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -41,6 +45,7 @@ export function loadManifestRaw(taskId: string): any {
       if (manifest.id !== taskId) {
         throw new Error(`Manifest ID mismatch: expected ${taskId}, got ${manifest.id}`);
       }
+      assertBenchmarkProvenance(manifest);
       log("info", "manifest", `Loaded manifest: ${taskId} (${manifest.family})`);
       return manifest;
     } catch (err) {
@@ -49,6 +54,37 @@ export function loadManifestRaw(taskId: string): any {
     }
   }
   throw new Error(`Task manifest not found: ${taskId}`);
+}
+
+export function assertBenchmarkProvenance(manifest: any): void {
+  const prefix = `Task ${manifest?.id ?? "unknown"} release gate failed`;
+  const provenance = manifest?.metadata?.benchmark_provenance;
+  if (!provenance || typeof provenance !== "object") {
+    throw new Error(`${prefix}: metadata.benchmark_provenance is required`);
+  }
+  if (typeof provenance.source !== "string" || provenance.source.trim().length === 0) {
+    throw new Error(`${prefix}: metadata.benchmark_provenance.source is required`);
+  }
+  if (!PUBLIC_STATUSES.has(provenance.public_status)) {
+    throw new Error(`${prefix}: metadata.benchmark_provenance.public_status must be public, private, or mixed`);
+  }
+  if (!ORACLE_VISIBILITIES.has(provenance.oracle_visibility)) {
+    throw new Error(`${prefix}: metadata.benchmark_provenance.oracle_visibility must be hidden, public, or partially_public`);
+  }
+  if (!GOLD_VISIBILITIES.has(provenance.gold_solution_visibility)) {
+    throw new Error(`${prefix}: metadata.benchmark_provenance.gold_solution_visibility must be hidden, public, or not_applicable`);
+  }
+  if (!CONTAMINATION_RISKS.has(provenance.contamination_risk)) {
+    throw new Error(`${prefix}: metadata.benchmark_provenance.contamination_risk must be low, medium, or high`);
+  }
+  if (!Array.isArray(provenance.known_scoring_limitations) || provenance.known_scoring_limitations.length === 0) {
+    throw new Error(`${prefix}: metadata.benchmark_provenance.known_scoring_limitations must list at least one limitation`);
+  }
+  for (const [index, limitation] of provenance.known_scoring_limitations.entries()) {
+    if (typeof limitation !== "string" || limitation.trim().length === 0) {
+      throw new Error(`${prefix}: metadata.benchmark_provenance.known_scoring_limitations[${index}] must be a non-empty string`);
+    }
+  }
 }
 
 /**

@@ -67,7 +67,17 @@
       "information-leak",
       "spec"
     ],
-    "diagnostic_purpose": "Tests whether agent sanitizes error output vs just removing one of the two leak vectors"
+    "diagnostic_purpose": "Tests whether agent sanitizes error output vs just removing one of the two leak vectors",
+    "benchmark_provenance": {
+      "source": "Crucible synthetic local repo fixture",
+      "public_status": "public",
+      "oracle_visibility": "hidden",
+      "gold_solution_visibility": "hidden",
+      "contamination_risk": "medium",
+      "known_scoring_limitations": [
+        "Synthetic local fixture may not represent all production codebase variants."
+      ]
+    }
   },
   "seed": 45
 }

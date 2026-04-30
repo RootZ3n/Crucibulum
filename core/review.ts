@@ -1,7 +1,14 @@
 /**
  * Crucible — Review Layer
+ * Advisory model-based review of sanitized evidence.
  *
- * Optional model-assisted review that sits ON TOP of deterministic judging.
+ * Evidence truncation limits applied to keep review prompts bounded:
+ * - MAX_PATCHES = 4  — only the first 4 changed files are included in diff review
+ * - MAX_TIMELINE_EVENTS = 12 — only the first 12 timeline events are included
+ * These limits are intentional: large diffs and long timelines are summarized rather
+ * than included in full. The full evidence remains in the bundle regardless.
+ * Override by increasing the constants below (note: increases token cost per review).
+ *
  * Deterministic scoring remains authoritative. Review is advisory only.
  */
 

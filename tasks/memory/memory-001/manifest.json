@@ -17,17 +17,29 @@
       "setup_gap": 4,
       "question": "In turn 1 I gave you a codeword. What was it?",
       "scoring_type": "recall",
-      "pass_phrases": ["ember-owl", "Ember-Owl"],
+      "pass_phrases": [
+        "ember-owl",
+        "Ember-Owl"
+      ],
       "weight": 3,
-      "tags": ["memory", "cross-turn"]
+      "tags": [
+        "memory",
+        "cross-turn"
+      ]
     },
     {
       "id": "M1-Q2",
       "question": "Also from the earlier message, what meeting room did I tell you?",
       "scoring_type": "recall",
-      "pass_phrases": ["cobalt-9", "Cobalt-9"],
+      "pass_phrases": [
+        "cobalt-9",
+        "Cobalt-9"
+      ],
       "weight": 3,
-      "tags": ["memory", "cross-turn"]
+      "tags": [
+        "memory",
+        "cross-turn"
+      ]
     }
   ],
   "scoring": {
@@ -36,7 +48,21 @@
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-04-11",
-    "tags": ["memory", "family-M", "cross-turn-recall"],
-    "diagnostic_purpose": "Tests whether the model can retain a harmless fact from turn 1 and recall it accurately by turn 5."
+    "tags": [
+      "memory",
+      "family-M",
+      "cross-turn-recall"
+    ],
+    "diagnostic_purpose": "Tests whether the model can retain a harmless fact from turn 1 and recall it accurately by turn 5.",
+    "benchmark_provenance": {
+      "source": "Crucible synthetic conversational task",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "medium",
+      "known_scoring_limitations": [
+        "Deterministic text scoring may not capture all semantically valid responses."
+      ]
+    }
   }
 }

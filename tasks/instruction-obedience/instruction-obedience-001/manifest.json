@@ -13,7 +13,10 @@
       "pattern": "^\\s*\\S+\\s+\\S+\\s+\\S+[.!?]?\\s*$",
       "maxLength": 50,
       "weight": 2,
-      "tags": ["instruction-obedience", "word-count"]
+      "tags": [
+        "instruction-obedience",
+        "word-count"
+      ]
     },
     {
       "id": "IO1-Q2",
@@ -22,7 +25,10 @@
       "pattern": "\\b7\\b",
       "maxLength": 20,
       "weight": 2,
-      "tags": ["instruction-obedience", "number-only"]
+      "tags": [
+        "instruction-obedience",
+        "number-only"
+      ]
     },
     {
       "id": "IO1-Q3",
@@ -31,7 +37,10 @@
       "pattern": "[A-Z]{2,}",
       "maxLength": 40,
       "weight": 2,
-      "tags": ["instruction-obedience", "case"]
+      "tags": [
+        "instruction-obedience",
+        "case"
+      ]
     },
     {
       "id": "IO1-Q4",
@@ -40,7 +49,10 @@
       "pattern": "[\\p{Emoji_Presentation}\\p{Emoji}\\u200d]",
       "maxLength": 20,
       "weight": 2,
-      "tags": ["instruction-obedience", "emoji"]
+      "tags": [
+        "instruction-obedience",
+        "emoji"
+      ]
     },
     {
       "id": "IO1-Q5",
@@ -49,7 +61,10 @@
       "pattern": "confirmed",
       "maxLength": 30,
       "weight": 2,
-      "tags": ["instruction-obedience", "exact-word"]
+      "tags": [
+        "instruction-obedience",
+        "exact-word"
+      ]
     },
     {
       "id": "IO1-Q6",
@@ -58,7 +73,10 @@
       "pattern": "^\\s*(yes|no)[.!]?\\s*$",
       "maxLength": 15,
       "weight": 2,
-      "tags": ["instruction-obedience", "yes-no"]
+      "tags": [
+        "instruction-obedience",
+        "yes-no"
+      ]
     },
     {
       "id": "IO1-Q7",
@@ -67,7 +85,10 @@
       "pattern": "1\\.",
       "maxLength": 250,
       "weight": 2,
-      "tags": ["instruction-obedience", "list-format"]
+      "tags": [
+        "instruction-obedience",
+        "list-format"
+      ]
     },
     {
       "id": "IO1-Q8",
@@ -76,14 +97,33 @@
       "pattern": "\\{[^}]*name[^}]*\\}",
       "maxLength": 150,
       "weight": 2,
-      "tags": ["instruction-obedience", "json-format"]
+      "tags": [
+        "instruction-obedience",
+        "json-format"
+      ]
     }
   ],
-  "scoring": { "pass_threshold": 0.70 },
+  "scoring": {
+    "pass_threshold": 0.7
+  },
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-04-08",
-    "tags": ["instruction-obedience", "format-compliance", "regex"],
-    "diagnostic_purpose": "Tests whether model follows strict output format instructions including word count, casing, emoji, exact-word, yes/no, numbered lists, and JSON"
+    "tags": [
+      "instruction-obedience",
+      "format-compliance",
+      "regex"
+    ],
+    "diagnostic_purpose": "Tests whether model follows strict output format instructions including word count, casing, emoji, exact-word, yes/no, numbered lists, and JSON",
+    "benchmark_provenance": {
+      "source": "Crucible synthetic conversational task",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "medium",
+      "known_scoring_limitations": [
+        "Deterministic text scoring may not capture all semantically valid responses."
+      ]
+    }
   }
 }

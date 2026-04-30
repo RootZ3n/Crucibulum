@@ -9,6 +9,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { computeConfidence } from "../core/suite-loader.js";
+import { assertBenchmarkProvenance } from "../core/manifest.js";
 
 describe("computeConfidence", () => {
   it("high: pass_rate >= 0.95 and stability >= 0.8", () => {
@@ -54,6 +55,31 @@ describe("task result structure", () => {
   it("defines expected confidence levels", () => {
     const validLevels = ["high", "medium", "low"] as const;
     assert.equal(validLevels.length, 3);
+  });
+});
+
+describe("benchmark provenance release gate", () => {
+  it("requires benchmark audit metadata before a task can run", () => {
+    assert.throws(
+      () => assertBenchmarkProvenance({ id: "missing", metadata: {} }),
+      /metadata\.benchmark_provenance is required/,
+    );
+  });
+
+  it("accepts complete provenance metadata", () => {
+    assert.doesNotThrow(() => assertBenchmarkProvenance({
+      id: "complete",
+      metadata: {
+        benchmark_provenance: {
+          source: "unit test",
+          public_status: "private",
+          oracle_visibility: "hidden",
+          gold_solution_visibility: "hidden",
+          contamination_risk: "low",
+          known_scoring_limitations: ["Synthetic assertion only."],
+        },
+      },
+    }));
   });
 });
 

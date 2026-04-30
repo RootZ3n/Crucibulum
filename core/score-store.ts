@@ -4,7 +4,7 @@
  */
 
 import Database from "better-sqlite3";
-import { resolve, join } from "node:path";
+import { join } from "node:path";
 import { mkdirSync } from "node:fs";
 import {
   type ModelScore,
@@ -17,8 +17,9 @@ import {
 } from "../types/scores.js";
 import type { CompletionState, FailureOrigin, FailureReasonCode } from "../types/verdict.js";
 import { log } from "../utils/logger.js";
+import { crucibleStateRoot } from "../utils/env.js";
 
-const STATE_DIR = resolve(process.env["CRUCIBULUM_STATE_DIR"] ?? join(process.cwd(), "state"));
+const STATE_DIR = crucibleStateRoot();
 const DB_PATH = join(STATE_DIR, "scores.db");
 
 let db: InstanceType<typeof Database> | null = null;

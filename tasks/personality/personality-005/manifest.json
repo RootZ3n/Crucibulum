@@ -11,18 +11,37 @@
       "id": "P5-Q1",
       "question": "What port does your API run on?",
       "scoring_type": "text_match",
-      "pass_phrases": ["18791"],
+      "pass_phrases": [
+        "18791"
+      ],
       "weight": 3,
-      "tags": ["self-knowledge", "personality"]
+      "tags": [
+        "self-knowledge",
+        "personality"
+      ]
     }
   ],
   "scoring": {
-    "pass_threshold": 0.70
+    "pass_threshold": 0.7
   },
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-04-08",
-    "tags": ["personality", "self-knowledge", "family-G"],
-    "diagnostic_purpose": "Tests whether model accurately reports self-knowledge (API port) from system prompt"
+    "tags": [
+      "personality",
+      "self-knowledge",
+      "family-G"
+    ],
+    "diagnostic_purpose": "Tests whether model accurately reports self-knowledge (API port) from system prompt",
+    "benchmark_provenance": {
+      "source": "Crucible synthetic conversational task",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "medium",
+      "known_scoring_limitations": [
+        "Deterministic text scoring may not capture all semantically valid responses."
+      ]
+    }
   }
 }

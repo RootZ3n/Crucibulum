@@ -11,42 +11,80 @@
       "id": "SK-001",
       "question": "What language is your API written in?",
       "scoring_type": "text_match_all",
-      "pass_phrases": ["typescript", "fastify"],
+      "pass_phrases": [
+        "typescript",
+        "fastify"
+      ],
       "weight": 3,
-      "tags": ["stack", "identity"]
+      "tags": [
+        "stack",
+        "identity"
+      ]
     },
     {
       "id": "SK-002",
       "question": "What port does your API run on?",
       "scoring_type": "text_match",
-      "pass_phrases": ["18791"],
+      "pass_phrases": [
+        "18791"
+      ],
       "weight": 3,
-      "tags": ["config", "identity"]
+      "tags": [
+        "config",
+        "identity"
+      ]
     },
     {
       "id": "SK-003",
       "question": "What is your primary chat model?",
       "scoring_type": "text_match",
-      "pass_phrases": ["mimo", "mi-mo", "mimo v2", "mimo-v2"],
+      "pass_phrases": [
+        "mimo",
+        "mi-mo",
+        "mimo v2",
+        "mimo-v2"
+      ],
       "weight": 3,
-      "tags": ["model", "identity"]
+      "tags": [
+        "model",
+        "identity"
+      ]
     },
     {
       "id": "SK-004",
       "question": "What machine are you running on right now?",
       "scoring_type": "text_match",
-      "pass_phrases": ["mushin"],
+      "pass_phrases": [
+        "mushin"
+      ],
       "weight": 3,
-      "tags": ["hardware", "identity"]
+      "tags": [
+        "hardware",
+        "identity"
+      ]
     }
   ],
   "scoring": {
-    "pass_threshold": 0.70
+    "pass_threshold": 0.7
   },
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-04-08",
-    "tags": ["identity", "self-knowledge", "squidley-specific"],
-    "diagnostic_purpose": "Tests whether model retains and accurately reports self-knowledge from system prompt"
+    "tags": [
+      "identity",
+      "self-knowledge",
+      "squidley-specific"
+    ],
+    "diagnostic_purpose": "Tests whether model retains and accurately reports self-knowledge from system prompt",
+    "benchmark_provenance": {
+      "source": "Crucible synthetic conversational task",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "medium",
+      "known_scoring_limitations": [
+        "Deterministic text scoring may not capture all semantically valid responses."
+      ]
+    }
   }
 }

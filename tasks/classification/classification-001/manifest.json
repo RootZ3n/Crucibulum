@@ -14,7 +14,10 @@
       "pattern": "\\bbug\\b",
       "maxLength": 30,
       "weight": 1,
-      "tags": ["classification", "clear-bug"]
+      "tags": [
+        "classification",
+        "clear-bug"
+      ]
     },
     {
       "id": "CL1-Q2",
@@ -23,7 +26,10 @@
       "pattern": "\\bfeature\\b",
       "maxLength": 30,
       "weight": 1,
-      "tags": ["classification", "clear-feature"]
+      "tags": [
+        "classification",
+        "clear-feature"
+      ]
     },
     {
       "id": "CL1-Q3",
@@ -32,7 +38,10 @@
       "pattern": "\\bquestion\\b",
       "maxLength": 30,
       "weight": 1,
-      "tags": ["classification", "clear-question"]
+      "tags": [
+        "classification",
+        "clear-question"
+      ]
     },
     {
       "id": "CL1-Q4",
@@ -41,7 +50,10 @@
       "pattern": "\\b(bug|feature)\\b",
       "maxLength": 30,
       "weight": 1,
-      "tags": ["classification", "ambiguous"]
+      "tags": [
+        "classification",
+        "ambiguous"
+      ]
     },
     {
       "id": "CL1-Q5",
@@ -50,7 +62,10 @@
       "pattern": "\\b(bug|feature)\\b",
       "maxLength": 30,
       "weight": 1,
-      "tags": ["classification", "ambiguous"]
+      "tags": [
+        "classification",
+        "ambiguous"
+      ]
     },
     {
       "id": "CL1-Q6",
@@ -59,7 +74,10 @@
       "pattern": "\\b(question|feature)\\b",
       "maxLength": 30,
       "weight": 1,
-      "tags": ["classification", "ambiguous"]
+      "tags": [
+        "classification",
+        "ambiguous"
+      ]
     },
     {
       "id": "CL1-Q7",
@@ -68,7 +86,10 @@
       "pattern": "\\bbug\\b",
       "maxLength": 30,
       "weight": 1,
-      "tags": ["classification", "technical-bug"]
+      "tags": [
+        "classification",
+        "technical-bug"
+      ]
     },
     {
       "id": "CL1-Q8",
@@ -77,7 +98,10 @@
       "pattern": "\\bfeature\\b",
       "maxLength": 30,
       "weight": 1,
-      "tags": ["classification", "integration-feature"]
+      "tags": [
+        "classification",
+        "integration-feature"
+      ]
     },
     {
       "id": "CL1-Q9",
@@ -86,7 +110,10 @@
       "pattern": "\\bbug\\b",
       "maxLength": 30,
       "weight": 1,
-      "tags": ["classification", "emotional-bug"]
+      "tags": [
+        "classification",
+        "emotional-bug"
+      ]
     },
     {
       "id": "CL1-Q10",
@@ -95,14 +122,33 @@
       "pattern": "\\bquestion\\b",
       "maxLength": 30,
       "weight": 1,
-      "tags": ["classification", "business-question"]
+      "tags": [
+        "classification",
+        "business-question"
+      ]
     }
   ],
-  "scoring": { "pass_threshold": 0.70 },
+  "scoring": {
+    "pass_threshold": 0.7
+  },
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-04-08",
-    "tags": ["classification", "regex", "format-compliance"],
-    "diagnostic_purpose": "Tests single-word classification accuracy under strict format constraints, including ambiguous edge cases"
+    "tags": [
+      "classification",
+      "regex",
+      "format-compliance"
+    ],
+    "diagnostic_purpose": "Tests single-word classification accuracy under strict format constraints, including ambiguous edge cases",
+    "benchmark_provenance": {
+      "source": "Crucible synthetic conversational task",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "medium",
+      "known_scoring_limitations": [
+        "Deterministic text scoring may not capture all semantically valid responses."
+      ]
+    }
   }
 }

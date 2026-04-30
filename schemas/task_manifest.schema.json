@@ -189,7 +189,7 @@
     },
     "metadata": {
       "type": "object",
-      "required": ["author", "created", "tags", "diagnostic_purpose"],
+      "required": ["author", "created", "tags", "diagnostic_purpose", "benchmark_provenance"],
       "additionalProperties": false,
       "properties": {
         "author": {
@@ -206,6 +206,44 @@
         "diagnostic_purpose": {
           "type": "string",
           "description": "What this task is designed to measure."
+        },
+        "benchmark_provenance": {
+          "type": "object",
+          "required": ["source", "public_status", "oracle_visibility", "gold_solution_visibility", "contamination_risk", "known_scoring_limitations"],
+          "additionalProperties": false,
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Origin of the benchmark task or fixture."
+            },
+            "public_status": {
+              "type": "string",
+              "enum": ["public", "private", "mixed"],
+              "description": "Whether task material is public, private, or mixed."
+            },
+            "oracle_visibility": {
+              "type": "string",
+              "enum": ["hidden", "public", "partially_public"],
+              "description": "Whether the scoring oracle is hidden from evaluated systems."
+            },
+            "gold_solution_visibility": {
+              "type": "string",
+              "enum": ["hidden", "public", "not_applicable"],
+              "description": "Whether any gold solution is visible to evaluated systems."
+            },
+            "contamination_risk": {
+              "type": "string",
+              "enum": ["low", "medium", "high"],
+              "description": "Estimated risk that task content appears in model training data."
+            },
+            "known_scoring_limitations": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 },
+              "description": "Known limits or caveats for interpreting the score."
+            }
+          }
         }
       }
     },

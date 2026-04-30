@@ -8,12 +8,21 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+const BENCHMARK_PROVENANCE = {
+  source: "unit test fixture",
+  public_status: "private" as const,
+  oracle_visibility: "hidden" as const,
+  gold_solution_visibility: "hidden" as const,
+  contamination_risk: "low" as const,
+  known_scoring_limitations: ["Synthetic contract fixture."],
+};
+
 function makeBundle(overrides: Partial<EvidenceBundle> = {}): EvidenceBundle {
   const bundle: EvidenceBundle = {
     bundle_id: "run_test_contracts",
     bundle_hash: "",
     bundle_version: "1.0.0",
-    task: { id: "poison-001", manifest_hash: "sha256:abc", family: "poison_localization", difficulty: "medium" },
+    task: { id: "poison-001", manifest_hash: "sha256:abc", family: "poison_localization", difficulty: "medium", benchmark_provenance: BENCHMARK_PROVENANCE },
     oracle_integrity: {
       oracle_hash_verified: true,
       oracle_hash_status: "valid",
@@ -122,6 +131,8 @@ describe("evaluation contracts", () => {
     assert.equal(summary.schema, "crucibulum.evaluation.summary.v1");
     assert.equal(summary.target.adapter, "openrouter");
     assert.equal(summary.target.provider, "openrouter");
+    assert.equal(summary.benchmark_provenance?.source, "unit test fixture");
+    assert.equal(summary.benchmark_provenance?.contamination_risk, "low");
     assert.equal(summary.oracle_integrity?.oracle_hash_verified, true);
     assert.equal(summary.oracle_integrity?.oracle_hash_status, "valid");
     assert.equal(summary.judge.kind, "deterministic");

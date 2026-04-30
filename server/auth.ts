@@ -3,7 +3,7 @@
  *
  * Security posture (unchanged):
  *   - Loopback clients (127.0.0.1 / ::1) are allowed without a token when
- *     CRUCIBULUM_ALLOW_LOCAL is not "false".
+ *     CRUCIBLE_ALLOW_LOCAL / CRUCIBULUM_ALLOW_LOCAL is not "false".
  *   - Remote clients must present Authorization: Bearer <token>.
  *   - A configured env token wins over everything.
  *
@@ -20,15 +20,16 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { log } from "../utils/logger.js";
+import { crucibleStateRoot, envValue } from "../utils/env.js";
 import { validateSessionToken } from "./auth-sessions.js";
 
 // Paths are resolved lazily so tests (which set env vars before each test,
 // inside one node process) get the STATE_DIR they asked for. A top-level
 // const would capture whatever env the first test saw.
 function stateDir(): string {
-  return resolve(process.env["CRUCIBULUM_STATE_DIR"] ?? join(process.cwd(), "state"));
+  return crucibleStateRoot();
 }
 function tokenFile(): string {
   return join(stateDir(), "auth-token");
@@ -39,18 +40,13 @@ const LOCAL_HOSTS = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1", "localhost"
 let effectiveToken: string | null = null;
 let tokenWasGenerated = false;
 
-function envFlag(key: string): string | undefined {
-  const v = process.env[key];
-  return v === undefined ? undefined : v.trim();
-}
-
 function allowLocal(): boolean {
-  return envFlag("CRUCIBULUM_ALLOW_LOCAL") !== "false";
+  return envValue("CRUCIBLE_ALLOW_LOCAL", "CRUCIBULUM_ALLOW_LOCAL") !== "false";
 }
 
 /**
  * Resolve the effective token. Precedence:
- *   1. CRUCIBULUM_API_TOKEN env var
+ *   1. CRUCIBLE_API_TOKEN / CRUCIBULUM_API_TOKEN env var
  *   2. previously-persisted token at <state>/auth-token
  *   3. freshly generated token (persisted for next start)
  *
@@ -58,7 +54,7 @@ function allowLocal(): boolean {
  */
 export function getEffectiveToken(): string {
   if (effectiveToken !== null) return effectiveToken;
-  const envToken = envFlag("CRUCIBULUM_API_TOKEN");
+  const envToken = envValue("CRUCIBLE_API_TOKEN", "CRUCIBULUM_API_TOKEN");
   if (envToken && envToken.length > 0) {
     effectiveToken = envToken;
     tokenWasGenerated = false;

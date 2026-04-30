@@ -60,6 +60,7 @@ export interface EvaluationSummary {
   bundle_id: string;
   bundle_hash: string;
   task_id: string;
+  benchmark_provenance: EvidenceBundle["task"]["benchmark_provenance"] | null;
   oracle_integrity: NonNullable<EvidenceBundle["oracle_integrity"]> | null;
   suite_id: string;
   family: string;
@@ -306,6 +307,7 @@ export function summarizeBundle(
     bundle_id: bundle.bundle_id,
     bundle_hash: bundle.bundle_hash,
     task_id: bundle.task.id,
+    benchmark_provenance: bundle.task.benchmark_provenance ?? null,
     oracle_integrity: bundle.oracle_integrity ?? null,
     suite_id: "v1",
     family: bundle.task.family,

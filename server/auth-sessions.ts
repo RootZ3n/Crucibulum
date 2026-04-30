@@ -24,9 +24,10 @@
  * `log("info"|"warn", "auth:session", ...)`.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { log } from "../utils/logger.js";
+import { crucibleStateRoot } from "../utils/env.js";
 
 export type TokenKind = "session" | "pairing";
 
@@ -57,7 +58,7 @@ const MAX_PAIRING_REDEEM_ATTEMPTS = 12; // per-process throttle on /redeem brute
 const PAIRING_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 function statePath(): string {
-  return resolve(process.env["CRUCIBULUM_STATE_DIR"] ?? join(process.cwd(), "state"));
+  return crucibleStateRoot();
 }
 function storeFile(): string {
   return join(statePath(), "auth-sessions.json");

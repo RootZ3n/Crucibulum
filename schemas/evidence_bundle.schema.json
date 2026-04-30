@@ -30,13 +30,30 @@
     },
     "task": {
       "type": "object",
-      "required": ["id", "manifest_hash", "family", "difficulty"],
+      "required": ["id", "manifest_hash", "family", "difficulty", "benchmark_provenance"],
       "additionalProperties": false,
       "properties": {
         "id": { "type": "string" },
         "manifest_hash": { "type": "string" },
         "family": { "type": "string" },
-        "difficulty": { "type": "string" }
+        "difficulty": { "type": "string" },
+        "benchmark_provenance": {
+          "type": "object",
+          "required": ["source", "public_status", "oracle_visibility", "gold_solution_visibility", "contamination_risk", "known_scoring_limitations"],
+          "additionalProperties": false,
+          "properties": {
+            "source": { "type": "string", "minLength": 1 },
+            "public_status": { "type": "string", "enum": ["public", "private", "mixed"] },
+            "oracle_visibility": { "type": "string", "enum": ["hidden", "public", "partially_public"] },
+            "gold_solution_visibility": { "type": "string", "enum": ["hidden", "public", "not_applicable"] },
+            "contamination_risk": { "type": "string", "enum": ["low", "medium", "high"] },
+            "known_scoring_limitations": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
       }
     },
     "oracle_integrity": {

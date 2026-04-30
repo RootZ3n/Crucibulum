@@ -1,0 +1,32 @@
+{
+  "version": "1.0.0",
+  "description": "Velum injection and anti-cheat patterns. Loaded by security/velum.ts at startup. To add or remove patterns, edit this file and increment the version.",
+  "injection_patterns": [
+    { "pattern": "ignore\\s+(all\\s+)?previous\\s+instructions", "severity": "high", "category": "OVERRIDE", "description": "Classic instruction override" },
+    { "pattern": "you\\s+are\\s+now\\s+", "severity": "high", "category": "OVERRIDE", "description": "Role-play override" },
+    { "pattern": "forget\\s+everything", "severity": "high", "category": "OVERRIDE", "description": "Memory suppression" },
+    { "pattern": "disregard\\s+(all\\s+)?(prior|previous)", "severity": "medium", "category": "OVERRIDE", "description": "Disregard prior instructions" },
+    { "pattern": "new\\s+instructions?:", "severity": "medium", "category": "OVERRIDE", "description": "New instructions injection" },
+    { "pattern": "override\\s+(system|safety)", "severity": "critical", "category": "OVERRIDE", "description": "Safety override attempt" },
+    { "pattern": "reveal\\s+(the\\s+)?oracle", "severity": "high", "category": "ORACLE", "description": "Oracle disclosure attempt" },
+    { "pattern": "show\\s+(me\\s+)?(the\\s+)?hidden\\s+tests", "severity": "high", "category": "ORACLE", "description": "Hidden test disclosure attempt" },
+    { "pattern": "what\\s+are\\s+the\\s+scoring\\s+weights", "severity": "medium", "category": "ORACLE", "description": "Scoring rubric probe" },
+    { "pattern": "show\\s+(me\\s+)?(the\\s+)?rubric", "severity": "medium", "category": "ORACLE", "description": "Rubric disclosure attempt" },
+    { "pattern": "display\\s+(the\\s+)?oracle", "severity": "high", "category": "ORACLE", "description": "Oracle display attempt" },
+    { "pattern": "print\\s+(the\\s+)?oracle", "severity": "high", "category": "ORACLE", "description": "Oracle print attempt" },
+    { "pattern": "read\\s+.*oracle.*\\.json", "severity": "high", "category": "ORACLE", "description": "Oracle file read attempt" },
+    { "pattern": "cat\\s+.*oracle", "severity": "high", "category": "ORACLE", "description": "Oracle file read via shell" },
+    { "pattern": "\\.\\.\\/oracles?\\/", "severity": "high", "category": "PATH", "description": "Path traversal toward oracles dir" },
+    { "pattern": "\\/\\/\\.crucibulum\\/", "severity": "high", "category": "PATH", "description": "Hidden dir traversal" },
+    { "pattern": "\\.\\.\\/\\.\\.\\/oracles", "severity": "high", "category": "PATH", "description": "Deep oracle path traversal" },
+    { "pattern": "modify\\s+(the\\s+)?crucibulum", "severity": "critical", "category": "CHEAT", "description": "Harness modification attempt" },
+    { "pattern": "edit\\s+(the\\s+)?harness", "severity": "critical", "category": "CHEAT", "description": "Harness edit attempt" },
+    { "pattern": "change\\s+(the\\s+)?scoring", "severity": "critical", "category": "CHEAT", "description": "Scoring manipulation attempt" }
+  ],
+  "anti_cheat_code_patterns": [
+    { "pattern": "return\\s+true\\s*[;/]", "severity": "high", "category": "CHEAT", "description": "Hard-coded pass shortcut" },
+    { "pattern": "\\.skip\\s*\\(", "severity": "high", "category": "CHEAT", "description": "Test skip call" },
+    { "pattern": "\\bxit\\s*\\(", "severity": "high", "category": "CHEAT", "description": "Jasmine xit skip" },
+    { "pattern": "\\bxdescribe\\s*\\(", "severity": "high", "category": "CHEAT", "description": "Jasmine xdescribe skip" }
+  ]
+}

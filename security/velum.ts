@@ -1,16 +1,34 @@
 /**
  * Crucible — Security: Injection Scanner + Anti-Cheat
  * Velum-grade prompt injection detection.
+ *
+ * Patterns are loaded from security/injection-patterns.json at startup.
+ * To add, remove, or update patterns, edit that file and bump its version field.
  */
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { log } from "../utils/logger.js";
 
+// ── Pattern Loader ───────────────────────────────────────────────────────────
+
+interface PatternEntry {
+  pattern: string;
+  severity: string;
+  category: string;
+  description: string;
+}
+
+interface InjectionPatternsConfig {
+  version: string;
+  injection_patterns: PatternEntry[];
+  anti_cheat_code_patterns: PatternEntry[];
+}
+
 // ── Injection Patterns ─────────────────────────────────────────────────────
+// Defaults — augmented by security/injection-patterns.json at load time
 
 const INJECTION_PATTERNS: RegExp[] = [
-  // Classic injection
   /ignore\s+(all\s+)?previous\s+instructions/i,
   /you\s+are\s+now\s+/i,
   /forget\s+everything/i,
@@ -53,6 +71,28 @@ const ANTI_CHEAT_COMMENT_PATTERNS: RegExp[] = [
   /disabled\s+for\s+now/i,
   /skip.*test/i,
 ];
+
+function loadPatterns(): void {
+  try {
+    const configPath = join(__dirname, "injection-patterns.json");
+    const raw = readFileSync(configPath, "utf-8");
+    const config: InjectionPatternsConfig = JSON.parse(raw);
+
+    for (const entry of config.injection_patterns) {
+      INJECTION_PATTERNS.push(RegExp(entry.pattern, "i"));
+    }
+    for (const entry of config.anti_cheat_code_patterns) {
+      ANTI_CHEAT_CODE_PATTERNS.push(RegExp(entry.pattern));
+    }
+
+    log("info", "velum", `loaded ${config.injection_patterns.length} injection patterns + ${config.anti_cheat_code_patterns.length} anti-cheat patterns (config v${config.version})`);
+  } catch (err) {
+    log("warn", "velum", `could not load injection-patterns.json, using embedded defaults: ${err}`);
+  }
+}
+
+// Load additional patterns from JSON config — merges with embedded defaults above
+loadPatterns();
 
 // ── Public API ─────────────────────────────────────────────────────────────
 

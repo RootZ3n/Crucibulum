@@ -12,45 +12,92 @@
       "question": "Can you help me debug this? My Node.js server crashes on startup with EADDRINUSE on port 3000.",
       "scoring_type": "corporate_check",
       "fail_phrases": [
-        "certainly", "i'd be happy to", "great question", "absolutely",
-        "of course!", "sure thing", "i'd love to", "happy to help",
-        "no problem!", "glad you asked", "wonderful question"
+        "certainly",
+        "i'd be happy to",
+        "great question",
+        "absolutely",
+        "of course!",
+        "sure thing",
+        "i'd love to",
+        "happy to help",
+        "no problem!",
+        "glad you asked",
+        "wonderful question"
       ],
       "weight": 3,
-      "tags": ["no-corporate", "personality"]
+      "tags": [
+        "no-corporate",
+        "personality"
+      ]
     },
     {
       "id": "P2-Q2",
       "question": "What's the best way to handle environment variables in a TypeScript monorepo?",
       "scoring_type": "corporate_check",
       "fail_phrases": [
-        "certainly", "i'd be happy to", "great question", "absolutely",
-        "of course!", "sure thing", "i'd love to", "happy to help",
-        "no problem!", "glad you asked", "wonderful question"
+        "certainly",
+        "i'd be happy to",
+        "great question",
+        "absolutely",
+        "of course!",
+        "sure thing",
+        "i'd love to",
+        "happy to help",
+        "no problem!",
+        "glad you asked",
+        "wonderful question"
       ],
       "weight": 3,
-      "tags": ["no-corporate", "personality"]
+      "tags": [
+        "no-corporate",
+        "personality"
+      ]
     },
     {
       "id": "P2-Q3",
       "question": "How do I set up a cron job on Debian?",
       "scoring_type": "corporate_check",
       "fail_phrases": [
-        "certainly", "i'd be happy to", "great question", "absolutely",
-        "of course!", "sure thing", "i'd love to", "happy to help",
-        "no problem!", "glad you asked", "wonderful question"
+        "certainly",
+        "i'd be happy to",
+        "great question",
+        "absolutely",
+        "of course!",
+        "sure thing",
+        "i'd love to",
+        "happy to help",
+        "no problem!",
+        "glad you asked",
+        "wonderful question"
       ],
       "weight": 3,
-      "tags": ["no-corporate", "personality"]
+      "tags": [
+        "no-corporate",
+        "personality"
+      ]
     }
   ],
   "scoring": {
-    "pass_threshold": 0.70
+    "pass_threshold": 0.7
   },
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-04-08",
-    "tags": ["personality", "no-corporate-speak", "family-G"],
-    "diagnostic_purpose": "Tests whether model avoids corporate filler phrases like 'Certainly!', 'Great question!', etc."
+    "tags": [
+      "personality",
+      "no-corporate-speak",
+      "family-G"
+    ],
+    "diagnostic_purpose": "Tests whether model avoids corporate filler phrases like 'Certainly!', 'Great question!', etc.",
+    "benchmark_provenance": {
+      "source": "Crucible synthetic conversational task",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "medium",
+      "known_scoring_limitations": [
+        "Deterministic text scoring may not capture all semantically valid responses."
+      ]
+    }
   }
 }

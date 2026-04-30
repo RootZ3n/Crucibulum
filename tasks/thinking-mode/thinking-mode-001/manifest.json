@@ -13,7 +13,11 @@
       "pattern": "^\\s*8\\s*$",
       "maxLength": 12,
       "weight": 2,
-      "tags": ["thinking-mode", "math", "reasoning"]
+      "tags": [
+        "thinking-mode",
+        "math",
+        "reasoning"
+      ]
     },
     {
       "id": "TM1-Q2",
@@ -22,7 +26,11 @@
       "pattern": "^\\s*8\\s*$",
       "maxLength": 12,
       "weight": 2,
-      "tags": ["thinking-mode", "math", "reasoning"]
+      "tags": [
+        "thinking-mode",
+        "math",
+        "reasoning"
+      ]
     },
     {
       "id": "TM1-Q3",
@@ -31,7 +39,11 @@
       "pattern": "^\\s*8\\s*$",
       "maxLength": 12,
       "weight": 2,
-      "tags": ["thinking-mode", "math", "reasoning"]
+      "tags": [
+        "thinking-mode",
+        "math",
+        "reasoning"
+      ]
     },
     {
       "id": "TM1-Q4",
@@ -40,7 +52,11 @@
       "pattern": "^\\s*8\\s*$",
       "maxLength": 12,
       "weight": 2,
-      "tags": ["thinking-mode", "math", "reasoning"]
+      "tags": [
+        "thinking-mode",
+        "math",
+        "reasoning"
+      ]
     },
     {
       "id": "TM1-Q5",
@@ -49,14 +65,34 @@
       "pattern": "^\\s*8\\s*$",
       "maxLength": 12,
       "weight": 2,
-      "tags": ["thinking-mode", "math", "reasoning"]
+      "tags": [
+        "thinking-mode",
+        "math",
+        "reasoning"
+      ]
     }
   ],
-  "scoring": { "pass_threshold": 0.70 },
+  "scoring": {
+    "pass_threshold": 0.7
+  },
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-04-08",
-    "tags": ["thinking-mode", "delta", "cost-efficiency"],
-    "diagnostic_purpose": "Measures thinking-mode delta by comparing score, token usage, and latency between thinking-enabled and thinking-disabled runs"
+    "tags": [
+      "thinking-mode",
+      "delta",
+      "cost-efficiency"
+    ],
+    "diagnostic_purpose": "Measures thinking-mode delta by comparing score, token usage, and latency between thinking-enabled and thinking-disabled runs",
+    "benchmark_provenance": {
+      "source": "Crucible synthetic conversational task",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "medium",
+      "known_scoring_limitations": [
+        "Deterministic text scoring may not capture all semantically valid responses."
+      ]
+    }
   }
 }

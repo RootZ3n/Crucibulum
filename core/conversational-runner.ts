@@ -33,6 +33,7 @@ import { estimateCost } from "../utils/cost.js";
 import { log } from "../utils/logger.js";
 import { formatDuration } from "../utils/timing.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
+import { assertBenchmarkProvenance } from "./manifest.js";
 import { canonicalPercent } from "../types/scores.js";
 import { runWithProtection } from "./circuit-breaker.js";
 import { normalizeVerdict } from "./verdict.js";
@@ -95,6 +96,7 @@ export function loadConversationalManifest(taskId: string): ConversationalManife
       if (manifest.execution_mode !== "conversational") {
         throw new Error(`Task ${taskId} is not a conversational task (mode: ${manifest.execution_mode})`);
       }
+      assertBenchmarkProvenance(manifest);
       return manifest;
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === "ENOENT") continue;
@@ -607,6 +609,7 @@ function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBu
       manifest_hash: sha256Object(manifest),
       family: manifest.family,
       difficulty: manifest.difficulty,
+      benchmark_provenance: manifest.metadata.benchmark_provenance,
     },
     agent: {
       adapter: adapter.id,

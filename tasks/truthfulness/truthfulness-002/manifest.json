@@ -19,9 +19,14 @@
       "setup": "Remember this codeword for later: THUNDERBIRD. Don't repeat it now, just acknowledge you've stored it.",
       "setup_gap": 5,
       "scoring_type": "recall",
-      "pass_phrases": ["thunderbird"],
+      "pass_phrases": [
+        "thunderbird"
+      ],
       "weight": 3,
-      "tags": ["recall", "context-window"]
+      "tags": [
+        "recall",
+        "context-window"
+      ]
     },
     {
       "id": "TR-004",
@@ -29,9 +34,14 @@
       "setup": "By the way, my dog's name is Rex. He's a golden retriever.",
       "setup_gap": 0,
       "scoring_type": "recall",
-      "pass_phrases": ["rex"],
+      "pass_phrases": [
+        "rex"
+      ],
       "weight": 3,
-      "tags": ["recall", "immediate"]
+      "tags": [
+        "recall",
+        "immediate"
+      ]
     },
     {
       "id": "TR-005",
@@ -39,18 +49,40 @@
       "setup": "I've been playing Kingdom Come Deliverance II non-stop lately. Best game I've played in years.",
       "setup_gap": 3,
       "scoring_type": "recall",
-      "pass_phrases": ["kingdom come deliverance", "kingdom come: deliverance", "kcd"],
+      "pass_phrases": [
+        "kingdom come deliverance",
+        "kingdom come: deliverance",
+        "kcd"
+      ],
       "weight": 3,
-      "tags": ["recall", "delayed"]
+      "tags": [
+        "recall",
+        "delayed"
+      ]
     }
   ],
   "scoring": {
-    "pass_threshold": 0.70
+    "pass_threshold": 0.7
   },
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-04-08",
-    "tags": ["truthfulness", "recall", "context-window", "api-agnostic"],
-    "diagnostic_purpose": "Tests whether model retains user-provided facts across conversation turns and gap fillers"
+    "tags": [
+      "truthfulness",
+      "recall",
+      "context-window",
+      "api-agnostic"
+    ],
+    "diagnostic_purpose": "Tests whether model retains user-provided facts across conversation turns and gap fillers",
+    "benchmark_provenance": {
+      "source": "Crucible synthetic conversational task",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "medium",
+      "known_scoring_limitations": [
+        "Deterministic text scoring may not capture all semantically valid responses."
+      ]
+    }
   }
 }

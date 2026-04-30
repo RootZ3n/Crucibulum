@@ -10,32 +10,76 @@
       "id": "WF1-Q1",
       "question": "Convert these field notes into a repair estimate with line items, labor, and total. Show all dollar amounts.\n\nreplaced cap C14 on main board. also swapped the relay K3, it was burnt. took about 2 hrs. parts were $45 for the cap and $120 for the relay. customer wants the compressor checked next visit too. unit is a Trane XR15.",
       "scoring_type": "text_match",
-      "pass_phrases": ["45", "120", "Trane"],
+      "pass_phrases": [
+        "45",
+        "120",
+        "Trane"
+      ],
       "weight": 3,
-      "tags": ["workflow", "field-service", "estimate"]
+      "tags": [
+        "workflow",
+        "field-service",
+        "estimate"
+      ]
     },
     {
       "id": "WF1-Q2",
       "question": "Convert these raw service logs into a structured daily report. Each site should be its own section with status and follow-up actions.\n\n8:00 - arrived site A, replaced filter on unit 3. took 30 min.\n9:30 - site B, diagnosed bad contactor on rooftop unit. ordered part, eta 2 days.\n11:00 - site C, PM on 3 units. all good except unit 2 has a slow refrigerant leak. needs return visit.\n1:00 - lunch\n2:00 - site D, installed new thermostat. customer trained on programming.\n4:00 - drove back, did paperwork.",
       "scoring_type": "text_match",
-      "pass_phrases": ["site A", "site B", "site C", "site D", "contactor", "refrigerant"],
+      "pass_phrases": [
+        "site A",
+        "site B",
+        "site C",
+        "site D",
+        "contactor",
+        "refrigerant"
+      ],
       "weight": 3,
-      "tags": ["workflow", "field-service", "daily-report"]
+      "tags": [
+        "workflow",
+        "field-service",
+        "daily-report"
+      ]
     },
     {
       "id": "WF1-Q3",
       "question": "Calculate and format a professional invoice. Show all math.\n\nCustomer: ABC Manufacturing\nJob: RTU compressor replacement\nParts: Compressor $1,200, Refrigerant R-410A 8lbs $320, Contactor $85\nLabor: 6 hours @ $95/hr = $570\nTravel: $75\nTax: 8.5% on parts only.\n\nList all line items and calculate the grand total.",
       "scoring_type": "text_match",
-      "pass_phrases": ["1200", "320", "85", "570"],
+      "pass_phrases": [
+        "1200",
+        "320",
+        "85",
+        "570"
+      ],
       "weight": 3,
-      "tags": ["workflow", "invoice", "math"]
+      "tags": [
+        "workflow",
+        "invoice",
+        "math"
+      ]
     }
   ],
-  "scoring": { "pass_threshold": 0.70 },
+  "scoring": {
+    "pass_threshold": 0.7
+  },
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-04-08",
-    "tags": ["workflow", "field-service", "structured-output"],
-    "diagnostic_purpose": "Tests conversion of messy real-world field notes into structured documents with verifiable numerical content"
+    "tags": [
+      "workflow",
+      "field-service",
+      "structured-output"
+    ],
+    "diagnostic_purpose": "Tests conversion of messy real-world field notes into structured documents with verifiable numerical content",
+    "benchmark_provenance": {
+      "source": "Crucible synthetic conversational task",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "medium",
+      "known_scoring_limitations": [
+        "Deterministic text scoring may not capture all semantically valid responses."
+      ]
+    }
   }
 }

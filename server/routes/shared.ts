@@ -195,6 +195,7 @@ export function listTaskDetails(): Array<Record<string, unknown>> {
       question_count: isConversational ? (manifest.questions?.length ?? 0) : null,
       diagnostic_purpose: manifest.metadata?.diagnostic_purpose ?? null,
       tags: manifest.metadata?.tags ?? [],
+      benchmark_provenance: manifest.metadata?.benchmark_provenance ?? null,
     };
   });
 }

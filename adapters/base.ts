@@ -83,8 +83,23 @@ export interface TaskManifest {
     created: string;
     tags: string[];
     diagnostic_purpose: string;
+    benchmark_provenance?: BenchmarkProvenance | undefined;
   };
   seed: number;
+}
+
+export type BenchmarkPublicStatus = "public" | "private" | "mixed";
+export type BenchmarkOracleVisibility = "hidden" | "public" | "partially_public";
+export type BenchmarkGoldSolutionVisibility = "hidden" | "public" | "not_applicable";
+export type ContaminationRisk = "low" | "medium" | "high";
+
+export interface BenchmarkProvenance {
+  source: string;
+  public_status: BenchmarkPublicStatus;
+  oracle_visibility: BenchmarkOracleVisibility;
+  gold_solution_visibility: BenchmarkGoldSolutionVisibility;
+  contamination_risk: ContaminationRisk;
+  known_scoring_limitations: string[];
 }
 
 // ── Oracle ─────────────────────────────────────────────────────────────────
@@ -370,6 +385,7 @@ export interface ConversationalManifest {
     created: string;
     tags: string[];
     diagnostic_purpose: string;
+    benchmark_provenance?: BenchmarkProvenance | undefined;
   };
 }
 
@@ -475,6 +491,7 @@ export interface EvidenceBundle {
     manifest_hash: string;
     family: string;
     difficulty: string;
+    benchmark_provenance?: BenchmarkProvenance | undefined;
   };
   oracle_integrity?: {
     oracle_hash_verified: boolean;

@@ -23,8 +23,9 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { log } from "../utils/logger.js";
+import { crucibleStateRoot } from "../utils/env.js";
 import type { StructuredProviderError } from "../types/provider-error.js";
 
 // ── Presets ────────────────────────────────────────────────────────────────
@@ -215,7 +216,7 @@ const CURRENT_MINIMAX_BASE_URL = "https://api.minimax.io/v1";
 // ── State directory / file I/O ─────────────────────────────────────────────
 
 function statePath(): string {
-  return resolve(process.env["CRUCIBULUM_STATE_DIR"] ?? join(process.cwd(), "state"));
+  return crucibleStateRoot();
 }
 
 function storeFile(): string {

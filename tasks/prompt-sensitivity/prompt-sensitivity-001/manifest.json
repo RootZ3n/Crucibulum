@@ -13,7 +13,11 @@
       "pattern": "\\bbug\\b",
       "maxLength": 30,
       "weight": 2,
-      "tags": ["prompt-sensitivity", "classification", "pair-1"]
+      "tags": [
+        "prompt-sensitivity",
+        "classification",
+        "pair-1"
+      ]
     },
     {
       "id": "PS1-Q1b",
@@ -22,7 +26,11 @@
       "pattern": "\\bbug\\b",
       "maxLength": 30,
       "weight": 2,
-      "tags": ["prompt-sensitivity", "classification", "pair-1"]
+      "tags": [
+        "prompt-sensitivity",
+        "classification",
+        "pair-1"
+      ]
     },
     {
       "id": "PS1-Q2a",
@@ -31,7 +39,11 @@
       "pattern": "\\bpositive\\b",
       "maxLength": 30,
       "weight": 2,
-      "tags": ["prompt-sensitivity", "sentiment", "pair-2"]
+      "tags": [
+        "prompt-sensitivity",
+        "sentiment",
+        "pair-2"
+      ]
     },
     {
       "id": "PS1-Q2b",
@@ -40,7 +52,11 @@
       "pattern": "\\bpositive\\b",
       "maxLength": 30,
       "weight": 2,
-      "tags": ["prompt-sensitivity", "sentiment", "pair-2"]
+      "tags": [
+        "prompt-sensitivity",
+        "sentiment",
+        "pair-2"
+      ]
     },
     {
       "id": "PS1-Q3a",
@@ -49,7 +65,11 @@
       "pattern": "\\byes\\b",
       "maxLength": 15,
       "weight": 2,
-      "tags": ["prompt-sensitivity", "boolean", "pair-3"]
+      "tags": [
+        "prompt-sensitivity",
+        "boolean",
+        "pair-3"
+      ]
     },
     {
       "id": "PS1-Q3b",
@@ -58,7 +78,11 @@
       "pattern": "\\byes\\b",
       "maxLength": 15,
       "weight": 2,
-      "tags": ["prompt-sensitivity", "boolean", "pair-3"]
+      "tags": [
+        "prompt-sensitivity",
+        "boolean",
+        "pair-3"
+      ]
     },
     {
       "id": "PS1-Q4a",
@@ -67,7 +91,11 @@
       "pattern": "\\b4\\b",
       "maxLength": 15,
       "weight": 2,
-      "tags": ["prompt-sensitivity", "numeric", "pair-4"]
+      "tags": [
+        "prompt-sensitivity",
+        "numeric",
+        "pair-4"
+      ]
     },
     {
       "id": "PS1-Q4b",
@@ -76,14 +104,35 @@
       "pattern": "\\b4\\b",
       "maxLength": 15,
       "weight": 2,
-      "tags": ["prompt-sensitivity", "numeric", "pair-4"]
+      "tags": [
+        "prompt-sensitivity",
+        "numeric",
+        "pair-4"
+      ]
     }
   ],
-  "scoring": { "pass_threshold": 0.70 },
+  "scoring": {
+    "pass_threshold": 0.7
+  },
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-04-08",
-    "tags": ["prompt-sensitivity", "consistency", "paired-tests", "regex"],
-    "diagnostic_purpose": "Tests whether model gives consistent answers regardless of prompt phrasing — same intent, different wording must produce same classification"
+    "tags": [
+      "prompt-sensitivity",
+      "consistency",
+      "paired-tests",
+      "regex"
+    ],
+    "diagnostic_purpose": "Tests whether model gives consistent answers regardless of prompt phrasing — same intent, different wording must produce same classification",
+    "benchmark_provenance": {
+      "source": "Crucible synthetic conversational task",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "medium",
+      "known_scoring_limitations": [
+        "Deterministic text scoring may not capture all semantically valid responses."
+      ]
+    }
   }
 }

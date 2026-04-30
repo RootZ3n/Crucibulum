@@ -2,6 +2,19 @@
  * Crucible — Judge
  * Scores based on observable state transitions. Never trusts narration.
  * Scoring order: Integrity → Correctness → Regression → Efficiency
+ *
+ * SECURITY NOTE — execSync blast radius:
+ * runCommand() executes correctness/regression judge commands via node:child_process.execSync
+ * inside the task workspace directory. The blast radius is scoped:
+ * - cwd is always the workspace directory (cloned, isolated repo state).
+ * - A 60-second timeout limits resource consumption.
+ * - stdio is "pipe" — no tty attachment.
+ * - Commands come from manifest.json (task author / oracle), not untrusted user input.
+ * - Workspace path is checked against forbidden-paths rules before execution.
+ *
+ * This module does NOT accept arbitrary commands from the evaluated agent.
+ * If the workspace path escapes the allowed scope, the forbidden-paths check
+ * in security.ts has already rejected the run before this function is called.
  */
 
 import { execSync } from "node:child_process";
@@ -9,7 +22,11 @@ import type { Oracle, TaskManifest, ExecutionResult, VerificationResults, DiffEn
 import type { JudgeCommandResult } from "./verdict.js";
 import { log } from "../utils/logger.js";
 
-// Coordinated by Aedis
+// Integration boundary: Crucible is designed to be driven by Aedis as the primary
+// orchestrator. The DETERMINISTIC_JUDGE_METADATA constant encodes the judge's
+// identity and components so Aedis's trust-routing layer can reason about it.
+// Crucible has no build-time dependency on Aedis — it exposes a task/evidence API
+// that any orchestrator (Aedis, Ptah, or manual CLI) can consume.
 export const DETERMINISTIC_JUDGE_METADATA = {
   kind: "deterministic" as const,
   label: "Judge: deterministic",

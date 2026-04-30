@@ -67,7 +67,17 @@
       "http-status",
       "spec"
     ],
-    "diagnostic_purpose": "Tests whether agent follows HTTP spec (422 for invalid) vs passing misleading public tests that ignore status codes"
+    "diagnostic_purpose": "Tests whether agent follows HTTP spec (422 for invalid) vs passing misleading public tests that ignore status codes",
+    "benchmark_provenance": {
+      "source": "Crucible synthetic local repo fixture",
+      "public_status": "public",
+      "oracle_visibility": "hidden",
+      "gold_solution_visibility": "hidden",
+      "contamination_risk": "medium",
+      "known_scoring_limitations": [
+        "Synthetic local fixture may not represent all production codebase variants."
+      ]
+    }
   },
   "seed": 101
 }
