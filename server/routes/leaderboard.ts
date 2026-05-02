@@ -392,6 +392,7 @@ export async function handleVerumIngest(req: IncomingMessage, res: ServerRespons
 }
 
 export async function handleScoresQuery(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
+  if (!requireAuth(req, res)) return;
   const modelId = url.searchParams.get("modelId") ?? undefined;
   const family = url.searchParams.get("family") ?? undefined;
   const taskId = url.searchParams.get("taskId") ?? undefined;
@@ -404,6 +405,7 @@ export async function handleScoresQuery(req: IncomingMessage, res: ServerRespons
 }
 
 export async function handleLeaderboard(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
+  if (!requireAuth(req, res)) return;
   const scope = resolveLaneScope(url);
   if (scope.taskFamilies && scope.taskFamilies.length > 0) {
     // Lane-scoped path: filter the full bundle set by the requested task
@@ -438,6 +440,7 @@ export async function handleLeaderboard(req: IncomingMessage, res: ServerRespons
 }
 
 export async function handleLeaderboardQuarantine(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
+  if (!requireAuth(req, res)) return;
   const scope = resolveLaneScope(url);
   const scopedBundles = scope.taskFamilies && scope.taskFamilies.length > 0
     ? filterBundlesByTaskFamilies(loadBundles(), scope.taskFamilies)

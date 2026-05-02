@@ -376,12 +376,49 @@ Requirements:
 
 This release has been verified on Linux with Node `v22.22.2` and npm `10.8.2`. Linux, macOS, and WSL2 are the intended first-run environments. Native Windows PowerShell commands are documented, but native Windows has not been fully verified for this release.
 
+### Distribution Status
+
+`v0.1.0` is **source-install only**. Clone the repo and run `npm ci && npm run build` from a checkout. Packaged installers are planned but not shipped yet:
+
+- **npm package**: not published — install from the repo
+- **Standalone binary**: not available
+- **Docker image**: not published
+- **OS installers (deb/rpm/msi/pkg)**: not available
+
+The `crucible.service` file is a systemd example for advanced Linux operators only; it is not required for the local quickstart.
+
 Install dependencies and build:
 
 ```bash
 npm ci
 npm run build
 ```
+
+If anything fails, run `npm run doctor` for a read-only diagnostic of Node/npm versions, build artifacts, and required directories.
+
+## First 5 Minutes
+
+If you have never run Crucible before and just want to see it work, do this in order. It uses no API keys, no provider accounts, and no network calls beyond `npm ci`.
+
+```bash
+git clone <this-repo>
+cd crucible
+npm ci
+npm run build
+npm run smoke
+npm run serve
+```
+
+Expected outcome:
+
+1. `npm run smoke` finishes with `Smoke passed.` This proves the deterministic offline pipeline works on your machine.
+2. `npm run serve` prints a banner that ends with `Crucible server running on http://127.0.0.1:18795` and `UI: http://127.0.0.1:18795/`.
+3. Open `http://127.0.0.1:18795/` in your browser. You will see the Crucible UI shell.
+4. The default public leaderboard view will be **empty**. That is expected on a fresh checkout — Crucible only ranks **verified eligible bundles**, and the smoke test produces deliberately quarantined mock/demo evidence. Empty here means "nothing has earned a public rank yet," not "broken."
+5. Quarantined / mock-or-demo evidence (including the smoke output) is visible from `/api/leaderboard/quarantine` and is labeled `NOT RANKED`. That is the correct first-run state.
+6. Stop the server with `Ctrl+C`. Run `npm run clean:state -- --confirm` if you want to wipe local runs and the auto-generated auth token before continuing.
+
+You are now ready to import real evidence (see "Adding Tasks and Adapters") or run a live adapter (see "Live Adapter Setup").
 
 ## Public Quick Start
 
@@ -436,6 +473,44 @@ API: http://127.0.0.1:18795/api/
 
 Set `CRUCIBLE_PORT` to use a different port. Set `CRUCIBLE_HOST=0.0.0.0` only when you intentionally want the server reachable beyond the local machine and have reviewed `SECURITY.md`.
 
+To stop the server, press `Ctrl+C` in the terminal where it is running. There is no separate stop command. State written to `runs/` and `state/` persists across restarts; use `npm run clean:state -- --confirm` to clear it.
+
+## How Auth Works
+
+Crucible authenticates every API call. It is built around a single token and a loopback exemption:
+
+- **Loopback (default):** when the server binds to `127.0.0.1` (the default), connections from the same machine are auto-authenticated. You do not need to paste a token to use the local UI in your browser. This behavior is controlled by `CRUCIBLE_ALLOW_LOCAL` (default `true`).
+- **Remote / mobile / proxy:** any client that is not on loopback must send `Authorization: Bearer <token>`. On first start, Crucible auto-generates a token and persists it to `state/auth-token` (mode 0600). The token is printed once in the startup banner so you can paste it into a remote/mobile client.
+- **Override:** set `CRUCIBLE_API_TOKEN` to use your own token instead of the auto-generated one.
+- **Rotate:** delete `state/auth-token` and restart. A new token will be generated.
+- **Sessions:** the loopback `bootstrap-local` and pairing flows issue session tokens for paired clients. The master token still works as a fallback.
+
+All leaderboard and score-query endpoints require auth even on loopback when `CRUCIBLE_ALLOW_LOCAL=false`. Unauthenticated requests get a `401 Unauthorized` JSON response.
+
+## Setting CRUCIBLE_HMAC_KEY
+
+Crucible signs every evidence bundle with HMAC-SHA-256. The signing key is `CRUCIBLE_HMAC_KEY`. Without it:
+
+- bundles are still produced, but their `bundle_signature_status` is `unsigned_key_missing`;
+- the public leaderboard quarantines those bundles and labels them `NOT RANKED`;
+- the server prints a startup warning so you do not silently produce unrankable evidence.
+
+To set a key for local development:
+
+```bash
+# Linux / macOS / WSL2
+export CRUCIBLE_HMAC_KEY="$(openssl rand -hex 32)"
+npm run serve
+```
+
+```powershell
+# Windows PowerShell
+$env:CRUCIBLE_HMAC_KEY = -join ((1..64) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
+npm run serve
+```
+
+Or persist it in `.env` (copy from `.env.example`). Treat the key as a secret: anyone who has it can sign bundles that the server will accept as authentic. **Changing or losing the key invalidates existing bundles** — the leaderboard will move them to quarantine. For a single-operator local install, that is fine; for shared evidence, pick a key once and keep it.
+
 ## Common Commands
 
 ```bash
@@ -459,6 +534,12 @@ npm run audit:release
 
 # Verify oracle hashes
 npm run oracle:hash -- --check
+
+# Read-only environment audit (Node version, build artifacts, env vars)
+npm run doctor
+
+# Preview which local directories will be deleted (no-op without --confirm)
+npm run clean:state
 ```
 
 Live adapter examples:
@@ -493,15 +574,35 @@ Crucible writes local runs and state to ignored directories by default:
 - `runs/` for generated evidence bundles and harness reports
 - `state/` for auth/session/provider registry data
 
-To clear local/demo state, stop the server first, then remove those directories with your normal file manager or shell. Do not delete imported evidence you still need. No public script deletes user data automatically.
+To clear local/demo state, stop the server first, then run:
+
+```bash
+# Preview what would be deleted (safe; reports paths only)
+npm run clean:state
+
+# Actually delete runs/ and state/
+npm run clean:state -- --confirm
+```
+
+`clean:state` only touches those two directories under the repo root. It does not delete imported evidence stored elsewhere, tasks, oracles, or your `.env`. You can still remove the directories manually with your file manager or shell — the script just gives you a portable, scriptable, opt-in option.
 
 ## Troubleshooting First Run
 
-- **Port already in use:** run with a different port, for example `CRUCIBLE_PORT=18895 npm run serve` on Linux/macOS/WSL2 or `$env:CRUCIBLE_PORT=18895; npm run serve` in PowerShell.
-- **Missing env vars:** offline `npm run smoke` needs no provider keys. Live adapters fail loudly and name the required key, such as `OPENROUTER_API_KEY` or `MINIMAX_API_KEY`.
-- **PowerShell path issues:** use npm scripts (`npm run smoke`, `npm run serve`, `npm run harness -- --task safety-001`) instead of invoking files under `dist/` directly.
+Run `npm run doctor` first — it is read-only and reports most common issues.
+
+- **Port already in use:** run with a different port, for example `CRUCIBLE_PORT=18895 npm run serve` on Linux/macOS/WSL2 or `$env:CRUCIBLE_PORT=18895; npm run serve` in PowerShell. The default port is `18795`.
+- **`node: command not found` or wrong Node version:** Crucible requires Node 20+. Check with `node --version`. Install from [nodejs.org](https://nodejs.org/) or your package manager. `nvm install 22 && nvm use 22` works on Linux/macOS/WSL2.
+- **`npm: command not found`:** npm ships with Node. If `node` works but `npm` does not, your Node install is broken — reinstall from the official source.
+- **Windows execution policy blocks `npm`:** PowerShell may refuse to run npm shims with `cannot be loaded because running scripts is disabled on this system`. Fix once per user: `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`. Use Windows Terminal (PowerShell 7+) for the commands in this README; cmd.exe is not tested.
+- **Empty leaderboard / "I see no data":** this is the correct fresh-checkout state. Default leaderboards rank only verified eligible evidence. Smoke output is mock/demo and is deliberately quarantined. Inspect `/api/leaderboard/quarantine` to confirm the data is there but `NOT RANKED`.
+- **`CRUCIBLE_HMAC_KEY is not set` warning:** expected on a first local run. Bundles you generate without a key will be quarantined as `unsigned_key_missing`. Set the key (see "Setting CRUCIBLE_HMAC_KEY") before generating evidence you intend to publish.
+- **`Unauthorized` / 401 on `/api/...`:** you are hitting the API from outside loopback (remote machine, container, mobile, reverse proxy). Send `Authorization: Bearer <token>` using the token printed in the server startup banner or the value at `state/auth-token`. The browser UI on the same machine never needs a token.
+- **Lost the auth token:** delete `state/auth-token` and restart the server — a new one prints in the startup banner. Or set `CRUCIBLE_API_TOKEN` to a value you choose.
 - **Malformed or tampered runs:** Crucible quarantines them. Inspect safe metadata at `/api/leaderboard/quarantine`; do not cite them as public leaderboard evidence.
-- **Empty leaderboard:** this is expected on a fresh checkout. Default leaderboards rank only verified eligible evidence, so mock/demo/local historical data may be visible as quarantined but will not create public rankings.
+- **Live adapter fails with "missing key":** offline `npm run smoke` needs no provider keys. Live adapters fail loudly and name the required key, such as `OPENROUTER_API_KEY` or `MINIMAX_API_KEY`.
+- **PowerShell path issues:** use npm scripts (`npm run smoke`, `npm run serve`, `npm run harness -- --task safety-001`) instead of invoking files under `dist/` directly.
+- **`npm ci` fails on registry / EAI_AGAIN / 403:** corporate proxies and outdated certificates are the usual cause. Try `npm config get registry` (should be `https://registry.npmjs.org/`), clear with `npm cache clean --force`, and rerun. `npm audit` warnings during install are advisory; `npm ci` will still complete.
+- **Need to start fresh:** stop the server, then `npm run clean:state -- --confirm` removes `runs/` and `state/`. This wipes generated bundles, the auth token, and the local provider registry. It does not touch tasks, oracles, or imported evidence stored elsewhere.
 - **Need remote access:** default binding is local-only. Set `CRUCIBLE_HOST=0.0.0.0` deliberately, configure auth, and read `SECURITY.md` first.
 
 ## Live Adapter Setup

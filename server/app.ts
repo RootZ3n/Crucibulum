@@ -244,6 +244,10 @@ export async function startServer(port: number = DEFAULT_PORT, host: string = DE
   // just auto-generated. Done before listen() so the banner appears above
   // the "server running" line in operator logs.
   ensureTokenConfigured();
+  if (!process.env["CRUCIBLE_HMAC_KEY"]) {
+    log("warn", "hmac", "CRUCIBLE_HMAC_KEY is not set — unsigned bundles will be quarantined and not ranked on the public leaderboard");
+    log("warn", "hmac", "This is fine for local demos, but meaningful verified rankings require a configured HMAC key");
+  }
   try {
     const scorerResults = await loadAllScorers();
     log("info", "api", `Scorer registry: ${scorerResults.loaded} loaded, ${scorerResults.failed.length} failed`);

@@ -21,6 +21,20 @@ Crucible is an evidence viewer and comparison layer. It can rank only evidence t
 
 HMAC signatures, bundle hashes, provenance fields, and quarantine labels help operators detect local tampering or stale evidence. They do not prove that an upstream provider behaved honestly, that a model is safe, or that a run was performed in a fully trusted environment.
 
+Crucible verifies bundle integrity (hash + HMAC), not provider honesty. A signed bundle proves the bundle content has not been modified since signing; it does not prove the upstream model provider ran the task faithfully or that the operator did not fabricate results before signing. Crucible does not defend against Sybil attacks or fake-but-signed bundles from an untrusted operator.
+
+## Leaderboard Authentication
+
+All leaderboard and score-query endpoints require authentication:
+
+- `GET /api/leaderboard`
+- `GET /api/scores/leaderboard`
+- `GET /leaderboard`
+- `GET /api/leaderboard/quarantine`
+- `GET /api/scores`
+
+Unauthenticated requests receive a `401` JSON response. Loopback clients are authenticated automatically when `CRUCIBLE_ALLOW_LOCAL` is not `"false"` (the default). Remote clients must present a valid `Authorization: Bearer <token>` header.
+
 ## Local Server Binding
 
 Crucible is designed primarily for local operator use. Loopback clients may bootstrap without a token unless local bootstrap is disabled. Remote clients must authenticate.

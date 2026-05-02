@@ -6,8 +6,9 @@
  * To add, remove, or update patterns, edit that file and bump its version field.
  */
 
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { log } from "../utils/logger.js";
 
 // ── Pattern Loader ───────────────────────────────────────────────────────────
@@ -24,6 +25,25 @@ interface InjectionPatternsConfig {
   injection_patterns: PatternEntry[];
   anti_cheat_code_patterns: PatternEntry[];
 }
+
+interface PatternLoadStatus {
+  loaded: boolean;
+  path: string | null;
+  version: string | null;
+  injectionPatterns: number;
+  antiCheatCodePatterns: number;
+  error: string | null;
+}
+
+const moduleDir = dirname(fileURLToPath(import.meta.url));
+let patternLoadStatus: PatternLoadStatus = {
+  loaded: false,
+  path: null,
+  version: null,
+  injectionPatterns: 0,
+  antiCheatCodePatterns: 0,
+  error: null,
+};
 
 // ── Injection Patterns ─────────────────────────────────────────────────────
 // Defaults — augmented by security/injection-patterns.json at load time
@@ -74,7 +94,13 @@ const ANTI_CHEAT_COMMENT_PATTERNS: RegExp[] = [
 
 function loadPatterns(): void {
   try {
-    const configPath = join(__dirname, "injection-patterns.json");
+    const configPath = [
+      join(moduleDir, "injection-patterns.json"),
+      join(moduleDir, "..", "..", "security", "injection-patterns.json"),
+      join(process.cwd(), "security", "injection-patterns.json"),
+    ].find((path) => existsSync(path));
+    if (!configPath) throw new Error("security/injection-patterns.json not found");
+
     const raw = readFileSync(configPath, "utf-8");
     const config: InjectionPatternsConfig = JSON.parse(raw);
 
@@ -85,8 +111,24 @@ function loadPatterns(): void {
       ANTI_CHEAT_CODE_PATTERNS.push(RegExp(entry.pattern));
     }
 
+    patternLoadStatus = {
+      loaded: true,
+      path: configPath,
+      version: config.version,
+      injectionPatterns: config.injection_patterns.length,
+      antiCheatCodePatterns: config.anti_cheat_code_patterns.length,
+      error: null,
+    };
     log("info", "velum", `loaded ${config.injection_patterns.length} injection patterns + ${config.anti_cheat_code_patterns.length} anti-cheat patterns (config v${config.version})`);
   } catch (err) {
+    patternLoadStatus = {
+      loaded: false,
+      path: null,
+      version: null,
+      injectionPatterns: 0,
+      antiCheatCodePatterns: 0,
+      error: err instanceof Error ? err.message : String(err),
+    };
     log("warn", "velum", `could not load injection-patterns.json, using embedded defaults: ${err}`);
   }
 }
@@ -103,6 +145,10 @@ export interface ScanResult {
     pattern: string;
     context: string;
   }>;
+}
+
+export function getPatternLoadStatus(): PatternLoadStatus {
+  return { ...patternLoadStatus };
 }
 
 export function scanForInjection(text: string): ScanResult {
