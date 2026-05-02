@@ -4,11 +4,11 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 
 await rm(resolve(root, "dist"), { recursive: true, force: true });
 
-const child = spawn(npm, ["run", "build"], {
+const tsc = resolve(root, "node_modules", ".bin", "tsc");
+const child = spawn(tsc, [], {
   cwd: root,
   stdio: "inherit",
   shell: false,

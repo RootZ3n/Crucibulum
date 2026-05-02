@@ -6,6 +6,7 @@ import { dirname, join, resolve } from "node:path";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+const tsc = resolve(root, "node_modules", ".bin", "tsc");
 
 function run(command, args, options = {}) {
   return new Promise((resolveRun, rejectRun) => {
@@ -43,7 +44,7 @@ const env = {
 try {
   console.log("Crucible smoke test: deterministic offline mock run.");
   console.log(`Smoke state: ${smokeRoot}`);
-  await run(npm, ["run", "build"]);
+  await run(tsc, []);
   await run(process.execPath, [
     "dist/cli/main.js",
     "harness",

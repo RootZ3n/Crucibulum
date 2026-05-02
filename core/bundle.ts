@@ -130,7 +130,8 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
   const costUsd = estimateCost(provider, executionResult.tokens_in ?? 0, executionResult.tokens_out ?? 0);
 
   const modelSlug = model.replace(/[/:]/g, "-");
-  const bundleId = `run_${new Date(startTime).toISOString().slice(0, 10)}_${manifest.id}_${modelSlug}`;
+  const timestamp = new Date(startTime).toISOString().replace(/[-:]/g, "").slice(0, 15);
+  const bundleId = `run_${timestamp}_${manifest.id}_${modelSlug}`;
 
   const bundle: EvidenceBundle = {
     bundle_id: bundleId,

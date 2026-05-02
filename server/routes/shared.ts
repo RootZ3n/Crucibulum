@@ -19,6 +19,18 @@ import { resolveDisplayName } from "../../core/test-names.js";
 const RUNS_DIR = process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs");
 const UI_PATH = join(import.meta.dirname, "..", "..", "ui", "index.html");
 
+export function setCorsHeaders(req: IncomingMessage, res: ServerResponse): void {
+  const origin = req.headers.origin ?? "";
+  const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+  const allowed = (process.env["CRUCIBLE_ALLOWED_ORIGINS"] ?? "")
+    .split(",").map(o => o.trim()).filter(Boolean);
+  if (isLocal || allowed.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+}
+
 export function sendJSON(res: ServerResponse, status: number, data: unknown): void {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",

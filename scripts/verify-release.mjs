@@ -3,21 +3,23 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+const node = process.execPath;
+const tsc = resolve(root, "node_modules", ".bin", "tsc");
 
 const steps = [
-  ["typecheck", ["run", "typecheck"]],
-  ["test", ["test"]],
-  ["build", ["run", "build"]],
-  ["oracle hash check", ["run", "oracle:hash", "--", "--check"]],
-  ["smoke", ["run", "smoke"]],
+  ["typecheck", tsc, ["--noEmit"]],
+  ["build:clean", node, [resolve(root, "scripts", "build-clean.mjs")]],
+  ["test", node, [resolve(root, "scripts", "test.mjs")]],
+  ["build", tsc, []],
+  ["oracle hash check", node, [resolve(root, "dist", "cli", "main.js"), "oracle-hash", "--check"]],
+  ["smoke", node, [resolve(root, "scripts", "smoke.mjs")]],
 ];
 
-function run(label, args) {
+function run(label, cmd, args) {
   return new Promise((resolveRun, rejectRun) => {
     console.log(`\n=== ${label} ===`);
-    console.log(`> npm ${args.join(" ")}`);
-    const child = spawn(npm, args, {
+    console.log(`> ${cmd} ${args.join(" ")}`);
+    const child = spawn(cmd, args, {
       cwd: root,
       stdio: "inherit",
       shell: false,
@@ -32,12 +34,11 @@ function run(label, args) {
 }
 
 try {
-  for (const [label, args] of steps) {
-    await run(label, args);
+  for (const [label, cmd, args] of steps) {
+    await run(label, cmd, args);
   }
   console.log("\nRelease verification passed.");
 } catch (err) {
   console.error(`\nRelease verification failed: ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 }
-

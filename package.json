@@ -51,7 +51,7 @@
     "lint": "npm run typecheck",
     "smoke": "node scripts/smoke.mjs",
     "verify:release": "node scripts/verify-release.mjs",
-    "audit:release": "npm audit --audit-level=moderate",
+    "audit:release": "node scripts/audit-release.mjs",
     "doctor": "node scripts/doctor.mjs",
     "clean:state": "node scripts/clean-state.mjs",
     "oracle:hash": "node dist/cli/main.js oracle-hash",
