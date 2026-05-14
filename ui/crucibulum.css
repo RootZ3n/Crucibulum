@@ -3660,3 +3660,16 @@ tr:hover td{background:rgba(111,217,255,.05)}
   .export-group{flex-wrap:wrap}
   .dd-vitals{grid-template-columns:repeat(2,1fr)}
 }
+
+/* ── Simple View ───────────────────────────────────────────────────────── */
+.simple-welcome{border:1px solid rgba(0,255,200,.12);background:rgba(0,255,200,.03)}
+.simple-insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.simple-insight{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:6px;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.04)}
+.si-label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-dim);font-family:var(--mono)}
+.si-value{font-size:18px;font-weight:600;color:var(--ink);font-family:var(--mono)}
+.si-value.teal{color:var(--teal)}.si-value.orange{color:var(--orange)}.si-value.cyan{color:var(--cyan)}.si-value.red{color:var(--red,#ef4444)}
+.simple-empty{padding:12px 0}
+.vitals-collapsed{display:none}
+.control-grid.simple-layout{display:block}
+.control-grid.simple-layout .content-column{max-width:100%}
+@media(max-width:720px){.simple-insights{grid-template-columns:repeat(2,1fr)}}

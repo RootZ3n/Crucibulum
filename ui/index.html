@@ -102,7 +102,7 @@ const ACCOUNT_SCOPED_PROVIDER_IDS=new Set(['minimax']);
 
 const CATEGORY_COPY={
   correctness:{label:'Correctness',description:'How much of the actual task was solved according to the deterministic judge.'},
-  regression:{label:'Regression Safety',description:'Whether the run avoided breaking things that should have stayed working.'},
+  regression:{label:'Model Drift',description:'Whether a model got better or worse compared with older runs.'},
   integrity:{label:'Integrity',description:'Whether the run respected benchmark rules, trust boundaries, and anti-cheat checks.'},
   efficiency:{label:'Efficiency',description:'How well the run stayed within time and token budgets.'},
   self_knowledge:{label:'Does It Know Itself?',description:'Checks whether the model understands what it is, what it can do, and what it cannot do.'},
@@ -124,7 +124,7 @@ const CATEGORY_COPY={
 
 const state={
   activeTab:localStorage.getItem('crucibulum-active-tab')||'dashboard',
-  viewMode:localStorage.getItem('crucibulum-view-mode')||'expert',
+  viewMode:localStorage.getItem('crucibulum-view-mode')||'simple',
   resultsView:localStorage.getItem('crucibulum-results-view')||'simple',
   drilldownModel:null,
   drilldownPage:1,
@@ -174,6 +174,27 @@ function safeScore(value){const n=Number(value??0);return Number.isFinite(n)?Mat
 function safeStr(value){const s=String(value??'');return(s==='undefined'||s==='null'||s==='NaN')?'':s}
 function safeNum(value){const n=Number(value??0);return Number.isFinite(n)?n:0}
 function kbClick(fnCall){return` role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${fnCall}}"` }
+
+// ─── Friendly label map ──────────────────────────────────────────────────
+// Maps technical metric keys to user-friendly labels and inline tooltips.
+const FRIENDLY_LABELS={
+  composite:{label:'Overall Trust Score',tip:'Combined score using accuracy, cost, speed, and reliability.'},
+  overall_score:{label:'Overall Trust Score',tip:'Combined score using accuracy, cost, speed, and reliability.'},
+  avg_score:{label:'Overall Trust Score',tip:'Combined score using accuracy, cost, speed, and reliability.'},
+  pass_rate:{label:'Accuracy',tip:'Percent of tests the model passed.'},
+  success_rate:{label:'Accuracy',tip:'Percent of tests the model passed.'},
+  avg_latency:{label:'Average Speed',tip:'How long the model took to answer.'},
+  duration_avg:{label:'Average Speed',tip:'How long the model took to answer.'},
+  cost_per_task:{label:'Cost per Test',tip:'Estimated model API cost for each test.'},
+  cost_avg:{label:'Cost per Test',tip:'Estimated model API cost for each test.'},
+  regression:{label:'Model Drift',tip:'Whether a model got better or worse compared with older runs.'},
+  recommendations:{label:'Best Model Recommendations',tip:'Which model to pick based on your priorities.'},
+  suite:{label:'Test Category',tip:'A group of related tests that check one area of model behavior.'},
+  run_batch:{label:'Run Benchmark',tip:'Execute all selected tests against the armed models.'}
+};
+function friendlyLabel(key,fallback){return FRIENDLY_LABELS[key]?.label||fallback||key}
+function friendlyTip(key){return FRIENDLY_LABELS[key]?.tip||''}
+function tipAttr(key){const t=friendlyTip(key);return t?` title="${esc(t)}"`:'';}
 
 function setResultsView(mode){
   const valid=['simple','table','chart'];
@@ -610,11 +631,12 @@ function verdictBadge(verdict,overall){
   return{cls,originCls:fallbackMeta.cls,glyph:fallbackMeta.glyph,hint:fallbackMeta.hint,label,summary:'',state:label,origin:'',isModelFailure:label==='FAIL',isInfra:false,isTestOrJudge:false};
 }
 function isSimpleView(){return state.viewMode==='simple'}
-function setViewMode(mode){state.viewMode=mode==='simple'?'simple':'expert';localStorage.setItem('crucibulum-view-mode',state.viewMode);render()}
+function isAdvancedView(){return !isSimpleView()}
+function setViewMode(mode){state.viewMode=mode==='simple'?'simple':'advanced';localStorage.setItem('crucibulum-view-mode',state.viewMode);render()}
 function plainMetricSubtitle(name){
   const key=normalizeKey(name);
   if(key==='correctness')return'Did it actually solve the problem?';
-  if(key==='regression')return'Did it break anything else?';
+  if(key==='regression')return'Whether the model got better or worse over time.';
   if(key==='integrity')return'Did it follow the rules?';
   if(key==='efficiency')return'Did it waste time or tokens?';
   return'What this score means for a non-technical reader.';
@@ -2698,13 +2720,13 @@ function renderOverviewCards(tabKey){
   const summary=reviewSummary(tabKey);
   const laneLabel=TAB_CONFIG[tabKey]?.label||'Lane';
   const cards=[
-    {label:'BEST',title:summary.best?.model||`No ${laneLabel} winner yet`,value:summary.best?`${summary.best.avgOverall}% overall`:'Awaiting runs',accent:'teal',meta:summary.best?`${summary.best.runs} runs · ${summary.best.passRate}% pass in ${laneLabel}`:`Run ${laneLabel} to establish a baseline.`},
-    {label:'VALUE',title:summary.value?.model||'No value read',value:summary.value?`${summary.value.avgOverall}% with ${fmtMoney(summary.value.costAvg)} avg cost`:'Need cost data',accent:'orange',meta:summary.value?`${laneLabel} output relative to spend and latency.`:'No completed cost-bearing runs yet.'},
-    {label:'FASTEST',title:summary.fastest?.model||'No timing yet',value:summary.fastest&&summary.fastest.durationAvg>0?fmtMs(summary.fastest.durationAvg):'Pending timing',accent:'cyan',meta:summary.fastest?`${summary.fastest.avgOverall}% overall in ${laneLabel}`:'No completed timed runs yet.'},
-    {label:'WATCH',title:summary.watch?.model||'No watch item',value:(()=>{const weak=weakestDimension(summary.watch);return weak?`${weak.label} ${weak.score}%`:'Need more category data'})(),accent:'red',meta:summary.watch?`${summary.watch.avgOverall}% overall · ${summary.watch.passRate}% pass`:`No ${laneLabel.toLowerCase()} weak spot detected yet.`}
+    {label:'BEST OVERALL',title:summary.best?.model||`No ${laneLabel} winner yet`,value:summary.best?`${summary.best.avgOverall}% trust score`:'Awaiting runs',accent:'teal',meta:summary.best?`${summary.best.runs} runs · ${summary.best.passRate}% accuracy in ${laneLabel}`:`Run ${laneLabel} to establish a baseline.`},
+    {label:'BEST VALUE',title:summary.value?.model||'No value read',value:summary.value?`${summary.value.avgOverall}% at ${fmtMoney(summary.value.costAvg)} per test`:'Need cost data',accent:'orange',meta:summary.value?`Best accuracy-per-dollar in ${laneLabel}.`:'No completed cost-bearing runs yet.'},
+    {label:'FASTEST USABLE',title:summary.fastest?.model||'No timing yet',value:summary.fastest&&summary.fastest.durationAvg>0?fmtMs(summary.fastest.durationAvg):'Pending timing',accent:'cyan',meta:summary.fastest?`${summary.fastest.avgOverall}% trust score in ${laneLabel}`:'No completed timed runs yet.'},
+    {label:'RISKY / AVOID',title:summary.watch?.model||'No watch item',value:(()=>{const weak=weakestDimension(summary.watch);return weak?`${weak.label} ${weak.score}%`:'Need more category data'})(),accent:'red',meta:summary.watch?`${summary.watch.avgOverall}% trust score · ${summary.watch.passRate}% accuracy`:`No ${laneLabel.toLowerCase()} weak spot detected yet.`}
   ];
   return`<section class="panel" style="padding:14px">
-    <div class="section-head"><div><div class="mini-label">LAYER A</div><h3>Results Overview</h3></div><span class="chip dim">${summary.rollups.length} MODEL${summary.rollups.length===1?'':'S'}</span></div>
+    <div class="section-head"><div><div class="mini-label">BEST MODEL RECOMMENDATIONS</div><h3>Results Overview</h3></div><span class="chip dim">${summary.rollups.length} MODEL${summary.rollups.length===1?'':'S'}</span></div>
     <div class="overview-grid">${cards.map((card)=>`<article class="overview-card ${card.accent}"><div class="overview-top"><span class="chip ${card.accent} hot">${esc(card.label)}</span></div><div class="overview-title">${esc(card.title)}</div><div class="overview-value">${esc(card.value)}</div><div class="overview-meta">${esc(card.meta)}</div></article>`).join('')}</div>
     ${summary.winners.length?`<div class="winner-strip">${summary.winners.slice(0,8).map((winner)=>`<div class="winner-chip"><span class="winner-label">${esc(winner.label)}</span><span class="winner-model">${esc(winner.model)}</span><span class="winner-score">${winner.score}%</span></div>`).join('')}</div>`:''}
   </section>`;
@@ -2764,7 +2786,7 @@ function renderRankedResults(tabKey){
 
   return`<section class="panel benchmark-results" style="padding:14px">
     <div class="benchmark-results-head">
-      <div><div class="mini-label">BENCHMARK RESULTS</div><h3 class="panel-title">Ranked Model Comparison</h3></div>
+      <div><div class="mini-label">MODEL LEADERBOARD</div><h3 class="panel-title">Ranked Model Comparison</h3></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         ${toggles}
         <span class="chip ${scope.kind==='lane'?'teal':'cyan'} scope-chip" data-scope-kind="${scope.kind}">SCOPE · ${esc(scope.scopeLabel)}</span>
@@ -3079,11 +3101,11 @@ function renderHero(){
     ? `<div class="chip amber hot" title="Fewer than ${LEADERBOARD_MIN_N_UI} runs meet the sample threshold in this lane — treat rankings as provisional.">PROVISIONAL · n=${scope.sampleSize}</div>`
     : '';
   const scoreWidth=typeof score==='number'?score:0;
-  const scoreLabel=hasPublicRanking?'PUBLIC SCORE':'OBSERVED SCORE';
+  const scoreLabel=hasPublicRanking?'PUBLIC TRUST SCORE':'OVERALL TRUST SCORE';
   const topChip=hasRanking
     ? `<div class="chip orange">TOP ${esc(String(topModel).slice(0,16).toUpperCase())}${topScore!=null?' · '+topScore+'%':''}</div>`
     : `<div class="chip orange">NO RANK YET</div>`;
-  return`<section class="abyss-banner"><div class="ab-squid" aria-hidden="true"><img src="squidley.png" alt=""><div class="ab-squid-halo"></div></div><div class="ab-callsign"><div class="ab-mark">CRCB · ${esc(activeLaneLabel.toUpperCase())}</div><div class="ab-title">CRUCIBLE</div><div class="ab-sub">BIOLUMINESCENT EVALUATION LATTICE</div><div class="ab-score-inline"><div class="ab-score-row"><span class="ab-score-label">${scoreLabel}</span><span class="ab-score-inline-num">${score}</span><span class="ab-score-runs">${totalRuns} RUN${totalRuns===1?'':'S'} INDEXED</span></div><div class="ab-score-bar"><div class="ab-score-fill" style="width:${scoreWidth}%"></div></div></div><div class="view-toggle"><button class="${state.viewMode==='simple'?'active':''}" onclick="setViewMode('simple')">SIMPLE</button><button class="${state.viewMode==='expert'?'active':''}" onclick="setViewMode('expert')">EXPERT</button></div></div><div class="ab-telemetry">${scopeChip}${provisionalChip}<div class="chip ${statusCls} hot">● ${esc(status.toUpperCase())}</div><div class="chip teal">PASS ${passRate}%</div>${topChip}<div class="chip dim">RUNS ${totalRuns}</div></div></section>`;
+  return`<section class="abyss-banner"><div class="ab-squid" aria-hidden="true"><img src="squidley.png" alt=""><div class="ab-squid-halo"></div></div><div class="ab-callsign"><div class="ab-mark">CRCB · ${esc(activeLaneLabel.toUpperCase())}</div><div class="ab-title">CRUCIBLE</div><div class="ab-sub">BIOLUMINESCENT EVALUATION LATTICE</div><div class="ab-score-inline"><div class="ab-score-row"><span class="ab-score-label">${scoreLabel}</span><span class="ab-score-inline-num">${score}</span><span class="ab-score-runs">${totalRuns} RUN${totalRuns===1?'':'S'} INDEXED</span></div><div class="ab-score-bar"><div class="ab-score-fill" style="width:${scoreWidth}%"></div></div></div><div class="view-toggle"><button class="${state.viewMode==='simple'?'active':''}" onclick="setViewMode('simple')">Simple</button><button class="${isAdvancedView()?'active':''}" onclick="setViewMode('advanced')">Advanced Lab</button></div></div><div class="ab-telemetry">${scopeChip}${provisionalChip}<div class="chip ${statusCls} hot">● ${esc(status.toUpperCase())}</div><div class="chip teal">PASS ${passRate}%</div>${topChip}<div class="chip dim">RUNS ${totalRuns}</div></div></section>`;
 }
 function evidenceValue(label,value){
   if(value===undefined||value===null||value==='')return'';
@@ -3144,7 +3166,7 @@ function renderFocusedRun(tabKey){
   ];
   const methodologyFacts=[
     {label:'SCHEMA',value:String(result.schema||'crucibulum.v1'),cls:'dim'},
-    {label:'SUITE',value:String(result.suiteId||'v1')},
+    {label:'TEST CATEGORY',value:String(result.suiteId||'v1')},
     {label:'JUDGE',value:String(result.judge?.label||'deterministic'),cls:'teal'},
     {label:'HASH OK',value:result.trust?.bundle_hash_verified?'VERIFIED':'UNCHECKED',cls:result.trust?.bundle_hash_verified?'teal':''},
     {label:'SIGNED',value:result.trust?.bundle_authenticated?'VERIFIED':'NO PROOF',cls:result.trust?.bundle_authenticated?'teal':sigCls},
@@ -3212,7 +3234,7 @@ function renderFocusedRun(tabKey){
           <div class="glyph-grid">${glyphs.map(g=>`<div class="glyph"><div class="g-label">${esc(g.label)}</div><div class="g-value ${g.cls||''}">${esc(g.value)}</div></div>`).join('')}</div>
         </div>`}
       </div>
-      <div class="stack-grid">
+      ${isAdvancedView()?`<div class="stack-grid">
         <div class="subpanel">
           <div class="section-head"><div><div class="mini-label">PROVENANCE</div><h3>Bundle Trace</h3></div></div>
           <div class="fact-list">${provenanceFacts.map(f=>`<div class="fact-strip"><div class="fs-label">${esc(f.label)}</div><div class="fs-value ${f.cls||''}">${esc(f.value)}</div></div>`).join('')}</div>
@@ -3221,7 +3243,7 @@ function renderFocusedRun(tabKey){
           <div class="section-head"><div><div class="mini-label">METHODOLOGY</div><h3>Judge Stack</h3></div></div>
           <div class="fact-list">${methodologyFacts.map(f=>`<div class="fact-strip"><div class="fs-label">${esc(f.label)}</div><div class="fs-value ${f.cls||''}">${esc(f.value)}</div></div>`).join('')}</div>
         </div>
-      </div>
+      </div>`:''}
     </div>
 
     <div class="subpanel">
@@ -3371,7 +3393,7 @@ function renderLaneCommandTop(tabKey){
         <div class="field"><label>MODELS · ${modelCount} ARMED</label><select class="select" multiple size="8" onchange="updateSelectedModels('${tab.key}',this)">${renderModelOptions(tab.key)}</select><div class="field-note">${esc(modelSelectionNote(tab.key))}</div></div>
         ${renderRunCount(tab.key)}
         <div class="button-grid">
-          <button class="button primary full" onclick="handleRun('${tab.key}')" title="Run the selected tests (honors RUN COUNT)">▶ RUN</button>
+          <button class="button primary full" onclick="handleRun('${tab.key}')" title="Run the selected tests against armed models">▶ RUN BENCHMARK</button>
           <button class="button secondary full" onclick="handleRunAll('${tab.key}')" title="Run every test in this lane, regardless of selection" aria-label="Run All tests in this lane">▶▶ RUN ALL</button>
           <button class="button secondary" onclick="selectModelBatch('${tab.key}','local')" title="Arm only local (Ollama) models — then hit RUN">LOCAL</button>
           <button class="button secondary" onclick="selectModelBatch('${tab.key}','cloud')" title="Arm only cloud models — then hit RUN">CLOUD</button>
@@ -3427,27 +3449,42 @@ function renderDashboard(){
   // Vitals wall — 4 compact telemetry meters, hero-adjacent.
   // Each meter has a label, big orange readout, and a fill bar.
   const vitals=[
-    {label:'OBSERVED SCORE',value:String(avgScore),unit:'%',barWidth:avgScore,cls:'teal'},
-    {label:'PASS RATE',value:String(passRate),unit:'%',barWidth:passRate},
+    {label:'OVERALL TRUST SCORE',value:String(avgScore),unit:'%',barWidth:avgScore,cls:'teal',tip:friendlyTip('composite')},
+    {label:'ACCURACY',value:String(passRate),unit:'%',barWidth:passRate,tip:friendlyTip('pass_rate')},
     {label:'TOTAL RUNS',value:String(stats.totalRuns||0),unit:'',barWidth:Math.min(100,stats.totalRuns*5)},
-    {label:'AVG TIME',value:fmtMs(stats.avgTime).replace(/\s+/g,''),unit:'',barWidth:Math.min(100,Math.max(8,stats.avgTime/150))}
+    {label:'AVERAGE SPEED',value:fmtMs(stats.avgTime).replace(/\s+/g,''),unit:'',barWidth:Math.min(100,Math.max(8,stats.avgTime/150)),tip:friendlyTip('avg_latency')}
   ];
-  const vitalsMarkup=vitals.map(v=>`<div class="vital"><div class="v-label">${esc(v.label)}</div><div class="v-readout ${v.cls||''}">${esc(v.value)}${v.unit?`<span class="v-unit">${esc(v.unit)}</span>`:''}</div><div class="v-bar"><div class="v-fill ${v.cls||''}" style="width:${v.barWidth}%"></div></div></div>`).join('');
+  const vitalsMarkup=vitals.map(v=>`<div class="vital"${v.tip?` title="${esc(v.tip)}"`:''} ><div class="v-label">${esc(v.label)}</div><div class="v-readout ${v.cls||''}">${esc(v.value)}${v.unit?`<span class="v-unit">${esc(v.unit)}</span>`:''}</div><div class="v-bar"><div class="v-fill ${v.cls||''}" style="width:${v.barWidth}%"></div></div></div>`).join('');
 
   // Dashboard scope banner — the only place in the product that SHOULD say
   // "Global". Making it explicit prevents the operator from mistaking the
   // overview numbers for a specific lane's performance.
   const dashScope=laneScopeDescriptor('dashboard');
   const dashScopeNote=`<div class="scope-note" data-scope-kind="global"><span class="chip cyan hot scope-chip" data-scope-kind="global">SCOPE · ${esc(dashScope.scopeLabel)}</span><span class="scope-note-body">Aggregates every lane. ${dashScope.sampleSize} total run${dashScope.sampleSize===1?'':'s'} indexed. Switch tabs for a lane-scoped view.</span></div>`;
+  // Simple-mode welcome card — explains Crucible in plain English
+  const simpleWelcome=isSimpleView()?`<section class="panel simple-welcome" style="padding:18px">
+    <h2 style="margin:0 0 6px;font-size:16px;color:var(--ink)">What is Crucible?</h2>
+    <p style="margin:0 0 12px;color:var(--ink-soft);font-size:13px;line-height:1.5">Crucible tests AI models on real tasks and tells you which one to trust. It checks accuracy, speed, cost, and safety so you can pick the right model without guessing.</p>
+    ${stats.totalRuns>0?`<div class="simple-insights">
+      <div class="simple-insight"><span class="si-label">Overall Trust Score</span><span class="si-value ${avgScore>=80?'teal':avgScore>=55?'orange':'red'}" title="${esc(friendlyTip('composite'))}">${avgScore}%</span></div>
+      <div class="simple-insight"><span class="si-label">Accuracy</span><span class="si-value" title="${esc(friendlyTip('pass_rate'))}">${passRate}%</span></div>
+      <div class="simple-insight"><span class="si-label">Tests Run</span><span class="si-value">${stats.totalRuns}</span></div>
+      ${overview.best?`<div class="simple-insight"><span class="si-label">Best Overall</span><span class="si-value teal">${esc(overview.best.model)}</span></div>`:''}
+      ${overview.value?`<div class="simple-insight"><span class="si-label">Best Value</span><span class="si-value orange">${esc(overview.value.model)}</span></div>`:''}
+      ${overview.fastest&&overview.fastest.durationAvg>0?`<div class="simple-insight"><span class="si-label">Fastest</span><span class="si-value cyan">${esc(overview.fastest.model)}</span></div>`:''}
+    </div>`:`<div class="simple-empty"><p style="margin:0;color:var(--ink-dim)">No benchmark results yet. Switch to a lane tab and click <strong>Run Benchmark</strong> to get started.</p></div>`}
+  </section>`:''
+
   return`<section class="stage-grid">
     <div class="content-column">
-      ${dashScopeNote}
+      ${simpleWelcome}
+      ${isAdvancedView()?dashScopeNote:''}
       <section class="panel live-status-panel" style="padding:14px">
         <div class="section-head"><div><div class="mini-label">MISSION CONTROL · GLOBAL</div><h3>Current Run (All Lanes)</h3></div></div>
         ${renderLiveStatus(state.activeTab)}
       </section>
 
-      ${isSimpleView()?'':`<div class="vitals">${vitalsMarkup}</div>`}
+      <div class="vitals${isSimpleView()?' vitals-collapsed':''}">${vitalsMarkup}</div>
 
       ${renderOverviewCards('dashboard')}
 
@@ -3455,14 +3492,14 @@ function renderDashboard(){
 
       ${renderRankedResults('dashboard')}
 
-      ${renderCategoryReview('dashboard')}
+      ${isAdvancedView()?renderCategoryReview('dashboard'):''}
 
-      ${topCats.length?`<section class="panel" style="padding:14px"><div class="section-head"><div><div class="mini-label">STRONGEST SIGNALS</div><h3>Top Categories</h3></div></div><div class="run-strips">${topCats.map((entry)=>{const cls=entry.score>=80?'pass':entry.score>=55?'warn':'fail';return`<div class="run-strip ${cls}" style="cursor:default;grid-template-columns:12px minmax(0,1fr) minmax(0,1fr) 60px 70px"><div class="rs-dot"></div><div class="rs-model">${esc(entry.name)}</div><div class="rs-bar"><div class="rs-fill" style="width:${entry.score}%"></div></div><div class="rs-score">${entry.score}%</div><div class="rs-badge badge ${cls}">${cls==='pass'?'STABLE':cls==='warn'?'SHAKY':'FAILED'}</div></div>`}).join('')}</div></section>`:''}
+      ${topCats.length?`<section class="panel" style="padding:14px"><div class="section-head"><div><div class="mini-label">STRONGEST SIGNALS</div><h3>Top Test Categories</h3></div></div><div class="run-strips">${topCats.map((entry)=>{const cls=entry.score>=80?'pass':entry.score>=55?'warn':'fail';return`<div class="run-strip ${cls}" style="cursor:default;grid-template-columns:12px minmax(0,1fr) minmax(0,1fr) 60px 70px"><div class="rs-dot"></div><div class="rs-model">${esc(entry.name)}</div><div class="rs-bar"><div class="rs-fill" style="width:${entry.score}%"></div></div><div class="rs-score">${entry.score}%</div><div class="rs-badge badge ${cls}">${cls==='pass'?'STABLE':cls==='warn'?'SHAKY':'FAILED'}</div></div>`}).join('')}</div></section>`:''}
 
-      ${lanes.length?`<section class="panel" style="padding:14px"><div class="section-head"><div><div class="mini-label">LANE PRESSURE</div><h3>Coverage</h3></div></div><div class="glyph-grid">${lanes.map(lane=>{const cls=lane.avg>=80?'teal':lane.avg>=55?'':'';return`<div class="glyph"><div class="g-label">${esc(lane.label)}</div><div class="g-value ${cls}">${lane.avg}%</div><div class="v-bar"><div class="v-fill ${cls}" style="width:${lane.avg}%"></div></div><div class="g-label" style="font-size:10px">${lane.total} RUN · ${lane.passRate}% PASS</div></div>`}).join('')}</div></section>`:''}
+      ${lanes.length?`<section class="panel" style="padding:14px"><div class="section-head"><div><div class="mini-label">TEST CATEGORIES</div><h3>Coverage by Lane</h3></div></div><div class="glyph-grid">${lanes.map(lane=>{const cls=lane.avg>=80?'teal':lane.avg>=55?'':'';return`<div class="glyph"><div class="g-label">${esc(lane.label)}</div><div class="g-value ${cls}">${lane.avg}%</div><div class="v-bar"><div class="v-fill ${cls}" style="width:${lane.avg}%"></div></div><div class="g-label" style="font-size:10px">${lane.total} RUN · ${lane.passRate}% PASS</div></div>`}).join('')}</div></section>`:''}
 
       <section class="panel" style="padding:14px" id="crit-evidence-anchor" tabindex="-1">
-        <div class="section-head"><div><div class="mini-label">SIGNAL QUEUE</div><h3>Recent Runs</h3></div><span class="chip dim">${recent.length} VISIBLE</span></div>
+        <div class="section-head"><div><div class="mini-label">RECENT ACTIVITY</div><h3>Recent Runs</h3></div><span class="chip dim">${recent.length} VISIBLE</span></div>
         ${recent.length?`<div class="run-strips">${recent.map((run,index)=>{const raw=rawRecent[index];const cls=run.overall>=80?'pass':run.overall>=55?'warn':'fail';const word=cls==='pass'?'PASS':cls==='warn'?'REVIEW':'FAIL';const rid=raw.bundle_id||raw.run_id||raw.id||run.id;return`<button class="run-strip ${cls}" onclick="focusDashboardRun('${esc(rid)}')"><div class="rs-dot"></div><div class="rs-model">${esc(run.model)}</div><div class="rs-task">${esc(humanizeToken(run.task))}</div><div class="rs-bar"><div class="rs-fill" style="width:${run.overall}%"></div></div><div class="rs-score">${run.overall}%</div><div class="rs-badge badge ${cls}">${word}</div></button>`}).join('')}</div>`:'<div class="empty">NO SIGNAL</div>'}
       </section>
 
@@ -3471,15 +3508,15 @@ function renderDashboard(){
 
     <aside class="side-column">
       <section class="panel" style="padding:14px">
-        <div class="section-head"><div><div class="mini-label">CATEGORY WINNERS</div><h3>Quick Picks</h3></div></div>
+        <div class="section-head"><div><div class="mini-label">BEST MODEL RECOMMENDATIONS</div><h3>Quick Picks</h3></div></div>
         ${overview.winners.length?`<div class="winner-stack">${overview.winners.map((winner)=>`<div class="winner-row"><div class="winner-label">${esc(winner.label)}</div><div class="winner-model">${esc(winner.model)}</div><div class="winner-score">${winner.score}%</div></div>`).join('')}</div>`:'<div class="empty">NO WINNERS YET</div>'}
       </section>
       <section class="panel" style="padding:14px">
-        <div class="section-head"><div><div class="mini-label">RUN REVIEW FLOW</div><h3>How To Read This Run</h3></div></div>
+        <div class="section-head"><div><div class="mini-label">HOW TO USE CRUCIBLE</div><h3>How To Read Results</h3></div></div>
         <div class="review-flow">
-          <div class="flow-step"><span class="chip teal">A</span><div><strong>Summary</strong><span>Best model, value, fastest, watch area.</span></div></div>
-          <div class="flow-step"><span class="chip orange">B</span><div><strong>Category Review</strong><span>Compare models by category without digging through rows.</span></div></div>
-          <div class="flow-step"><span class="chip dim">C</span><div><strong>Test Review</strong><span>Open individual prompts, answers, thresholds, and evidence on demand.</span></div></div>
+          <div class="flow-step"><span class="chip teal">1</span><div><strong>Check Recommendations</strong><span>See the best overall, best value, and fastest model.</span></div></div>
+          <div class="flow-step"><span class="chip orange">2</span><div><strong>Compare Models</strong><span>Look at the leaderboard to see how models rank against each other.</span></div></div>
+          <div class="flow-step"><span class="chip dim">3</span><div><strong>Dig Deeper</strong><span>Click any model or run to see exactly what happened.</span></div></div>
         </div>
       </section>
     </aside>
@@ -3508,16 +3545,16 @@ function renderLane(tabKey){
   const infraRate=Math.round(Number(stats.infra_issue_rate||0));
   const armedCount=(tabState.selectedModels||[]).length;
   const laneVitals=[
-    {label:'PASS RATE',value:String(scorePct(stats.pass_rate)),unit:'%',barWidth:scorePct(stats.pass_rate),cls:'teal'},
-    {label:'AVG SCORE',value:String(scorePct(stats.avg_score)),unit:'%',barWidth:scorePct(stats.avg_score)},
+    {label:'ACCURACY',value:String(scorePct(stats.pass_rate)),unit:'%',barWidth:scorePct(stats.pass_rate),cls:'teal',tip:friendlyTip('pass_rate')},
+    {label:'OVERALL TRUST SCORE',value:String(scorePct(stats.avg_score)),unit:'%',barWidth:scorePct(stats.avg_score),tip:friendlyTip('composite')},
     {label:'MODEL FAIL',value:String(modelFail),unit:'%',barWidth:modelFail,cls:modelFail>0?'':'dim'},
     {label:'NC RATE',value:String(ncRate),unit:'%',barWidth:ncRate,cls:ncRate>0?'':'dim'},
     {label:'INFRA',value:String(infraRate),unit:'%',barWidth:infraRate,cls:infraRate>0?'':'dim'},
     {label:'RUNS',value:String(stats.total_runs||0),unit:'',barWidth:Math.min(100,(stats.total_runs||0)*5)},
     {label:'ARMED',value:String(armedCount),unit:'MODEL'+(armedCount===1?'':'S'),barWidth:Math.min(100,armedCount*10),cls:armedCount?'teal':'dim'},
-    {label:'COST',value:fmtMoney(stats.total_cost_usd).replace('$',''),unit:'USD',barWidth:Math.min(100,(Number(stats.total_cost_usd||0)*100))}
+    {label:'COST PER TEST',value:fmtMoney(Number(stats.total_cost_usd||0)/((stats.total_runs||1))).replace('$',''),unit:'USD',barWidth:Math.min(100,(Number(stats.total_cost_usd||0)*100)),tip:friendlyTip('cost_per_task')}
   ];
-  const laneVitalsMarkup=laneVitals.map(v=>`<div class="vital"><div class="v-label">${esc(v.label)}</div><div class="v-readout ${v.cls||''}">${esc(v.value)}${v.unit?`<span class="v-unit">${esc(v.unit)}</span>`:''}</div><div class="v-bar"><div class="v-fill ${v.cls||''}" style="width:${v.barWidth}%"></div></div></div>`).join('');
+  const laneVitalsMarkup=laneVitals.map(v=>`<div class="vital"${v.tip?` title="${esc(v.tip)}"`:''} ><div class="v-label">${esc(v.label)}</div><div class="v-readout ${v.cls||''}">${esc(v.value)}${v.unit?`<span class="v-unit">${esc(v.unit)}</span>`:''}</div><div class="v-bar"><div class="v-fill ${v.cls||''}" style="width:${v.barWidth}%"></div></div></div>`).join('');
 
   const selectedCount=(tabState.selectedTasks||[]).length;
   const scope=laneScopeDescriptor(tab.key);
@@ -3528,8 +3565,20 @@ function renderLane(tabKey){
     ? `Only ${scope.sampleSize} run${scope.sampleSize===1?'':'s'} in scope — treat rankings as provisional.`
     : `${scope.sampleSize} run${scope.sampleSize===1?'':'s'} in scope · ${(tabState.leaderboard||[]).length} model${(tabState.leaderboard||[]).length===1?'':'s'} ranked.`;
   const laneScopeBanner=`<div class="scope-note" data-scope-kind="lane" data-scope-tab="${esc(tab.key)}"><span class="chip teal hot scope-chip" data-scope-kind="lane" title="${esc(scope.familiesLabel)}">SCOPE · ${esc(scope.scopeLabel)}</span><span class="scope-note-body">Scoped to ${esc(scope.familiesLabel)}. ${esc(provBody)}</span>${scope.provisional?`<span class="chip amber hot" title="Fewer than ${LEADERBOARD_MIN_N_UI} runs meet the sample threshold — ranks are provisional.">PROVISIONAL · n=${scope.sampleSize}</span>`:''}</div>`;
-  return`${renderLaneCommandTop(tab.key)}<section class="control-grid">
-    <aside class="control-rail">
+  // Simple-mode lane intro — headline + brief summary with key stats
+  const simpleLaneIntro=isSimpleView()?`<section class="panel simple-welcome" style="padding:18px">
+    <h2 style="margin:0 0 6px;font-size:16px;color:var(--ink)">${esc(tab.label)} Tests</h2>
+    <p style="margin:0 0 12px;color:var(--ink-soft);font-size:13px;line-height:1.5">${esc(tab.headline)}</p>
+    <div class="simple-insights">
+      <div class="simple-insight"><span class="si-label">Overall Trust Score</span><span class="si-value ${scorePct(stats.avg_score)>=80?'teal':scorePct(stats.avg_score)>=55?'orange':'red'}" title="${esc(friendlyTip('composite'))}">${scorePct(stats.avg_score)}%</span></div>
+      <div class="simple-insight"><span class="si-label">Accuracy</span><span class="si-value" title="${esc(friendlyTip('pass_rate'))}">${scorePct(stats.pass_rate)}%</span></div>
+      <div class="simple-insight"><span class="si-label">RUNS IN SCOPE</span><span class="si-value">${stats.total_runs||0}</span></div>
+      <div class="simple-insight"><span class="si-label">Cost per Test</span><span class="si-value" title="${esc(friendlyTip('cost_per_task'))}">${fmtMoney(Number(stats.total_cost_usd||0)/(stats.total_runs||1))}</span></div>
+    </div>
+  </section>`:''
+
+  return`${isAdvancedView()?renderLaneCommandTop(tab.key):''}<section class="control-grid${isSimpleView()?' simple-layout':''}">
+    ${isAdvancedView()?`<aside class="control-rail">
       <section class="panel rail-panel">
         <div class="section-head"><div><div class="mini-label">${esc(tab.laneTitle.toUpperCase())}</div><h3>Lane Scope</h3></div><span class="chip orange hot">${esc(tab.label.toUpperCase())}</span></div>
         <div class="fact-list">
@@ -3550,16 +3599,17 @@ function renderLane(tabKey){
           <div class="fact-strip"><div class="fs-label">ARMED</div><div class="fs-value ${modelCount?'teal':'dim'}">${modelCount} MODEL${modelCount===1?'':'S'}</div></div>
         </div>
       </section>
-    </aside>
+    </aside>`:''}
 
     <div class="content-column">
+      ${simpleLaneIntro}
       ${laneScopeBanner}
       <section class="panel live-status-panel" style="padding:14px">
         <div class="section-head"><div><div class="mini-label">MISSION CONTROL · LANE-SCOPED</div><h3>Live Run Panel (${esc(tab.label)})</h3></div></div>
         ${renderLiveStatus(tab.key)}
       </section>
 
-      ${isSimpleView()?'':`<div class="vitals">${laneVitalsMarkup}</div>`}
+      <div class="vitals${isSimpleView()?' vitals-collapsed':''}">${laneVitalsMarkup}</div>
 
       ${renderOverviewCards(tab.key)}
 
@@ -3567,10 +3617,10 @@ function renderLane(tabKey){
 
       ${renderRankedResults(tab.key)}
 
-      ${renderCategoryReview(tab.key)}
+      ${isAdvancedView()?renderCategoryReview(tab.key):''}
 
       <section class="panel" style="padding:14px" id="crit-evidence-anchor" tabindex="-1">
-        <div class="section-head"><div><div class="mini-label">RUN HISTORY</div><h3>Signal Archive</h3></div><span class="chip dim">${(tabState.runs||[]).length} TOTAL</span></div>
+        <div class="section-head"><div><div class="mini-label">RUN HISTORY</div><h3>${isSimpleView()?'Recent Results':'Signal Archive'}</h3></div><span class="chip dim">${(tabState.runs||[]).length} TOTAL</span></div>
         ${renderRuns(tab.key)}
       </section>
 

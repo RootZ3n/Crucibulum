@@ -346,7 +346,7 @@ describe("critical failure rate: evidence linkage", () => {
     // This is a static source-level check — the anchor must exist on both
     // the dashboard's Signal Queue and every lane's Signal Archive, so the
     // banner's jump handler always has somewhere to land.
-    assert.match(uiHtml, /id="crit-evidence-anchor"[^>]*>[\s\S]*?SIGNAL QUEUE/, "dashboard Signal Queue must carry the anchor id");
+    assert.match(uiHtml, /id="crit-evidence-anchor"[^>]*>[\s\S]*?RECENT ACTIVITY/, "dashboard Recent Activity must carry the anchor id");
     assert.match(uiHtml, /id="crit-evidence-anchor"[^>]*>[\s\S]*?RUN HISTORY/, "lane Signal Archive must carry the anchor id");
   });
 

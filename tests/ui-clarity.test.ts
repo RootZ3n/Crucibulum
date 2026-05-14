@@ -522,7 +522,7 @@ describe("offline-first UI shell", () => {
     };
     const html = ui.renderDashboard();
     assert.doesNotMatch(html, /LAB SCORE/);
-    assert.match(html, /OBSERVED SCORE|PUBLIC SCORE/);
+    assert.match(html, /OVERALL TRUST SCORE|PUBLIC TRUST SCORE/);
   });
 });
 
