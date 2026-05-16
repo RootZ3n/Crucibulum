@@ -71,7 +71,12 @@ function rubricOrParserCategory(bundle: EvidenceBundle): BenchmarkEvaluation["ca
     ...(bundle.verification_results.regression.command_results ?? []).map((result) => result.summary),
   ].join("\n").toLowerCase();
 
-  if (/\binvalid regex\b|model_output_malformed|provider_invalid_response/.test(reasons)) return "PARSER_FAILURE";
+  // PARSER_FAILURE is also reachable through the explicit
+  // `verdict.failureReasonCode` checks for `model_output_malformed` and
+  // `provider_invalid_response` further down. Keep this regex limited to
+  // free-form judge messages (e.g. "Invalid regex pattern: [") that don't
+  // surface a structured failure code.
+  if (/\binvalid regex\b/.test(reasons)) return "PARSER_FAILURE";
   if (/\bno pass_phrases defined\b|\bno pattern defined\b|custom scorer not loaded|custom scorer threw|not evaluable|oracle.*missing|rubric/i.test(reasons)) {
     return "RUBRIC_MISMATCH";
   }
@@ -175,6 +180,11 @@ export function classifyBenchmarkEvaluation(
     };
   }
 
+  // Family-gated to spec_discipline because the no-diff signal is only
+  // meaningful in repo-mode tasks. Conversational benchmarks (truthfulness,
+  // cost_efficiency) always have an empty diff regardless of whether the
+  // model engaged with the question, so the same heuristic would
+  // mis-classify any zero-score conversational run.
   if (bundle.score.total === 0 && verdict.completionState === "FAIL" && bundle.task.family === "spec_discipline" && bundle.diff.files_changed.length === 0) {
     return {
       category: "SAFE_BUT_UNHELPFUL",

@@ -339,3 +339,74 @@ export function normalizeBundleVerdict(bundle: EvidenceBundle): NormalizedVerdic
     retries: bundle.verdict?.evidence.retries ?? null,
   });
 }
+
+/**
+ * After lane-specific evaluations have annotated the bundle, reconcile the
+ * verdict with them. The benchmark/poison/build/safety/memory/personality
+ * classifiers each emit `failure_is_infrastructure: true` for categories
+ * that explicitly do NOT reflect model capability (EMPTY_RESPONSE, TIMEOUT,
+ * PROVIDER_FAILURE, PARSER_FAILURE, RUBRIC_MISMATCH, PREFLIGHT_BLOCKED).
+ *
+ * If any of those fire while the verdict still says the model failed,
+ * downgrade the verdict to NC. Without this step, the leaderboard
+ * (`leaderboard/aggregator.ts`) reads `countsTowardModelScore: true` from
+ * the verdict and includes the run in the model's composite, even though
+ * the per-lane evaluation explicitly says the failure was infrastructure.
+ *
+ * The function is intentionally a no-op when the verdict already says PASS
+ * or NC, or when the failure origin isn't MODEL — in those cases the verdict
+ * layer already agrees with the lane evaluations and nothing needs to move.
+ */
+export function reconcileVerdictWithLaneEvaluations(bundle: EvidenceBundle): void {
+  if (!bundle.verdict) return;
+  if (bundle.verdict.completionState !== "FAIL") return;
+  if (bundle.verdict.failureOrigin !== "MODEL") return;
+
+  const evaluations: Array<{ field: string; category: string }> = [];
+  const fields = [
+    "benchmark_evaluation",
+    "poison_evaluation",
+    "build_evaluation",
+    "safety_evaluation",
+    "memory_evaluation",
+    "personality_evaluation",
+  ] as const;
+  for (const field of fields) {
+    const evalObj = (bundle as unknown as Record<string, unknown>)[field] as
+      | { category: string; failure_is_infrastructure: boolean }
+      | undefined;
+    if (evalObj && evalObj.failure_is_infrastructure === true) {
+      evaluations.push({ field, category: evalObj.category });
+    }
+  }
+  if (evaluations.length === 0) return;
+
+  const primary = evaluations[0]!;
+  const origin: FailureOrigin =
+    primary.category === "RUBRIC_MISMATCH" ? "JUDGE" :
+    primary.category === "PREFLIGHT_BLOCKED" ? "HARNESS" :
+    primary.category === "PARSER_FAILURE" ? "PROVIDER" :
+    primary.category === "EMPTY_RESPONSE" ? "PROVIDER" :
+    primary.category === "TIMEOUT" ? "PROVIDER" :
+    primary.category === "PROVIDER_FAILURE" ? "PROVIDER" :
+    "UNKNOWN";
+
+  const code: FailureReasonCode =
+    primary.category === "RUBRIC_MISMATCH" ? "judge_not_evaluable" :
+    primary.category === "EMPTY_RESPONSE" ? "provider_empty_response" :
+    primary.category === "TIMEOUT" ? "provider_timeout" :
+    primary.category === "PROVIDER_FAILURE" ? "provider_error" :
+    primary.category === "PARSER_FAILURE" ? "provider_invalid_response" :
+    primary.category === "PREFLIGHT_BLOCKED" ? "harness_preflight_failure" :
+    "unknown_failure";
+
+  bundle.verdict = {
+    completionState: "NC",
+    failureOrigin: origin,
+    failureReasonCode: code,
+    failureReasonSummary: `Reconciled from lane evaluation ${primary.field}=${primary.category} (failure_is_infrastructure)`,
+    countsTowardModelScore: false,
+    countsTowardFailureRate: false,
+    evidence: bundle.verdict.evidence,
+  };
+}

@@ -16,10 +16,7 @@
 function formatError(err, statusCode) {
   return {
     status: statusCode,
-    // BUG: err.message often contains internal paths like
-    // "ENOENT: no such file or directory, open '/home/app/data/users.json'"
     error: err.message,
-    // BUG: exposes internal stack trace line
     path: err.stack ? err.stack.split('\n')[1].trim() : null,
     code: err.code || null
   };

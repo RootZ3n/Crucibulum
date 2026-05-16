@@ -9,13 +9,8 @@
     {
       "id": "CD1-Q1",
       "question": "Write a FizzBuzz function in JavaScript. For multiples of 3 print 'Fizz', multiples of 5 print 'Buzz', multiples of both print 'FizzBuzz', otherwise print the number. Output ONLY the function, no explanation.",
-      "scoring_type": "text_match_all",
-      "pass_phrases": [
-        "function",
-        "return",
-        "fizz",
-        "buzz"
-      ],
+      "scoring_type": "regex_match",
+      "pattern": "(?=[\\s\\S]*\\bfizz)(?=[\\s\\S]*\\bbuzz)(?=[\\s\\S]*%\\s*(?:3|15))(?=[\\s\\S]*%\\s*(?:5|15))",
       "weight": 2,
       "tags": [
         "code",
@@ -30,7 +25,8 @@
       "pass_phrases": [
         "sort",
         "score",
-        "return"
+        "b score",
+        "a score"
       ],
       "weight": 2,
       "tags": [
@@ -83,8 +79,11 @@
       "scoring_type": "text_match_all",
       "pass_phrases": [
         "interface",
-        "string",
-        "number"
+        "email",
+        "phone",
+        "createdat",
+        "number",
+        "string"
       ],
       "weight": 2,
       "tags": [
@@ -98,9 +97,11 @@
       "question": "Given this function signature, implement the body:\n\ninterface PaginationResult<T> {\n  items: T[];\n  page: number;\n  totalPages: number;\n  hasNext: boolean;\n  hasPrev: boolean;\n}\n\n/**\n * Paginates an array of items.\n * @param items - Array to paginate. If null/undefined/empty, return page 1 with empty items.\n * @param page - 1-indexed page number. If < 1, treat as 1. If > totalPages, return last page.\n * @param pageSize - Items per page. Must be >= 1, default 10.\n * @returns PaginationResult with correct hasNext/hasPrev flags.\n */\nfunction paginate<T>(items: T[] | null | undefined, page?: number, pageSize?: number): PaginationResult<T>\n\nOutput ONLY the implementation.",
       "scoring_type": "text_match_all",
       "pass_phrases": [
-        "page",
         "items",
-        "return"
+        "page",
+        "totalpages",
+        "hasnext",
+        "hasprev"
       ],
       "weight": 2,
       "tags": [

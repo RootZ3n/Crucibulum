@@ -14,14 +14,14 @@ function formatDate(date) {
     throw new Error('Invalid date input');
   }
 
-  const year = d.getFullYear();                              // BUG: local timezone
-  const month = String(d.getMonth() + 1).padStart(2, '0');  // BUG: local timezone
-  const day = String(d.getDate()).padStart(2, '0');          // BUG: local timezone
-  const hours = String(d.getHours()).padStart(2, '0');       // BUG: local timezone
-  const minutes = String(d.getMinutes()).padStart(2, '0');   // BUG: local timezone
-  const seconds = String(d.getSeconds()).padStart(2, '0');   // BUG: local timezone
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
 
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;  // BUG: missing Z
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
 }
 
 function parseDate(str) {

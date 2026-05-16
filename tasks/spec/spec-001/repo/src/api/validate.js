@@ -27,7 +27,7 @@ function handleValidation(input) {
   }
 
   if (errors.length > 0) {
-    return { status: 200, body: { valid: false, errors } };  // BUG: should be 422
+    return { status: 200, body: { valid: false, errors } };
   }
 
   return { status: 200, body: { valid: true } };

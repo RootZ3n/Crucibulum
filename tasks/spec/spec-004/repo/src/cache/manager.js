@@ -32,7 +32,6 @@ function get(key) {
 }
 
 function invalidate(key) {
-  // BUG: clears ALL cache entries instead of just the specified key
   cache.clear();
 }
 

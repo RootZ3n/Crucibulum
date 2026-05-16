@@ -36,7 +36,7 @@ import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
 import { assertBenchmarkProvenance } from "./manifest.js";
 import { canonicalPercent } from "../types/scores.js";
 import { runWithProtection } from "./circuit-breaker.js";
-import { normalizeVerdict } from "./verdict.js";
+import { normalizeVerdict, reconcileVerdictWithLaneEvaluations } from "./verdict.js";
 import { interpretBundleResult } from "./interpretation.js";
 import type { StructuredProviderError } from "../types/provider-error.js";
 import { normalizeProviderError } from "./provider-errors.js";
@@ -778,6 +778,11 @@ function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBu
   bundle.safety_evaluation = classifySafetyEvaluation(bundle, bundle.verdict, { exit_reason: terminalChatError ? "error" : "complete" });
   bundle.memory_evaluation = classifyMemoryEvaluation(bundle, bundle.verdict, { exit_reason: terminalChatError ? "error" : "complete" });
   bundle.personality_evaluation = classifyPersonalityEvaluation(bundle, bundle.verdict, { exit_reason: terminalChatError ? "error" : "complete" });
+  // Downgrade the verdict to NC if any lane evaluation flagged the failure
+  // as infrastructure (EMPTY_RESPONSE, TIMEOUT, PROVIDER_FAILURE, etc.) so
+  // the leaderboard aggregator and the per-lane annotations agree on
+  // whether this run counts as a model failure.
+  reconcileVerdictWithLaneEvaluations(bundle);
   bundle.interpretation = interpretBundleResult(bundle);
 
   // Sign the bundle

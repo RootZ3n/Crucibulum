@@ -4,7 +4,7 @@
   "family": "cost_efficiency",
   "execution_mode": "conversational",
   "difficulty": "medium",
-  "description": "5 identical medium-complexity prompts — tracks correctness, token usage, and cost efficiency per model",
+  "description": "5 independent medium-complexity conciseness prompts — same shape (one number, maxLength enforced), different inputs so Q2..Q5 are not cached replays of Q1's answer.",
   "questions": [
     {
       "id": "TE1-Q1",
@@ -21,9 +21,9 @@
     },
     {
       "id": "TE1-Q2",
-      "question": "Reply with ONLY the number.\nA team has 18 queued tickets. They close 7, reopen 2 of those, then 5 new tickets arrive, then they close 2 more. How many tickets remain?",
+      "question": "Reply with ONLY the number.\nA warehouse holds 240 boxes. 85 ship out, 30 are returned, then 60 more ship out. How many boxes remain?",
       "scoring_type": "regex_match",
-      "pattern": "^\\s*16\\s*$",
+      "pattern": "^\\s*125\\s*$",
       "maxLength": 12,
       "weight": 2,
       "tags": [
@@ -34,9 +34,9 @@
     },
     {
       "id": "TE1-Q3",
-      "question": "Reply with ONLY the number.\nA team has 18 queued tickets. They close 7, reopen 2 of those, then 5 new tickets arrive, then they close 2 more. How many tickets remain?",
+      "question": "Reply with ONLY the number.\nA backlog has 92 issues. The team resolves 14, reopens 3 of those, then 21 new issues arrive, then they resolve 8 more. How many remain?",
       "scoring_type": "regex_match",
-      "pattern": "^\\s*16\\s*$",
+      "pattern": "^\\s*94\\s*$",
       "maxLength": 12,
       "weight": 2,
       "tags": [
@@ -47,9 +47,9 @@
     },
     {
       "id": "TE1-Q4",
-      "question": "Reply with ONLY the number.\nA team has 18 queued tickets. They close 7, reopen 2 of those, then 5 new tickets arrive, then they close 2 more. How many tickets remain?",
+      "question": "Reply with ONLY the number.\nA library has 530 books on loan. 142 are returned, 75 are then re-loaned, then 38 more are returned. How many books are currently on loan?",
       "scoring_type": "regex_match",
-      "pattern": "^\\s*16\\s*$",
+      "pattern": "^\\s*425\\s*$",
       "maxLength": 12,
       "weight": 2,
       "tags": [
@@ -60,9 +60,9 @@
     },
     {
       "id": "TE1-Q5",
-      "question": "Reply with ONLY the number.\nA team has 18 queued tickets. They close 7, reopen 2 of those, then 5 new tickets arrive, then they close 2 more. How many tickets remain?",
+      "question": "Reply with ONLY the number.\nA queue has 47 jobs. 12 complete, 4 of those are retried, then 9 new jobs arrive, then 6 more complete. How many jobs remain?",
       "scoring_type": "regex_match",
-      "pattern": "^\\s*16\\s*$",
+      "pattern": "^\\s*42\\s*$",
       "maxLength": 12,
       "weight": 2,
       "tags": [
@@ -83,7 +83,7 @@
       "cost",
       "conciseness"
     ],
-    "diagnostic_purpose": "Measures token efficiency by running identical prompts — compares correctness rate and output token count across models",
+    "diagnostic_purpose": "Measures token efficiency across five independent conciseness prompts of the same shape — each question is a different input so Q2..Q5 are not cached replays of Q1.",
     "benchmark_provenance": {
       "source": "Crucible synthetic conversational task",
       "public_status": "public",

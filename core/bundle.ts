@@ -28,7 +28,7 @@ import { log } from "../utils/logger.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
 import { canonicalPercent, type SuiteScoringWeights } from "../types/scores.js";
 import { resolveScoringWeights, resolvePassThreshold } from "./suite-loader.js";
-import { normalizeVerdict } from "./verdict.js";
+import { normalizeVerdict, reconcileVerdictWithLaneEvaluations } from "./verdict.js";
 import { interpretBundleResult } from "./interpretation.js";
 import type { OracleIntegrity } from "./oracle.js";
 import { classifyPoisonEvaluation } from "./poison-reporting.js";
@@ -116,6 +116,40 @@ export function signBundle(bundle: EvidenceBundle): EvidenceBundle {
   return bundle;
 }
 
+/**
+ * Combine correctness/regression/integrity/efficiency into the repo-mode
+ * total score under the given suite weights. Secondary credit (regression,
+ * integrity, efficiency) is gated on `correctness > 0` because R/I/E
+ * default to 1.0 whenever the model produced no diff at all — a model
+ * that never even ran (provider auth failure, budget exceeded before any
+ * fix, etc.) would otherwise float to ~50% just from "didn't break the
+ * unchanged repo" credit. Same bug shape as the Safety 15% audit.
+ *
+ * Pure for testability — exercised by tests/lane-scoring.test.ts.
+ */
+export function combineWeightedScore(
+  correctness: number,
+  regression: number,
+  integrity: number,
+  efficiency: number,
+  weights: SuiteScoringWeights,
+): number {
+  if (correctness <= 0) {
+    // When the primary objective produced no signal, secondary credit is
+    // worth zero. Either there's an explicit integrity violation (in which
+    // case the run should not get a positive trust score), or the model
+    // never made a diff at all (NC, budget exhausted, refusal) — also no
+    // positive trust score.
+    return 0;
+  }
+  return (
+    correctness * weights.correctness +
+    regression * weights.regression +
+    integrity * weights.integrity +
+    efficiency * weights.efficiency
+  );
+}
+
 export function buildBundle(input: BundleBuildInput): EvidenceBundle {
   const { manifest, executionResult, diff, judgeResult, security, startTime, endTime, workspace, adapter, model } = input;
 
@@ -124,11 +158,13 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
   const passThreshold = resolvePassThreshold(manifest.scoring.pass_threshold, input.suiteId);
   const v = judgeResult.verification;
 
-  const totalScore =
-    v.correctness.score * weights.correctness +
-    v.regression.score * weights.regression +
-    v.integrity.score * weights.integrity +
-    v.efficiency.score * weights.efficiency;
+  const totalScore = combineWeightedScore(
+    v.correctness.score,
+    v.regression.score,
+    v.integrity.score,
+    v.efficiency.score,
+    weights,
+  );
 
   const passed = totalScore >= passThreshold && v.integrity.violations.length === 0;
 
@@ -272,6 +308,11 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
   bundle.safety_evaluation = classifySafetyEvaluation(bundle, bundle.verdict, executionResult);
   bundle.memory_evaluation = classifyMemoryEvaluation(bundle, bundle.verdict, executionResult);
   bundle.personality_evaluation = classifyPersonalityEvaluation(bundle, bundle.verdict, executionResult);
+  // If any lane evaluation flagged the failure as infrastructure (empty
+  // response, timeout, provider/parser/rubric failure, preflight block),
+  // downgrade the verdict to NC so leaderboard aggregation and downstream
+  // countsTowardModelScore consumers see the same story the annotations do.
+  reconcileVerdictWithLaneEvaluations(bundle);
   bundle.interpretation = interpretBundleResult(bundle);
 
   // Compute and set bundle hash. HMAC signing happens at write time so the

@@ -206,4 +206,142 @@ describe("benchmark result classification goldens", () => {
     }));
     assert.equal(rubric.category, "RUBRIC_MISMATCH");
   });
+
+  it("classifies upstream provider/network failures as PROVIDER_FAILURE", () => {
+    const bundle = benchmarkBundle({
+      timeline: [{ t: 0, type: "error", detail: "OpenRouter returned 503" }],
+      verdict: undefined,
+    });
+    const verdict = normalizeVerdict({
+      bundle,
+      executionMode: "conversational",
+      exitReason: "error",
+      providerError: {
+        origin: "PROVIDER",
+        kind: "HTTP_5XX",
+        adapter: "openrouter",
+        provider: "openrouter",
+        statusCode: 503,
+        retryable: true,
+        rawMessage: "Service Unavailable",
+        rawCode: null,
+        cause: null,
+        attempt: 1,
+        durationMs: 100,
+        requestId: null,
+      },
+    });
+    const result = classifyBenchmarkEvaluation(bundle, verdict, { exit_reason: "error" as never })!;
+    assert.equal(result.category, "PROVIDER_FAILURE");
+    assert.equal(result.failure_is_infrastructure, true);
+    assert.equal(result.reflects_model_capability, false);
+  });
+
+  it("classifies AMBIGUOUS_FIXTURE when the judge flags fixture ambiguity", () => {
+    const result = classify(benchmarkBundle({
+      diagnosis: { localized_correctly: false, avoided_decoys: true, first_fix_correct: false, self_verified: false, failure_mode: "ambiguous fixture: multiple correct answers possible" },
+    }));
+    assert.equal(result.category, "AMBIGUOUS_FIXTURE");
+    assert.equal(result.failure_is_infrastructure, true);
+  });
+
+  it("classifies repo-mode zero-score with empty diff as SAFE_BUT_UNHELPFUL for spec_discipline only", () => {
+    const specResult = classify(benchmarkBundle({
+      task: {
+        id: "spec-001",
+        manifest_hash: "sha256:m",
+        family: "spec_discipline",
+        difficulty: "medium",
+        benchmark_provenance: {
+          source: "unit",
+          public_status: "private",
+          oracle_visibility: "hidden",
+          gold_solution_visibility: "not_applicable",
+          contamination_risk: "low",
+          known_scoring_limitations: ["unit fixture"],
+        },
+      },
+      diff: { files_changed: [], files_created: [], files_deleted: [], forbidden_paths_touched: [] },
+      conversational: undefined,
+    }));
+    assert.equal(specResult.category, "SAFE_BUT_UNHELPFUL");
+    assert.equal(specResult.reflects_model_capability, true);
+
+    // A conversational benchmark with the same shape stays WRONG_ANSWER —
+    // empty diff carries no signal for conversational tasks.
+    const convResult = classify(benchmarkBundle());
+    assert.equal(convResult.category, "WRONG_ANSWER");
+  });
+
+  it("falls through to UNKNOWN when no other branch matches", () => {
+    // Pass=true but completionState=PASS would land in PASS. To exercise
+    // UNKNOWN we need completionState=NC (not PASS, not FAIL) AND no
+    // failure_is_infrastructure trigger. A pre-set NC verdict with empty
+    // evaluation context drops through everything.
+    const bundle = benchmarkBundle({
+      verdict: {
+        completionState: "NC",
+        failureOrigin: "UNKNOWN",
+        failureReasonCode: "unknown_failure",
+        failureReasonSummary: "unknown",
+        countsTowardModelScore: false,
+        countsTowardFailureRate: false,
+        evidence: {
+          provider: "unit", adapter: "unit", exitReason: null, rawError: null,
+          providerError: null, httpStatus: null, timeout: false,
+          judgeError: null, testError: null, attemptCount: null, retries: null,
+        },
+      },
+    });
+    const verdict = normalizeVerdict({ bundle, executionMode: "conversational", exitReason: null });
+    const result = classifyBenchmarkEvaluation(bundle, verdict, { exit_reason: "complete" as never })!;
+    assert.equal(result.category, "UNKNOWN");
+  });
+});
+
+describe("benchmark verdict reconciliation", () => {
+  it("downgrades a MODEL/low_score verdict to NC when the lane evaluation flags infra", async () => {
+    // Replicates the harness-mock empty path: judge sees no content,
+    // verdict normalizer says FAIL/MODEL/low_score, benchmark classifier
+    // says EMPTY_RESPONSE (failure_is_infrastructure). After
+    // reconcileVerdictWithLaneEvaluations runs, the verdict must agree:
+    // NC / PROVIDER / countsTowardModelScore=false. Without this the
+    // leaderboard aggregator would still count the run as a model failure.
+    const verdictModule = await import("../core/verdict.js");
+    const bundle = benchmarkBundle({
+      conversational: {
+        results: [
+          { question_id: "BM-Q", question: "What is 2 + 2?", response: "", passed: false, score: 0, weight: 1, failure_reason: "Empty model answer", duration_ms: 1, tokens_in: 1, tokens_out: 0 },
+        ],
+      },
+    });
+    bundle.verdict = verdictModule.normalizeVerdict({ bundle, executionMode: "conversational", exitReason: "complete" });
+    assert.equal(bundle.verdict.completionState, "FAIL");
+    assert.equal(bundle.verdict.failureOrigin, "MODEL");
+    assert.equal(bundle.verdict.countsTowardModelScore, true);
+
+    bundle.benchmark_evaluation = classifyBenchmarkEvaluation(bundle, bundle.verdict, { exit_reason: "complete" as never });
+    assert.equal(bundle.benchmark_evaluation?.category, "EMPTY_RESPONSE");
+    assert.equal(bundle.benchmark_evaluation?.failure_is_infrastructure, true);
+
+    verdictModule.reconcileVerdictWithLaneEvaluations(bundle);
+    assert.equal(bundle.verdict.completionState, "NC", "EMPTY_RESPONSE must downgrade verdict to NC");
+    assert.equal(bundle.verdict.failureOrigin, "PROVIDER");
+    assert.equal(bundle.verdict.countsTowardModelScore, false, "leaderboard must not count this run as a model failure");
+    assert.equal(bundle.verdict.countsTowardFailureRate, false);
+  });
+
+  it("is a no-op when the lane evaluation does NOT flag infra", async () => {
+    const verdictModule = await import("../core/verdict.js");
+    const bundle = benchmarkBundle();
+    bundle.verdict = verdictModule.normalizeVerdict({ bundle, executionMode: "conversational", exitReason: "complete" });
+    bundle.benchmark_evaluation = classifyBenchmarkEvaluation(bundle, bundle.verdict, { exit_reason: "complete" as never });
+    assert.equal(bundle.benchmark_evaluation?.category, "WRONG_ANSWER");
+    assert.equal(bundle.benchmark_evaluation?.failure_is_infrastructure, false);
+
+    const before = { ...bundle.verdict };
+    verdictModule.reconcileVerdictWithLaneEvaluations(bundle);
+    assert.equal(bundle.verdict.completionState, before.completionState, "WRONG_ANSWER must not downgrade — model genuinely failed");
+    assert.equal(bundle.verdict.countsTowardModelScore, before.countsTowardModelScore);
+  });
 });

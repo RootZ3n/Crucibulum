@@ -20,7 +20,7 @@ function paginate(items, page, pageSize) {
   }
 
   const start = (page - 1) * pageSize;
-  const end = start + pageSize + 1;  // BUG: off-by-one, returns pageSize+1 items
+  const end = start + pageSize + 1;
   const pageItems = items.slice(start, end);
 
   return {

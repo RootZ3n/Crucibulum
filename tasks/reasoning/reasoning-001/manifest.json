@@ -72,11 +72,10 @@
     {
       "id": "RSN1-Q5",
       "question": "Name the specific logical fallacy in one sentence: \"Our product has 10,000 users. Zero security complaints. Therefore it is secure.\"",
-      "scoring_type": "text_match",
+      "scoring_type": "text_match_all",
       "pass_phrases": [
         "absence",
-        "evidence",
-        "proof"
+        "evidence"
       ],
       "weight": 2,
       "tags": [
@@ -87,7 +86,7 @@
     {
       "id": "RSN1-Q6",
       "question": "A developer added an in-memory cache: `cache = {}` with no TTL and no max size. API responses are cached by URL key. List exactly 3 problems, one per line.",
-      "scoring_type": "text_match",
+      "scoring_type": "text_match_all",
       "pass_phrases": [
         "memory",
         "grow",
@@ -102,7 +101,7 @@
     {
       "id": "RSN1-Q7",
       "question": "Table has 1M rows with 20 individual single-column indexes. Queries always filter on 2-3 columns together. In 2 sentences, what is wrong and how to fix it?",
-      "scoring_type": "text_match",
+      "scoring_type": "text_match_all",
       "pass_phrases": [
         "composite",
         "index"
