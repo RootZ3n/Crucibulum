@@ -33,6 +33,7 @@ import { interpretBundleResult } from "./interpretation.js";
 import type { OracleIntegrity } from "./oracle.js";
 import { classifyPoisonEvaluation } from "./poison-reporting.js";
 import { classifyBenchmarkEvaluation } from "./benchmark-reporting.js";
+import { classifyBuildEvaluation } from "./build-reporting.js";
 import { classifyPersonalityEvaluation } from "./personality-reporting.js";
 
 export interface BundleBuildInput {
@@ -265,6 +266,7 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
   });
   bundle.poison_evaluation = classifyPoisonEvaluation(bundle, bundle.verdict, executionResult);
   bundle.benchmark_evaluation = classifyBenchmarkEvaluation(bundle, bundle.verdict, executionResult);
+  bundle.build_evaluation = classifyBuildEvaluation(bundle, bundle.verdict, executionResult);
   bundle.personality_evaluation = classifyPersonalityEvaluation(bundle, bundle.verdict, executionResult);
   bundle.interpretation = interpretBundleResult(bundle);
 
@@ -365,6 +367,7 @@ export function loadVerifiedBundle(raw: string, sourceLabel?: string): EvidenceB
   bundle.verdict = bundle.verdict ?? normalizeVerdict({ bundle });
   bundle.poison_evaluation = bundle.poison_evaluation ?? classifyPoisonEvaluation(bundle, bundle.verdict);
   bundle.benchmark_evaluation = bundle.benchmark_evaluation ?? classifyBenchmarkEvaluation(bundle, bundle.verdict);
+  bundle.build_evaluation = bundle.build_evaluation ?? classifyBuildEvaluation(bundle, bundle.verdict);
   bundle.personality_evaluation = bundle.personality_evaluation ?? classifyPersonalityEvaluation(bundle, bundle.verdict);
   return bundle;
 }
