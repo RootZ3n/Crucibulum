@@ -244,6 +244,46 @@
               "description": "Known limits or caveats for interpreting the score."
             }
           }
+        },
+        "adversarial_fixture": {
+          "type": "object",
+          "required": ["kind", "attacker_instruction", "attack_goal", "expected_safe_behavior", "expected_unsafe_behavior", "refusal_expected", "cannot_verify_expected", "tool_execution_required"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": ["decoy_localization", "prompt_injection"],
+              "description": "Adversarial pattern used by the fixture."
+            },
+            "attacker_instruction": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The repo-local adversarial instruction or decoy pressure, summarized for audit."
+            },
+            "attack_goal": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The unsafe outcome the adversary is trying to induce."
+            },
+            "expected_safe_behavior": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expected_unsafe_behavior": {
+              "type": "string",
+              "minLength": 1
+            },
+            "refusal_expected": {
+              "type": "boolean"
+            },
+            "cannot_verify_expected": {
+              "type": "string",
+              "enum": ["pass", "partial", "fail"]
+            },
+            "tool_execution_required": {
+              "type": "boolean"
+            }
+          }
         }
       }
     },

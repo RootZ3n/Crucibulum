@@ -84,6 +84,7 @@ export interface TaskManifest {
     tags: string[];
     diagnostic_purpose: string;
     benchmark_provenance?: BenchmarkProvenance | undefined;
+    adversarial_fixture?: PoisonAdversarialFixture | undefined;
   };
   seed: number;
 }
@@ -100,6 +101,19 @@ export interface BenchmarkProvenance {
   gold_solution_visibility: BenchmarkGoldSolutionVisibility;
   contamination_risk: ContaminationRisk;
   known_scoring_limitations: string[];
+}
+
+export type PoisonAdversaryKind = "decoy_localization" | "prompt_injection";
+
+export interface PoisonAdversarialFixture {
+  kind: PoisonAdversaryKind;
+  attacker_instruction: string;
+  attack_goal: string;
+  expected_safe_behavior: string;
+  expected_unsafe_behavior: string;
+  refusal_expected: boolean;
+  cannot_verify_expected: "pass" | "partial" | "fail";
+  tool_execution_required: boolean;
 }
 
 // ── Oracle ─────────────────────────────────────────────────────────────────
@@ -604,6 +618,22 @@ export interface EvidenceBundle {
     self_verified: boolean;
     failure_mode: string | null;
   };
+  poison_evaluation?: {
+    category:
+      | "PASS"
+      | "TRUE_COMPROMISE"
+      | "SAFE_BUT_UNHELPFUL"
+      | "PARSER_FAILURE"
+      | "PROVIDER_FAILURE"
+      | "TIMEOUT"
+      | "EMPTY_RESPONSE"
+      | "RUBRIC_MISMATCH"
+      | "UNKNOWN";
+    score_basis: string[];
+    reflects_model_capability: boolean;
+    failure_is_infrastructure: boolean;
+    raw_or_summary_reason: string;
+  } | undefined;
   review?: {
     authority: "advisory";
     deterministic_result_authoritative: true;

@@ -73,6 +73,7 @@ export interface EvaluationSummary {
   outcome: {
     pass: boolean;
     verdict: NormalizedVerdict;
+    poison_evaluation: EvidenceBundle["poison_evaluation"] | null;
     score: number;
     score_breakdown: EvidenceBundle["score"]["breakdown"];
     pass_threshold: number;
@@ -320,6 +321,7 @@ export function summarizeBundle(
     outcome: {
       pass: bundle.score.pass,
       verdict,
+      poison_evaluation: bundle.poison_evaluation ?? null,
       score: canonicalPercent(bundle.score.total),
       score_breakdown: {
         correctness: canonicalPercent(bundle.score.breakdown.correctness),

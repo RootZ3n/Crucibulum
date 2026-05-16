@@ -22,6 +22,7 @@ import { isConversationalTask, runConversationalTask, type ConversationalRunResu
 import { canonicalPercent } from "../types/scores.js";
 import { runWithProtection } from "./circuit-breaker.js";
 import { normalizeVerdict } from "./verdict.js";
+import { classifyPoisonEvaluation } from "./poison-reporting.js";
 
 export interface RunOptions {
   taskId: string;
@@ -287,6 +288,7 @@ function buildFailedBundle(
     exitReason: "injection_detected",
     rawError: reason,
   });
+  bundle.poison_evaluation = classifyPoisonEvaluation(bundle, bundle.verdict, { exit_reason: "injection_detected" });
   bundle.bundle_hash = computeBundleHash(bundle);
   return bundle;
 }

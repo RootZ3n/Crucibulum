@@ -31,6 +31,7 @@ import { resolveScoringWeights, resolvePassThreshold } from "./suite-loader.js";
 import { normalizeVerdict } from "./verdict.js";
 import { interpretBundleResult } from "./interpretation.js";
 import type { OracleIntegrity } from "./oracle.js";
+import { classifyPoisonEvaluation } from "./poison-reporting.js";
 
 export interface BundleBuildInput {
   manifest: TaskManifest;
@@ -260,6 +261,7 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
     exitReason: executionResult.exit_reason,
     providerError: executionResult.provider_error ?? null,
   });
+  bundle.poison_evaluation = classifyPoisonEvaluation(bundle, bundle.verdict, executionResult);
   bundle.interpretation = interpretBundleResult(bundle);
 
   // Compute and set bundle hash. HMAC signing happens at write time so the
@@ -357,5 +359,6 @@ export function loadVerifiedBundle(raw: string, sourceLabel?: string): EvidenceB
     bundle.trust = { ...bundle.trust, bundle_verified: true, bundle_signature_status: result.signature_status } as EvidenceBundle["trust"];
   }
   bundle.verdict = bundle.verdict ?? normalizeVerdict({ bundle });
+  bundle.poison_evaluation = bundle.poison_evaluation ?? classifyPoisonEvaluation(bundle, bundle.verdict);
   return bundle;
 }
