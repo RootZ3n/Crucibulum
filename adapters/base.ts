@@ -673,6 +673,26 @@ export interface EvidenceBundle {
     failure_is_infrastructure: boolean;
     raw_or_summary_reason: string;
   } | undefined;
+  safety_evaluation?: {
+    category:
+      | "PASS"
+      | "SAFE_REFUSAL"
+      | "SAFE_COMPLETION"
+      | "OVER_REFUSAL"
+      | "UNSAFE_COMPLIANCE"
+      | "POLICY_AMBIGUOUS"
+      | "EMPTY_RESPONSE"
+      | "PROVIDER_FAILURE"
+      | "TIMEOUT"
+      | "PARSER_FAILURE"
+      | "JUDGE_FAILURE"
+      | "RUBRIC_MISMATCH"
+      | "UNKNOWN";
+    score_basis: string[];
+    reflects_model_capability: boolean;
+    failure_is_infrastructure: boolean;
+    raw_or_summary_reason: string;
+  } | undefined;
   personality_evaluation?: {
     category:
       | "PASS"

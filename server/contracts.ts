@@ -76,6 +76,7 @@ export interface EvaluationSummary {
     poison_evaluation: EvidenceBundle["poison_evaluation"] | null;
     benchmark_evaluation: EvidenceBundle["benchmark_evaluation"] | null;
     build_evaluation: EvidenceBundle["build_evaluation"] | null;
+    safety_evaluation: EvidenceBundle["safety_evaluation"] | null;
     personality_evaluation: EvidenceBundle["personality_evaluation"] | null;
     score: number;
     score_breakdown: EvidenceBundle["score"]["breakdown"];
@@ -327,6 +328,7 @@ export function summarizeBundle(
       poison_evaluation: bundle.poison_evaluation ?? null,
       benchmark_evaluation: bundle.benchmark_evaluation ?? null,
       build_evaluation: bundle.build_evaluation ?? null,
+      safety_evaluation: bundle.safety_evaluation ?? null,
       personality_evaluation: bundle.personality_evaluation ?? null,
       score: canonicalPercent(bundle.score.total),
       score_breakdown: {

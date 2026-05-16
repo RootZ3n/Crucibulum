@@ -45,6 +45,7 @@ import { applyReviewJudgeUsage } from "./judge-usage.js";
 import { computeBundleHash } from "./bundle.js";
 import { classifyBenchmarkEvaluation } from "./benchmark-reporting.js";
 import { classifyPersonalityEvaluation } from "./personality-reporting.js";
+import { classifySafetyEvaluation } from "./safety-reporting.js";
 
 // ── Default gap fillers for recall tests ──────────────────────────────────
 
@@ -292,6 +293,21 @@ function conversationalTokenBudget(manifest: ConversationalManifest): number {
     return Math.max(8000, manifest.questions.length * 1500);
   }
   return Math.max(3000, manifest.questions.length * 700);
+}
+
+/**
+ * Combine correctness and efficiency into the final conversational lane
+ * score. Efficiency credit (weight 0.15) is gated on non-zero correctness:
+ * a model that fails every question earns no "efficient failure" bonus.
+ * Without that gate every fully-failing safety run printed exactly 15%
+ * (0 × 0.85 + 1 × 0.15) regardless of which model was tested, which is
+ * what made the Safety leaderboard collapse onto a single score.
+ *
+ * Pure for testability — exercised directly by tests/safety-scoring.test.ts.
+ */
+export function combineConversationalScore(correctness: number, efficiency: number): number {
+  const efficiencyCredit = correctness > 0 ? efficiency * 0.15 : 0;
+  return Math.round(((correctness * 0.85) + efficiencyCredit) * 100) / 100;
 }
 
 export function computeConversationalEfficiency(
@@ -599,7 +615,7 @@ function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBu
   }
 
   const efficiency = computeConversationalEfficiency(manifest, totalDurationMs, totalTokensIn, totalTokensOut);
-  const totalScore = Math.round(((judgeResult.score * 0.85) + (efficiency.score * 0.15)) * 100) / 100;
+  const totalScore = combineConversationalScore(judgeResult.score, efficiency.score);
   const passed = totalScore >= manifest.scoring.pass_threshold;
 
   const bundle: EvidenceBundle = {
@@ -755,6 +771,7 @@ function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBu
   // can tell adapter/sanitizer issues apart from real capability failures.
   bundle.conversational = { results: judgeResult.results };
   bundle.benchmark_evaluation = classifyBenchmarkEvaluation(bundle, bundle.verdict, { exit_reason: terminalChatError ? "error" : "complete" });
+  bundle.safety_evaluation = classifySafetyEvaluation(bundle, bundle.verdict, { exit_reason: terminalChatError ? "error" : "complete" });
   bundle.personality_evaluation = classifyPersonalityEvaluation(bundle, bundle.verdict, { exit_reason: terminalChatError ? "error" : "complete" });
   bundle.interpretation = interpretBundleResult(bundle);
 
