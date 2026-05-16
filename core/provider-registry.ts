@@ -722,9 +722,18 @@ export function resolveByModelId(modelId: string): ResolvedRunTarget | null {
  * provider/model entry.
  */
 export function resolveByModelIdWithHint(modelId: string, preferredPresetId?: string | null): ResolvedRunTarget | null {
-  const catalog = flatCatalog().filter((c) => c.enabled && c.providerEnabled && c.modelId === modelId);
+  let catalog = flatCatalog().filter((c) => c.enabled && c.providerEnabled && c.modelId === modelId);
   if (catalog.length === 0) return null;
   const preferred = (preferredPresetId ?? "").trim();
+  if (preferred) {
+    // The provider hint comes from the UI selection and is operator intent.
+    // If that provider does not have the model registered/enabled, return
+    // null so the caller can either use its explicit adapter/provider request
+    // or fail honestly. Do not silently jump to another provider that happens
+    // to host the same raw model id.
+    catalog = catalog.filter((c) => c.presetId === preferred || c.providerConfigId === preferred);
+    if (catalog.length === 0) return null;
+  }
   catalog.sort((a, b) => {
     const aPreferred = preferred && a.presetId === preferred ? 0 : 1;
     const bPreferred = preferred && b.presetId === preferred ? 0 : 1;

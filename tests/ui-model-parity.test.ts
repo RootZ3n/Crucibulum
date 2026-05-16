@@ -44,7 +44,7 @@ interface UiHandle {
     adapters: { id: string; label: string }[];
     registry: { presets: unknown[]; providers: unknown[]; models: unknown[]; catalog: unknown[] };
     liveModels: { id: string; provider: string }[];
-    health: { net: { ok: boolean } };
+    health: { net: { ok: boolean }; providers?: Record<string, unknown> };
   };
   defaultTabState: () => { selectedProvider: string; selectedAdapter: string; selectedModels: string[] };
   mergedModelGroups: () => { key: string; providerId: string; adapterId: string; models: { id: string; label: string }[] }[];
@@ -55,6 +55,9 @@ interface UiHandle {
   syncRouting: (tabKey: string) => { provider: string; adapter: string };
   setRoutingFilter: (tabKey: string, axis: "provider" | "adapter", value: string) => void;
   modelSelectionNote: (tabKey: string) => string;
+  deriveRoutingForModel: (modelId: string) => { providerId: string; adapterId: string; kind: string };
+  canRunModel: (modelId: string) => boolean;
+  gateSelectedModels: (modelIds: string[]) => string[] | null;
   TAB_CONFIG: Record<string, { taskFamilies: string[]; isSettings?: boolean }>;
 }
 
@@ -85,7 +88,7 @@ function loadUi(opts: { registry?: { providers?: unknown[]; models?: unknown[]; 
   sandbox.globalThis = sandbox;
   const prelude = "function render(){}\n";
   const withoutRender = script.replace(/function render\(\)\{[\s\S]*?\n\}\n/, "/* render stubbed */\n");
-  const exporter = `;globalThis.__ui={state,defaultTabState,mergedModelGroups,mergedProviders,filteredModelGroupsForTab,renderModelOptions,renderProviderOptions,syncRouting,setRoutingFilter,modelSelectionNote,TAB_CONFIG};`;
+  const exporter = `;globalThis.__ui={state,defaultTabState,mergedModelGroups,mergedProviders,filteredModelGroupsForTab,renderModelOptions,renderProviderOptions,syncRouting,setRoutingFilter,modelSelectionNote,deriveRoutingForModel,canRunModel,gateSelectedModels,TAB_CONFIG};`;
   const context = vm.createContext(sandbox);
   vm.runInContext(prelude + withoutRender + exporter, context, { filename: "ui/index.html::script" });
   const ui = (sandbox as { __ui: UiHandle }).__ui;
@@ -244,5 +247,36 @@ describe("ui model/provider parity across lane tabs", () => {
       const html = ui.renderModelOptions(tab);
       assert.ok(html.includes('value="openrouter/exotic-1"'), `lane "${tab}" missing operator-registered model openrouter/exotic-1`);
     }
+  });
+
+  it("selected model routing is derived from the model catalogue, not from lane-local filters", () => {
+    const ui = loadUi();
+    ui.setRoutingFilter("memory", "provider", "anthropic");
+    const openrouterModel = ui.mergedModelGroups().find((g) => g.providerId === "openrouter")!.models[0]!.id;
+    const route = ui.deriveRoutingForModel(openrouterModel);
+    assert.equal(route.providerId, "openrouter");
+    assert.equal(route.adapterId, "openrouter");
+  });
+
+  it("blocks unconfigured cloud providers before a run instead of silently attempting them", () => {
+    const ui = loadUi();
+    const openrouterModel = ui.mergedModelGroups().find((g) => g.providerId === "openrouter")!.models[0]!.id;
+    ui.state.health.net = { ok: true };
+    ui.state.health.providers = { openrouter: { status: "unconfigured", reason: "No provider configured for this preset", kind: "cloud" } } as any;
+    assert.equal(ui.canRunModel(openrouterModel), false);
+    assert.equal(ui.gateSelectedModels([openrouterModel]), null, "headless UI path must not let a wholly unreachable provider continue");
+  });
+
+  it("continues with reachable selected models while filtering unreachable ones", () => {
+    const ui = loadUi();
+    const openrouterModel = ui.mergedModelGroups().find((g) => g.providerId === "openrouter")!.models[0]!.id;
+    const localModel = ui.mergedModelGroups().find((g) => g.providerId === "ollama")!.models[0]!.id;
+    ui.state.health.net = { ok: true };
+    ui.state.liveModels = [{ id: localModel, provider: "ollama" }];
+    ui.state.health.providers = {
+      openrouter: { status: "unconfigured", reason: "No provider configured for this preset", kind: "cloud" },
+      ollama: { status: "ok", reason: null, kind: "local" },
+    } as any;
+    assert.deepEqual(ui.gateSelectedModels([openrouterModel, localModel]), [localModel]);
   });
 });

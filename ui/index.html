@@ -2207,7 +2207,7 @@ function gateSelectedModels(selectedModels){
   if(!blocked.length)return selectedModels;
   const reachable=selectedModels.filter((id)=>canRunModel(id));
   if(typeof alert!=='function'&&typeof confirm!=='function'){
-    return reachable.length?reachable:selectedModels;
+    return reachable.length?reachable:null;
   }
   const lines=blocked.map((b)=>`• ${b.modelId} — ${b.reason}`).join('\n');
   if(!reachable.length){
@@ -2462,9 +2462,11 @@ function healthProviderForModelId(modelId){
 function canRunModel(modelId){
   const{routing,health}=healthProviderForModelId(modelId);
   if(routing.kind==='local')return health.status!=='down';
-  // Cloud: require an ok or unknown verdict + net up.
+  // Cloud: require an ok or unknown verdict + net up. "Unconfigured" is
+  // blocked so a visible but unavailable provider cannot silently attempt a
+  // run and look like a model failure.
   if(!state.health.net.ok)return false;
-  return health.status!=='down';
+  return health.status==='ok'||health.status==='unknown';
 }
 function blockedRunReasons(modelIds){
   const blocked=[];

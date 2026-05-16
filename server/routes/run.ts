@@ -33,6 +33,11 @@ interface ActiveRun {
     adapter: string;
     provider: string | null;
     model: string;
+    requested_adapter?: string | undefined;
+    requested_provider?: string | null | undefined;
+    requested_model?: string | undefined;
+    routing_note?: string | null | undefined;
+    resolved_by_registry?: boolean | undefined;
     count: number;
     judge: typeof DETERMINISTIC_JUDGE_METADATA;
   } | undefined;
@@ -48,13 +53,46 @@ const RUN_RETENTION_MS = 10 * 60 * 1000;
 // Hard cap so a flood of runs cannot exhaust heap.
 const MAX_ACTIVE_RUNS = 256;
 
-function resolveRequestedDispatch(adapter: string, provider: string | null, model: string): { adapter: string; provider: string | null; model: string } {
+export interface DispatchTarget {
+  adapter: string;
+  provider: string | null;
+  model: string;
+  requested_adapter: string;
+  requested_provider: string | null;
+  requested_model: string;
+  resolved_by_registry: boolean;
+  routing_note: string | null;
+}
+
+export function resolveRequestedDispatch(adapter: string, provider: string | null, model: string): DispatchTarget {
   const resolved = resolveByModelIdWithHint(model, provider);
-  if (!resolved) return { adapter, provider, model };
-  return {
+  if (!resolved) {
+    return {
+      adapter,
+      provider,
+      model,
+      requested_adapter: adapter,
+      requested_provider: provider,
+      requested_model: model,
+      resolved_by_registry: false,
+      routing_note: null,
+    };
+  }
+  const target = {
     adapter: resolved.adapter,
     provider: resolved.presetId,
     model: resolved.model,
+  };
+  const changed = target.adapter !== adapter || target.provider !== provider || target.model !== model;
+  return {
+    ...target,
+    requested_adapter: adapter,
+    requested_provider: provider,
+    requested_model: model,
+    resolved_by_registry: true,
+    routing_note: changed
+      ? `Resolved registered model ${model} from requested ${adapter}/${provider ?? "none"} to ${target.adapter}/${target.provider}.`
+      : `Resolved registered model ${model} for ${target.adapter}/${target.provider}.`,
   };
 }
 
@@ -330,6 +368,11 @@ export async function handleRunStatus(req: IncomingMessage, res: ServerResponse,
         adapter: stored.agent.adapter,
         provider: stored.agent.provider,
         model: stored.agent.model,
+        requested_adapter: stored.agent.adapter,
+        requested_provider: stored.agent.provider,
+        requested_model: stored.agent.model,
+        routing_note: null,
+        resolved_by_registry: false,
         count: 1,
         judge: stored.judge ?? DETERMINISTIC_JUDGE_METADATA,
       },
@@ -411,12 +454,33 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
       adapter: adapterId,
       provider: dispatch.provider,
       model: dispatch.model,
+      requested_adapter: dispatch.requested_adapter,
+      requested_provider: dispatch.requested_provider,
+      requested_model: dispatch.requested_model,
+      routing_note: dispatch.routing_note,
+      resolved_by_registry: dispatch.resolved_by_registry,
       count: requestedCount,
       judge: DETERMINISTIC_JUDGE_METADATA,
     },
   });
 
-  sendJSON(res, 202, { ok: true, run_id: runId, judge: DETERMINISTIC_JUDGE_METADATA });
+  sendJSON(res, 202, {
+    ok: true,
+    run_id: runId,
+    judge: DETERMINISTIC_JUDGE_METADATA,
+    requested_target: {
+      adapter: dispatch.requested_adapter,
+      provider: dispatch.requested_provider,
+      model: dispatch.requested_model,
+    },
+    target: {
+      adapter: adapterId,
+      provider: dispatch.provider,
+      model: dispatch.model,
+    },
+    resolved_by_registry: dispatch.resolved_by_registry,
+    routing_note: dispatch.routing_note,
+  });
 
   void (async () => {
     let failureStage: ActiveRun["failure_stage"] = "unknown";
@@ -454,7 +518,7 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
 
       broadcastSSE(runId, "step", {
         type: "task_start",
-        detail: `Target ${body.task} via ${adapterId}/${dispatch.model} (${requestedCount} run${requestedCount === 1 ? "" : "s"})`,
+        detail: `Target ${body.task} via ${adapterId}/${dispatch.model} (${requestedCount} run${requestedCount === 1 ? "" : "s"})${dispatch.routing_note ? ` — ${dispatch.routing_note}` : ""}`,
       });
 
       const completedBundles: EvidenceBundle[] = [];
@@ -518,6 +582,13 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
           provider: latestBundle.agent.provider,
           model: latestBundle.agent.model,
         },
+        requested_target: {
+          adapter: dispatch.requested_adapter,
+          provider: dispatch.requested_provider,
+          model: dispatch.requested_model,
+        },
+        resolved_by_registry: dispatch.resolved_by_registry,
+        routing_note: dispatch.routing_note,
       });
     } catch (err) {
       const stage = (typeof err === "object" && err && "stage" in err ? (err as { stage?: ActiveRun["failure_stage"] }).stage : failureStage) ?? "unknown";

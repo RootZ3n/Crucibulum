@@ -28,6 +28,7 @@ delete process.env["OPENAI_API_KEY"];
 delete process.env["MODELSTUDIO_API_KEY"];
 
 const registry = await import("../core/provider-registry.js");
+const runRoutes = await import("../server/routes/run.js");
 
 before(() => {
   registry.__resetRegistryForTests();
@@ -189,6 +190,53 @@ describe("provider-registry: routing / resolveByModelId", () => {
     assert.equal(resolved!.presetId, "minimax");
     assert.equal(resolved!.adapter, "minimax", "MiniMax must resolve to the direct adapter");
     assert.equal(resolved!.model, "abab6.5s-chat");
+  });
+
+  it("does not silently fall back to another provider when the provider hint lacks the model", () => {
+    const openrouter = registry.addProvider({ presetId: "openrouter", label: "OR", apiKey: "sk-or" });
+    registry.addModel({ providerConfigId: openrouter.id, modelId: "shared/model-1" });
+
+    const resolved = registry.resolveByModelIdWithHint("shared/model-1", "anthropic");
+    assert.equal(resolved, null, "a posted Anthropic provider hint must not dispatch to OpenRouter just because it has the same model id");
+  });
+
+  it("accepts a provider-config-id hint as an exact routing target", () => {
+    const first = registry.addProvider({ presetId: "openrouter", label: "OR #1", apiKey: "sk1" });
+    const second = registry.addProvider({ presetId: "openrouter", label: "OR #2", apiKey: "sk2" });
+    registry.addModel({ providerConfigId: first.id, modelId: "shared/model-1" });
+    registry.addModel({ providerConfigId: second.id, modelId: "shared/model-1" });
+
+    const resolved = registry.resolveByModelIdWithHint("shared/model-1", second.id);
+    assert.ok(resolved);
+    assert.equal(resolved!.providerConfigId, second.id);
+    assert.equal(resolved!.providerLabel, "OR #2");
+  });
+
+  it("run dispatch records requested and resolved targets when registry routing changes the adapter", () => {
+    const minimax = registry.addProvider({ presetId: "minimax", label: "MiniMax Direct", apiKey: "sk-mini" });
+    registry.addModel({ providerConfigId: minimax.id, modelId: "abab6.5s-chat" });
+
+    const dispatch = runRoutes.resolveRequestedDispatch("squidley", "minimax", "abab6.5s-chat");
+    assert.equal(dispatch.adapter, "minimax");
+    assert.equal(dispatch.provider, "minimax");
+    assert.equal(dispatch.model, "abab6.5s-chat");
+    assert.equal(dispatch.requested_adapter, "squidley");
+    assert.equal(dispatch.requested_provider, "minimax");
+    assert.equal(dispatch.requested_model, "abab6.5s-chat");
+    assert.equal(dispatch.resolved_by_registry, true);
+    assert.match(dispatch.routing_note ?? "", /Resolved registered model/);
+  });
+
+  it("run dispatch does not cross-provider fallback when a requested provider lacks the model", () => {
+    const openrouter = registry.addProvider({ presetId: "openrouter", label: "OR", apiKey: "sk-or" });
+    registry.addModel({ providerConfigId: openrouter.id, modelId: "shared/model-1" });
+
+    const dispatch = runRoutes.resolveRequestedDispatch("anthropic", "anthropic", "shared/model-1");
+    assert.equal(dispatch.adapter, "anthropic");
+    assert.equal(dispatch.provider, "anthropic");
+    assert.equal(dispatch.model, "shared/model-1");
+    assert.equal(dispatch.resolved_by_registry, false);
+    assert.equal(dispatch.routing_note, null);
   });
 });
 
