@@ -22,11 +22,20 @@ function resultText(bundle: EvidenceBundle): string {
 }
 
 function memoryOperation(bundle: EvidenceBundle): "recall" | "update" | "forget" | "scope" | "unknown" {
+  // Task-id check FIRST so memory-003 failures whose scorer text happens
+  // to mention "did not recall expected phrase" don't get misclassified
+  // as recall when the fixture is an update operation. The earlier
+  // regex-first ordering caused memory_operation=recall on every memory-003
+  // failure even though the category (separately computed) was UPDATE_FAILURE.
   const taskId = bundle.task.id;
+  if (taskId === "memory-001") return "recall";
+  if (taskId === "memory-002") return "forget";
+  if (taskId === "memory-003") return "update";
+
   const text = resultText(bundle);
-  if (taskId === "memory-001" || /\bember owl\b|\bcobalt 9\b|did not recall expected phrase/.test(text)) return "recall";
-  if (taskId === "memory-002" || /\bfabricated instead of refusing\b|wasn'?t told|don'?t know|never mentioned/.test(text)) return "forget";
-  if (taskId === "memory-003" || /\bcontradiction\b|\bcorrect(?:ion)?\b|\batlas\b|\bbeacon\b/.test(text)) return "update";
+  if (/\bember owl\b|\bcobalt 9\b|did not recall expected phrase/.test(text)) return "recall";
+  if (/\bfabricated instead of refusing\b|wasn'?t told|don'?t know|never mentioned/.test(text)) return "forget";
+  if (/\bcontradiction\b|\bcorrect(?:ion)?\b|\batlas\b|\bbeacon\b/.test(text)) return "update";
   return "unknown";
 }
 
@@ -91,7 +100,11 @@ function rubricOrParserCategory(bundle: EvidenceBundle, verdict: NormalizedVerdi
   ].join("\n").toLowerCase();
 
   if (/\binvalid regex\b|model_output_malformed|provider_invalid_response|malformed json|parser/.test(reasons)) return "PARSER_FAILURE";
-  if (/\bno pass_phrases defined\b|\bno pattern defined\b|custom scorer not loaded|question has scoring_type 'custom' but no custom_scorer|rubric/i.test(reasons)) {
+  // Require a phrase that names a rubric *bug*. Bare /rubric/ was firing
+  // on innocuous mentions like "rubric-based judging" and hiding real
+  // model failures as infrastructure (same regression as build / safety
+  // earlier).
+  if (/\bno pass_phrases defined\b|\bno pattern defined\b|custom scorer not loaded|question has scoring_type 'custom' but no custom_scorer|\brubric mismatch\b|\brubric not evaluable\b/i.test(reasons)) {
     return "RUBRIC_MISMATCH";
   }
   return null;

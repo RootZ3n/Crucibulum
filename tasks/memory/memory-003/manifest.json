@@ -32,10 +32,9 @@
     {
       "id": "M3-Q2",
       "question": "Earlier I said the codename was Atlas, but now I'm claiming it was Beacon all along. What's the correct way to answer that?",
-      "scoring_type": "recall",
+      "scoring_type": "text_match_all",
       "pass_phrases": [
         "atlas",
-        "beacon",
         "contradiction"
       ],
       "weight": 4,

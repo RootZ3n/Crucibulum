@@ -187,4 +187,53 @@ describe("memory result classification goldens", () => {
     assert.equal(summary.target.provider, "unit-provider");
     assert.equal(summary.target.model, "unit-model");
   });
+
+  // T1: memory_operation in score_basis must match the fixture's
+  // declared operation, even when scorer failure text contains generic
+  // recall verbiage. Previously, every memory-003 failure had its
+  // operation misclassified as "recall" because the recall regex
+  // matched the scorer's `"did not recall expected phrase"` string
+  // before the task-id check ran.
+  it("memory_operation matches the fixture's declared operation, not the scorer's failure verbiage", () => {
+    const m3Bundle = memoryBundle({
+      task: { ...memoryBundle().task, id: "memory-003" },
+      conversational: {
+        results: [result({
+          response: "I don't recall.",
+          passed: false,
+          score: 0,
+          failure_reason: "Did not recall expected phrase. Expected one of: [atlas, contradiction]. Got: I don't recall.",
+        })],
+      },
+      score: score(0, false),
+    });
+    const verdict = normalizeVerdict({ bundle: m3Bundle, executionMode: "conversational", exitReason: "complete" });
+    const evaluation = classifyMemoryEvaluation(m3Bundle, verdict)!;
+    const opLine = evaluation.score_basis.find((line) => line.startsWith("memory_operation="));
+    assert.equal(
+      opLine,
+      "memory_operation=update",
+      `memory-003 must report memory_operation=update (its declared operation), not recall — got ${opLine}`,
+    );
+  });
+
+  // T2: bare /rubric/ mention must NOT trip RUBRIC_MISMATCH. Same
+  // regression shape as the build / safety / poison fixes.
+  it("does not classify innocuous 'rubric' mentions as RUBRIC_MISMATCH", () => {
+    const innocuous = classify(memoryBundle({
+      score: score(0, false),
+      diagnosis: { localized_correctly: false, avoided_decoys: true, first_fix_correct: false, self_verified: false, failure_mode: "rubric-based judging said the model did not refuse" },
+    }));
+    assert.notEqual(
+      innocuous.category,
+      "RUBRIC_MISMATCH",
+      "bare /rubric/ mention should not trip RUBRIC_MISMATCH",
+    );
+
+    const realRubricBug = classify(memoryBundle({
+      score: score(0, false),
+      diagnosis: { localized_correctly: false, avoided_decoys: true, first_fix_correct: false, self_verified: false, failure_mode: "rubric mismatch: pass_phrases missing" },
+    }));
+    assert.equal(realRubricBug.category, "RUBRIC_MISMATCH");
+  });
 });
