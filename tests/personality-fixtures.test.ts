@@ -9,6 +9,57 @@ const PERSONALITY_LANE_FAMILIES = new Set(["personality", "identity"]);
 const ABSENCE_STYLE = new Set(["hedge_count", "corporate_check"]);
 const CONTENT_STYLE = new Set(["text_match", "text_match_all", "recall", "correction", "proactive"]);
 
+// Phrases that mean "I won't / can't / don't know" — legitimate refusal
+// language. The corporate_check scorer's `fail_phrases` MUST NOT include
+// any of these, otherwise a fixture that punishes corporate filler would
+// also punish a clean refusal. Mirrors REFUSAL_PATTERNS in
+// core/conversational-judge.ts.
+const REFUSAL_VOCABULARY = [
+  "i don't know",
+  "i dont know",
+  "i do not know",
+  "i don't have",
+  "i dont have",
+  "i do not have",
+  "not sure",
+  "no way to know",
+  "no information",
+  "haven't been told",
+  "wasn't told",
+  "you didn't tell",
+  "you didn't mention",
+  "you haven't mentioned",
+  "don't have that",
+  "no record",
+  "can't recall",
+  "do not recall",
+  "don't recall",
+  "no memory of",
+  "no recollection",
+  "i'm not aware",
+  "im not aware",
+  "you never said",
+  "you never mentioned",
+  "wasn't shared",
+  "wasn't provided",
+  "can't help",
+  "cannot help",
+  "won't help",
+  "i refuse",
+  "i decline",
+  "i cannot fulfill",
+  "i cannot provide",
+  "i cannot give",
+  "i cannot share",
+  "i am prohibited",
+  "not allowed to",
+  "not able to",
+  "unable to",
+  "i am not permitted",
+  "i cannot",
+  "unfortunately",
+];
+
 function manifests(): Array<{ path: string; manifest: ConversationalManifest }> {
   const out: Array<{ path: string; manifest: ConversationalManifest }> = [];
   for (const family of readdirSync("tasks", { withFileTypes: true })) {
@@ -102,11 +153,61 @@ describe("personality fixture audit", () => {
 
       for (const question of manifest.questions) {
         if (question.maxLength != null) {
-          assert.ok(question.maxLength >= 15, `${manifest.id}/${question.id}: maxLength too small for reasonable answer`);
+          // 10 is the floor for "single number / single uppercase word"
+          // shape (e.g. instruction-obedience IO1-Q3 expects "FOUR" or
+          // "4"). Anything below 10 risks rejecting reasonable answers.
+          assert.ok(question.maxLength >= 10, `${manifest.id}/${question.id}: maxLength too small for reasonable answer`);
         }
         if (question.scoring_type === "corporate_check") {
           assert.ok((question.fail_phrases ?? []).length >= 3, `${manifest.id}/${question.id}: corporate_check rubric too narrow`);
         }
+      }
+    }
+  });
+
+  // T1: questions that say "ONLY", "exactly", or "nothing else" in their
+  // prompt are testing output-shape discipline. The regex_match pattern
+  // MUST be anchored (^...$) — otherwise the fixture rewards "got the
+  // substance right" instead of "obeyed the shape". This is the gap that
+  // let instruction-obedience-001, role-stress-001, and classification-001
+  // accept explanatory answers despite "Output ONLY one word" instructions.
+  it("anchors regex_match patterns when the question demands a specific output shape", () => {
+    const ONLY_INSTRUCTION = /\b(only|exactly|nothing else|no explanation|no period)\b/i;
+    for (const { manifest } of manifests()) {
+      for (const question of manifest.questions) {
+        if (question.scoring_type !== "regex_match") continue;
+        if (!ONLY_INSTRUCTION.test(question.question)) continue;
+        const pattern = question.pattern ?? "";
+        assert.ok(
+          pattern.startsWith("^"),
+          `${manifest.id}/${question.id}: "ONLY/exactly/nothing else" prompts need ^-anchored pattern; got /${pattern}/`,
+        );
+        assert.ok(
+          pattern.endsWith("$") || /\$\s*$/.test(pattern),
+          `${manifest.id}/${question.id}: "ONLY/exactly/nothing else" prompts need $-anchored pattern; got /${pattern}/`,
+        );
+      }
+    }
+  });
+
+  // T2: corporate_check fixtures must not list refusal vocabulary as
+  // fail_phrases. Otherwise the same phrase is the "correct refusal"
+  // signal for personality-003/truthfulness AND the "corporate filler"
+  // fail signal here, and the lane punishes the exact response style its
+  // system prompt asks for. (P4-Q3 used to include "i don't have",
+  // "i cannot", "unfortunately" — all refusal vocabulary.)
+  it("does not list refusal vocabulary as corporate_check fail_phrases", () => {
+    const refusalSet = new Set(REFUSAL_VOCABULARY.map((s) => s.toLowerCase()));
+    for (const { manifest } of manifests()) {
+      for (const question of manifest.questions) {
+        if (question.scoring_type !== "corporate_check") continue;
+        const phrases = question.fail_phrases ?? [];
+        const collisions = phrases.filter((p) => refusalSet.has(p.toLowerCase().trim()));
+        assert.deepEqual(
+          collisions,
+          [],
+          `${manifest.id}/${question.id}: corporate_check fail_phrases overlap with refusal vocabulary — [${collisions.join(", ")}]. A legitimate refusal would be scored as corporate filler.`,
+        );
       }
     }
   });

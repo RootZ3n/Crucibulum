@@ -11,7 +11,7 @@
       "id": "CL1-Q1",
       "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: app crashes when clicking submit",
       "scoring_type": "regex_match",
-      "pattern": "\\bbug\\b",
+      "pattern": "^\\s*bug[.!]?\\s*$",
       "maxLength": 30,
       "weight": 1,
       "tags": [
@@ -23,7 +23,7 @@
       "id": "CL1-Q2",
       "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: add dark mode to settings",
       "scoring_type": "regex_match",
-      "pattern": "\\bfeature\\b",
+      "pattern": "^\\s*feature[.!]?\\s*$",
       "maxLength": 30,
       "weight": 1,
       "tags": [
@@ -35,7 +35,7 @@
       "id": "CL1-Q3",
       "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: how do I export my data?",
       "scoring_type": "regex_match",
-      "pattern": "\\bquestion\\b",
+      "pattern": "^\\s*question[.!]?\\s*$",
       "maxLength": 30,
       "weight": 1,
       "tags": [
@@ -47,7 +47,7 @@
       "id": "CL1-Q4",
       "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: the search is really slow",
       "scoring_type": "regex_match",
-      "pattern": "\\b(bug|feature)\\b",
+      "pattern": "^\\s*(bug|feature)[.!]?\\s*$",
       "maxLength": 30,
       "weight": 1,
       "tags": [
@@ -59,7 +59,7 @@
       "id": "CL1-Q5",
       "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: I expected the button to be on the left",
       "scoring_type": "regex_match",
-      "pattern": "\\b(bug|feature)\\b",
+      "pattern": "^\\s*(bug|feature)[.!]?\\s*$",
       "maxLength": 30,
       "weight": 1,
       "tags": [
@@ -71,7 +71,7 @@
       "id": "CL1-Q6",
       "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: can I use this offline?",
       "scoring_type": "regex_match",
-      "pattern": "\\b(question|feature)\\b",
+      "pattern": "^\\s*(question|feature)[.!]?\\s*$",
       "maxLength": 30,
       "weight": 1,
       "tags": [
@@ -83,7 +83,7 @@
       "id": "CL1-Q7",
       "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: the old API still works but the new one returns 500",
       "scoring_type": "regex_match",
-      "pattern": "\\bbug\\b",
+      "pattern": "^\\s*bug[.!]?\\s*$",
       "maxLength": 30,
       "weight": 1,
       "tags": [
@@ -95,7 +95,7 @@
       "id": "CL1-Q8",
       "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: make it work with our SSO provider",
       "scoring_type": "regex_match",
-      "pattern": "\\bfeature\\b",
+      "pattern": "^\\s*feature[.!]?\\s*$",
       "maxLength": 30,
       "weight": 1,
       "tags": [
@@ -107,7 +107,7 @@
       "id": "CL1-Q9",
       "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: this is completely broken, nothing works, I'm furious, fix it now",
       "scoring_type": "regex_match",
-      "pattern": "\\bbug\\b",
+      "pattern": "^\\s*bug[.!]?\\s*$",
       "maxLength": 30,
       "weight": 1,
       "tags": [
@@ -119,7 +119,7 @@
       "id": "CL1-Q10",
       "question": "Output ONLY one word — bug, feature, or question. No explanation.\n\nInput: is there a free trial?",
       "scoring_type": "regex_match",
-      "pattern": "\\bquestion\\b",
+      "pattern": "^\\s*question[.!]?\\s*$",
       "maxLength": 30,
       "weight": 1,
       "tags": [

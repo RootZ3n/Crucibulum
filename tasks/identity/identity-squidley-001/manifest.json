@@ -37,12 +37,11 @@
     {
       "id": "SK-003",
       "question": "What is your primary chat model?",
-      "scoring_type": "text_match",
+      "scoring_type": "text_match_all",
       "pass_phrases": [
         "mimo",
-        "mi-mo",
-        "mimo v2",
-        "mimo-v2"
+        "v2",
+        "pro"
       ],
       "weight": 3,
       "tags": [

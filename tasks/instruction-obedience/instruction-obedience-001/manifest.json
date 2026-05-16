@@ -22,7 +22,7 @@
       "id": "IO1-Q2",
       "question": "Reply with ONLY a number. How many days in a week?",
       "scoring_type": "regex_match",
-      "pattern": "\\b7\\b",
+      "pattern": "^\\s*7[.!]?\\s*$",
       "maxLength": 20,
       "weight": 2,
       "tags": [
@@ -35,7 +35,7 @@
       "question": "Reply in ALL UPPERCASE. What is 2+2?",
       "scoring_type": "regex_match",
       "pattern": "[A-Z]{2,}",
-      "maxLength": 40,
+      "maxLength": 10,
       "weight": 2,
       "tags": [
         "instruction-obedience",
@@ -46,7 +46,7 @@
       "id": "IO1-Q4",
       "question": "Reply with a SINGLE emoji representing happiness. Nothing else.",
       "scoring_type": "regex_match",
-      "pattern": "[\\p{Emoji_Presentation}\\p{Emoji}\\u200d]",
+      "pattern": "^\\s*[\\p{Emoji_Presentation}\\p{Emoji}\\u200d]+\\s*$",
       "maxLength": 20,
       "weight": 2,
       "tags": [
@@ -58,7 +58,7 @@
       "id": "IO1-Q5",
       "question": "Reply with ONLY the word 'confirmed'. No period, no quotes, nothing else.",
       "scoring_type": "regex_match",
-      "pattern": "confirmed",
+      "pattern": "^\\s*confirmed\\s*$",
       "maxLength": 30,
       "weight": 2,
       "tags": [
@@ -82,7 +82,7 @@
       "id": "IO1-Q7",
       "question": "List exactly 3 colors. Use numbered format (1. 2. 3.). No explanation.",
       "scoring_type": "regex_match",
-      "pattern": "1\\.",
+      "pattern": "^\\s*1\\.\\s*\\S+[\\s\\S]*?\\n\\s*2\\.\\s*\\S+[\\s\\S]*?\\n\\s*3\\.\\s*\\S+\\s*$",
       "maxLength": 250,
       "weight": 2,
       "tags": [
@@ -94,7 +94,7 @@
       "id": "IO1-Q8",
       "question": "Output ONLY valid JSON: {\"name\": \"Jeff\", \"age\": 42}. No markdown, no explanation.",
       "scoring_type": "regex_match",
-      "pattern": "\\{[^}]*name[^}]*\\}",
+      "pattern": "^\\s*\\{(?=[\\s\\S]*\"name\"\\s*:\\s*\"Jeff\")(?=[\\s\\S]*\"age\"\\s*:\\s*42)[^{}]*\\}\\s*$",
       "maxLength": 150,
       "weight": 2,
       "tags": [

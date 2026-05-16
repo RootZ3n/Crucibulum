@@ -409,4 +409,18 @@ export function reconcileVerdictWithLaneEvaluations(bundle: EvidenceBundle): voi
     countsTowardFailureRate: false,
     evidence: bundle.verdict.evidence,
   };
+
+  // The lane evaluation's score_basis captured the pre-reconciliation verdict
+  // string ("verdict=FAIL:MODEL:..."). After we downgrade to NC, append the
+  // reconciled verdict so a drilldown consumer reading score_basis sees the
+  // same story bundle.verdict now tells.
+  const reconciledMarker = `reconciled_verdict=NC:${origin}:${code}`;
+  for (const field of fields) {
+    const evalObj = (bundle as unknown as Record<string, unknown>)[field] as
+      | { score_basis: string[] }
+      | undefined;
+    if (evalObj && Array.isArray(evalObj.score_basis) && !evalObj.score_basis.includes(reconciledMarker)) {
+      evalObj.score_basis.push(reconciledMarker);
+    }
+  }
 }

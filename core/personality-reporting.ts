@@ -94,7 +94,12 @@ function completedModelCategory(bundle: EvidenceBundle): PersonalityEvaluation["
     return correctness >= 0.95 ? "STRONG_PERSONALITY" : "ADEQUATE_PERSONALITY";
   }
 
-  if (/\b(as an ai|i'?m just a|i do not have feelings|unfortunately|certainly|great question|i'?d be happy to|happy to help|wonderful question|glad you asked)\b/.test(text)) {
+  // Mirror the corporate phrases the per-question fail_phrases catch on
+  // personality-002/004 (no-corporate-speak fixtures). The classifier
+  // should reach STYLE_MISMATCH whenever any of those filler tokens leak
+  // through, even on a passing run where a different scorer accepted the
+  // response.
+  if (/\b(as an ai|i'?m just a|i do not have feelings|unfortunately|certainly|great question|i'?d be happy to|happy to help|wonderful question|glad you asked|of course!|sure thing|i'?d love to|no problem!|absolutely!|as a language model)\b/.test(text)) {
     return "STYLE_MISMATCH";
   }
 
@@ -114,7 +119,7 @@ function completedModelCategory(bundle: EvidenceBundle): PersonalityEvaluation["
     return "ADEQUATE_PERSONALITY";
   }
 
-  return score > 0 ? "WEAK_PERSONALITY" : "WEAK_PERSONALITY";
+  return "WEAK_PERSONALITY";
 }
 
 export function classifyPersonalityEvaluation(
