@@ -94,3 +94,33 @@ Live provider verification: `UNKNOWN` in this environment until API keys are con
 ## Release Readiness
 
 Provider/model selection is ready for release with one limitation: live cloud-provider availability cannot be certified without provider credentials in the release environment. The deterministic provider/model plumbing tests now cover lane parity, request routing, unavailability handling, and actual-target reporting.
+
+## Full-Suite Failure Triage
+
+Date: 2026-05-16
+
+After commit `25b704f`, non-escalated `npm test` reported six compiled test-file failures: `core`, `e2e`, `hardening-phase2`, `route-contract`, `sse-lifecycle`, and `ui-benchmark-bindings`.
+
+| Suite | Non-escalated evidence | Escalated or fixed result | Classification | Notes |
+| --- | --- | --- | --- | --- |
+| `core.test.js` | `hidden_test_failure_only` diagnostic received `public_and_hidden_failed` when subprocess execution was sandboxed. | `node --test dist/tests/core.test.js` with loopback/subprocess permissions: 35/35 pass. | `ENVIRONMENTAL` | Not caused by provider/model hardening. The failing path depends on local subprocess execution. |
+| `e2e.test.js` | Mock pipeline scored 0 because workspace/git subprocess setup was sandbox-denied (`spawnSync /bin/sh EPERM`). | `node --test dist/tests/e2e.test.js` with subprocess permissions: 1/1 pass. | `ENVIRONMENTAL` | Not caused by provider/model hardening. |
+| `hardening-phase2.test.js` | Rate-limiter server failed `listen EPERM: operation not permitted 127.0.0.1:46004`. | Escalated run: 16/16 pass. | `ENVIRONMENTAL` | Loopback binding is blocked by the default sandbox. |
+| `route-contract.test.js` | All route tests cancelled after before-hook async activity from `listen EPERM` on `127.0.0.1`. | Escalated run: 43/43 pass. | `ENVIRONMENTAL` | Loopback binding is blocked by the default sandbox. |
+| `sse-lifecycle.test.js` | All SSE tests cancelled after before-hook async activity from `listen EPERM` on `127.0.0.1`. | Escalated run: 5/5 pass. | `ENVIRONMENTAL` | Loopback binding is blocked by the default sandbox. |
+| `ui-benchmark-bindings.test.js` | `handleRun should invoke runBatch exactly once`, actual `0`. | Fixed test fixture health snapshot; `node --test dist/tests/ui-benchmark-bindings.test.js`: 1/1 pass. | `CAUSED_BY_PROVIDER_HARDENING` | Provider hardening correctly blocks unavailable cloud providers. The VM test had no reachable `state.health`; it now seeds `net.ok=true` and provider health defaults before asserting run payload binding. |
+
+Preserved provider/model invariants:
+
+- strict provider hint behavior,
+- no silent cross-provider fallback,
+- unavailable-provider UI blocking,
+- requested-target versus actual-target reporting.
+
+Verification after the triage fix:
+
+- `npm run typecheck`: pass.
+- `npm run build`: pass.
+- Provider/model focused tests: `provider-registry`, `ui-model-parity`, `provider-flow`, `adapter-registry`, and `adapter-selection` pass.
+- Six previously failing compiled suites pass when run with required loopback/subprocess permissions.
+- Full `npm test` passes under loopback/subprocess permissions: 722/722 tests.

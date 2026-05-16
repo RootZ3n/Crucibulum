@@ -63,6 +63,7 @@ type UiCtx = {
     tabData: Record<string, { selectedModels?: string[]; selectedTasks?: string[]; selectedTask?: string; runCount?: string | number }>;
     focusedResult: Record<string, { overall: number; overallKnown: boolean; categories: unknown[] }>;
     liveModels?: Array<Record<string, unknown>>;
+    health?: Record<string, unknown>;
   };
   __runBatchCalls: Array<{ tabKey: string; taskIds: string[]; modelIds: string[]; label: string }>;
 };
@@ -111,6 +112,10 @@ function loadUi(): UiCtx {
   ui.state.tabData = ui.state.tabData || {};
   ui.state.tabData.benchmark = { selectedModels: [], selectedTasks: ["task-a"], selectedTask: "task-a", runCount: "all" };
   ui.state.focusedResult = ui.state.focusedResult || {};
+  ui.state.health = {
+    net: { ok: true },
+    providers: {},
+  };
   return ui;
 }
 
