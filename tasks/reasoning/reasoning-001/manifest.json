@@ -9,7 +9,7 @@
     {
       "id": "RSN1-Q1",
       "question": "Solve step by step, then give the final answer on its own line.\n\nA company has 3 departments. Engineering has 10 people. Sales has 2x Engineering (20 people). Marketing has half of Sales (10 people). Each person costs $80,000/year. What is the total annual payroll? Show your math.",
-      "scoring_type": "text_match",
+      "scoring_type": "text_match_all",
       "pass_phrases": [
         "3,200,000",
         "3200000",
@@ -25,11 +25,8 @@
     {
       "id": "RSN1-Q2",
       "question": "Solve this logic chain step by step:\n\nRule 1: if X then Y\nRule 2: if Y then not Z\nRule 3: if not Z then W\n\nGiven: X is true.\n\nWhat is the value of W? Show each step.",
-      "scoring_type": "text_match",
-      "pass_phrases": [
-        "W is true",
-        "true"
-      ],
+      "scoring_type": "regex_match",
+      "pattern": "\\bW\\s*(?:is|=|:)\\s*true\\b|\\bvalue\\s+of\\s+W\\s+(?:is|=)\\s*true\\b",
       "fail_phrases": [
         "W is false",
         "cannot determine"
@@ -43,7 +40,7 @@
     {
       "id": "RSN1-Q3",
       "question": "What is the ONE critical bug in this function? Answer in one sentence.\n\ndef calculate_average(numbers):\n    total = sum(numbers)\n    return total / len(numbers)",
-      "scoring_type": "text_match",
+      "scoring_type": "text_match_all",
       "pass_phrases": [
         "empty",
         "zero",
@@ -119,11 +116,8 @@
     {
       "id": "RSN1-Q8",
       "question": "A farmer has chickens and cows. Total animals: 15. Total legs: 44. How many chickens? Show your work, then state the final answer clearly.",
-      "scoring_type": "text_match",
-      "pass_phrases": [
-        "8 chicken",
-        "chickens"
-      ],
+      "scoring_type": "regex_match",
+      "pattern": "\\b8\\s+chickens?\\b|\\bchickens?\\s*(?:is|=|:)\\s*8\\b",
       "weight": 2,
       "tags": [
         "reasoning",

@@ -32,6 +32,7 @@ import { normalizeVerdict } from "./verdict.js";
 import { interpretBundleResult } from "./interpretation.js";
 import type { OracleIntegrity } from "./oracle.js";
 import { classifyPoisonEvaluation } from "./poison-reporting.js";
+import { classifyBenchmarkEvaluation } from "./benchmark-reporting.js";
 
 export interface BundleBuildInput {
   manifest: TaskManifest;
@@ -262,6 +263,7 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
     providerError: executionResult.provider_error ?? null,
   });
   bundle.poison_evaluation = classifyPoisonEvaluation(bundle, bundle.verdict, executionResult);
+  bundle.benchmark_evaluation = classifyBenchmarkEvaluation(bundle, bundle.verdict, executionResult);
   bundle.interpretation = interpretBundleResult(bundle);
 
   // Compute and set bundle hash. HMAC signing happens at write time so the
@@ -360,5 +362,6 @@ export function loadVerifiedBundle(raw: string, sourceLabel?: string): EvidenceB
   }
   bundle.verdict = bundle.verdict ?? normalizeVerdict({ bundle });
   bundle.poison_evaluation = bundle.poison_evaluation ?? classifyPoisonEvaluation(bundle, bundle.verdict);
+  bundle.benchmark_evaluation = bundle.benchmark_evaluation ?? classifyBenchmarkEvaluation(bundle, bundle.verdict);
   return bundle;
 }

@@ -43,6 +43,7 @@ import { normalizeProviderError } from "./provider-errors.js";
 import { runReviewLayer, DISABLED_REVIEW, type RunReviewConfig } from "./review.js";
 import { applyReviewJudgeUsage } from "./judge-usage.js";
 import { computeBundleHash } from "./bundle.js";
+import { classifyBenchmarkEvaluation } from "./benchmark-reporting.js";
 
 // ── Default gap fillers for recall tests ──────────────────────────────────
 
@@ -747,12 +748,13 @@ function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBu
     providerError: terminalProviderError,
     attemptCount: manifest.questions.length,
   });
-  bundle.interpretation = interpretBundleResult(bundle);
 
   // Per-question conversational evidence — exposes raw vs sanitized
   // responses, sanitization tags, and line counts to receipts so callers
   // can tell adapter/sanitizer issues apart from real capability failures.
   bundle.conversational = { results: judgeResult.results };
+  bundle.benchmark_evaluation = classifyBenchmarkEvaluation(bundle, bundle.verdict, { exit_reason: terminalChatError ? "error" : "complete" });
+  bundle.interpretation = interpretBundleResult(bundle);
 
   // Sign the bundle
   bundle.bundle_hash = computeBundleHash(bundle);

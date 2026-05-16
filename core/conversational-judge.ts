@@ -260,9 +260,10 @@ function scoreHedgeCount(_q: ConversationalQuestion, response: string): { passed
 
 // ── Regex match scorer ───────────────────────────────────────────────────
 
-/** Strip markdown formatting: bold, italic, code, headers */
+/** Strip markdown formatting: bold, italic, code, headers, fenced blocks */
 function stripMarkdown(text: string): string {
   return text
+    .replace(/```[a-zA-Z0-9_-]*\n([\s\S]*?)```/g, "$1")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/__([^_]+)__/g, "$1")
     .replace(/\*([^*]+)\*/g, "$1")

@@ -634,6 +634,24 @@ export interface EvidenceBundle {
     failure_is_infrastructure: boolean;
     raw_or_summary_reason: string;
   } | undefined;
+  benchmark_evaluation?: {
+    category:
+      | "PASS"
+      | "PARTIAL"
+      | "WRONG_ANSWER"
+      | "SAFE_BUT_UNHELPFUL"
+      | "EMPTY_RESPONSE"
+      | "PROVIDER_FAILURE"
+      | "TIMEOUT"
+      | "PARSER_FAILURE"
+      | "RUBRIC_MISMATCH"
+      | "AMBIGUOUS_FIXTURE"
+      | "UNKNOWN";
+    score_basis: string[];
+    reflects_model_capability: boolean;
+    failure_is_infrastructure: boolean;
+    raw_or_summary_reason: string;
+  } | undefined;
   review?: {
     authority: "advisory";
     deterministic_result_authoritative: true;
