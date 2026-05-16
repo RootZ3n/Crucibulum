@@ -192,4 +192,91 @@ describe("build result classification goldens", () => {
     assert.equal(summary.target.provider, "unit-provider");
     assert.equal(summary.target.model, "unit-model");
   });
+
+  it("classifies upstream provider/network failures as PROVIDER_FAILURE", () => {
+    const bundle = buildBundle({
+      timeline: [{ t: 0, type: "error", detail: "OpenRouter returned 503" }],
+    });
+    const verdict = normalizeVerdict({
+      bundle,
+      executionMode: "repo",
+      exitReason: "error",
+      providerError: {
+        origin: "PROVIDER",
+        kind: "HTTP_5XX",
+        adapter: "openrouter",
+        provider: "openrouter",
+        statusCode: 503,
+        retryable: true,
+        rawMessage: "Service Unavailable",
+        rawCode: null,
+        cause: null,
+        attempt: 1,
+        durationMs: 100,
+        requestId: null,
+      },
+    });
+    const result = classifyBuildEvaluation(bundle, verdict, { exit_reason: "error" as never })!;
+    assert.equal(result.category, "PROVIDER_FAILURE");
+    assert.equal(result.failure_is_infrastructure, true);
+    assert.equal(result.reflects_model_capability, false);
+  });
+
+  it("classifies model_output_malformed diagnoses as PARSER_FAILURE", () => {
+    const result = classify(buildBundle({
+      diagnosis: { localized_correctly: false, avoided_decoys: true, first_fix_correct: false, self_verified: false, failure_mode: "model_output_malformed: bad tool block" },
+    }));
+    assert.equal(result.category, "PARSER_FAILURE");
+    assert.equal(result.failure_is_infrastructure, true);
+  });
+
+  it("classifies judge not-evaluable as RUBRIC_MISMATCH (and does not over-match the bare word 'rubric')", () => {
+    const rubricBug = classify(buildBundle({
+      diagnosis: { localized_correctly: false, avoided_decoys: true, first_fix_correct: false, self_verified: false, failure_mode: "rubric mismatch: hidden command missing" },
+    }));
+    assert.equal(rubricBug.category, "RUBRIC_MISMATCH");
+
+    // Innocuous "rubric" mention in failure_mode must NOT trip RUBRIC_MISMATCH
+    // — that would hide a real model failure as infrastructure.
+    const innocuousMention = classify(buildBundle({
+      diagnosis: { localized_correctly: false, avoided_decoys: true, first_fix_correct: false, self_verified: false, failure_mode: "rubric-based judging found the model fix incomplete" },
+    }));
+    assert.notEqual(innocuousMention.category, "RUBRIC_MISMATCH", "bare /rubric/ mention should not trip RUBRIC_MISMATCH");
+  });
+
+  it("classifies below-threshold model edits with no command failures as PARTIAL", () => {
+    const result = classify(buildBundle({
+      score: score(0.5, false),
+      diff: { files_changed: [{ path: "src/users/register.js", lines_added: 1, lines_removed: 1, patch: "+something" }], files_created: [], files_deleted: [], forbidden_paths_touched: [] },
+      verification_results: {
+        correctness: { score: 0.5, details: {}, command_results: [command({ status: "pass" })] },
+        regression: { score: 1, details: {}, command_results: [command({ status: "pass", id: "hidden", scope: "regression" })] },
+        integrity: { score: 1, details: {}, violations: [] },
+        efficiency: { time_sec: 1, time_limit_sec: 120, steps_used: 1, steps_limit: 8, score: 1 },
+      },
+    }));
+    assert.equal(result.category, "PARTIAL");
+    assert.equal(result.reflects_model_capability, true);
+  });
+
+  it("classifies pre-set NC verdicts that fall through as UNKNOWN", () => {
+    const bundle = buildBundle({
+      verdict: {
+        completionState: "NC",
+        failureOrigin: "UNKNOWN",
+        failureReasonCode: "unknown_failure",
+        failureReasonSummary: "no signal",
+        countsTowardModelScore: false,
+        countsTowardFailureRate: false,
+        evidence: {
+          provider: "unit", adapter: "unit", exitReason: null, rawError: null,
+          providerError: null, httpStatus: null, timeout: false,
+          judgeError: null, testError: null, attemptCount: null, retries: null,
+        },
+      },
+    });
+    const verdict = normalizeVerdict({ bundle, executionMode: "repo", exitReason: null });
+    const result = classifyBuildEvaluation(bundle, verdict, { exit_reason: "complete" as never })!;
+    assert.equal(result.category, "UNKNOWN");
+  });
 });

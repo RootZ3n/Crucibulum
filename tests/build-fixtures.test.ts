@@ -95,4 +95,60 @@ describe("build fixture audit", () => {
     const oracle = JSON.parse(readFileSync(resolveOraclePath(coord4!), "utf-8"));
     assert.match(String(oracle.ground_truth.correct_fix_pattern), /move content\.split|Set/i, "coord-004 records a prose optimization target");
   });
+
+  // T1: every orchestration fixture's bug source file must not self-label
+  // with the bug or the fix. Mirrors the poison/spec fixture-leak tests.
+  it("bug-location source files do not self-label with answer-leaking comments", () => {
+    const leakPatterns: RegExp[] = [
+      /\bBUG\s*:/,
+      /\bFIXME\b/,
+      /\bXXX\s*:/i,
+      /\bshould\s+be\b/i,
+      /\brace\s+window\b/i,
+      /\bcatastrophic\s+backtracking\b/i,
+    ];
+    for (const { manifest } of orchestrationManifests()) {
+      const oraclePath = resolveOraclePath(manifest);
+      const oracle = JSON.parse(readFileSync(oraclePath, "utf-8")) as {
+        ground_truth: { bug_location: string | string[] };
+      };
+      const bugLocations = Array.isArray(oracle.ground_truth.bug_location)
+        ? oracle.ground_truth.bug_location
+        : [oracle.ground_truth.bug_location];
+      for (const bug of bugLocations) {
+        const bugFile = join(dirname(resolveOraclePath(manifest)), "..", manifest.repo.path, bug);
+        if (!existsSync(bugFile)) continue;
+        const content = readFileSync(bugFile, "utf-8");
+        for (const re of leakPatterns) {
+          assert.doesNotMatch(
+            content,
+            re,
+            `${manifest.id}: bug source ${bug} contains an answer-leaking comment matching ${re} — defeats the lane's diagnostic purpose`,
+          );
+        }
+      }
+    }
+  });
+
+  // T2: manifest forbidden_paths must include every path the oracle's
+  // no-test-modification check protects. Without this the agent reads
+  // a relaxed manifest, edits tests/, and gets hard-failed at scoring —
+  // trust-by-trap instead of trust-by-rule.
+  it("manifest forbidden_paths covers every path the oracle's no-test-modification rule protects", () => {
+    for (const { manifest } of orchestrationManifests()) {
+      const oraclePath = resolveOraclePath(manifest);
+      const oracle = JSON.parse(readFileSync(oraclePath, "utf-8")) as {
+        checks: { integrity: Array<{ id?: string; type?: string; paths?: string[] }> };
+      };
+      const noTestRule = oracle.checks.integrity.find((c) => c.id === "no-test-modification" || c.type === "forbidden_edit");
+      if (!noTestRule?.paths) continue;
+      const manifestForbidden = manifest.constraints.forbidden_paths ?? [];
+      for (const requiredPath of noTestRule.paths) {
+        assert.ok(
+          manifestForbidden.includes(requiredPath),
+          `${manifest.id}: manifest forbidden_paths is missing "${requiredPath}" but the oracle hard-fails edits to it. Tell the agent the rule up front.`,
+        );
+      }
+    }
+  });
 });

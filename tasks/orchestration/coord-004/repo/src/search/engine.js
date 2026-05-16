@@ -16,8 +16,6 @@ function search(query, documents) {
     const content = doc.content || '';
 
     for (const term of terms) {
-      // BUG: re-splitting the document content for EVERY term creates O(terms * words) work
-      // per document, making the total complexity O(docs * terms * words)
       const words = content.toLowerCase().split(/\s+/);
       for (const word of words) {
         if (word === term) score++;

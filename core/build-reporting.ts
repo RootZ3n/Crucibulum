@@ -88,7 +88,9 @@ function rubricOrParserCategory(bundle: EvidenceBundle, verdict: NormalizedVerdi
   ].join("\n").toLowerCase();
 
   if (/model_output_malformed|provider_invalid_response|invalid json|parser/.test(text)) return "PARSER_FAILURE";
-  if (/not evaluable|unsupported|no command|oracle.*missing|rubric|correctness checks were not evaluable/.test(text)) return "RUBRIC_MISMATCH";
+  // Bare token /rubric/ was matching innocuous mentions like
+  // "rubric-based judging". Require a phrase that names a rubric *bug*.
+  if (/not evaluable|unsupported|no command|oracle.*missing|rubric mismatch|rubric not evaluable|correctness checks were not evaluable/.test(text)) return "RUBRIC_MISMATCH";
   return null;
 }
 
@@ -107,6 +109,10 @@ function commandFailureCategory(bundle: EvidenceBundle): BuildEvaluation["catego
 }
 
 function completedModelCategory(bundle: EvidenceBundle): BuildEvaluation["category"] {
+  // Caller (classifyBuildEvaluation) already early-returns PASS on
+  // verdict.completionState === "PASS", so a passing bundle never reaches
+  // this function. The branch is here for safety in case a caller invokes
+  // it directly without the verdict gate; kept intentionally trivial.
   if (bundle.score.pass) return "PASS";
   if (hasNoEdit(bundle)) return "NO_EDIT";
   if (bundle.verification_results.integrity.violations.length > 0) return "WRONG_EDIT";
