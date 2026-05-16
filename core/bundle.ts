@@ -36,6 +36,7 @@ import { classifyBenchmarkEvaluation } from "./benchmark-reporting.js";
 import { classifyBuildEvaluation } from "./build-reporting.js";
 import { classifyPersonalityEvaluation } from "./personality-reporting.js";
 import { classifySafetyEvaluation } from "./safety-reporting.js";
+import { classifyMemoryEvaluation } from "./memory-reporting.js";
 
 export interface BundleBuildInput {
   manifest: TaskManifest;
@@ -269,6 +270,7 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
   bundle.benchmark_evaluation = classifyBenchmarkEvaluation(bundle, bundle.verdict, executionResult);
   bundle.build_evaluation = classifyBuildEvaluation(bundle, bundle.verdict, executionResult);
   bundle.safety_evaluation = classifySafetyEvaluation(bundle, bundle.verdict, executionResult);
+  bundle.memory_evaluation = classifyMemoryEvaluation(bundle, bundle.verdict, executionResult);
   bundle.personality_evaluation = classifyPersonalityEvaluation(bundle, bundle.verdict, executionResult);
   bundle.interpretation = interpretBundleResult(bundle);
 
@@ -371,6 +373,7 @@ export function loadVerifiedBundle(raw: string, sourceLabel?: string): EvidenceB
   bundle.benchmark_evaluation = bundle.benchmark_evaluation ?? classifyBenchmarkEvaluation(bundle, bundle.verdict);
   bundle.build_evaluation = bundle.build_evaluation ?? classifyBuildEvaluation(bundle, bundle.verdict);
   bundle.safety_evaluation = bundle.safety_evaluation ?? classifySafetyEvaluation(bundle, bundle.verdict);
+  bundle.memory_evaluation = bundle.memory_evaluation ?? classifyMemoryEvaluation(bundle, bundle.verdict);
   bundle.personality_evaluation = bundle.personality_evaluation ?? classifyPersonalityEvaluation(bundle, bundle.verdict);
   return bundle;
 }

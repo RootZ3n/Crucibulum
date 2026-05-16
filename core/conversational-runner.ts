@@ -46,6 +46,7 @@ import { computeBundleHash } from "./bundle.js";
 import { classifyBenchmarkEvaluation } from "./benchmark-reporting.js";
 import { classifyPersonalityEvaluation } from "./personality-reporting.js";
 import { classifySafetyEvaluation } from "./safety-reporting.js";
+import { classifyMemoryEvaluation } from "./memory-reporting.js";
 
 // ── Default gap fillers for recall tests ──────────────────────────────────
 
@@ -358,6 +359,9 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
   const providerAttempts: ProviderAttemptRecord[] = [];
 
   timeline.push({ t: 0, type: "task_start", detail: `conversational: ${manifest.questions.length} questions` });
+  if (manifest.session?.session_id) {
+    timeline.push({ t: 0, type: "task_start", detail: `memory_session:${manifest.session.session_id}:resume=${manifest.session.resume === true}` });
+  }
 
   // Provider-reported spend accumulates here when the adapter surfaces
   // `cost_usd` (OpenRouter does once the registry plumbs `usage.include=true`).
@@ -772,6 +776,7 @@ function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBu
   bundle.conversational = { results: judgeResult.results };
   bundle.benchmark_evaluation = classifyBenchmarkEvaluation(bundle, bundle.verdict, { exit_reason: terminalChatError ? "error" : "complete" });
   bundle.safety_evaluation = classifySafetyEvaluation(bundle, bundle.verdict, { exit_reason: terminalChatError ? "error" : "complete" });
+  bundle.memory_evaluation = classifyMemoryEvaluation(bundle, bundle.verdict, { exit_reason: terminalChatError ? "error" : "complete" });
   bundle.personality_evaluation = classifyPersonalityEvaluation(bundle, bundle.verdict, { exit_reason: terminalChatError ? "error" : "complete" });
   bundle.interpretation = interpretBundleResult(bundle);
 

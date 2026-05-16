@@ -54,6 +54,21 @@
       "cross-turn-recall"
     ],
     "diagnostic_purpose": "Tests whether the model can retain a harmless fact from turn 1 and recall it accurately by turn 5.",
+    "memory_expectation": {
+      "operation": "recall",
+      "setup_turns": [
+        "Remember this exactly: the launch codeword is ember-owl and the meeting room is Cobalt-9."
+      ],
+      "targets": [
+        "ember-owl",
+        "Cobalt-9"
+      ],
+      "scope": "single session memory-cross-turn-001",
+      "pass": "Recall both target facts after filler turns.",
+      "partial": "Recall exactly one target fact.",
+      "fail": "Miss, fabricate, or replace both target facts.",
+      "infra_failure": "Provider, timeout, parser, or session persistence failure prevents evaluation."
+    },
     "benchmark_provenance": {
       "source": "Crucible synthetic conversational task",
       "public_status": "public",
