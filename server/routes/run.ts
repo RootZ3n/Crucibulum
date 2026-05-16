@@ -15,6 +15,7 @@ import { summarizeRunSet, type CrucibleLink } from "../contracts.js";
 import { writeCrucibleLink } from "../validation-links.js";
 import { isConversationalTask } from "../../core/conversational-runner.js";
 import { normalizeBundleVerdict } from "../../core/verdict.js";
+import { presentBundleVerdict } from "../../core/verdict-policy.js";
 import type { StructuredProviderError } from "../../types/provider-error.js";
 import { providerErrorDetail } from "../../core/provider-errors.js";
 import { resolveByModelIdWithHint } from "../../core/provider-registry.js";
@@ -137,6 +138,7 @@ export async function handleRunsList(req: IncomingMessage, res: ServerResponse, 
   const runs = bundles.map((bundle) => {
     const summary = bundleSummary(bundle, allBundles);
     const verdict = normalizeBundleVerdict(bundle);
+    const verdictPresentation = presentBundleVerdict(bundle, verdict);
     return {
       bundle_id: bundle.bundle_id,
       bundle_hash: bundle.bundle_hash,
@@ -149,6 +151,7 @@ export async function handleRunsList(req: IncomingMessage, res: ServerResponse, 
       score: canonicalPercent(bundle.score.total),
       pass: bundle.score.pass,
       verdict,
+      verdict_presentation: verdictPresentation,
       pass_threshold: canonicalPercent(bundle.score.pass_threshold),
       integrity_violations: bundle.score.integrity_violations,
       breakdown: {
@@ -233,53 +236,57 @@ export async function handleReceipts(req: IncomingMessage, res: ServerResponse, 
   const scope = resolveLaneScope(url);
   const bundles = filterBundlesByTaskFamilies(loadBundles(), scope.taskFamilies);
   bundles.sort((a, b) => new Date(b.environment.timestamp_start).getTime() - new Date(a.environment.timestamp_start).getTime());
-  const receipts = bundles.map((bundle) => ({
-    run_id: bundle.bundle_id,
-    task_id: bundle.task.id,
-    family: bundle.task.family,
-    model: bundle.agent.model,
-    provider: bundle.agent.provider,
-    adapter: bundle.agent.adapter,
-    bundle_hash: bundle.bundle_hash,
-    judge: bundle.judge,
-    trust: bundle.trust,
-    authority: {
-      deterministic_judge_authoritative: true,
-      review_layer_advisory: true,
-    },
-    review_security: bundle.review?.security ?? null,
-    review_input_sanitized: bundle.review?.security.review_input_sanitized ?? false,
-    injection_flags_count: bundle.review?.security.injection_flags_count ?? 0,
-    flagged_sources: bundle.review?.security.flagged_sources ?? [],
-    review_blocked_reason: bundle.review?.security.review_blocked_reason ?? null,
-    review_output_invalid: bundle.review?.security.review_output_invalid ?? false,
-    trust_boundary_violations: bundle.review?.security.trust_boundary_violations ?? [],
-    tokens_in: bundle.usage.tokens_in,
-    tokens_out: bundle.usage.tokens_out,
-    cost_usd: bundle.usage.estimated_cost_usd,
-    judge_usage: bundle.judge_usage ?? {
-      provider: "",
-      model: "",
-      tokens_in: 0,
-      tokens_out: 0,
-      estimated_cost_usd: 0,
-      kind: "deterministic" as const,
-      note: "deterministic judge — no model cost",
-    },
-    total_cost_usd: bundle.usage.estimated_cost_usd + (bundle.judge_usage?.estimated_cost_usd ?? 0),
-    total_tokens: bundle.usage.tokens_in + bundle.usage.tokens_out + (bundle.judge_usage?.tokens_in ?? 0) + (bundle.judge_usage?.tokens_out ?? 0),
-    duration_ms: new Date(bundle.environment.timestamp_end).getTime() - new Date(bundle.environment.timestamp_start).getTime(),
-    pass: bundle.score.pass,
-    score: canonicalPercent(bundle.score.total),
-    verdict: normalizeBundleVerdict(bundle),
-    poison_evaluation: bundle.poison_evaluation ?? null,
-    benchmark_evaluation: bundle.benchmark_evaluation ?? null,
-    build_evaluation: bundle.build_evaluation ?? null,
-    safety_evaluation: bundle.safety_evaluation ?? null,
-    memory_evaluation: bundle.memory_evaluation ?? null,
-    personality_evaluation: bundle.personality_evaluation ?? null,
-    timestamp: bundle.environment.timestamp_start,
-  }));
+  const receipts = bundles.map((bundle) => {
+    const verdict = normalizeBundleVerdict(bundle);
+    return {
+      run_id: bundle.bundle_id,
+      task_id: bundle.task.id,
+      family: bundle.task.family,
+      model: bundle.agent.model,
+      provider: bundle.agent.provider,
+      adapter: bundle.agent.adapter,
+      bundle_hash: bundle.bundle_hash,
+      judge: bundle.judge,
+      trust: bundle.trust,
+      authority: {
+        deterministic_judge_authoritative: true,
+        review_layer_advisory: true,
+      },
+      review_security: bundle.review?.security ?? null,
+      review_input_sanitized: bundle.review?.security.review_input_sanitized ?? false,
+      injection_flags_count: bundle.review?.security.injection_flags_count ?? 0,
+      flagged_sources: bundle.review?.security.flagged_sources ?? [],
+      review_blocked_reason: bundle.review?.security.review_blocked_reason ?? null,
+      review_output_invalid: bundle.review?.security.review_output_invalid ?? false,
+      trust_boundary_violations: bundle.review?.security.trust_boundary_violations ?? [],
+      tokens_in: bundle.usage.tokens_in,
+      tokens_out: bundle.usage.tokens_out,
+      cost_usd: bundle.usage.estimated_cost_usd,
+      judge_usage: bundle.judge_usage ?? {
+        provider: "",
+        model: "",
+        tokens_in: 0,
+        tokens_out: 0,
+        estimated_cost_usd: 0,
+        kind: "deterministic" as const,
+        note: "deterministic judge — no model cost",
+      },
+      total_cost_usd: bundle.usage.estimated_cost_usd + (bundle.judge_usage?.estimated_cost_usd ?? 0),
+      total_tokens: bundle.usage.tokens_in + bundle.usage.tokens_out + (bundle.judge_usage?.tokens_in ?? 0) + (bundle.judge_usage?.tokens_out ?? 0),
+      duration_ms: new Date(bundle.environment.timestamp_end).getTime() - new Date(bundle.environment.timestamp_start).getTime(),
+      pass: bundle.score.pass,
+      score: canonicalPercent(bundle.score.total),
+      verdict,
+      verdict_presentation: presentBundleVerdict(bundle, verdict),
+      poison_evaluation: bundle.poison_evaluation ?? null,
+      benchmark_evaluation: bundle.benchmark_evaluation ?? null,
+      build_evaluation: bundle.build_evaluation ?? null,
+      safety_evaluation: bundle.safety_evaluation ?? null,
+      memory_evaluation: bundle.memory_evaluation ?? null,
+      personality_evaluation: bundle.personality_evaluation ?? null,
+      timestamp: bundle.environment.timestamp_start,
+    };
+  });
   const totalCost = receipts.reduce((sum, receipt) => sum + receipt.cost_usd, 0);
   const totalJudgeCost = receipts.reduce((sum, receipt) => sum + (receipt.judge_usage?.estimated_cost_usd ?? 0), 0);
   const totalTokens = receipts.reduce((sum, receipt) => sum + receipt.tokens_in + receipt.tokens_out, 0);
@@ -574,6 +581,7 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
         score: latestBundle.score,
         pass: latestBundle.score.pass,
         verdict: normalizeBundleVerdict(latestBundle),
+        verdict_presentation: presentBundleVerdict(latestBundle, normalizeBundleVerdict(latestBundle)),
         judge: latestBundle.judge,
         review: latestBundle.review,
         aggregate,

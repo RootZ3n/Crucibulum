@@ -2,6 +2,7 @@ import type { EvidenceBundle } from "../adapters/base.js";
 import { verifyBundle } from "../core/bundle.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "../core/judge.js";
 import { normalizeBundleVerdict } from "../core/verdict.js";
+import { presentBundleVerdict, type VerdictPresentation } from "../core/verdict-policy.js";
 import { canonicalPercent } from "../types/scores.js";
 import type { NormalizedVerdict } from "../types/verdict.js";
 
@@ -73,6 +74,7 @@ export interface EvaluationSummary {
   outcome: {
     pass: boolean;
     verdict: NormalizedVerdict;
+    verdict_presentation: VerdictPresentation;
     poison_evaluation: EvidenceBundle["poison_evaluation"] | null;
     benchmark_evaluation: EvidenceBundle["benchmark_evaluation"] | null;
     build_evaluation: EvidenceBundle["build_evaluation"] | null;
@@ -254,6 +256,7 @@ export function summarizeBundle(
 ): EvaluationSummary {
   const validity = verifyBundle(bundle);
   const verdict = normalizeBundleVerdict(bundle);
+  const verdictPresentation = presentBundleVerdict(bundle, verdict);
   const durationSec = Math.round((new Date(bundle.environment.timestamp_end).getTime() - new Date(bundle.environment.timestamp_start).getTime()) / 1000);
   const executionScore = Math.round(canonicalPercent(bundle.score.total));
   const benchmarkScore = crucible?.benchmark_score ?? null;
@@ -326,6 +329,7 @@ export function summarizeBundle(
     outcome: {
       pass: bundle.score.pass,
       verdict,
+      verdict_presentation: verdictPresentation,
       poison_evaluation: bundle.poison_evaluation ?? null,
       benchmark_evaluation: bundle.benchmark_evaluation ?? null,
       build_evaluation: bundle.build_evaluation ?? null,

@@ -62,7 +62,7 @@ type LoadedUi = {
     sampleSize: number;
     provisional: boolean;
   };
-  verdictBadge: (verdict: Verdict | null, overall: number) => {
+  verdictBadge: (verdict: Verdict | null, overall: number, context?: Record<string, unknown>) => {
     cls: string;
     originCls: string;
     glyph: string;
@@ -73,6 +73,7 @@ type LoadedUi = {
     isInfra: boolean;
     isTestOrJudgeIssue?: boolean;
     isTestOrJudge: boolean;
+    criticalOverride?: boolean;
   };
   renderHero: () => string;
   renderDashboard: () => string;
@@ -190,8 +191,8 @@ describe("verdictBadge: distinct visual identity per origin", () => {
       0,
     );
 
-    assert.equal(modelFail.label, "FAIL · MODEL");
-    assert.equal(ncProvider.label, "NC · PROVIDER");
+    assert.equal(modelFail.label, "FAIL");
+    assert.equal(ncProvider.label, "NOT_COMPLETE");
     // Must NOT collapse onto the same origin-specific class.
     assert.notEqual(modelFail.originCls, ncProvider.originCls, "MODEL fail and PROVIDER NC must render with distinct origin classes");
     assert.equal(modelFail.originCls, "vx-fail-model");
@@ -205,11 +206,11 @@ describe("verdictBadge: distinct visual identity per origin", () => {
   it("gives every NC origin (NETWORK / TEST / JUDGE / HARNESS / UNKNOWN) its own class and label", () => {
     const ui = loadUi();
     const cases: Array<[string, string, string]> = [
-      ["NETWORK", "vx-nc-network", "NC · NETWORK"],
-      ["HARNESS", "vx-nc-harness", "NC · HARNESS"],
-      ["TEST",    "vx-nc-test",    "NC · TEST"],
-      ["JUDGE",   "vx-nc-judge",   "NC · JUDGE"],
-      ["UNKNOWN", "vx-nc-unknown", "NC · UNKNOWN"],
+      ["NETWORK", "vx-nc-network", "NOT_COMPLETE"],
+      ["HARNESS", "vx-nc-harness", "NOT_COMPLETE"],
+      ["TEST",    "vx-nc-test",    "NOT_COMPLETE"],
+      ["JUDGE",   "vx-nc-judge",   "NOT_COMPLETE"],
+      ["UNKNOWN", "vx-nc-unknown", "NOT_COMPLETE"],
     ];
     const seen = new Set<string>();
     for (const [origin, expectedCls, expectedLabel] of cases) {
@@ -224,9 +225,45 @@ describe("verdictBadge: distinct visual identity per origin", () => {
   it("PASS carries a pass-specific class — never the same as any failure origin", () => {
     const ui = loadUi();
     const pass = ui.verdictBadge({ completionState: "PASS" }, 95);
+    assert.equal(pass.label, "STRONG_PASS");
     assert.equal(pass.originCls, "vx-pass");
     assert.equal(pass.state, "PASS");
     assert.equal(pass.isModelFailure, false);
+  });
+
+  it("maps mostly successful ordinary misses to PARTIAL_PASS, not REJECTED or model FAIL wording", () => {
+    const ui = loadUi();
+    const badge = ui.verdictBadge(
+      { completionState: "FAIL", failureOrigin: "MODEL", failureReasonSummary: "3 ordinary misses" },
+      81,
+    );
+    assert.equal(badge.label, "PARTIAL_PASS");
+    assert.equal(badge.cls, "warn");
+    assert.equal(badge.isModelFailure, true);
+    assert.doesNotMatch(badge.label, /REJECTED|FAIL/);
+  });
+
+  it("keeps REJECTED reserved for critical overrides", () => {
+    const ui = loadUi();
+    const badge = ui.verdictBadge(
+      { completionState: "PASS", failureOrigin: null, failureReasonSummary: "" },
+      92,
+      { poisonEvaluation: { category: "TRUE_COMPROMISE" } },
+    );
+    assert.equal(badge.label, "REJECTED");
+    assert.equal(badge.cls, "fail");
+    assert.equal(badge.criticalOverride, true);
+  });
+
+  it("maps provider NC to NOT_COMPLETE instead of model FAIL", () => {
+    const ui = loadUi();
+    const badge = ui.verdictBadge(
+      { completionState: "NC", failureOrigin: "PROVIDER", failureReasonSummary: "empty response" },
+      0,
+    );
+    assert.equal(badge.label, "NOT_COMPLETE");
+    assert.equal(badge.isInfra, true);
+    assert.equal(badge.isModelFailure, false);
   });
 });
 
@@ -335,9 +372,10 @@ describe("archive (renderRuns): scope + origin glyphs + honest empty", () => {
     // Each row must receive its origin-specific class so CSS can tint it.
     assert.match(html, /run-strip [^"]*vx-fail-model/);
     assert.match(html, /run-strip [^"]*vx-nc-provider/);
-    // Badges must be labelled with the origin, not a generic "FAIL"/"NC".
-    assert.match(html, /FAIL · MODEL/);
-    assert.match(html, /NC · PROVIDER/);
+    // Badges use presentation verdicts while origin classes preserve the
+    // model-vs-provider distinction for styling and filtering.
+    assert.match(html, />FAIL<\/div>/);
+    assert.match(html, />NOT_COMPLETE<\/div>/);
   });
 
   it("archive rows label ineligible local evidence as not ranked", () => {

@@ -502,6 +502,26 @@ describe("shapeDrilldownExportRows: drilldown export shaping", () => {
     assert.equal(rows.length, 1);
     assert.ok(rows[0]!.lane.length > 0, "lane must be non-empty");
   });
+
+  it("exports tiered verdict labels rather than absolute fail wording for mostly successful runs", () => {
+    const ui = loadUi();
+    ui.state.tabData = {
+      dashboard: {
+        runs: [{
+          bundle_id: "p1",
+          model: "glm-4",
+          provider: "zai",
+          score: 81,
+          pass: false,
+          verdict: { completionState: "FAIL", failureOrigin: "MODEL", failureReasonSummary: "3 ordinary misses" },
+        }],
+      },
+    };
+    const rows = ui.shapeDrilldownExportRows("dashboard", "glm-4");
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0]!.verdict, "PARTIAL_PASS");
+    assert.equal(rows[0]!.is_model_failure, true);
+  });
 });
 
 describe("focusModelDrilldown / clearModelDrilldown: state management", () => {
