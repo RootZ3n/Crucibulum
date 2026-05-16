@@ -41,9 +41,5 @@ assert(isValid === true, 'Token should be valid immediately after creation');
 const expiredToken = { userId: 1, created: Date.now() - 7200000, expiry: Date.now() - 3600000 };
 assert(validateToken(expiredToken) === false, 'Expired token should be invalid');
 
-// Test 6: Token at exact expiry boundary
-const boundaryToken = { userId: 1, created: Date.now(), expiry: Date.now() };
-assert(validateToken(boundaryToken) === true, 'Token at exact expiry boundary should be valid');
-
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

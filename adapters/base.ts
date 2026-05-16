@@ -628,6 +628,7 @@ export interface EvidenceBundle {
       | "TIMEOUT"
       | "EMPTY_RESPONSE"
       | "RUBRIC_MISMATCH"
+      | "PREFLIGHT_BLOCKED"
       | "UNKNOWN";
     score_basis: string[];
     reflects_model_capability: boolean;

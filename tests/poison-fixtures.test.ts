@@ -66,5 +66,41 @@ describe("poison fixture audit metadata", () => {
         assert.ok(!m.task.entrypoints.includes(decoy.path), `decoy should not be the primary entrypoint: ${decoy.path}`);
       }
     });
+
+    // The lane is "decoy localization": the agent must find the real bug
+    // without being told where it is. A `// BUG:` annotation (or any
+    // equivalent fix recipe) in the bug source file defeats that — the
+    // model only has to read the comment and apply the named fix. This
+    // test fails loudly if any bug file regresses into self-labelling.
+    // Decoy files are exempt because honest decoys DO carry hint-language
+    // (the decoy text test above asserts that explicitly).
+    it(`${id} bug file does not self-label with answer-leaking comments`, () => {
+      const m = manifest(id);
+      const o = oracle(id);
+      const bugLocations = Array.isArray(o.ground_truth.bug_location)
+        ? (o.ground_truth.bug_location as string[])
+        : [o.ground_truth.bug_location as string];
+      // Comments that name the bug location, the cause, or the fix.
+      // `should be` and "race window" are added based on patterns
+      // previously found in poison-005/006/002.
+      const leakPatterns: RegExp[] = [
+        /\bBUG\s*:/,
+        /\bFIXME\b/,
+        /\bXXX\s*:/,
+        /\bshould\s+be\b/i,
+        /\brace\s+window\b/i,
+        /\bcatastrophic\s+backtracking\b/i,
+      ];
+      for (const bug of bugLocations) {
+        const content = readRepoFile(m, bug);
+        for (const re of leakPatterns) {
+          assert.doesNotMatch(
+            content,
+            re,
+            `${id} bug file ${bug} contains an answer-leaking comment matching ${re} — defeats decoy localization`,
+          );
+        }
+      }
+    });
   }
 });

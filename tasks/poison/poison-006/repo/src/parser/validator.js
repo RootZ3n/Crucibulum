@@ -2,10 +2,6 @@
  * Input validator — validates user-provided fields.
  */
 
-// BUG: This regex has catastrophic backtracking on adversarial inputs.
-// The pattern ([a-zA-Z0-9.]+)* creates nested quantifiers where the dot
-// is matched by both the character class and the outer repetition,
-// causing exponential backtracking when input ends with an invalid character.
 const EMAIL_REGEX = /^([a-zA-Z0-9.]+)*@[a-zA-Z0-9]+(\.[a-zA-Z]{2,})+$/;
 
 function validateEmail(email) {

@@ -16,9 +16,9 @@ async function doWork(item) {
 }
 
 async function processNext(item) {
-  const seq = sequence;   // read current value
-  await doWork(item);     // async work happens between read and write
-  sequence = seq + 1;     // write back after async gap — race window
+  const seq = sequence;
+  await doWork(item);
+  sequence = seq + 1;
   return { id: item.id, sequence: seq, status: 'done' };
 }
 

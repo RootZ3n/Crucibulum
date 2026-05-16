@@ -17,7 +17,6 @@ function applyDiscount(subtotalCents, discountPercent) {
   if (discountPercent < 0 || discountPercent > 100) {
     throw new Error('Discount must be between 0 and 100');
   }
-  // BUG: Math.floor truncates — should be Math.round
   const discountCents = Math.floor(subtotalCents * discountPercent / 100);
   return { discountCents, totalCents: subtotalCents - discountCents };
 }
