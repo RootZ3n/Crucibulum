@@ -299,6 +299,39 @@
         "raw_or_summary_reason": { "type": "string" }
       }
     },
+    "personality_evaluation": {
+      "type": "object",
+      "required": ["category", "score_basis", "reflects_model_capability", "failure_is_infrastructure", "raw_or_summary_reason"],
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "STRONG_PERSONALITY",
+            "ADEQUATE_PERSONALITY",
+            "WEAK_PERSONALITY",
+            "OVERDONE_ROLEPLAY",
+            "TRUTHFUL_BUT_FLAT",
+            "STYLE_MISMATCH",
+            "EMPTY_RESPONSE",
+            "PROVIDER_FAILURE",
+            "TIMEOUT",
+            "JUDGE_FAILURE",
+            "PARSER_FAILURE",
+            "RUBRIC_MISMATCH",
+            "UNKNOWN"
+          ]
+        },
+        "score_basis": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "reflects_model_capability": { "type": "boolean" },
+        "failure_is_infrastructure": { "type": "boolean" },
+        "raw_or_summary_reason": { "type": "string" }
+      }
+    },
     "integrations": {
       "type": "object",
       "additionalProperties": false,

@@ -652,6 +652,27 @@ export interface EvidenceBundle {
     failure_is_infrastructure: boolean;
     raw_or_summary_reason: string;
   } | undefined;
+  personality_evaluation?: {
+    category:
+      | "PASS"
+      | "STRONG_PERSONALITY"
+      | "ADEQUATE_PERSONALITY"
+      | "WEAK_PERSONALITY"
+      | "OVERDONE_ROLEPLAY"
+      | "TRUTHFUL_BUT_FLAT"
+      | "STYLE_MISMATCH"
+      | "EMPTY_RESPONSE"
+      | "PROVIDER_FAILURE"
+      | "TIMEOUT"
+      | "JUDGE_FAILURE"
+      | "PARSER_FAILURE"
+      | "RUBRIC_MISMATCH"
+      | "UNKNOWN";
+    score_basis: string[];
+    reflects_model_capability: boolean;
+    failure_is_infrastructure: boolean;
+    raw_or_summary_reason: string;
+  } | undefined;
   review?: {
     authority: "advisory";
     deterministic_result_authoritative: true;
