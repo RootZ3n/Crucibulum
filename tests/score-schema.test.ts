@@ -13,7 +13,7 @@ import {
 
 describe("score schema", () => {
   it("defines a canonical spec for every public score family", () => {
-    assert.deepEqual(SCORE_FAMILIES, ["A", "B", "C", "D", "E", "F", "G", "H", "I"]);
+    assert.deepEqual(SCORE_FAMILIES, ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"]);
     for (const family of SCORE_FAMILIES) {
       assert.equal(SCORE_FAMILY_SPECS[family].id, family);
       assert.equal(typeof SCORE_FAMILY_SPECS[family].label, "string");

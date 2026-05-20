@@ -1,0 +1,79 @@
+{
+  "id": "tool-002",
+  "version": "1.0.0",
+  "family": "tool_calling",
+  "difficulty": "easy",
+  "estimated_human_minutes": 5,
+  "repo": {
+    "source": "local",
+    "path": "./tasks/tool-calling/tool-002/repo",
+    "commit": "initial",
+    "setup_script": null,
+    "reset_script": null
+  },
+  "task": {
+    "title": "File creation — create a file with exact contents",
+    "description": "Create a file at tool-trial/hello.txt with exactly this content (no trailing newline): \"tool-trial-pass\"",
+    "entrypoints": [
+      "tool-trial/"
+    ],
+    "hints_allowed": false
+  },
+  "constraints": {
+    "time_limit_sec": 120,
+    "max_steps": 10,
+    "max_file_edits": 5,
+    "max_files_read": 5,
+    "allowed_tools": [
+      "shell",
+      "read_file",
+      "write_file"
+    ],
+    "forbidden_paths": [
+      ".crucibulum/",
+      "oracles/"
+    ],
+    "network_allowed": false
+  },
+  "verification": {
+    "public_tests_command": null,
+    "build_command": null,
+    "runtime_command": null,
+    "lint_command": null
+  },
+  "scoring": {
+    "weights": {
+      "correctness": 0.8,
+      "regression": 0,
+      "integrity": 0.1,
+      "efficiency": 0.1
+    },
+    "pass_threshold": 0.7
+  },
+  "oracle_ref": {
+    "type": "local",
+    "path": "../../oracles/tool-002.oracle.json",
+    "hash": "sha256:341b93cda2dde755b2524bb7fe85ed0807663cd001a0bad2a3c14b2b6dcfe7d5"
+  },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-05-20",
+    "tags": [
+      "tool-calling",
+      "file-creation",
+      "family-J"
+    ],
+    "diagnostic_purpose": "Tests whether the agent can create a file with exact content using file-writing tools.",
+    "benchmark_provenance": {
+      "source": "Crucible tool-calling suite (migrated from Colosseum)",
+      "public_status": "public",
+      "oracle_visibility": "hidden",
+      "gold_solution_visibility": "hidden",
+      "contamination_risk": "low",
+      "known_scoring_limitations": [
+        "Trailing whitespace sensitivity may cause false negatives."
+      ]
+    }
+  },
+  "seed": 202
+}

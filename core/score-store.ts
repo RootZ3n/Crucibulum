@@ -290,7 +290,7 @@ export function getLeaderboard(families?: ScoreFamily[]): LeaderboardEntry[] {
   for (const [modelId, data] of models) {
     let weightedSum = 0;
     let weightTotal = 0;
-    const familyScores: Record<ScoreFamily, number | null> = { A: null, B: null, C: null, D: null, E: null, F: null, G: null, H: null, I: null };
+    const familyScores: Record<ScoreFamily, number | null> = { A: null, B: null, C: null, D: null, E: null, F: null, G: null, H: null, I: null, J: null, K: null };
 
     for (const family of SCORE_FAMILIES) {
       const score = data.families[family];

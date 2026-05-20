@@ -1,0 +1,39 @@
+{
+  "task_id": "tool-002",
+  "version": "1.0.0",
+  "hash": "sha256:placeholder",
+  "ground_truth": {
+    "description": "Agent must create hello.txt with exact content 'tool-trial-pass'",
+    "expected_file": "tool-trial/hello.txt",
+    "expected_content": "tool-trial-pass"
+  },
+  "checks": {
+    "correctness": [
+      {
+        "id": "file-content-check",
+        "type": "hidden_test",
+        "command": "test \"$(cat tool-trial/hello.txt 2>/dev/null | tr -d '\\n')\" = 'tool-trial-pass'",
+        "pass_condition": "exit_code == 0",
+        "weight": 1
+      }
+    ],
+    "regression": [],
+    "integrity": [
+      {
+        "id": "no-forbidden-edits",
+        "type": "forbidden_edit",
+        "paths": [
+          ".crucibulum/",
+          "oracles/"
+        ],
+        "severity": "hard_fail"
+      }
+    ],
+    "decoys": [],
+    "anti_cheat": {
+      "forbidden_code_patterns": [],
+      "forbidden_comment_patterns": [],
+      "suspicious_behaviors": []
+    }
+  }
+}

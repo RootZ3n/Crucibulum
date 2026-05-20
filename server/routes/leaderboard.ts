@@ -13,6 +13,7 @@ import { loadVerifiedBundle, verifyBundle } from "../../core/bundle.js";
 import { storeScores, queryScores } from "../../core/score-store.js";
 import { runSynthesis } from "../../core/synthesis.js";
 import { normalizeVerumIngest } from "../../core/verum.js";
+import { normalizeBundleVerdict } from "../../core/verdict.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "../../core/judge.js";
 import { summarizeRunSet } from "../contracts.js";
 import {
@@ -285,10 +286,17 @@ function buildScopedLeaderboardEntries(bundles: EvidenceBundle[]): LeaderboardEn
   for (const [identityKey, runs] of grouped) {
     const identity = leaderboardIdentity(runs[0]!);
     const summary = summarizeRunSet(runs);
-    const familyAverages: Record<ScoreFamily, number | null> = { A: null, B: null, C: null, D: null, E: null, F: null, G: null, H: null, I: null };
+    // NC bundles carry technically-valid R/I/E=1 measurements of the
+    // *unchanged* workspace and a correctness=0 from the unfixed oracle,
+    // but the model never actually ran. Excluding them from family scoring
+    // averages stops a provider-auth-error population from inflating the
+    // leaderboard composite. They are still counted in nc_rate / NC banners
+    // via summarizeRunSet so the gap is visible, not hidden.
+    const scoringRuns = runs.filter((bundle) => normalizeBundleVerdict(bundle).countsTowardModelScore);
+    const familyAverages: Record<ScoreFamily, number | null> = { A: null, B: null, C: null, D: null, E: null, F: null, G: null, H: null, I: null, J: null, K: null };
     const weighted: Array<{ family: ScoreFamily; score: number }> = [];
     for (const family of SCORE_FAMILIES) {
-      const familyRuns = runs.filter((bundle) => scoreFamilyForTaskFamily(bundle.task.family) === family);
+      const familyRuns = scoringRuns.filter((bundle) => scoreFamilyForTaskFamily(bundle.task.family) === family);
       if (familyRuns.length === 0) continue;
       const average = Math.round((familyRuns.reduce((sum, bundle) => sum + canonicalPercent(bundle.score.total), 0) / familyRuns.length) * 100) / 100;
       familyAverages[family] = average;

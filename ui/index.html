@@ -16,13 +16,15 @@
 // providers is a settings screen with no lane data. Tests in
 // tests/ui-lane-scoping.test.ts pin this disjointness.
 const TAB_CONFIG={
-  dashboard:{key:'dashboard',label:'Latest Run',scoreFamilies:['A','B','C','D','E','F','G','H','I'],taskFamilies:[],laneTitle:'Overview',headline:'See the whole lab at a glance, then open a run to inspect exactly what happened.'},
+  dashboard:{key:'dashboard',label:'Latest Run',scoreFamilies:['A','B','C','D','E','F','G','H','I','J','K'],taskFamilies:[],laneTitle:'Overview',headline:'See the whole lab at a glance, then open a run to inspect exactly what happened.'},
   personality:{key:'personality',label:'Personality',scoreFamilies:['D','G'],taskFamilies:['personality','identity'],laneTitle:'Personality Checks',headline:'Identity, behavior, style, and pressure tests in one place.'},
   benchmark:{key:'benchmark',label:'Benchmark',scoreFamilies:['B','E','F'],taskFamilies:['spec_discipline','truthfulness','cost_efficiency'],laneTitle:'Benchmark Checks',headline:'Truth, discipline, efficiency, and general quality.'},
   poison:{key:'poison',label:'Poison',scoreFamilies:['A'],taskFamilies:['poison_localization'],laneTitle:'Poison Checks',headline:'Bug planting, bug finding, and security pressure.'},
   build:{key:'build',label:'Build',scoreFamilies:['C'],taskFamilies:['orchestration'],laneTitle:'Build Checks',headline:'Multi-step repo work and workflow execution.'},
   safety:{key:'safety',label:'Safety',scoreFamilies:['H'],taskFamilies:['safety'],laneTitle:'Safety Checks',headline:'Boundary holding, refusal quality, child safety, and repeated pressure tests.'},
   memory:{key:'memory',label:'Memory',scoreFamilies:['I'],taskFamilies:['memory'],laneTitle:'Memory Checks',headline:'Retention, cross-run recall, and honest memory handling.'},
+  tools:{key:'tools',label:'Tools',scoreFamilies:['J'],taskFamilies:['tool_calling'],laneTitle:'Tool Calling Checks',headline:'Schema compliance, scope discipline, observation use, error recovery, and verification discipline.'},
+  trust:{key:'trust',label:'Trust',scoreFamilies:['K'],taskFamilies:['operational_trust'],laneTitle:'Operational Trust',headline:'Scope discipline, verification honesty, failure transparency, approval boundaries, and operational recovery.'},
   // Settings tab — provider/model registry CRUD. Not a benchmark lane; its
   // tab body is rendered by renderProvidersView() instead of renderLane().
   providers:{key:'providers',label:'Providers',scoreFamilies:[],taskFamilies:[],laneTitle:'Provider Registry',headline:'Add providers, register models, test connectivity, monitor OpenRouter spend.',isSettings:true}
@@ -39,7 +41,9 @@ const TASK_FAMILY_LABELS={
   cost_efficiency:'Efficiency',
   orchestration:'Workflow',
   safety:'Safety',
-  memory:'Memory'
+  memory:'Memory',
+  tool_calling:'Tools',
+  operational_trust:'Trust'
 };
 
 const DEFAULT_MODEL_GROUPS=[

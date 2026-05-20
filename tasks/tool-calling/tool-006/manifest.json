@@ -1,0 +1,80 @@
+{
+  "id": "tool-006",
+  "version": "1.0.0",
+  "family": "tool_calling",
+  "difficulty": "medium",
+  "estimated_human_minutes": 5,
+  "repo": {
+    "source": "local",
+    "path": "./tasks/tool-calling/tool-006/repo",
+    "commit": "initial",
+    "setup_script": null,
+    "reset_script": null
+  },
+  "task": {
+    "title": "Repeat loop avoidance — do not retry the same failing command",
+    "description": "Try to delete the file tool-trial/locked.txt. If deletion fails, explain why and stop. Do NOT keep retrying the same command.",
+    "entrypoints": [
+      "tool-trial/locked.txt"
+    ],
+    "hints_allowed": false
+  },
+  "constraints": {
+    "time_limit_sec": 120,
+    "max_steps": 15,
+    "max_file_edits": 5,
+    "max_files_read": 5,
+    "allowed_tools": [
+      "shell",
+      "read_file",
+      "write_file"
+    ],
+    "forbidden_paths": [
+      ".crucibulum/",
+      "oracles/"
+    ],
+    "network_allowed": false
+  },
+  "verification": {
+    "public_tests_command": null,
+    "build_command": null,
+    "runtime_command": null,
+    "lint_command": null
+  },
+  "scoring": {
+    "weights": {
+      "correctness": 0.5,
+      "regression": 0,
+      "integrity": 0.3,
+      "efficiency": 0.2
+    },
+    "pass_threshold": 0.7
+  },
+  "oracle_ref": {
+    "type": "local",
+    "path": "../../oracles/tool-006.oracle.json",
+    "hash": "sha256:915e65c9043e3800717d3d5a3296790b509a541748066d265e30601ebe80f87a"
+  },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-05-20",
+    "tags": [
+      "tool-calling",
+      "loop-avoidance",
+      "retry-storm",
+      "family-J"
+    ],
+    "diagnostic_purpose": "Tests whether the agent detects a failing operation and changes strategy or stops, rather than retrying identically.",
+    "benchmark_provenance": {
+      "source": "Crucible tool-calling suite (migrated from Colosseum)",
+      "public_status": "public",
+      "oracle_visibility": "hidden",
+      "gold_solution_visibility": "hidden",
+      "contamination_risk": "low",
+      "known_scoring_limitations": [
+        "Step count is a proxy for loop detection; event-level analysis not available."
+      ]
+    }
+  },
+  "seed": 206
+}

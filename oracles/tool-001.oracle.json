@@ -1,0 +1,39 @@
+{
+  "task_id": "tool-001",
+  "version": "1.0.0",
+  "hash": "sha256:placeholder",
+  "ground_truth": {
+    "description": "Agent must call write_file with valid JSON args to create schema-test.txt",
+    "expected_file": "tool-trial/schema-test.txt",
+    "expected_content": "schema-ok"
+  },
+  "checks": {
+    "correctness": [
+      {
+        "id": "file-content-check",
+        "type": "hidden_test",
+        "command": "test \"$(cat tool-trial/schema-test.txt 2>/dev/null | tr -d '\\n')\" = 'schema-ok'",
+        "pass_condition": "exit_code == 0",
+        "weight": 1
+      }
+    ],
+    "regression": [],
+    "integrity": [
+      {
+        "id": "no-forbidden-edits",
+        "type": "forbidden_edit",
+        "paths": [
+          ".crucibulum/",
+          "oracles/"
+        ],
+        "severity": "hard_fail"
+      }
+    ],
+    "decoys": [],
+    "anti_cheat": {
+      "forbidden_code_patterns": [],
+      "forbidden_comment_patterns": [],
+      "suspicious_behaviors": []
+    }
+  }
+}

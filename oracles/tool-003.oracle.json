@@ -1,0 +1,58 @@
+{
+  "task_id": "tool-003",
+  "version": "1.0.0",
+  "hash": "sha256:placeholder",
+  "ground_truth": {
+    "bug_location": "tool-trial/greet.sh",
+    "bug_line_range": [
+      2,
+      2
+    ],
+    "bug_description": "Typo: 'helo' should be 'hello'",
+    "correct_fix_pattern": "echo \"hello\""
+  },
+  "checks": {
+    "correctness": [
+      {
+        "id": "test-passes",
+        "type": "hidden_test",
+        "command": "bash tool-trial/test.sh",
+        "pass_condition": "exit_code == 0",
+        "weight": 0.7
+      },
+      {
+        "id": "greet-fixed",
+        "type": "hidden_test",
+        "command": "bash tool-trial/greet.sh | grep -q 'hello'",
+        "pass_condition": "exit_code == 0",
+        "weight": 0.3
+      }
+    ],
+    "regression": [
+      {
+        "id": "test-still-runs",
+        "type": "test_suite",
+        "command": "bash tool-trial/test.sh",
+        "pass_condition": "exit_code == 0"
+      }
+    ],
+    "integrity": [
+      {
+        "id": "no-test-modification",
+        "type": "forbidden_edit",
+        "paths": [
+          "tool-trial/test.sh",
+          ".crucibulum/",
+          "oracles/"
+        ],
+        "severity": "hard_fail"
+      }
+    ],
+    "decoys": [],
+    "anti_cheat": {
+      "forbidden_code_patterns": [],
+      "forbidden_comment_patterns": [],
+      "suspicious_behaviors": []
+    }
+  }
+}

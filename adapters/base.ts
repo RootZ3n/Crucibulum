@@ -32,7 +32,7 @@ export interface AgentVisibleManifest {
 export interface TaskManifest {
   id: string;
   version: string;
-  family: "poison_localization" | "spec_discipline" | "orchestration";
+  family: "poison_localization" | "spec_discipline" | "orchestration" | "tool_calling";
   difficulty: "easy" | "medium" | "hard";
   repo: {
     source: string;
@@ -312,7 +312,8 @@ export type ConversationalFamily =
   | "reasoning"
   | "summarization"
   | "token-efficiency"
-  | "thinking-mode";
+  | "thinking-mode"
+  | "operational-trust";
 
 export type ConversationalScoringType =
   | "text_match"

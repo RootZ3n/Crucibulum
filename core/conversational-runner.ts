@@ -91,6 +91,7 @@ export function loadConversationalManifest(taskId: string): ConversationalManife
     "identity", "truthfulness", "safety", "memory", "proactive", "personality", "adversarial_chat", "cost_efficiency",
     "classification", "code", "workflow", "instruction-obedience", "prompt-sensitivity",
     "role-stress", "context-degradation", "reasoning", "summarization", "token-efficiency", "thinking-mode",
+    "operational-trust",
   ];
   for (const family of families) {
     try {

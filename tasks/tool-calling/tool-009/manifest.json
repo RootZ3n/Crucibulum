@@ -1,0 +1,80 @@
+{
+  "id": "tool-009",
+  "version": "1.0.0",
+  "family": "tool_calling",
+  "difficulty": "easy",
+  "estimated_human_minutes": 5,
+  "repo": {
+    "source": "local",
+    "path": "./tasks/tool-calling/tool-009/repo",
+    "commit": "initial",
+    "setup_script": null,
+    "reset_script": null
+  },
+  "task": {
+    "title": "Budget discipline — complete a simple two-step task efficiently",
+    "description": "Read tool-trial/input.txt, extract the number, and write it to tool-trial/answer.txt. This is a simple two-step task. Be efficient.",
+    "entrypoints": [
+      "tool-trial/input.txt"
+    ],
+    "hints_allowed": false
+  },
+  "constraints": {
+    "time_limit_sec": 120,
+    "max_steps": 10,
+    "max_file_edits": 5,
+    "max_files_read": 5,
+    "allowed_tools": [
+      "shell",
+      "read_file",
+      "write_file"
+    ],
+    "forbidden_paths": [
+      ".crucibulum/",
+      "oracles/"
+    ],
+    "network_allowed": false
+  },
+  "verification": {
+    "public_tests_command": null,
+    "build_command": null,
+    "runtime_command": null,
+    "lint_command": null
+  },
+  "scoring": {
+    "weights": {
+      "correctness": 0.6,
+      "regression": 0,
+      "integrity": 0.1,
+      "efficiency": 0.3
+    },
+    "pass_threshold": 0.7
+  },
+  "oracle_ref": {
+    "type": "local",
+    "path": "../../oracles/tool-009.oracle.json",
+    "hash": "sha256:f7dc3dd0952d9043cb00b25f39914bcca1271d5290e68210244d8872daed6547"
+  },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-05-20",
+    "tags": [
+      "tool-calling",
+      "budget",
+      "efficiency",
+      "family-J"
+    ],
+    "diagnostic_purpose": "Tests whether the agent completes a trivial read-then-write task without wasting tool calls.",
+    "benchmark_provenance": {
+      "source": "Crucible tool-calling suite (migrated from Colosseum)",
+      "public_status": "public",
+      "oracle_visibility": "hidden",
+      "gold_solution_visibility": "hidden",
+      "contamination_risk": "low",
+      "known_scoring_limitations": [
+        "Efficiency scored by step count from execution metadata, not event-level tool call count."
+      ]
+    }
+  },
+  "seed": 209
+}

@@ -1,0 +1,47 @@
+{
+  "task_id": "tool-009",
+  "version": "1.0.0",
+  "hash": "sha256:placeholder",
+  "ground_truth": {
+    "description": "Agent must read input.txt (contains 'The answer is 42.'), extract 42, and write it to answer.txt",
+    "expected_file": "tool-trial/answer.txt",
+    "expected_content": "42"
+  },
+  "checks": {
+    "correctness": [
+      {
+        "id": "answer-check",
+        "type": "hidden_test",
+        "command": "test \"$(cat tool-trial/answer.txt 2>/dev/null | tr -d '\\n ')\" = '42'",
+        "pass_condition": "exit_code == 0",
+        "weight": 1
+      }
+    ],
+    "regression": [],
+    "integrity": [
+      {
+        "id": "input-not-modified",
+        "type": "forbidden_edit",
+        "paths": [
+          "tool-trial/input.txt"
+        ],
+        "severity": "hard_fail"
+      },
+      {
+        "id": "no-forbidden-edits",
+        "type": "forbidden_edit",
+        "paths": [
+          ".crucibulum/",
+          "oracles/"
+        ],
+        "severity": "hard_fail"
+      }
+    ],
+    "decoys": [],
+    "anti_cheat": {
+      "forbidden_code_patterns": [],
+      "forbidden_comment_patterns": [],
+      "suspicious_behaviors": []
+    }
+  }
+}

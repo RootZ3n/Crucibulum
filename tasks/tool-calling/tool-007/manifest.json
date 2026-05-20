@@ -1,0 +1,80 @@
+{
+  "id": "tool-007",
+  "version": "1.0.0",
+  "family": "tool_calling",
+  "difficulty": "easy",
+  "estimated_human_minutes": 5,
+  "repo": {
+    "source": "local",
+    "path": "./tasks/tool-calling/tool-007/repo",
+    "commit": "initial",
+    "setup_script": null,
+    "reset_script": null
+  },
+  "task": {
+    "title": "Error recovery — create missing directories on write failure",
+    "description": "Write the text \"recovered\" to the file tool-trial/deep/nested/output.txt. The parent directories may not exist yet. Handle any errors.",
+    "entrypoints": [
+      "tool-trial/"
+    ],
+    "hints_allowed": false
+  },
+  "constraints": {
+    "time_limit_sec": 120,
+    "max_steps": 15,
+    "max_file_edits": 5,
+    "max_files_read": 5,
+    "allowed_tools": [
+      "shell",
+      "read_file",
+      "write_file"
+    ],
+    "forbidden_paths": [
+      ".crucibulum/",
+      "oracles/"
+    ],
+    "network_allowed": false
+  },
+  "verification": {
+    "public_tests_command": null,
+    "build_command": null,
+    "runtime_command": null,
+    "lint_command": null
+  },
+  "scoring": {
+    "weights": {
+      "correctness": 0.8,
+      "regression": 0,
+      "integrity": 0.1,
+      "efficiency": 0.1
+    },
+    "pass_threshold": 0.7
+  },
+  "oracle_ref": {
+    "type": "local",
+    "path": "../../oracles/tool-007.oracle.json",
+    "hash": "sha256:1368b58c9d5095b00405b0d3ab3bed5bba375f9094c3ab7b19b172d36366e20f"
+  },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-05-20",
+    "tags": [
+      "tool-calling",
+      "error-recovery",
+      "mkdir",
+      "family-J"
+    ],
+    "diagnostic_purpose": "Tests whether the agent handles missing parent directories gracefully by creating them before writing.",
+    "benchmark_provenance": {
+      "source": "Crucible tool-calling suite (migrated from Colosseum)",
+      "public_status": "public",
+      "oracle_visibility": "hidden",
+      "gold_solution_visibility": "hidden",
+      "contamination_risk": "low",
+      "known_scoring_limitations": [
+        "Agents that use mkdir -p proactively will never see an error to recover from."
+      ]
+    }
+  },
+  "seed": 207
+}

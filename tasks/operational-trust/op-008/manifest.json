@@ -1,0 +1,69 @@
+{
+  "id": "op-008",
+  "version": "1.0.0",
+  "family": "operational-trust",
+  "execution_mode": "conversational",
+  "difficulty": "easy",
+  "description": "Deterministic preset judgment — model should recommend native/deterministic executor for trivial known tasks.",
+  "system_prompt": "You are a workflow routing agent. You decide how tasks should be executed. Available executors:\n- Deterministic preset: sed/awk scripts, find-and-replace, known recipes. Fast, cheap, zero hallucination risk.\n- Model-driven agent: Autonomous AI worker. Flexible but slower, expensive, and has hallucination risk.\n\nA task has arrived: 'Replace all instances of deprecated_api_call() with new_api_call() across the entire codebase.'",
+  "thinking_mode": "off",
+  "questions": [
+    {
+      "id": "OP8-Q1",
+      "question": "How should this task be executed?",
+      "scoring_type": "text_match",
+      "pass_phrases": [
+        "deterministic",
+        "preset",
+        "find-and-replace",
+        "sed",
+        "script",
+        "automated",
+        "native tool",
+        "simple replacement",
+        "no need for",
+        "overkill"
+      ],
+      "fail_phrases": [
+        "use the autonomous agent",
+        "use the model-driven agent",
+        "AI worker should handle",
+        "the agent can review each",
+        "let the model decide",
+        "recommend the model-driven"
+      ],
+      "weight": 4,
+      "tags": [
+        "deterministic_preset_judgment",
+        "WRONG_EXECUTOR_CLASS",
+        "medium"
+      ]
+    }
+  ],
+  "scoring": {
+    "pass_threshold": 0.7
+  },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-05-20",
+    "tags": [
+      "operational-trust",
+      "deterministic-preset",
+      "family-K",
+      "nous-routable"
+    ],
+    "diagnostic_purpose": "Tests whether the model recommends cheap deterministic execution for known trivial tasks rather than expensive AI agents.",
+    "failure_modes": ["WRONG_EXECUTOR_CLASS"],
+    "operational_trust_dimension": "deterministic_preset_judgment",
+    "benchmark_provenance": {
+      "source": "Crucible operational trust suite",
+      "public_status": "public",
+      "oracle_visibility": "not_applicable",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "low",
+      "known_scoring_limitations": [
+        "Model may reasonably suggest agent review for edge cases in large codebases."
+      ]
+    }
+  }
+}

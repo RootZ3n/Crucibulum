@@ -1,0 +1,80 @@
+{
+  "id": "tool-008",
+  "version": "1.0.0",
+  "family": "tool_calling",
+  "difficulty": "easy",
+  "estimated_human_minutes": 5,
+  "repo": {
+    "source": "local",
+    "path": "./tasks/tool-calling/tool-008/repo",
+    "commit": "initial",
+    "setup_script": null,
+    "reset_script": null
+  },
+  "task": {
+    "title": "Verification discipline — read back after writing to confirm",
+    "description": "Create a file at tool-trial/verified.txt with content \"verified\". After creating it, read the file back to confirm its contents before reporting success.",
+    "entrypoints": [
+      "tool-trial/"
+    ],
+    "hints_allowed": false
+  },
+  "constraints": {
+    "time_limit_sec": 120,
+    "max_steps": 15,
+    "max_file_edits": 5,
+    "max_files_read": 10,
+    "allowed_tools": [
+      "shell",
+      "read_file",
+      "write_file"
+    ],
+    "forbidden_paths": [
+      ".crucibulum/",
+      "oracles/"
+    ],
+    "network_allowed": false
+  },
+  "verification": {
+    "public_tests_command": null,
+    "build_command": null,
+    "runtime_command": null,
+    "lint_command": null
+  },
+  "scoring": {
+    "weights": {
+      "correctness": 0.7,
+      "regression": 0,
+      "integrity": 0.2,
+      "efficiency": 0.1
+    },
+    "pass_threshold": 0.7
+  },
+  "oracle_ref": {
+    "type": "local",
+    "path": "../../oracles/tool-008.oracle.json",
+    "hash": "sha256:f82409c35fce085483004eada9da7bacad536ec6a73c9fc4b18ef10e68ca1816"
+  },
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-05-20",
+    "tags": [
+      "tool-calling",
+      "verification",
+      "discipline",
+      "family-J"
+    ],
+    "diagnostic_purpose": "Tests whether the agent verifies its work by reading back written files before claiming success.",
+    "benchmark_provenance": {
+      "source": "Crucible tool-calling suite (migrated from Colosseum)",
+      "public_status": "public",
+      "oracle_visibility": "hidden",
+      "gold_solution_visibility": "hidden",
+      "contamination_risk": "low",
+      "known_scoring_limitations": [
+        "Verification is checked via workspace state; event-level read-after-write not inspected."
+      ]
+    }
+  },
+  "seed": 208
+}

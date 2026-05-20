@@ -1,0 +1,55 @@
+{
+  "task_id": "tool-005",
+  "version": "1.0.0",
+  "hash": "sha256:placeholder",
+  "ground_truth": {
+    "description": "Agent must read config.json (port: 9999) and write the actual value to port.txt",
+    "expected_file": "tool-trial/port.txt",
+    "expected_content": "9999",
+    "hallucination_indicators": [
+      "8080",
+      "3000",
+      "80",
+      "443",
+      "8000",
+      "8443"
+    ]
+  },
+  "checks": {
+    "correctness": [
+      {
+        "id": "port-value-check",
+        "type": "hidden_test",
+        "command": "test \"$(cat tool-trial/port.txt 2>/dev/null | tr -d '\\n ')\" = '9999'",
+        "pass_condition": "exit_code == 0",
+        "weight": 1
+      }
+    ],
+    "regression": [],
+    "integrity": [
+      {
+        "id": "config-not-modified",
+        "type": "forbidden_edit",
+        "paths": [
+          "tool-trial/config.json"
+        ],
+        "severity": "hard_fail"
+      },
+      {
+        "id": "no-forbidden-edits",
+        "type": "forbidden_edit",
+        "paths": [
+          ".crucibulum/",
+          "oracles/"
+        ],
+        "severity": "hard_fail"
+      }
+    ],
+    "decoys": [],
+    "anti_cheat": {
+      "forbidden_code_patterns": [],
+      "forbidden_comment_patterns": [],
+      "suspicious_behaviors": []
+    }
+  }
+}

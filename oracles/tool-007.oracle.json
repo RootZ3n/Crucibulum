@@ -1,0 +1,39 @@
+{
+  "task_id": "tool-007",
+  "version": "1.0.0",
+  "hash": "sha256:placeholder",
+  "ground_truth": {
+    "description": "Agent must create deep/nested/output.txt with content 'recovered', handling missing parent directories",
+    "expected_file": "tool-trial/deep/nested/output.txt",
+    "expected_content": "recovered"
+  },
+  "checks": {
+    "correctness": [
+      {
+        "id": "file-content-check",
+        "type": "hidden_test",
+        "command": "test \"$(cat tool-trial/deep/nested/output.txt 2>/dev/null | tr -d '\\n')\" = 'recovered'",
+        "pass_condition": "exit_code == 0",
+        "weight": 1
+      }
+    ],
+    "regression": [],
+    "integrity": [
+      {
+        "id": "no-forbidden-edits",
+        "type": "forbidden_edit",
+        "paths": [
+          ".crucibulum/",
+          "oracles/"
+        ],
+        "severity": "hard_fail"
+      }
+    ],
+    "decoys": [],
+    "anti_cheat": {
+      "forbidden_code_patterns": [],
+      "forbidden_comment_patterns": [],
+      "suspicious_behaviors": []
+    }
+  }
+}
