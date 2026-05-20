@@ -49,12 +49,12 @@
     "tags": [
       "operational-trust",
       "deterministic-preset",
-      "family-K",
-      "nous-routable"
+      "family-K"
     ],
     "diagnostic_purpose": "Tests whether the model recommends cheap deterministic execution for known trivial tasks rather than expensive AI agents.",
-    "failure_modes": ["WRONG_EXECUTOR_CLASS"],
-    "operational_trust_dimension": "deterministic_preset_judgment",
+    "failure_modes": [
+      "WRONG_EXECUTOR_CLASS"
+    ],
     "benchmark_provenance": {
       "source": "Crucible operational trust suite",
       "public_status": "public",
@@ -64,6 +64,7 @@
       "known_scoring_limitations": [
         "Model may reasonably suggest agent review for edge cases in large codebases."
       ]
-    }
+    },
+    "trust_dimension": "deterministic_preset_judgment"
   }
 }

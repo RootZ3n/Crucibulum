@@ -6,7 +6,7 @@
  * - All 12 trials have correct metadata, severity, and failure modes
  * - Golden-path pass phrases trigger PASS
  * - Known-bad responses trigger hard fails
- * - Nous export fields (failure_modes, operational_trust_dimension) present
+ * - Capability export fields (failure_modes, trust_dimension) present
  * - Category aggregation includes operational_trust
  */
 
@@ -43,7 +43,7 @@ interface Manifest {
   metadata: {
     tags: string[];
     failure_modes: string[];
-    operational_trust_dimension: string;
+    trust_dimension: string;
     benchmark_provenance: Record<string, unknown>;
   };
 }
@@ -123,7 +123,7 @@ describe("operational trust trial metadata", () => {
     }
   });
 
-  it("every trial has failure_modes from the Nous taxonomy", () => {
+  it("every trial has failure_modes from the canonical taxonomy", () => {
     const manifests = loadAllManifests();
     for (const m of manifests) {
       assert.ok(m.metadata.failure_modes, `${m.id}: missing failure_modes`);
@@ -134,18 +134,11 @@ describe("operational trust trial metadata", () => {
     }
   });
 
-  it("every trial has an operational_trust_dimension", () => {
+  it("every trial has a trust_dimension", () => {
     const manifests = loadAllManifests();
-    const dims = manifests.map((m) => m.metadata.operational_trust_dimension);
+    const dims = manifests.map((m) => m.metadata.trust_dimension);
     for (const dim of dims) {
       assert.ok(EXPECTED_DIMENSIONS.includes(dim), `unknown dimension: ${dim}`);
-    }
-  });
-
-  it("every trial has nous-routable in metadata tags", () => {
-    const manifests = loadAllManifests();
-    for (const m of manifests) {
-      assert.ok(m.metadata.tags.includes("nous-routable"), `${m.id}: missing nous-routable tag`);
     }
   });
 
@@ -186,7 +179,7 @@ describe("operational trust golden-path pass detection", () => {
 
   const manifests = loadAllManifests();
   for (const m of manifests) {
-    it(`golden pass: ${m.id} (${m.metadata.operational_trust_dimension})`, () => {
+    it(`golden pass: ${m.id} (${m.metadata.trust_dimension})`, () => {
       const response = GOLDEN_PASS_RESPONSES[m.id];
       assert.ok(response, `no golden pass response for ${m.id}`);
       assert.ok(hasPassPhrase(m, response), `golden pass response should trigger PASS for ${m.id}`);
@@ -220,7 +213,7 @@ describe("operational trust hard-fail detection", () => {
 
   const manifests = loadAllManifests();
   for (const m of manifests) {
-    it(`hard fail: ${m.id} (${m.metadata.operational_trust_dimension})`, () => {
+    it(`hard fail: ${m.id} (${m.metadata.trust_dimension})`, () => {
       const response = KNOWN_BAD_RESPONSES[m.id];
       assert.ok(response, `no known-bad response for ${m.id}`);
       assert.ok(hasFail(m, response), `known-bad response should trigger fail for ${m.id}`);
@@ -228,12 +221,12 @@ describe("operational trust hard-fail detection", () => {
   }
 });
 
-// ── Nous export fields ──────────────────────────────────────────────────
+// ── Capability export fields ─────────────────────────────────────────────
 
-describe("operational trust Nous export fields", () => {
-  it("all 12 trials expose operational_trust_dimension for Nous routing", () => {
+describe("operational trust capability export fields", () => {
+  it("all 12 trials expose trust_dimension for downstream routing", () => {
     const manifests = loadAllManifests();
-    const dims = new Set(manifests.map((m) => m.metadata.operational_trust_dimension));
+    const dims = new Set(manifests.map((m) => m.metadata.trust_dimension));
     // Must cover the core dimensions from the spec
     for (const required of [
       "scope_discipline", "verification_honesty", "failure_transparency",
@@ -245,7 +238,7 @@ describe("operational trust Nous export fields", () => {
     }
   });
 
-  it("failure_modes cover the full Nous taxonomy", () => {
+  it("failure_modes cover the full canonical taxonomy", () => {
     const manifests = loadAllManifests();
     const allModes = new Set(manifests.flatMap((m) => m.metadata.failure_modes));
     for (const required of [

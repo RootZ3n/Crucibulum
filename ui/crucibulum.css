@@ -2171,6 +2171,8 @@ body::after{
 
 /* ─── Focused inspection ────────────────────────────────────────── */
 .inspection-shell{padding:16px;display:grid;gap:14px}
+.run-honesty-banner{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--red,#f44);border-radius:6px;background:rgba(244,68,68,0.06);font:11px/1.4 var(--mono);color:var(--ink-soft)}
+.run-honesty-banner .chip{flex-shrink:0}
 .inspection-top{
   position:relative;
   display:grid;
@@ -3673,3 +3675,19 @@ tr:hover td{background:rgba(111,217,255,.05)}
 .control-grid.simple-layout{display:block}
 .control-grid.simple-layout .content-column{max-width:100%}
 @media(max-width:720px){.simple-insights{grid-template-columns:repeat(2,1fr)}}
+
+/* ── Bundle detail honesty + lane health banner (release-candidate audit) ── */
+.run-honesty-banner{padding:10px 12px;border-radius:8px;margin:0 0 12px;border:1px solid rgba(245,158,11,.32);background:linear-gradient(180deg,rgba(245,158,11,.06),rgba(245,158,11,.02));font-family:var(--mono);font-size:11px;color:var(--ink-soft);line-height:1.5}
+.run-honesty-banner.red{border-color:rgba(255,85,119,.36);background:linear-gradient(180deg,rgba(255,85,119,.07),rgba(255,85,119,.02))}
+.run-honesty-banner.dim{border-color:rgba(160,160,180,.22);background:linear-gradient(180deg,rgba(160,160,180,.05),rgba(160,160,180,.01))}
+.run-honesty-banner .rhb-head{margin-bottom:6px}
+.run-honesty-banner .rhb-body p{font-size:11px;line-height:1.55;color:var(--ink-soft)}
+.run-honesty-banner .rhb-reasons{font-size:10px;color:var(--ink-dim)}
+.run-honesty-banner .rhb-reasons li{margin:2px 0}
+
+.lane-health-chip[data-kind="all_failed"],.lane-health-chip[data-kind="all_nc"]{font-weight:600;letter-spacing:.12em}
+.lane-health-details{display:flex;flex-direction:column;gap:6px;margin:0 0 10px}
+.lane-health-row{padding:8px 12px;border-radius:6px;font-family:var(--mono);font-size:11px;color:var(--ink-soft);line-height:1.55;border:1px solid rgba(245,158,11,.22);background:linear-gradient(180deg,rgba(245,158,11,.05),rgba(245,158,11,.01))}
+.lane-health-row.red{border-color:rgba(255,85,119,.32);background:linear-gradient(180deg,rgba(255,85,119,.06),rgba(255,85,119,.01))}
+.lane-health-row.dim{border-color:rgba(160,160,180,.22);background:rgba(160,160,180,.02);color:var(--ink-dim)}
+.lane-health-row strong{color:var(--ink);font-weight:600;letter-spacing:.08em;margin-right:6px}

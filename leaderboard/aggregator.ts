@@ -131,12 +131,28 @@ export function buildLeaderboardEntry(modelKey: string, bundles: EvidenceBundle[
     }
   }
 
-  // Scores
-  const avgTotal = bundles.reduce((s, b) => s + canonicalPercent(b.score.total), 0) / bundles.length;
-  const avgCorrectness = bundles.reduce((s, b) => s + canonicalPercent(b.score.breakdown.correctness), 0) / bundles.length;
-  const avgRegression = bundles.reduce((s, b) => s + canonicalPercent(b.score.breakdown.regression), 0) / bundles.length;
-  const avgIntegrity = bundles.reduce((s, b) => s + canonicalPercent(b.score.breakdown.integrity), 0) / bundles.length;
-  const avgEfficiency = bundles.reduce((s, b) => s + canonicalPercent(b.score.breakdown.efficiency), 0) / bundles.length;
+  // Scores — NC bundles (provider/network/judge outages, model never ran)
+  // are excluded from the capability averages. They still appear in
+  // failure_taxonomy / verdict_metrics so the gap is visible. Without this
+  // filter, an all-NC population averages a misleading R/I/E-credited score
+  // (the same shape as the Safety 15% / Spec 50% audit findings).
+  const scoringBundles = bundles.filter((b) => normalizeBundleVerdict(b).countsTowardModelScore);
+  const denom = scoringBundles.length || 1;
+  const avgTotal = scoringBundles.length > 0
+    ? scoringBundles.reduce((s, b) => s + canonicalPercent(b.score.total), 0) / denom
+    : 0;
+  const avgCorrectness = scoringBundles.length > 0
+    ? scoringBundles.reduce((s, b) => s + canonicalPercent(b.score.breakdown.correctness), 0) / denom
+    : 0;
+  const avgRegression = scoringBundles.length > 0
+    ? scoringBundles.reduce((s, b) => s + canonicalPercent(b.score.breakdown.regression), 0) / denom
+    : 0;
+  const avgIntegrity = scoringBundles.length > 0
+    ? scoringBundles.reduce((s, b) => s + canonicalPercent(b.score.breakdown.integrity), 0) / denom
+    : 0;
+  const avgEfficiency = scoringBundles.length > 0
+    ? scoringBundles.reduce((s, b) => s + canonicalPercent(b.score.breakdown.efficiency), 0) / denom
+    : 0;
 
   // Performance metrics
   const durations = bundles.map(b => {

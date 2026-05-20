@@ -24,6 +24,15 @@ describe("provider benchmark chat policy", () => {
     assert.deepEqual(body.reasoning, { exclude: true, effort: "none" });
   });
 
+  it("keeps mandatory-reasoning Gemini OpenRouter models on minimal hidden reasoning", () => {
+    const body = buildOpenRouterChatBody("openrouter", "https://openrouter.ai/api/v1", "google/gemini-3.5-flash", [{ role: "user", content: "Hi" }], {
+      benchmarkMode: true,
+      suppressVisibleReasoning: true,
+      reasoningEffort: "off",
+    });
+    assert.deepEqual(body.reasoning, { exclude: true, effort: "minimal" });
+  });
+
   it("does not send OpenRouter-native reasoning payloads to generic compatible endpoints", () => {
     const body = buildOpenRouterChatBody("openrouter", "https://example.com/v1", "any-model", [{ role: "user", content: "Hi" }], {
       benchmarkMode: true,

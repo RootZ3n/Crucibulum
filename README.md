@@ -211,6 +211,44 @@ Bundles are hash-signed so the result can be verified later. The API also produc
 
 This is important because Crucible is not just trying to emit a score. It is trying to emit a score with an audit trail.
 
+## Bundle Immutability and Scoring Honesty
+
+Crucible separates "what happened on this run" from "what the current leaderboard says about a model." Both are honest, but they answer different questions, and reading one as the other is the most common way to misinterpret a Crucible result.
+
+**Signed bundles are immutable evidence.** Once a run is written to `runs/<bundle_id>.json` and hash-signed, the file is not rewritten — not when scoring rules change, not when judges are upgraded, not when bugs are fixed. The bundle records what the run produced *at the moment it produced it*. Tampering breaks the hash check; the trust layer marks tampered bundles as not ranked.
+
+**Some older bundles carry historical stored scores.** Crucible's scoring discipline tightened during the May 2026 trust audit (see `tests/safety-scoring.test.ts`, `tests/lane-scoring.test.ts`). Bundles written before that audit may show a stored `score.total` that included regression / integrity / efficiency credit even when correctness was zero. Those numbers are correct as a record of what the *pre-audit* formula produced. They are not current trust claims.
+
+**The leaderboard, UI warnings, recommendation cards, diagnostics, and exports all use the current trust rules.** Specifically:
+
+- The backend leaderboard composite excludes NC bundles (provider / network / judge / test outages) via `verdict.countsTowardModelScore`. A model that never actually ran does not get a capability score.
+- The repo-mode and conversational score formulas gate secondary credit on non-zero correctness. A run that produced no correct output cannot float to 15–60% on R/I/E defaults.
+- The UI's lane scope banner surfaces `PROVISIONAL · n=<x>`, `ALL NOT-COMPLETE`, `<x>% NC`, `ALL RUNS FAILED`, `<x>% INFRA`, and `<n> HISTORICAL` chips when the conditions are met.
+- The bundle detail panel shows a `STORED HISTORICAL SCORE` banner when a bundle predates current scoring discipline, and a `NOT COUNTED TOWARD LEADERBOARD` banner when the verdict excludes it from the composite.
+- Recommendation cards (Best Overall, Best Value, Fastest Usable) refuse to crown a model with zero composite or zero pass rate. Risky / Avoid is intentionally the opposite — it surfaces failed or invalid models so users see them.
+
+**NC, provider, judge, and test failures stay visible as evidence.** They are not deleted, they are not hidden, and they do not vanish from the run history. They are excluded from *capability averages* because they did not measure the model. They remain counted in `nc_rate`, `failed_provider`, `failed_judge`, and the failure taxonomy.
+
+**Raw `score.total` is historical stored data.** A bundle's `score.total` is what the scoring formula produced when the bundle was written. For a current-discipline interpretation, read the leaderboard endpoint or the UI — both recompute against current rules and exclude bundles that should not count. Do not treat `score.total` from a raw bundle file as the current Crucible trust claim for a model.
+
+**JSON and CSV exports carry honesty metadata.** Lane leaderboard exports (`crucible.lane.leaderboard.v2` schema) include:
+
+- `counts_in_leaderboard` — true only if the row contributed to the current composite
+- `nc_rate`, `model_failure_rate`, `completion_rate` — so you can tell "model never ran" from "model failed"
+- `reliability_score`, `confidence`, `sample_adequate`, `provisional` — sample-quality signals
+- a `note` field summarizing data quality (e.g. "zero composite — no scoring-eligible runs counted", "75% NC (provider/network/judge outages)")
+- top-level `honesty_notes` explaining what was filtered and what is provisional
+
+Drilldown exports add `counts_toward_leaderboard`, `is_pre_fix_historical`, and `exclusion_reasons` per run so a consumer can route each bundle to the right interpretation.
+
+**Read order for current trust.** If you want the current Crucible verdict for a model:
+
+1. Use the UI (lane tab) or the `/api/leaderboard?task_families=<lane>` endpoint.
+2. Use the lane diagnostic: `node scripts/lane-diagnostic.mjs <lane>` — it prints leaderboard-equivalent averages with NC excluded and flags pre-fix bundles still in scope.
+3. Use the lane export (JSON/CSV) — the `note` and `counts_in_leaderboard` columns tell you exactly what each row means.
+
+Reading raw signed bundle files directly is fine for audit (verifying what a run produced) but is not the right surface for "what does Crucible currently say about this model."
+
 ## Security and Trust Model
 
 Crucible assumes prompt injection is a system problem, not just a model problem.

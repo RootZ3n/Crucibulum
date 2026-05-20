@@ -229,10 +229,15 @@ function shapeExportRows(tabKey){
       cost_avg:entry.costAvg>0?Number(entry.costAvg.toFixed(4)):null,
       duration_avg_ms:entry.durationAvg>0?Math.round(entry.durationAvg):null,
       sample_adequate:entry.sampleAdequate===true,
+      nc_rate:safeNum(entry.ncRate||entry.nc_rate||0),
+      model_failure_rate:safeNum(entry.modelFailureRate||entry.model_failure_rate||0),
+      counts_in_leaderboard:isRecommendableEntry(entry),
+      note:!isRecommendableEntry(entry)?'zero composite or zero pass rate — excluded from recommendations':'',
       scope:scope.scopeLabel,
       scope_kind:scope.kind,
       lane:scope.tabLabel,
-      provisional:!!scope.provisional
+      provisional:!!scope.provisional,
+      schema:'crucible.lane.leaderboard.v1'
     };
   });
 }
@@ -394,7 +399,8 @@ function shapeModelDrilldown(tabKey,modelId,sortMode){
       timestamp:safeStr(r.timestamp),
       evidenceSummary:safeStr(r.verdictSummary||(r.details&&r.details[0]?.message)||''),
       hasReceipt:!!(r.bundleHash),
-      overallKnown:r.overallKnown!==false
+      overallKnown:r.overallKnown!==false,
+      _raw:r._src||r
     };
   });
   const sort=sortMode||'newest';
@@ -457,7 +463,8 @@ function shapeDrilldownExportRows(tabKey,modelId){
     category_summary:r.categorySummary||null,
     timestamp:r.timestamp||null,
     evidence_summary:r.evidenceSummary||null,
-    has_receipt:r.hasReceipt
+    has_receipt:r.hasReceipt,
+    ...((raw)=>{const em=runEligibilityMeta(raw);return{counts_toward_leaderboard:em.ranked,is_pre_fix_historical:em.isPreFixInflated||false,exclusion_reasons:(em.reasons||[]).join('; ')};})(r._raw||r)
   }));
 }
 
@@ -773,7 +780,7 @@ function focusedResultForTab(tabKey){
   return state.focusedResult[tabKey]||null;
 }
 function scopeRuns(tabKey){return tabKey==='dashboard'?allRuns():(state.tabData[tabKey]?.runs||[])}
-function scopeNormalizedRuns(tabKey){return scopeRuns(tabKey).map((run)=>normalizeRunForDisplay(run))}
+function scopeNormalizedRuns(tabKey){return scopeRuns(tabKey).map((run)=>{const n=normalizeRunForDisplay(run);n._src=run;return n;})}
 function findTaskById(taskId){return (state.tasks||[]).find((task)=>task.id===taskId)||null}
 function taskFamilyLabel(taskId,fallback){
   const task=findTaskById(taskId);
@@ -1997,17 +2004,90 @@ function runEligibilityMeta(run){
   const n=run?.n||run||{};
   const raw=run?.raw||run||{};
   const trust=n.trust||raw.trust||{};
+  const verdict=n.verdict||raw.verdict||{};
+  const score=n.score||raw.score||{};
+  const reasons=[];
+  let isPreFixInflated=false;
+  let isNotCountedTowardScore=false;
+
+  // Verdict-level exclusions (NC, not counted)
+  const cs=String(verdict.completionState||'').toUpperCase();
+  const origin=String(verdict.failureOrigin||'').toUpperCase();
+  if(verdict.countsTowardModelScore===false){
+    isNotCountedTowardScore=true;
+    reasons.push(`NOT COUNTED — ${origin||cs||'excluded by verdict'}`);
+  }
+  // Pre-fix inflation: C=0 but total score >= 10% and NC/PROVIDER
+  const correctness=typeof score.breakdown?.correctness==='number'?score.breakdown.correctness:(typeof score.correctness==='number'?score.correctness:-1);
+  const total=typeof score.total==='number'?score.total:0;
+  if(correctness===0&&total>=0.10&&(cs==='NC'||origin==='PROVIDER')){
+    isPreFixInflated=true;
+    reasons.push('PRE-FIX HISTORICAL — inflated score with zero correctness');
+  }
+
+  // Trust signature checks
   const sig=String(trust.bundle_signature_status||'legacy_unverified').toLowerCase();
   const values=[n.adapter,n.provider,n.model,raw.adapter,raw.provider,raw.model,raw.target?.adapter,raw.target?.provider,raw.target?.model]
     .map(v=>String(v||'').toLowerCase());
   const isMock=values.some(v=>v.includes('harness-mock')||v.includes('mock')||v.includes('demo'));
-  const verified=trust.bundle_verified===true&&trust.bundle_authenticated===true&&sig==='valid'&&!isMock;
-  if(verified)return{ranked:true,label:'ELIGIBLE FOR PUBLIC RANKING',cls:'teal'};
-  if(isMock)return{ranked:false,label:'MOCK/DEMO · NOT RANKED',cls:'dim'};
-  if(sig==='tampered'||sig==='forged')return{ranked:false,label:'TAMPERED · NOT RANKED',cls:'red'};
-  if(sig==='legacy_unverified')return{ranked:false,label:'LEGACY · UNVERIFIED · NOT RANKED',cls:'warn'};
-  if(sig==='unsigned_key_missing')return{ranked:false,label:'UNSIGNED · NOT RANKED',cls:'warn'};
-  return{ranked:false,label:'UNVERIFIED · NOT RANKED',cls:'warn'};
+  const verified=trust.bundle_verified===true&&(trust.bundle_authenticated===true||trust.bundle_authenticated===undefined)&&sig==='valid'&&!isMock;
+
+  const ranked=verified&&!isNotCountedTowardScore&&!isPreFixInflated;
+  let label,cls;
+  if(ranked){label='ELIGIBLE FOR PUBLIC RANKING';cls='teal';}
+  else if(isPreFixInflated){label='PRE-FIX HISTORICAL · NOT RANKED';cls='red';}
+  else if(isNotCountedTowardScore){label='NOT COUNTED · '+origin;cls='warn';}
+  else if(isMock){label='MOCK/DEMO · NOT RANKED';cls='dim';}
+  else if(sig==='tampered'||sig==='forged'){label='TAMPERED · NOT RANKED';cls='red';}
+  else if(sig==='legacy_unverified'){label='LEGACY · UNVERIFIED · NOT RANKED';cls='warn';}
+  else if(sig==='unsigned_key_missing'){label='UNSIGNED · NOT RANKED';cls='warn';}
+  else{label='UNVERIFIED · NOT RANKED';cls='warn';}
+  return{ranked,label,cls,reasons,isPreFixInflated,isNotCountedTowardScore};
+}
+
+function isRecommendableEntry(entry){
+  if(!entry)return false;
+  const overall=safeNum(entry.avgOverall||entry.composite||0);
+  if(overall<=0)return false;
+  // passRate is null when the backend didn't supply it (no data ≠ proven zero).
+  // Only reject when passRate is explicitly 0 (proven zero passes).
+  const pr=entry.passRate??entry.average_pass_rate;
+  if(pr!==null&&pr!==undefined&&safeNum(pr)<=0)return false;
+  return true;
+}
+
+function laneHealthSignals(tabKey){
+  const data=state.tabData[tabKey]||{};
+  const stats=data.stats||{};
+  const runs=data.runs||[];
+  const leaderboard=data.leaderboard||[];
+  const signals=[];
+  const totalRuns=safeNum(stats.total_runs||runs.length);
+  const passRate=safeNum(stats.pass_rate);
+  const ncRate=safeNum(stats.nc_rate);
+  // small_sample: any model under sample threshold
+  if(leaderboard.some(e=>e.sampleAdequate===false||e.sample_adequate===false)){
+    signals.push({kind:'small_sample',severity:'warn',label:'SMALL SAMPLE',detail:'One or more models have fewer runs than the minimum sample threshold.'});
+  }
+  // all_nc: every run is NC (provider/network outage)
+  if(totalRuns>0&&ncRate>=100){
+    signals.push({kind:'all_nc',severity:'critical',label:'ALL NC',detail:'Every run in this lane ended in a provider or network outage. No model behavior was observed.'});
+  }
+  // all_failed: runs exist but pass rate is 0 (not due to NC)
+  if(totalRuns>0&&passRate===0&&ncRate<100){
+    signals.push({kind:'all_failed',severity:'critical',label:'ALL FAILED',detail:'Every scorable run in this lane failed. No model passed any task.'});
+  }
+  // stale_historical: any run with pre-fix inflation shape
+  const hasStale=runs.some(r=>{
+    const v=r.verdict||{};const s=r.score||{};
+    const c=typeof s.breakdown?.correctness==='number'?s.breakdown.correctness:-1;
+    const t=typeof s.total==='number'?s.total:0;
+    return c===0&&t>=0.10&&(String(v.completionState).toUpperCase()==='NC'||String(v.failureOrigin).toUpperCase()==='PROVIDER');
+  });
+  if(hasStale){
+    signals.push({kind:'stale_historical',severity:'warn',label:'STALE HISTORICAL',detail:'Lane contains pre-fix runs with inflated scores (zero correctness but non-zero total).'});
+  }
+  return signals;
 }
 
 async function hydrateFocusedRun(tabKey,runId){
@@ -2708,7 +2788,7 @@ function aggregateModelInsights(tabKey){
     return backend.map((entry)=>{
       const avgOverall=scorePct(entry.composite);
       const runs=Number(entry.totalRuns||0);
-      const passRate=Math.round(Number(entry.average_pass_rate||0)*100);
+      const passRate=entry.average_pass_rate!=null?Math.round(Number(entry.average_pass_rate)*100):null;
       const model=entry.model||entry.modelId||'unknown-model';
       return{
         model,
@@ -2716,7 +2796,7 @@ function aggregateModelInsights(tabKey){
         adapter:entry.adapter||'',
         runs,
         total:avgOverall*runs,
-        passes:Math.round((passRate/100)*runs),
+        passes:passRate!=null?Math.round((passRate/100)*runs):0,
         failures:Math.round(Number(entry.model_failure_rate||0)*runs),
         duration:0,
         cost:0,
@@ -2741,7 +2821,7 @@ function aggregateModelInsights(tabKey){
           speed:0,
         },
       };
-    }).sort((a,b)=>b.avgOverall-a.avgOverall||b.passRate-a.passRate||b.runs-a.runs);
+    }).sort((a,b)=>b.avgOverall-a.avgOverall||(b.passRate||0)-(a.passRate||0)||b.runs-a.runs);
   }
   const grouped=new Map();
   for(const run of scopeNormalizedRuns(tabKey)){
@@ -2828,9 +2908,14 @@ function weakestDimension(entry){
 }
 function reviewSummary(tabKey){
   const rollups=aggregateModelInsights(tabKey);
-  const best=rollups[0]||null;
-  const fastest=rollups.slice().filter((entry)=>entry.durationAvg>0).sort((a,b)=>a.durationAvg-b.durationAvg)[0]||best;
-  const value=rollups.slice().sort((a,b)=>b.valueScore-a.valueScore||b.avgOverall-a.avgOverall)[0]||best;
+  const eligible=rollups.filter(e=>isRecommendableEntry(e));
+  const best=eligible[0]||null;
+  const noBestReason=best?'':rollups.length===0?'No models have been evaluated yet.':'No model has any passing runs with a non-zero score.';
+  const timedEligible=eligible.filter(e=>e.durationAvg>0);
+  const fastest=timedEligible.sort((a,b)=>a.durationAvg-b.durationAvg)[0]||null;
+  const noFastestReason=fastest?'':eligible.length===0?'No usable model found.':'No usable model has timing data.';
+  const value=eligible.slice().sort((a,b)=>b.valueScore-a.valueScore||b.avgOverall-a.avgOverall)[0]||null;
+  const noValueReason=value?'':eligible.length===0?'No model has a non-zero score and passing runs.':'No usable model has cost data.';
   const unstable=rollups.slice().sort((a,b)=>b.range-a.range||a.passRate-b.passRate)[0]||best;
   const watch=rollups.slice().reverse()[0]||best;
   return{
@@ -2840,6 +2925,9 @@ function reviewSummary(tabKey){
     value,
     unstable,
     watch,
+    noBestReason,
+    noFastestReason,
+    noValueReason,
     winners:topDimensionWinners(tabKey)
   };
 }
@@ -2847,9 +2935,9 @@ function renderOverviewCards(tabKey){
   const summary=reviewSummary(tabKey);
   const laneLabel=TAB_CONFIG[tabKey]?.label||'Lane';
   const cards=[
-    {label:'BEST OVERALL',title:summary.best?.model||`No ${laneLabel} winner yet`,value:summary.best?`${summary.best.avgOverall}% trust score`:'Awaiting runs',accent:'teal',meta:summary.best?`${summary.best.runs} runs · ${summary.best.passRate}% accuracy in ${laneLabel}`:`Run ${laneLabel} to establish a baseline.`},
-    {label:'BEST VALUE',title:summary.value?.model||'No value read',value:summary.value?`${summary.value.avgOverall}% at ${fmtMoney(summary.value.costAvg)} per test`:'Need cost data',accent:'orange',meta:summary.value?`Best accuracy-per-dollar in ${laneLabel}.`:'No completed cost-bearing runs yet.'},
-    {label:'FASTEST USABLE',title:summary.fastest?.model||'No timing yet',value:summary.fastest&&summary.fastest.durationAvg>0?fmtMs(summary.fastest.durationAvg):'Pending timing',accent:'cyan',meta:summary.fastest?`${summary.fastest.avgOverall}% trust score in ${laneLabel}`:'No completed timed runs yet.'},
+    {label:'BEST OVERALL',title:summary.best?.model||`No ${laneLabel} winner yet`,value:summary.best?`${summary.best.avgOverall}% trust score`:'Awaiting runs',accent:'teal',meta:summary.best?`${summary.best.runs} runs · ${summary.best.passRate}% accuracy in ${laneLabel}`:(summary.noBestReason||`Run ${laneLabel} to establish a baseline.`)},
+    {label:'BEST VALUE',title:summary.value?.model||'No value read',value:summary.value?`${summary.value.avgOverall}% at ${fmtMoney(summary.value.costAvg)} per test`:'Need cost data',accent:'orange',meta:summary.value?`Best accuracy-per-dollar in ${laneLabel}.`:(summary.noValueReason||'No completed cost-bearing runs yet.')},
+    {label:'FASTEST USABLE',title:summary.fastest?.model||'No timing yet',value:summary.fastest&&summary.fastest.durationAvg>0?fmtMs(summary.fastest.durationAvg):'Pending timing',accent:'cyan',meta:summary.fastest?`${summary.fastest.avgOverall}% trust score in ${laneLabel}`:(summary.noFastestReason||'No completed timed runs yet.')},
     {label:'RISKY / AVOID',title:summary.watch?.model||'No watch item',value:(()=>{const weak=weakestDimension(summary.watch);return weak?`${weak.label} ${weak.score}%`:'Need more category data'})(),accent:'red',meta:summary.watch?`${summary.watch.avgOverall}% trust score · ${summary.watch.passRate}% accuracy`:`No ${laneLabel.toLowerCase()} weak spot detected yet.`}
   ];
   return`<section class="panel" style="padding:14px">
@@ -3336,7 +3424,9 @@ function renderFocusedRun(tabKey){
     {label:'THRESH',value:`${result.passThreshold||0}%`,cls:'dim'}
   ];
 
+  const honestyBanner=(!eligibility.ranked&&(eligibility.isNotCountedTowardScore||eligibility.isPreFixInflated))?`<div class="run-honesty-banner"><span class="chip red hot">${eligibility.isPreFixInflated?'PRE-FIX HISTORICAL':'NOT COUNTED'}</span><span>${esc(eligibility.reasons.join(' · '))}</span></div>`:'';
   return`<section class="panel inspection-shell">
+    ${honestyBanner}
     <div class="inspection-top">
       <div class="model-callout">
         <div class="eyebrow">FOCUSED RUN</div>

@@ -187,8 +187,15 @@ export function summarizeRunSet(bundles: EvidenceBundle[]): RunSetSummary {
     const ended = new Date(bundle.environment.timestamp_end).getTime();
     return sum + Math.max(0, Math.round((ended - started) / 1000));
   }, 0);
-  const avgScore = runCount > 0
-    ? round4(canonicalPercent(sorted.reduce((sum, bundle) => sum + bundle.score.total, 0) / runCount))
+  // avg_score reflects model capability, so NC runs (provider/network/judge
+  // outages where the model never actually ran) are excluded. They carry a
+  // technically-valid R/I/E=1 set from judging the unchanged workspace and
+  // a correctness=0, which used to float to a 50% composite under the
+  // pre-fix bundle scoring. They remain counted in `not_complete` /
+  // `nc_rate` so the gap is visible in the UI rather than hidden.
+  const scoringBundles = sorted.filter((_, i) => verdicts[i]!.countsTowardModelScore);
+  const avgScore = scoringBundles.length > 0
+    ? round4(canonicalPercent(scoringBundles.reduce((sum, bundle) => sum + bundle.score.total, 0) / scoringBundles.length))
     : 0;
   const disagreementCount = sorted.filter((bundle) => bundle.review?.secondOpinion?.disagreement || bundle.review?.qcReview?.disagreement).length;
   const qcDisagreementCount = sorted.filter((bundle) => bundle.review?.qcReview?.disagreement).length;

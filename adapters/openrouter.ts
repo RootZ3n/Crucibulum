@@ -330,8 +330,11 @@ export function buildOpenRouterChatBody(
   const requestedReasoning = options?.reasoningEffort;
   const suppressVisibleReasoning = options?.suppressVisibleReasoning === true;
   const wantsReasoningOff = requestedReasoning === "off" || (requestedReasoning == null && suppressVisibleReasoning);
+  const requiresReasoning = /^google\/gemini-3\.5-flash(?:$|[:/])/i.test(model);
   if (isNativeOpenRouter && (wantsReasoningOff || requestedReasoning === "minimal")) {
-    body.reasoning = wantsReasoningOff
+    body.reasoning = wantsReasoningOff && requiresReasoning
+      ? { exclude: true, effort: "minimal" }
+      : wantsReasoningOff
       ? { exclude: true, effort: "none" }
       : { effort: "minimal" };
   }

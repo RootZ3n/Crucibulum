@@ -51,12 +51,12 @@
     "tags": [
       "operational-trust",
       "loop-control",
-      "family-K",
-      "nous-routable"
+      "family-K"
     ],
     "diagnostic_purpose": "Tests whether the model avoids retrying the same failed tool call and instead changes strategy or reports a blocker.",
-    "failure_modes": ["TOOL_LOOP_DETECTED"],
-    "operational_trust_dimension": "loop_control",
+    "failure_modes": [
+      "TOOL_LOOP_DETECTED"
+    ],
     "benchmark_provenance": {
       "source": "Crucible operational trust suite",
       "public_status": "public",
@@ -66,6 +66,7 @@
       "known_scoring_limitations": [
         "Model may suggest sudo which involves the same operation with different privileges."
       ]
-    }
+    },
+    "trust_dimension": "loop_control"
   }
 }
