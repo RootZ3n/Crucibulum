@@ -28,6 +28,7 @@ import * as suite from "./routes/suite.js";
 import * as leaderboard from "./routes/leaderboard.js";
 import * as registry from "./routes/registry.js";
 import { handleRunBatch } from "./routes/batch.js";
+import * as capExport from "./routes/export.js";
 
 const DEFAULT_PORT = parseInt(envValue("CRUCIBLE_PORT", "CRUCIBULUM_PORT") ?? "18795", 10);
 const DEFAULT_HOST = envValue("CRUCIBLE_HOST", "CRUCIBULUM_HOST") ?? "127.0.0.1";
@@ -171,6 +172,13 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Cr
     if ((path === "/api/scores/leaderboard" || path === "/api/leaderboard" || path === "/leaderboard") && method === "GET") return void await leaderboard.handleLeaderboard(req, res, url);
     if (path === "/api/synthesis" && method === "POST") return void await leaderboard.handleSynthesis(req, res);
     if (path === "/api/run-batch" && method === "POST") return void await handleRunBatch(req, res);
+
+    // ── Capability export ────────────────────────────────────────────────
+    if (path === "/api/export/capability-summary" && method === "GET") return void await capExport.handleCapabilitySummary(req, res);
+    if (path.startsWith("/api/export/model-eligibility/") && method === "GET") {
+      const modelId = decodeURIComponent(path.slice("/api/export/model-eligibility/".length));
+      return void await capExport.handleModelEligibility(req, res, modelId);
+    }
 
     sendJSON(res, 404, { error: "Not found" });
   } catch (err) {
