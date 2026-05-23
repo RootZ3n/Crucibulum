@@ -1,4 +1,5 @@
 import type { StructuredProviderError, ProviderErrorKind, ProviderErrorOrigin } from "../types/provider-error.js";
+import { parseRetryAfter } from "./retry-after.js";
 
 interface ProviderErrorContext {
   provider?: string | null;
@@ -17,6 +18,9 @@ interface ProviderFailureErrorOptions extends ProviderErrorContext {
   rawMessage: string;
   rawCode?: string | null;
   cause?: string | null;
+  /** Optional pre-parsed Retry-After value (seconds). When omitted, the
+   * makeHttpProviderError factory parses the header for us. */
+  retryAfterSec?: number | null;
 }
 
 export class ProviderFailureError extends Error {
@@ -38,6 +42,7 @@ export class ProviderFailureError extends Error {
       attempt: options.attempt ?? null,
       durationMs: options.durationMs ?? null,
       requestId: options.requestId ?? null,
+      retryAfterSec: options.retryAfterSec ?? null,
     };
   }
 }
@@ -85,6 +90,11 @@ export function makeHttpProviderError(
 ): ProviderFailureError {
   const classification = classifyHttpKind(response.status);
   const rawMessage = fallbackMessage ?? `${context.provider ?? "Provider"} returned HTTP ${response.status}: ${rawBody.slice(0, 400)}`;
+  // Parse Retry-After when the response carries one. The header is most
+  // common on 429 + 503 but providers occasionally emit it elsewhere; we
+  // forward whatever they send so the cooldown layer can honour it.
+  const retryAfterHeader = response.headers.get("retry-after");
+  const retryAfterSec = retryAfterHeader != null ? parseRetryAfter(retryAfterHeader) : null;
   return new ProviderFailureError({
     ...context,
     kind: classification.kind,
@@ -93,6 +103,7 @@ export function makeHttpProviderError(
     retryable: classification.retryable,
     rawMessage,
     requestId: context.requestId ?? pullRequestId(response.headers),
+    retryAfterSec,
   });
 }
 

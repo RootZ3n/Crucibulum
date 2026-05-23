@@ -2386,6 +2386,88 @@ async function resetAdapterCircuits(modelIds){
     fetchJSON(`/api/adapters/${encodeURIComponent(a)}/reset-circuit`,{method:'POST'}).catch(()=>null)
   ));
 }
+
+// ─── Provider rate-limit cooldown ─────────────────────────────────────────
+//
+// When a provider rate-limits us, we don't want to keep hammering. The
+// cooldown manager tracks per-provider/model rate-limit history during a
+// batch and exposes:
+//   - shouldRetry(outcome): does this outcome warrant a bounded retry?
+//   - retryDelayMs(key, outcome): how long to wait before the retry?
+//   - noteHit(key, outcome) / noteRecovery(key): bookkeeping
+//
+// The state is intentionally batch-local — a fresh batch resets it via
+// `createCooldownState`. Across batches an operator's behaviour change
+// (different model, different time of day) is a clean slate.
+
+const RATE_LIMIT_RETRY_ENABLED=true;
+const RATE_LIMIT_MAX_RETRIES=1;
+const RATE_LIMIT_BACKOFF_MIN_MS=10_000;
+const RATE_LIMIT_BACKOFF_MAX_MS=120_000;
+const RATE_LIMIT_BACKOFF_FACTOR=2.5;
+
+function createCooldownState(){return{byKey:new Map(),totalCooldownMs:0,totalHits:0,totalRetries:0,totalRecoveries:0}}
+
+function cooldownKey(taskId,modelId){
+  const routing=deriveRoutingForModel(modelId);
+  // Provider+model is granular enough that a rate limit on
+  // openrouter/deepseek-v4-pro doesn't pause openrouter/grok-4.3.
+  return `${routing.adapterId||'unknown'}/${routing.providerId||'unknown'}/${modelId}`;
+}
+
+function isRateLimitOutcome(outcome){
+  if(!outcome)return false;
+  if(outcome.executed)return false;
+  // Server's structured payload — UI's runSingle / watchRunCompletion stash it.
+  const pe=outcome.providerError||outcome.provider_error;
+  if(pe){
+    if(pe.kind==='RATE_LIMIT')return true;
+    if(pe.statusCode===429)return true;
+  }
+  // Defensive: text classifier might call it "rate_limited" via classifyError.
+  if(outcome.category==='rate_limited')return true;
+  // Last-ditch: reason string contains "rate limit" / "429". Avoids false
+  // positives by requiring the actual signal token, not a fragment.
+  const r=String(outcome.reason||'').toLowerCase();
+  if(/\b(rate[ _-]?limit(ed|ing)?|too[ _-]many[ _-]requests)\b/.test(r))return true;
+  if(/\b429\b/.test(r))return true;
+  return false;
+}
+
+function retryAfterFromOutcome(outcome){
+  const pe=outcome&&(outcome.providerError||outcome.provider_error);
+  if(pe&&typeof pe.retryAfterSec==='number'&&pe.retryAfterSec>=0)return pe.retryAfterSec;
+  if(pe&&pe.retryAfterSec===null)return null;
+  return null;
+}
+
+function computeCooldownMs(consecutiveCount,retryAfterSec){
+  const safe=Math.max(1,Math.floor(consecutiveCount));
+  if(typeof retryAfterSec==='number'&&Number.isFinite(retryAfterSec)&&retryAfterSec>=0){
+    return Math.max(RATE_LIMIT_BACKOFF_MIN_MS,Math.min(RATE_LIMIT_BACKOFF_MAX_MS,Math.ceil(retryAfterSec*1000)));
+  }
+  const base=RATE_LIMIT_BACKOFF_MIN_MS*Math.pow(RATE_LIMIT_BACKOFF_FACTOR,safe-1);
+  const capped=Math.min(RATE_LIMIT_BACKOFF_MAX_MS,base);
+  const jitter=(Math.random()*2-1)*capped*0.2;
+  return Math.max(RATE_LIMIT_BACKOFF_MIN_MS,Math.min(RATE_LIMIT_BACKOFF_MAX_MS,Math.round(capped+jitter)));
+}
+
+async function cooldownSleep(tabKey,ms,reason){
+  // Abort-aware sleep. Polls the batchAbort flag every 250 ms so the
+  // operator's stop button (if any) wakes the wait without dropping the
+  // entire run loop.
+  const start=Date.now();
+  const deadline=start+Math.max(0,ms|0);
+  while(Date.now()<deadline){
+    if(state.runState[tabKey]&&state.runState[tabKey].batchAbort){
+      pushRunEvent(tabKey,'info',`Cooldown skipped — batch aborted by operator after ${(Date.now()-start)/1000|0}s`);
+      return false;
+    }
+    const remaining=deadline-Date.now();
+    await new Promise((r)=>setTimeout(r,Math.min(250,remaining)));
+  }
+  return true;
+}
 async function runBatch(tabKey,taskIds,modelIds,label){
   if(!taskIds.length){
     state.runState[tabKey]={status:'error',runId:null,lines:['No tasks selected.'],result:null,warn:'Select one or more tests above, then try again.',batchPlanned:0,batchAttempted:0,batchExecuted:0,batchFailed:0,batchPassed:0};
@@ -2427,13 +2509,19 @@ async function runBatch(tabKey,taskIds,modelIds,label){
     events:[]
   };
   pushRunEvent(tabKey,'start',`Batch armed · ${planned} run${planned===1?'':'s'} planned`);
+  // Batch-local cooldown + abort state. batchAbort defaults false; future
+  // stop buttons can flip it. cooldown.byKey tracks consecutive RATE_LIMIT
+  // hits per provider+model so backoff escalates.
+  state.runState[tabKey].batchAbort=false;
+  state.runState[tabKey].cooldown=createCooldownState();
   render();
   await resetAdapterCircuits(modelIds);
   let attempted=0,executed=0,failed=0,couldNotStart=0,skippedByPreflight=0,passed=0;
-  for(const taskId of taskIds){
+  outer: for(const taskId of taskIds){
     state.tabData[tabKey]={...(state.tabData[tabKey]||defaultTabState()),selectedTask:taskId};
     render();
     for(const modelId of modelIds){
+      if(state.runState[tabKey].batchAbort){pushRunEvent(tabKey,'info','Batch aborted by operator — remaining tests skipped');break outer}
       state.runState[tabKey].lines.push(`Running ${humanizeToken(taskId)} on ${modelId}… (${attempted+1}/${planned} planned)`);
       state.runState[tabKey].status='running';
       state.runState[tabKey].currentTaskId=taskId;
@@ -2444,13 +2532,46 @@ async function runBatch(tabKey,taskIds,modelIds,label){
       render();
       attempted+=1;
       state.runState[tabKey].batchAttempted=attempted;
+
+      // ── Run the test, then (if rate-limited) cool down and retry once ──
+      const key=cooldownKey(taskId,modelId);
+      let attempt=0;
       let outcome;
-      try{
-        outcome=await runSingle(tabKey,taskId,modelId);
-      }catch(err){
-        outcome={status:'could_not_start',executed:false,pass:false,reason:String(err)};
-        state.runState[tabKey].lines.push(`[${humanizeToken(taskId)} :: ${modelId}] DID NOT RUN — ${String(err).slice(0,200)}`);
+      while(true){
+        try{
+          outcome=await runSingle(tabKey,taskId,modelId);
+        }catch(err){
+          outcome={status:'could_not_start',executed:false,pass:false,reason:String(err)};
+          state.runState[tabKey].lines.push(`[${humanizeToken(taskId)} :: ${modelId}] DID NOT RUN — ${String(err).slice(0,200)}`);
+        }
+        if(!RATE_LIMIT_RETRY_ENABLED||attempt>=RATE_LIMIT_MAX_RETRIES||!isRateLimitOutcome(outcome))break;
+        const cs=state.runState[tabKey].cooldown;
+        const prev=cs.byKey.get(key)||{consecutive:0,lastHitAt:0};
+        const consecutive=prev.consecutive+1;
+        const retryAfterSec=retryAfterFromOutcome(outcome);
+        const waitMs=computeCooldownMs(consecutive,retryAfterSec);
+        cs.byKey.set(key,{consecutive,lastHitAt:Date.now()});
+        cs.totalHits+=1;
+        cs.totalCooldownMs+=waitMs;
+        const hint=typeof retryAfterSec==='number'?` (provider Retry-After: ${retryAfterSec}s)`:' (no Retry-After hint)';
+        pushRunEvent(tabKey,'info',`Provider cooling down after rate limit${hint} — waiting ~${Math.round(waitMs/1000)}s before retry ${attempt+1}/${RATE_LIMIT_MAX_RETRIES} of ${humanizeToken(taskId)} · ${modelId}`);
+        setRunPhase(tabKey,'preparing');
+        render();
+        const completed=await cooldownSleep(tabKey,waitMs,'rate_limit_backoff');
+        if(!completed){
+          // Operator aborted — leave the failure as-is and break out.
+          break;
+        }
+        cs.totalRetries+=1;
+        pushRunEvent(tabKey,'info',`Retry attempt ${attempt+1}/${RATE_LIMIT_MAX_RETRIES} for ${humanizeToken(taskId)} · ${modelId}`);
+        attempt++;
       }
+      // If the final outcome succeeded after a previous rate-limit, mark the
+      // cooldown lane as recovered (drops the consecutive counter so the
+      // *next* hit starts fresh).
+      const cs2=state.runState[tabKey].cooldown;
+      if(outcome.executed&&cs2.byKey.has(key)){cs2.byKey.delete(key);cs2.totalRecoveries+=1}
+
       if(outcome.executed){
         executed+=1;
         if(outcome.pass)passed+=1;
@@ -2476,6 +2597,10 @@ async function runBatch(tabKey,taskIds,modelIds,label){
   if(failed>0)summaryParts.push(`${failed} failed after start`);
   if(couldNotStart>0)summaryParts.push(`${couldNotStart} couldn't start`);
   if(skippedByPreflight>0)summaryParts.push(`${skippedByPreflight} skipped by preflight`);
+  const cs=state.runState[tabKey].cooldown;
+  if(cs&&cs.totalHits>0){
+    summaryParts.push(`${cs.totalHits} provider rate limit${cs.totalHits===1?'':'s'} · ${cs.totalRetries} retr${cs.totalRetries===1?'y':'ies'} attempted · ${cs.totalRecoveries} recovered · ${(cs.totalCooldownMs/1000)|0}s cooldown total`);
+  }
   const summary=`${summaryParts.join(' — ')}.`;
   state.runState[tabKey].lines.push(summary);
   pushRunEvent(tabKey,'done',summary);

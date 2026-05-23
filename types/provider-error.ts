@@ -33,4 +33,12 @@ export interface StructuredProviderError {
   attempt: number | null;
   durationMs: number | null;
   requestId: string | null;
+  /**
+   * Seconds the operator (or automation) should wait before re-trying this
+   * provider+model. Populated from the upstream `Retry-After` header when
+   * present (parsed as either seconds or HTTP-date). `null` when the
+   * provider didn't tell us — callers fall back to exponential backoff.
+   * Always clamped to non-negative; absent on non-rate-limit errors.
+   */
+  retryAfterSec?: number | null | undefined;
 }
