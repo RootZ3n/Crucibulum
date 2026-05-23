@@ -1,0 +1,1052 @@
+{
+  "generatedAt": "2026-05-23T23:27:36.565Z",
+  "inventory": {
+    "families": {
+      "classification": {
+        "tasks": [
+          {
+            "id": "classification-001",
+            "mode": "conversational",
+            "family": "identity",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 1,
+        "repo": 0
+      },
+      "code": {
+        "tasks": [
+          {
+            "id": "code-001",
+            "mode": "conversational",
+            "family": "truthfulness",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 1,
+        "repo": 0
+      },
+      "context-degradation": {
+        "tasks": [
+          {
+            "id": "context-degradation-001",
+            "mode": "conversational",
+            "family": "truthfulness",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 1,
+        "repo": 0
+      },
+      "identity": {
+        "tasks": [
+          {
+            "id": "identity-squidley-001",
+            "mode": "conversational",
+            "family": "identity",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 1,
+        "repo": 0
+      },
+      "instruction-obedience": {
+        "tasks": [
+          {
+            "id": "instruction-obedience-001",
+            "mode": "conversational",
+            "family": "personality",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 1,
+        "repo": 0
+      },
+      "memory": {
+        "tasks": [
+          {
+            "id": "memory-001",
+            "mode": "conversational",
+            "family": "memory",
+            "hasManifest": true
+          },
+          {
+            "id": "memory-002",
+            "mode": "conversational",
+            "family": "memory",
+            "hasManifest": true
+          },
+          {
+            "id": "memory-003",
+            "mode": "conversational",
+            "family": "memory",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 3,
+        "repo": 0
+      },
+      "operational-trust": {
+        "tasks": [
+          {
+            "id": "op-001",
+            "mode": "conversational",
+            "family": "operational_trust",
+            "hasManifest": true
+          },
+          {
+            "id": "op-002",
+            "mode": "conversational",
+            "family": "operational_trust",
+            "hasManifest": true
+          },
+          {
+            "id": "op-003",
+            "mode": "conversational",
+            "family": "operational_trust",
+            "hasManifest": true
+          },
+          {
+            "id": "op-004",
+            "mode": "conversational",
+            "family": "operational_trust",
+            "hasManifest": true
+          },
+          {
+            "id": "op-005",
+            "mode": "conversational",
+            "family": "operational_trust",
+            "hasManifest": true
+          },
+          {
+            "id": "op-006",
+            "mode": "conversational",
+            "family": "operational_trust",
+            "hasManifest": true
+          },
+          {
+            "id": "op-007",
+            "mode": "conversational",
+            "family": "operational_trust",
+            "hasManifest": true
+          },
+          {
+            "id": "op-008",
+            "mode": "conversational",
+            "family": "operational_trust",
+            "hasManifest": true
+          },
+          {
+            "id": "op-009",
+            "mode": "conversational",
+            "family": "operational_trust",
+            "hasManifest": true
+          },
+          {
+            "id": "op-010",
+            "mode": "conversational",
+            "family": "operational_trust",
+            "hasManifest": true
+          },
+          {
+            "id": "op-011",
+            "mode": "conversational",
+            "family": "operational_trust",
+            "hasManifest": true
+          },
+          {
+            "id": "op-012",
+            "mode": "conversational",
+            "family": "operational_trust",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 12,
+        "repo": 0
+      },
+      "orchestration": {
+        "tasks": [
+          {
+            "id": "coord-001",
+            "mode": "repo",
+            "family": "orchestration",
+            "hasManifest": true
+          },
+          {
+            "id": "coord-002",
+            "mode": "repo",
+            "family": "orchestration",
+            "hasManifest": true
+          },
+          {
+            "id": "coord-003",
+            "mode": "repo",
+            "family": "orchestration",
+            "hasManifest": true
+          },
+          {
+            "id": "coord-004",
+            "mode": "repo",
+            "family": "orchestration",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 0,
+        "repo": 4
+      },
+      "personality": {
+        "tasks": [
+          {
+            "id": "personality-001",
+            "mode": "conversational",
+            "family": "personality",
+            "hasManifest": true
+          },
+          {
+            "id": "personality-002",
+            "mode": "conversational",
+            "family": "personality",
+            "hasManifest": true
+          },
+          {
+            "id": "personality-003",
+            "mode": "conversational",
+            "family": "personality",
+            "hasManifest": true
+          },
+          {
+            "id": "personality-004",
+            "mode": "conversational",
+            "family": "personality",
+            "hasManifest": true
+          },
+          {
+            "id": "personality-005",
+            "mode": "conversational",
+            "family": "personality",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 5,
+        "repo": 0
+      },
+      "poison": {
+        "tasks": [
+          {
+            "id": "poison-001",
+            "mode": "repo",
+            "family": "poison_localization",
+            "hasManifest": true
+          },
+          {
+            "id": "poison-002",
+            "mode": "repo",
+            "family": "poison_localization",
+            "hasManifest": true
+          },
+          {
+            "id": "poison-003",
+            "mode": "repo",
+            "family": "poison_localization",
+            "hasManifest": true
+          },
+          {
+            "id": "poison-004",
+            "mode": "repo",
+            "family": "poison_localization",
+            "hasManifest": true
+          },
+          {
+            "id": "poison-005",
+            "mode": "repo",
+            "family": "poison_localization",
+            "hasManifest": true
+          },
+          {
+            "id": "poison-006",
+            "mode": "repo",
+            "family": "poison_localization",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 0,
+        "repo": 6
+      },
+      "prompt-sensitivity": {
+        "tasks": [
+          {
+            "id": "prompt-sensitivity-001",
+            "mode": "conversational",
+            "family": "personality",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 1,
+        "repo": 0
+      },
+      "reasoning": {
+        "tasks": [
+          {
+            "id": "reasoning-001",
+            "mode": "conversational",
+            "family": "truthfulness",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 1,
+        "repo": 0
+      },
+      "role-stress": {
+        "tasks": [
+          {
+            "id": "role-stress-001",
+            "mode": "conversational",
+            "family": "personality",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 1,
+        "repo": 0
+      },
+      "safety": {
+        "tasks": [
+          {
+            "id": "safety-001",
+            "mode": "conversational",
+            "family": "safety",
+            "hasManifest": true
+          },
+          {
+            "id": "safety-002",
+            "mode": "conversational",
+            "family": "safety",
+            "hasManifest": true
+          },
+          {
+            "id": "safety-003",
+            "mode": "conversational",
+            "family": "safety",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 3,
+        "repo": 0
+      },
+      "spec": {
+        "tasks": [
+          {
+            "id": "spec-001",
+            "mode": "repo",
+            "family": "spec_discipline",
+            "hasManifest": true
+          },
+          {
+            "id": "spec-002",
+            "mode": "repo",
+            "family": "spec_discipline",
+            "hasManifest": true
+          },
+          {
+            "id": "spec-003",
+            "mode": "repo",
+            "family": "spec_discipline",
+            "hasManifest": true
+          },
+          {
+            "id": "spec-004",
+            "mode": "repo",
+            "family": "spec_discipline",
+            "hasManifest": true
+          },
+          {
+            "id": "spec-005",
+            "mode": "repo",
+            "family": "spec_discipline",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 0,
+        "repo": 5
+      },
+      "summarization": {
+        "tasks": [
+          {
+            "id": "summarization-001",
+            "mode": "conversational",
+            "family": "truthfulness",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 1,
+        "repo": 0
+      },
+      "thinking-mode": {
+        "tasks": [
+          {
+            "id": "thinking-mode-001",
+            "mode": "conversational",
+            "family": "cost_efficiency",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 1,
+        "repo": 0
+      },
+      "token-efficiency": {
+        "tasks": [
+          {
+            "id": "token-efficiency-001",
+            "mode": "conversational",
+            "family": "cost_efficiency",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 1,
+        "repo": 0
+      },
+      "tool-calling": {
+        "tasks": [
+          {
+            "id": "tool-001",
+            "mode": "repo",
+            "family": "tool_calling",
+            "hasManifest": true
+          },
+          {
+            "id": "tool-002",
+            "mode": "repo",
+            "family": "tool_calling",
+            "hasManifest": true
+          },
+          {
+            "id": "tool-003",
+            "mode": "repo",
+            "family": "tool_calling",
+            "hasManifest": true
+          },
+          {
+            "id": "tool-004",
+            "mode": "repo",
+            "family": "tool_calling",
+            "hasManifest": true
+          },
+          {
+            "id": "tool-005",
+            "mode": "repo",
+            "family": "tool_calling",
+            "hasManifest": true
+          },
+          {
+            "id": "tool-006",
+            "mode": "repo",
+            "family": "tool_calling",
+            "hasManifest": true
+          },
+          {
+            "id": "tool-007",
+            "mode": "repo",
+            "family": "tool_calling",
+            "hasManifest": true
+          },
+          {
+            "id": "tool-008",
+            "mode": "repo",
+            "family": "tool_calling",
+            "hasManifest": true
+          },
+          {
+            "id": "tool-009",
+            "mode": "repo",
+            "family": "tool_calling",
+            "hasManifest": true
+          },
+          {
+            "id": "tool-010",
+            "mode": "repo",
+            "family": "tool_calling",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 0,
+        "repo": 10
+      },
+      "truthfulness": {
+        "tasks": [
+          {
+            "id": "truthfulness-001",
+            "mode": "conversational",
+            "family": "truthfulness",
+            "hasManifest": true
+          },
+          {
+            "id": "truthfulness-002",
+            "mode": "conversational",
+            "family": "truthfulness",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 2,
+        "repo": 0
+      },
+      "workflow": {
+        "tasks": [
+          {
+            "id": "workflow-001",
+            "mode": "conversational",
+            "family": "truthfulness",
+            "hasManifest": true
+          }
+        ],
+        "conversational": 1,
+        "repo": 0
+      }
+    },
+    "totalTasks": 62,
+    "totalConversational": 37,
+    "totalRepo": 25,
+    "adapters": [
+      "ollama",
+      "anthropic",
+      "openai",
+      "openrouter",
+      "openclaw",
+      "claudecode",
+      "squidley",
+      "grimoire-cc",
+      "grimoire-codex",
+      "minimax",
+      "zai",
+      "google"
+    ]
+  },
+  "report": {
+    "scenarios": [
+      {
+        "scenario": "success",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "expect": {
+          "terminal": "complete",
+          "bundleOnDisk": true,
+          "hydratable": true,
+          "structuredReason": false
+        },
+        "observed": {
+          "runId": "run_mpizax49_a4124190",
+          "terminal": "complete",
+          "classification": null,
+          "stage": null,
+          "providerErrorKind": null,
+          "reasonText": "",
+          "bundleHydrated": true,
+          "bundleRunId": "run_mpizax49_a4124190",
+          "statusEndpoint": "complete"
+        }
+      },
+      {
+        "scenario": "rate-limit-with-Retry-After",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "expect": {
+          "terminal": "error",
+          "classification": "could_not_start",
+          "stage": "health_check",
+          "providerErrorKind": "RATE_LIMIT",
+          "bundleOnDisk": true,
+          "hydratable": true,
+          "structuredReason": true
+        },
+        "observed": {
+          "runId": "run_mpizax4p_7ea5d3a0",
+          "terminal": "error",
+          "classification": "could_not_start",
+          "stage": "health_check",
+          "providerErrorKind": "RATE_LIMIT",
+          "reasonText": "Rate limited (429) — rate limited",
+          "bundleHydrated": true,
+          "bundleRunId": "run_mpizax4p_7ea5d3a0",
+          "statusEndpoint": "error"
+        }
+      },
+      {
+        "scenario": "rate-limit-without-Retry-After",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "expect": {
+          "terminal": "error",
+          "classification": "could_not_start",
+          "stage": "health_check",
+          "providerErrorKind": "RATE_LIMIT",
+          "bundleOnDisk": true,
+          "hydratable": true,
+          "structuredReason": true
+        },
+        "observed": {
+          "runId": "run_mpizax4u_f68046b2",
+          "terminal": "error",
+          "classification": "could_not_start",
+          "stage": "health_check",
+          "providerErrorKind": "RATE_LIMIT",
+          "reasonText": "Rate limited (429) — rate limited",
+          "bundleHydrated": true,
+          "bundleRunId": "run_mpizax4u_f68046b2",
+          "statusEndpoint": "error"
+        }
+      },
+      {
+        "scenario": "provider-unavailable",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "expect": {
+          "terminal": "error",
+          "classification": "could_not_start",
+          "stage": "health_check",
+          "providerErrorKind": "UNAVAILABLE",
+          "bundleOnDisk": true,
+          "hydratable": true,
+          "structuredReason": true
+        },
+        "observed": {
+          "runId": "run_mpizax4x_f80946a9",
+          "terminal": "error",
+          "classification": "could_not_start",
+          "stage": "health_check",
+          "providerErrorKind": "UNAVAILABLE",
+          "reasonText": "Provider unavailable (503) — service unavailable",
+          "bundleHydrated": true,
+          "bundleRunId": "run_mpizax4x_f80946a9",
+          "statusEndpoint": "error"
+        }
+      },
+      {
+        "scenario": "provider-timeout",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "expect": {
+          "terminal": "error",
+          "classification": "could_not_start",
+          "stage": "health_check",
+          "providerErrorKind": "TIMEOUT",
+          "bundleOnDisk": true,
+          "hydratable": true,
+          "structuredReason": true
+        },
+        "observed": {
+          "runId": "run_mpizax51_834a30e1",
+          "terminal": "error",
+          "classification": "could_not_start",
+          "stage": "health_check",
+          "providerErrorKind": "TIMEOUT",
+          "reasonText": "Provider request timed out — request timed out",
+          "bundleHydrated": true,
+          "bundleRunId": "run_mpizax51_834a30e1",
+          "statusEndpoint": "error"
+        }
+      },
+      {
+        "scenario": "adapter-init-failure (preflight 400)",
+        "classification": "PASS",
+        "reason": "preflight rejected with structured 400",
+        "expect": {
+          "terminal": "preflight-400",
+          "classification": null,
+          "stage": null,
+          "providerErrorKind": null,
+          "bundleOnDisk": false,
+          "hydratable": false,
+          "structuredReason": false
+        },
+        "observed": {
+          "httpStatus": 400,
+          "body": {
+            "error": "Adapter gauntlet unavailable: Error: synthesised adapter init failure"
+          },
+          "reasonText": "Adapter gauntlet unavailable: Error: synthesised adapter init failure"
+        }
+      },
+      {
+        "scenario": "malformed-response",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "expect": {
+          "terminal": "complete",
+          "bundleOnDisk": true,
+          "hydratable": true,
+          "structuredReason": false
+        },
+        "observed": {
+          "runId": "run_mpizax55_4307daff",
+          "terminal": "complete",
+          "classification": null,
+          "stage": null,
+          "providerErrorKind": null,
+          "reasonText": "",
+          "bundleHydrated": true,
+          "bundleRunId": "run_mpizax55_4307daff",
+          "statusEndpoint": "complete"
+        }
+      },
+      {
+        "scenario": "chat-mid-run-failure",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "expect": {
+          "terminal": "complete",
+          "bundleOnDisk": true,
+          "hydratable": true,
+          "structuredReason": false
+        },
+        "observed": {
+          "runId": "run_mpizax59_7c96c46d",
+          "terminal": "complete",
+          "classification": null,
+          "stage": null,
+          "providerErrorKind": null,
+          "reasonText": "",
+          "bundleHydrated": true,
+          "bundleRunId": "run_mpizax59_7c96c46d",
+          "statusEndpoint": "complete"
+        }
+      },
+      {
+        "scenario": "slow-multi-question",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "expect": {
+          "terminal": "complete",
+          "bundleOnDisk": true,
+          "hydratable": true,
+          "structuredReason": false
+        },
+        "observed": {
+          "runId": "run_mpizax5d_d8ad37e6",
+          "terminal": "complete",
+          "classification": null,
+          "stage": null,
+          "providerErrorKind": null,
+          "reasonText": "",
+          "bundleHydrated": true,
+          "bundleRunId": "run_mpizax5d_d8ad37e6",
+          "statusEndpoint": "complete"
+        }
+      }
+    ],
+    "dispatch": [
+      {
+        "family": "classification",
+        "task": "classification-001",
+        "classification": "PASS",
+        "runId": "run_mpizaxjg_cb1d6141",
+        "bundleId": "run_2026-05-23_classification-001_gauntlet-model_eb93af48"
+      },
+      {
+        "family": "code",
+        "task": "code-001",
+        "classification": "PASS",
+        "runId": "run_mpizaxjl_a2f245ce",
+        "bundleId": "run_2026-05-23_code-001_gauntlet-model_f345c419"
+      },
+      {
+        "family": "context-degradation",
+        "task": "context-degradation-001",
+        "classification": "PASS",
+        "runId": "run_mpizaxjp_f73d258a",
+        "bundleId": "run_2026-05-23_context-degradation-001_gauntlet-model_eb8e56bc"
+      },
+      {
+        "family": "identity",
+        "task": "identity-squidley-001",
+        "classification": "PASS",
+        "runId": "run_mpizaxju_12f8c46f",
+        "bundleId": "run_2026-05-23_identity-squidley-001_gauntlet-model_88fa1177"
+      },
+      {
+        "family": "instruction-obedience",
+        "task": "instruction-obedience-001",
+        "classification": "PASS",
+        "runId": "run_mpizaxjy_c7b4df28",
+        "bundleId": "run_2026-05-23_instruction-obedience-001_gauntlet-model_f77db962"
+      },
+      {
+        "family": "memory",
+        "task": "memory-001",
+        "classification": "PASS",
+        "runId": "run_mpizaxk3_76ebf8ab",
+        "bundleId": "run_2026-05-23_memory-001_gauntlet-model_3b2380d2"
+      },
+      {
+        "family": "memory",
+        "task": "memory-002",
+        "classification": "PASS",
+        "runId": "run_mpizaxk9_0b039c1f",
+        "bundleId": "run_2026-05-23_memory-002_gauntlet-model_b9f58d0d"
+      },
+      {
+        "family": "memory",
+        "task": "memory-003",
+        "classification": "PASS",
+        "runId": "run_mpizaxke_19536bca",
+        "bundleId": "run_2026-05-23_memory-003_gauntlet-model_b59a6dff"
+      },
+      {
+        "family": "operational-trust",
+        "task": "op-001",
+        "classification": "PASS",
+        "runId": "run_mpizaxkk_297f3c70",
+        "bundleId": "run_2026-05-23_op-001_gauntlet-model_fd8bb29f"
+      },
+      {
+        "family": "operational-trust",
+        "task": "op-002",
+        "classification": "PASS",
+        "runId": "run_mpizaxkp_bd4b4eb7",
+        "bundleId": "run_2026-05-23_op-002_gauntlet-model_8b459dcc"
+      },
+      {
+        "family": "operational-trust",
+        "task": "op-003",
+        "classification": "PASS",
+        "runId": "run_mpizaxku_3376edf3",
+        "bundleId": "run_2026-05-23_op-003_gauntlet-model_d4fbd33e"
+      },
+      {
+        "family": "operational-trust",
+        "task": "op-004",
+        "classification": "PASS",
+        "runId": "run_mpizaxkz_ee598ac7",
+        "bundleId": "run_2026-05-23_op-004_gauntlet-model_99a8df51"
+      },
+      {
+        "family": "operational-trust",
+        "task": "op-005",
+        "classification": "PASS",
+        "runId": "run_mpizaxl5_2ebf1218",
+        "bundleId": "run_2026-05-23_op-005_gauntlet-model_ab727be3"
+      },
+      {
+        "family": "operational-trust",
+        "task": "op-006",
+        "classification": "PASS",
+        "runId": "run_mpizaxla_94ac5054",
+        "bundleId": "run_2026-05-23_op-006_gauntlet-model_ff168e7a"
+      },
+      {
+        "family": "operational-trust",
+        "task": "op-007",
+        "classification": "PASS",
+        "runId": "run_mpizaxlf_2a6caf7b",
+        "bundleId": "run_2026-05-23_op-007_gauntlet-model_7336f870"
+      },
+      {
+        "family": "operational-trust",
+        "task": "op-008",
+        "classification": "PASS",
+        "runId": "run_mpizaxll_3d74cb3f",
+        "bundleId": "run_2026-05-23_op-008_gauntlet-model_08a38494"
+      },
+      {
+        "family": "operational-trust",
+        "task": "op-009",
+        "classification": "PASS",
+        "runId": "run_mpizaxlr_39f638ef",
+        "bundleId": "run_2026-05-23_op-009_gauntlet-model_5465422c"
+      },
+      {
+        "family": "operational-trust",
+        "task": "op-010",
+        "classification": "PASS",
+        "runId": "run_mpizaxlw_23ae3ebf",
+        "bundleId": "run_2026-05-23_op-010_gauntlet-model_43bdc3ba"
+      },
+      {
+        "family": "operational-trust",
+        "task": "op-011",
+        "classification": "PASS",
+        "runId": "run_mpizaxm2_34aebc62",
+        "bundleId": "run_2026-05-23_op-011_gauntlet-model_69a32bf8"
+      },
+      {
+        "family": "operational-trust",
+        "task": "op-012",
+        "classification": "PASS",
+        "runId": "run_mpizaxm8_ac166aa2",
+        "bundleId": "run_2026-05-23_op-012_gauntlet-model_fe561113"
+      },
+      {
+        "family": "personality",
+        "task": "personality-001",
+        "classification": "PASS",
+        "runId": "run_mpizaxmf_9e48dbff",
+        "bundleId": "run_2026-05-23_personality-001_gauntlet-model_c299cd4d"
+      },
+      {
+        "family": "personality",
+        "task": "personality-002",
+        "classification": "PASS",
+        "runId": "run_mpizaxml_0d2db487",
+        "bundleId": "run_2026-05-23_personality-002_gauntlet-model_34027436"
+      },
+      {
+        "family": "personality",
+        "task": "personality-003",
+        "classification": "PASS",
+        "runId": "run_mpizaxmr_f441019a",
+        "bundleId": "run_2026-05-23_personality-003_gauntlet-model_d3569f2f"
+      },
+      {
+        "family": "personality",
+        "task": "personality-004",
+        "classification": "PASS",
+        "runId": "run_mpizaxmy_3a880dc3",
+        "bundleId": "run_2026-05-23_personality-004_gauntlet-model_a775af09"
+      },
+      {
+        "family": "personality",
+        "task": "personality-005",
+        "classification": "PASS",
+        "runId": "run_mpizaxn4_d4a0ee8a",
+        "bundleId": "run_2026-05-23_personality-005_gauntlet-model_8bcc5da7"
+      },
+      {
+        "family": "prompt-sensitivity",
+        "task": "prompt-sensitivity-001",
+        "classification": "PASS",
+        "runId": "run_mpizaxnb_2ce411f7",
+        "bundleId": "run_2026-05-23_prompt-sensitivity-001_gauntlet-model_bf91cb3a"
+      },
+      {
+        "family": "reasoning",
+        "task": "reasoning-001",
+        "classification": "PASS",
+        "runId": "run_mpizaxnh_6117bef2",
+        "bundleId": "run_2026-05-23_reasoning-001_gauntlet-model_e8b595ae"
+      },
+      {
+        "family": "role-stress",
+        "task": "role-stress-001",
+        "classification": "PASS",
+        "runId": "run_mpizaxnp_6473f5cb",
+        "bundleId": "run_2026-05-23_role-stress-001_gauntlet-model_71d5b2c9"
+      },
+      {
+        "family": "safety",
+        "task": "safety-001",
+        "classification": "PASS",
+        "runId": "run_mpizaxnw_9c5fb752",
+        "bundleId": "run_2026-05-23_safety-001_gauntlet-model_d0a3b6c4"
+      },
+      {
+        "family": "safety",
+        "task": "safety-002",
+        "classification": "PASS",
+        "runId": "run_mpizaxo4_71505b91",
+        "bundleId": "run_2026-05-23_safety-002_gauntlet-model_4c2d911d"
+      },
+      {
+        "family": "safety",
+        "task": "safety-003",
+        "classification": "PASS",
+        "runId": "run_mpizaxob_a1439352",
+        "bundleId": "run_2026-05-23_safety-003_gauntlet-model_d88b73a7"
+      },
+      {
+        "family": "summarization",
+        "task": "summarization-001",
+        "classification": "PASS",
+        "runId": "run_mpizaxoj_0b3a30d7",
+        "bundleId": "run_2026-05-23_summarization-001_gauntlet-model_25a2459d"
+      },
+      {
+        "family": "thinking-mode",
+        "task": "thinking-mode-001",
+        "classification": "PASS",
+        "runId": "run_mpizaxor_4cc46b42",
+        "bundleId": "run_2026-05-23_thinking-mode-001_gauntlet-model_47c6b5c3"
+      },
+      {
+        "family": "token-efficiency",
+        "task": "token-efficiency-001",
+        "classification": "PASS",
+        "runId": "run_mpizaxoy_789b9c27",
+        "bundleId": "run_2026-05-23_token-efficiency-001_gauntlet-model_9ac8c6e4"
+      },
+      {
+        "family": "truthfulness",
+        "task": "truthfulness-001",
+        "classification": "PASS",
+        "runId": "run_mpizaxp6_63cea6c1",
+        "bundleId": "run_2026-05-23_truthfulness-001_gauntlet-model_603956af"
+      },
+      {
+        "family": "truthfulness",
+        "task": "truthfulness-002",
+        "classification": "PASS",
+        "runId": "run_mpizaxpe_2e119796",
+        "bundleId": "run_2026-05-23_truthfulness-002_gauntlet-model_19433cd8"
+      },
+      {
+        "family": "workflow",
+        "task": "workflow-001",
+        "classification": "PASS",
+        "runId": "run_mpizaxpn_591ec619",
+        "bundleId": "run_2026-05-23_workflow-001_gauntlet-model_57b8444f"
+      }
+    ],
+    "gc": [
+      {
+        "probe": "activeRuns evict → /status + /api/runs/<runId>",
+        "classification": "PASS",
+        "observed": {
+          "statusHttp": 200,
+          "statusBody": "complete",
+          "bundleHttp": 200,
+          "bundleRunId": "run_mpizaxpv_c63eb6a5",
+          "postRunId": "run_mpizaxpv_c63eb6a5",
+          "bundleFileOnDiskBeforeDelete": true,
+          "fileCount": 46
+        }
+      }
+    ],
+    "identity": [
+      {
+        "probe": "20 concurrent POSTs at frozen Date.now → unique run_ids",
+        "classification": "PASS",
+        "observed": {
+          "unique": 20,
+          "total": 20
+        }
+      }
+    ],
+    "retention": [
+      {
+        "probe": "retention dry-run scans runs dir, classifies entries",
+        "classification": "PASS",
+        "observed": {
+          "totalFiles": 132,
+          "totalBytes": 550131,
+          "eligible": 0,
+          "dryRun": true
+        }
+      }
+    ],
+    "classificationAudit": {
+      "catchAllOccurrences": 0,
+      "unreachableOccurrences": 0,
+      "emptyReasonOnError": 0
+    },
+    "runsDir": "/mnt/ai/tmp/claude/rgaunt-runs-UnldaZ"
+  },
+  "decision": {
+    "ready": true,
+    "blockers": [],
+    "tally": {
+      "PASS": 49,
+      "FAIL_PRODUCT": 0,
+      "FAIL_PROVIDER": 0,
+      "FAIL_CONFIG": 0,
+      "SKIPPED_EXPLAINED": 0,
+      "BLOCKED": 0
+    }
+  },
+  "mode": "mock-only"
+}

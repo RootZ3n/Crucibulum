@@ -1,0 +1,53 @@
+# Crucible Release Gauntlet
+_Generated: 2026-05-23T23:27:36.565Z_
+
+**Release-ready:** **YES** ✅
+
+
+**Counts:** PASS: 49
+
+## Inventory
+
+- Task families: 21
+- Tasks total: 62 (conversational: 37, repo: 25)
+- Registered adapters: 12 (ollama, anthropic, openai, openrouter, openclaw, claudecode, squidley, grimoire-cc, grimoire-codex, minimax, zai, google)
+
+## Scenario matrix (mock-only)
+
+| Scenario | Result | Carrier task | Notes |
+|---|---|---|---|
+| `success` | ✅ PASS | (carrier) | all contracts satisfied |
+| `rate-limit-with-Retry-After` | ✅ PASS | (carrier) | all contracts satisfied |
+| `rate-limit-without-Retry-After` | ✅ PASS | (carrier) | all contracts satisfied |
+| `provider-unavailable` | ✅ PASS | (carrier) | all contracts satisfied |
+| `provider-timeout` | ✅ PASS | (carrier) | all contracts satisfied |
+| `adapter-init-failure (preflight 400)` | ✅ PASS | (carrier) | preflight rejected with structured 400 |
+| `malformed-response` | ✅ PASS | (carrier) | all contracts satisfied |
+| `chat-mid-run-failure` | ✅ PASS | (carrier) | all contracts satisfied |
+| `slow-multi-question` | ✅ PASS | (carrier) | all contracts satisfied |
+
+## Conversational-task dispatch sweep
+
+37 tasks dispatched. Failures:
+
+_(none)_
+
+Pass count: 37/37
+
+## activeRuns GC fallback
+
+- ✅ PASS `activeRuns evict → /status + /api/runs/<runId>` — {"statusHttp":200,"statusBody":"complete","bundleHttp":200,"bundleRunId":"run_mpizaxpv_c63eb6a5","postRunId":"run_mpizaxpv_c63eb6a5","bundleFileOnDiskBeforeDelete":true,"fileCount":46}
+
+## Identity (run_id uniqueness)
+
+- ✅ PASS `20 concurrent POSTs at frozen Date.now → unique run_ids` — {"unique":20,"total":20}
+
+## Retention
+
+- ✅ PASS `retention dry-run scans runs dir, classifies entries` — {"totalFiles":132,"totalBytes":550131,"eligible":0,"dryRun":true}
+
+## Classification audit
+
+- "Run stream interrupted" leaks: 0
+- "Run state unreachable" leaks: 0
+- Empty reason on error frames: 0

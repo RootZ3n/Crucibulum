@@ -17,6 +17,10 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { generateBundleId, pickUniquePath } from "./identity.js";
+// Note: loadManifestRaw imported below for enriching pre-execution failure
+// bundles. It's a top-level import (not deferred) because this file ships as
+// ESM and `require()` is unavailable.
+import { loadManifestRaw } from "./manifest.js";
 import { platform, arch } from "node:os";
 import type { TaskManifest, Oracle, ExecutionResult, EvidenceBundle, DiffEntry } from "../adapters/base.js";
 import type { JudgeResult } from "./judge.js";
@@ -410,9 +414,6 @@ export function buildPreExecutionFailureBundle(input: PreExecutionFailureInput):
   let difficulty: "easy" | "medium" | "hard" = "easy";
   let manifest_hash = "";
   try {
-    // Late import to avoid a circular dependency through manifest.ts.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { loadManifestRaw } = require("./manifest.js") as { loadManifestRaw: (id: string) => any };
     const raw = loadManifestRaw(input.taskId);
     if (raw && typeof raw === "object") {
       if (typeof raw.family === "string") family = raw.family;

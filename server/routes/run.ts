@@ -706,6 +706,7 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
             endTime: new Date().toISOString(),
           });
           storeBundle(failureBundle);
+          log("info", "api", `pre-execution failure receipt stored for ${runId} (bundle_id=${failureBundle.bundle_id} stage=${stage})`);
           if (active && active.id === runId) active.bundle = failureBundle;
         } catch (bundleErr) {
           // Receipt-write failure is non-fatal — the SSE error already

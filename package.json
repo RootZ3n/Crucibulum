@@ -59,7 +59,9 @@
     "harness": "node dist/cli/main.js harness",
     "qa": "node dist/cli/main.js qa",
     "retention:dry-run": "node scripts/retention.mjs --dry-run",
-    "retention:clean": "node scripts/retention.mjs --confirm"
+    "retention:clean": "node scripts/retention.mjs --confirm",
+    "gauntlet:inventory": "node scripts/release-gauntlet.mjs --dry-run-inventory",
+    "gauntlet:mock": "node scripts/release-gauntlet.mjs --mock-only --all-families --write-report"
   },
   "keywords": [
     "ai",
