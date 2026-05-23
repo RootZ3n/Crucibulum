@@ -24,6 +24,7 @@ import { enforce, RATE_READ, RATE_RUN, RATE_INGEST } from "./rate-limit.js";
 
 import * as health from "./routes/health.js";
 import * as run from "./routes/run.js";
+import * as storage from "./routes/storage.js";
 import * as suite from "./routes/suite.js";
 import * as leaderboard from "./routes/leaderboard.js";
 import * as registry from "./routes/registry.js";
@@ -146,6 +147,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Cr
     if (path.startsWith("/api/run/") && path.endsWith("/status") && method === "GET") return void await run.handleRunStatus(req, res, path);
     if (path === "/api/run" && method === "POST") return void await run.handleRunPost(req, res);
     if (path.startsWith("/api/run/") && path.endsWith("/live") && method === "GET") return void await run.handleRunLive(req, res, path);
+
+    // ── Storage / retention surface ─────────────────────────────────────
+    if (path === "/api/storage/status" && method === "GET") return void await storage.handleStorageStatus(req, res);
+    if (path === "/api/storage/cleanup" && method === "POST") return void await storage.handleStorageCleanup(req, res);
 
     if (path === "/api/run-suite" && method === "POST") return void await suite.handleRunSuitePost(req, res);
     if (path.startsWith("/api/run-suite/") && path.endsWith("/status") && method === "GET") return void await suite.handleRunSuiteStatus(req, res, path);

@@ -237,7 +237,17 @@ export async function handleRunGet(req: IncomingMessage, res: ServerResponse, pa
   const id = path.replace("/api/runs/", "");
   const bundle = getBundleById(id) ?? getBundleByRunId(id);
   if (!bundle) {
-    sendJSON(res, 404, { error: "Run not found" });
+    // 404 the lookup — but distinguish "never existed" from "evidence was
+    // removed by retention". The active-run map records every run id the
+    // server has handed out (within the retention window for in-memory
+    // entries). If the id appears there but no bundle is on disk, the
+    // operator should see "evidence removed by retention" instead of a
+    // generic miss — which previously got UI-collapsed into "Run stream
+    // interrupted".
+    const known = activeRuns.has(id);
+    sendJSON(res, 404, known
+      ? { error: "Evidence removed by retention", reason: "The bundle for this run is no longer on disk. Check retention settings or re-run.", run_id: id }
+      : { error: "Run not found" });
     return;
   }
   const bundles = loadBundles();
