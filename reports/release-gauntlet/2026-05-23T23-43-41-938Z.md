@@ -1,5 +1,5 @@
 # Crucible Release Gauntlet
-_Generated: 2026-05-23T23:27:36.565Z_
+_Generated: 2026-05-23T23:43:41.939Z_
 
 **Release-ready:** **YES** ✅
 
@@ -36,7 +36,7 @@ Pass count: 37/37
 
 ## activeRuns GC fallback
 
-- ✅ PASS `activeRuns evict → /status + /api/runs/<runId>` — {"statusHttp":200,"statusBody":"complete","bundleHttp":200,"bundleRunId":"run_mpizaxpv_c63eb6a5","postRunId":"run_mpizaxpv_c63eb6a5","bundleFileOnDiskBeforeDelete":true,"fileCount":46}
+- ✅ PASS `activeRuns evict → /status + /api/runs/<runId>` — {"statusHttp":200,"statusBody":"complete","bundleHttp":200,"bundleRunId":"run_mpizvmlo_b750bca7","postRunId":"run_mpizvmlo_b750bca7","bundleFileOnDiskBeforeDelete":true,"fileCount":46}
 
 ## Identity (run_id uniqueness)
 

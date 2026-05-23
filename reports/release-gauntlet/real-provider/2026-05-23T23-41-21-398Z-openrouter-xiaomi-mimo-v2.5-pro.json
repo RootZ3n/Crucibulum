@@ -1,0 +1,77 @@
+{
+  "generatedAt": "2026-05-23T23:41:21.398Z",
+  "real": {
+    "mode": "real-provider",
+    "provider": "openrouter",
+    "model": "xiaomi/mimo-v2.5-pro",
+    "family": "personality",
+    "maxCostUsd": 1,
+    "results": [
+      {
+        "task": "personality-001",
+        "kind": "easy",
+        "runId": "run_mpizruxq_e53914b8",
+        "bundleId": "run_2026-05-23_personality-001_xiaomi-mimo-v2.5-pro_ebe230b3",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "terminal": "complete",
+        "observed": {
+          "statusClassification": null,
+          "statusStage": null,
+          "bundleHydrated": true
+        }
+      },
+      {
+        "task": "personality-002",
+        "kind": "longer",
+        "runId": "run_mpizrw35_22cc115e",
+        "bundleId": "run_2026-05-23_personality-002_xiaomi-mimo-v2.5-pro_d212a1c9",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "terminal": "complete",
+        "observed": {
+          "statusClassification": null,
+          "statusStage": null,
+          "bundleHydrated": true
+        }
+      },
+      {
+        "task": "role-stress-001",
+        "kind": "multi-question",
+        "runId": "run_mpizs525_f8d5a498",
+        "bundleId": "run_2026-05-23_role-stress-001_xiaomi-mimo-v2.5-pro_1b8e6a96",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "terminal": "complete",
+        "observed": {
+          "statusClassification": null,
+          "statusStage": null,
+          "bundleHydrated": true
+        }
+      },
+      {
+        "task": "personality-001",
+        "kind": "repeat-easy",
+        "runId": "run_mpizsic0_898173b6",
+        "bundleId": "run_2026-05-23_personality-001_xiaomi-mimo-v2.5-pro_d8f54353",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "terminal": "complete",
+        "observed": {
+          "statusClassification": null,
+          "statusStage": null,
+          "bundleHydrated": true
+        }
+      }
+    ],
+    "totals": {
+      "tokensIn": 3885,
+      "tokensOut": 771,
+      "costUsd": 0.004355,
+      "distinctRunIds": 4,
+      "distinctBundleIds": 4
+    },
+    "runsDir": "/mnt/ai/tmp/claude/rgaunt-real-runs-PChajf"
+  },
+  "mode": "real-provider"
+}

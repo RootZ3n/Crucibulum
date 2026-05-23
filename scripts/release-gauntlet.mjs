@@ -483,6 +483,273 @@ async function runMockGauntlet({ inventory }) {
   return { scenarios: results, dispatch: dispatchResults, gc: gcResults, identity: identityResults, retention: retentionResults, classificationAudit, runsDir: RUNS_DIR };
 }
 
+// ── Real-provider gauntlet ──────────────────────────────────────────────────
+//
+// Drives the production HTTP server (not an injected test adapter) against a
+// specified provider + model. The .env at repo root is loaded so adapter env
+// vars (OPENROUTER_API_KEY, ANTHROPIC_API_KEY, …) are visible. Tasks are
+// served from the production tasks/ dir; bundles persist under
+// process.cwd()/runs (or CRUCIBULUM_RUNS_DIR if set).
+//
+// The test matrix per model is intentionally compact:
+//   1. easy conversational test          (personality-001, 3 questions)
+//   2. one longer personality test       (personality-002, 4 questions)
+//   3. one multi-question stress         (role-stress-001, 10 questions)
+//   4. a repeat of the easy test         (proves run_id+bundle_id uniqueness)
+//   5. provider-failure classification   — naturally encountered, no force
+// Total per model: ~5 runs, ~30 questions.
+
+const REAL_PROVIDER_TEST_PLAN = [
+  { kind: "easy", task: "personality-001" },
+  { kind: "longer", task: "personality-002" },
+  { kind: "multi-question", task: "role-stress-001" },
+  { kind: "repeat-easy", task: "personality-001" },
+];
+
+function loadEnvFile() {
+  // Lightweight .env loader — no dependency on the dotenv package. Only
+  // sets vars that are currently unset so explicit operator env still wins.
+  const envPath = join(REPO_ROOT, ".env");
+  if (!existsSync(envPath)) return;
+  for (const line of readFileSync(envPath, "utf-8").split("\n")) {
+    const m = line.match(/^\s*([A-Z_][A-Z0-9_]*)=\s*(.*?)\s*$/);
+    if (!m) continue;
+    const key = m[1]; let val = m[2];
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) val = val.slice(1, -1);
+    if (process.env[key] == null) process.env[key] = val;
+  }
+}
+
+const ADAPTER_KEY_BY_PROVIDER = {
+  openrouter: "OPENROUTER_API_KEY",
+  anthropic: "ANTHROPIC_API_KEY",
+  openai: "OPENAI_API_KEY",
+  minimax: "MINIMAX_API_KEY",
+  zai: "ZAI_API_KEY",
+  google: "GOOGLE_AI_API_KEY",
+  ollama: null, // local, no key
+};
+
+async function runRealProviderGauntlet({ inventory, provider, model, family, maxCostUsd }) {
+  loadEnvFile();
+
+  // Sanity: required env var, if any.
+  const envVar = ADAPTER_KEY_BY_PROVIDER[provider];
+  if (envVar !== null && envVar !== undefined && !process.env[envVar]) {
+    return {
+      mode: "real-provider", provider, model, family, maxCostUsd,
+      results: [],
+      blocker: { classification: "FAIL_CONFIG", reason: `${envVar} is not set; cannot drive --real-provider --provider ${provider}` },
+    };
+  }
+  if (envVar === undefined) {
+    return {
+      mode: "real-provider", provider, model, family, maxCostUsd,
+      results: [],
+      blocker: { classification: "FAIL_CONFIG", reason: `Unknown provider id '${provider}'. Supported: ${Object.keys(ADAPTER_KEY_BY_PROVIDER).join(", ")}` },
+    };
+  }
+
+  // The server reads CRUCIBULUM_RUNS_DIR at module load. To keep
+  // real-provider receipts auditable, archive them under a stable runs dir
+  // for THIS gauntlet invocation (separate from the production runs dir so
+  // we don't pollute it).
+  const RUNS_DIR = mkdtempSync(join(tmpdir(), "rgaunt-real-runs-"));
+  process.env["CRUCIBULUM_RUNS_DIR"] = RUNS_DIR;
+  // Production tasks dir — real conversational manifests.
+  process.env["CRUCIBULUM_TASKS_DIR"] = join(REPO_ROOT, "tasks");
+
+  const { createApp } = await import(join(REPO_ROOT, "dist", "server", "app.js"));
+  const server = createApp({ rateLimit: false });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  // Tighter wall budget per test — most provider chat calls finish in <30s,
+  // and a 10-question stress test ≤ 5 min.
+  async function postRun(task) {
+    const r = await fetch(`${base}/api/run`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ task, model, adapter: provider }),
+    });
+    return { status: r.status, body: await r.json() };
+  }
+  async function drainLive(runId, timeoutMs = 300_000) {
+    const r = await fetch(`${base}/api/run/${runId}/live`);
+    if (r.status !== 200) return { frames: [], heartbeats: 0 };
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+    const frames = []; let heartbeats = 0;
+    const deadline = Date.now() + timeoutMs;
+    const finish = async (out) => { try { await reader.cancel(); } catch {} return out; };
+    while (Date.now() < deadline) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf("\n\n")) !== -1) {
+        const raw = buf.slice(0, idx); buf = buf.slice(idx + 2);
+        if (raw.startsWith(":")) { heartbeats++; continue; }
+        let evt = "", data = "";
+        for (const line of raw.split("\n")) {
+          if (line.startsWith("event:")) evt = line.slice(6).trim();
+          else if (line.startsWith("data:")) data += line.slice(5).trim();
+        }
+        if (evt) {
+          let parsed = data; try { parsed = JSON.parse(data); } catch {}
+          frames.push({ event: evt, data: parsed });
+          if (evt === "complete" || evt === "error") return finish({ frames, heartbeats });
+        }
+      }
+    }
+    return finish({ frames, heartbeats });
+  }
+  async function getBundle(runId) {
+    const r = await fetch(`${base}/api/runs/${runId}`);
+    if (!r.ok) return { found: false, httpStatus: r.status };
+    return { found: true, httpStatus: 200, body: await r.json() };
+  }
+
+  const seenBundleIds = new Set();
+  const seenRunIds = new Set();
+  let totalCostUsd = 0; let totalTokensIn = 0; let totalTokensOut = 0;
+  const results = [];
+
+  for (const item of REAL_PROVIDER_TEST_PLAN) {
+    // Cost cap — checked BEFORE each test so we never overshoot.
+    if (maxCostUsd > 0 && totalCostUsd >= maxCostUsd) {
+      results.push({ task: item.task, kind: item.kind, classification: "SKIPPED_EXPLAINED", reason: `Cost cap reached (${totalCostUsd.toFixed(4)} ≥ ${maxCostUsd}) before this test could run` });
+      continue;
+    }
+    const post = await postRun(item.task);
+    if (post.status !== 202) {
+      // Preflight rejection — classify as CONFIG or PROVIDER depending on body.
+      const reason = (post.body && (post.body.reason || post.body.error)) || `POST returned ${post.status}`;
+      // 422 adapter_cannot_run_task is a config issue; 400 adapter unavailable
+      // is provider/auth — we report both honestly.
+      const cls = post.status === 422 ? "FAIL_CONFIG" : (post.status === 400 ? "FAIL_PROVIDER" : "FAIL_PRODUCT");
+      results.push({ task: item.task, kind: item.kind, classification: cls, reason: `${post.status}: ${String(reason).slice(0, 200)}`, observed: { httpStatus: post.status } });
+      continue;
+    }
+    const runId = post.body.run_id;
+    if (seenRunIds.has(runId)) {
+      results.push({ task: item.task, kind: item.kind, classification: "FAIL_PRODUCT", reason: `run_id collision: ${runId} already seen this batch`, runId });
+      continue;
+    }
+    seenRunIds.add(runId);
+    const live = await drainLive(runId);
+    const terminal = live.frames.find((f) => f.event === "complete" || f.event === "error");
+    const bundle = await getBundle(runId);
+
+    let classification = "PASS";
+    const notes = [];
+    let bundleId = null;
+
+    if (!terminal) {
+      classification = "FAIL_PRODUCT";
+      notes.push("no terminal SSE frame within timeout");
+    } else if (terminal.event === "complete") {
+      bundleId = terminal.data?.bundle_id ?? null;
+      if (!bundle.found) { classification = "FAIL_PRODUCT"; notes.push("bundle not hydratable by run_id after complete"); }
+      if (bundle.found && bundle.body?.bundle?.run_id !== runId) { classification = "FAIL_PRODUCT"; notes.push(`bundle.run_id (${bundle.body?.bundle?.run_id}) ≠ post run_id`); }
+      if (bundleId && seenBundleIds.has(bundleId)) { classification = "FAIL_PRODUCT"; notes.push(`bundle_id collision: ${bundleId}`); }
+      if (bundleId) seenBundleIds.add(bundleId);
+      // Capture usage if surfaced on the bundle.
+      const u = bundle.body?.bundle?.usage;
+      if (u) {
+        totalTokensIn += Number(u.tokens_in ?? 0);
+        totalTokensOut += Number(u.tokens_out ?? 0);
+        totalCostUsd += Number(u.estimated_cost_usd ?? 0);
+      }
+    } else if (terminal.event === "error") {
+      // Provider failure path. Classify as FAIL_PROVIDER when Crucible
+      // handled it honestly (structured reason + bundle on disk); promote
+      // to FAIL_PRODUCT only when Crucible mishandled it.
+      const cls = terminal.data?.classification ?? null;
+      const stage = terminal.data?.stage ?? null;
+      const reasonText = terminal.data?.error ?? terminal.data?.reason ?? "";
+      const providerKind = terminal.data?.provider_error?.kind ?? null;
+      const isProvider = (cls === "could_not_start" || cls === "failed") && (stage === "health_check" || stage === "execution" || stage === "adapter_init");
+      const honest = isProvider && reasonText && !/Run stream interrupted/.test(reasonText) && !/Run state unreachable/.test(reasonText);
+      classification = honest ? "FAIL_PROVIDER" : "FAIL_PRODUCT";
+      if (!honest) {
+        if (!isProvider) notes.push(`unexpected classification/stage shape: ${cls}/${stage}`);
+        if (/Run stream interrupted/.test(reasonText)) notes.push("catch-all 'Run stream interrupted' leaked");
+        if (/Run state unreachable/.test(reasonText)) notes.push("catch-all 'Run state unreachable' leaked");
+        if (!reasonText) notes.push("empty reason on error frame");
+      }
+      // Pre-execution failure bundles must persist.
+      if (!bundle.found) {
+        classification = "FAIL_PRODUCT";
+        notes.push("provider failure produced no minimal failure bundle on disk");
+      }
+      notes.push(`provider_error.kind=${providerKind} stage=${stage} reason="${String(reasonText).slice(0, 100)}"`);
+    }
+
+    results.push({
+      task: item.task, kind: item.kind, runId, bundleId,
+      classification,
+      reason: notes.join("; ") || "all contracts satisfied",
+      terminal: terminal?.event ?? "missing",
+      observed: {
+        statusClassification: terminal?.data?.classification ?? null,
+        statusStage: terminal?.data?.stage ?? null,
+        bundleHydrated: bundle.found,
+      },
+    });
+
+    // Stop early if we've blown the cap (defensive — we re-check before
+    // the next test, but a single multi-question run could push us over).
+    if (maxCostUsd > 0 && totalCostUsd >= maxCostUsd) {
+      // Continue to next iteration; the guard at the top will record SKIPPED_EXPLAINED.
+    }
+  }
+
+  await new Promise((r) => server.close(r));
+
+  return {
+    mode: "real-provider", provider, model, family, maxCostUsd,
+    results,
+    totals: { tokensIn: totalTokensIn, tokensOut: totalTokensOut, costUsd: totalCostUsd, distinctRunIds: seenRunIds.size, distinctBundleIds: seenBundleIds.size },
+    runsDir: RUNS_DIR,
+  };
+}
+
+function renderRealProviderMarkdown(real) {
+  if (real.blocker) {
+    return `# Crucible Real-Provider Gauntlet
+_Generated: ${new Date().toISOString()}_
+
+**Provider:** \`${real.provider}\` · **Model:** \`${real.model}\`
+
+**BLOCKED:** ${real.blocker.classification} — ${real.blocker.reason}
+`;
+  }
+  const tally = real.results.reduce((acc, r) => { acc[r.classification] = (acc[r.classification] ?? 0) + 1; return acc; }, {});
+  const productFails = (tally.FAIL_PRODUCT ?? 0) === 0;
+  const head = `# Crucible Real-Provider Gauntlet
+_Generated: ${new Date().toISOString()}_
+
+**Provider:** \`${real.provider}\` · **Model:** \`${real.model}\`
+**Real-provider release-certified:** ${productFails ? "**YES** ✅" : "**NO** ❌"}
+**Counts:** ${Object.entries(tally).map(([k, n]) => `${k}: ${n}`).join(" · ")}
+
+**Totals:** ${real.totals.distinctRunIds} distinct run_ids · ${real.totals.distinctBundleIds} distinct bundle_ids · ${real.totals.tokensIn} tokens in · ${real.totals.tokensOut} tokens out · $${real.totals.costUsd.toFixed(4)} (cap: $${real.maxCostUsd})
+`;
+  const rows = real.results.map((r) => {
+    const mark = r.classification === "PASS" ? "✅" : r.classification === "FAIL_PRODUCT" ? "❌" : r.classification === "FAIL_PROVIDER" ? "🟡" : r.classification === "SKIPPED_EXPLAINED" ? "⏭" : "⚠️";
+    return `| \`${r.task}\` (${r.kind}) | ${mark} ${r.classification} | ${r.terminal ?? "—"} | \`${r.runId ?? "—"}\` | ${r.reason.slice(0, 160)} |`;
+  }).join("\n");
+  return `${head}
+
+## Per-test results
+
+| Task | Result | Terminal | run_id | Notes |
+|---|---|---|---|---|
+${rows}
+`;
+}
+
 // ── Tally + release decision ────────────────────────────────────────────────
 
 function tally(report) {
@@ -575,9 +842,42 @@ ${decision.ready ? "" : `\n**Blockers:**\n${decision.blockers.map((b) => `- ${b}
   }
 
   if (flags.realProvider) {
-    console.error("--real-provider is not implemented in this gauntlet revision.");
-    console.error("Run real-provider profiles manually via `npm run harness -- --adapter <id> --model <id>` and capture the JSON report under reports/release-gauntlet/.");
-    process.exit(2);
+    if (!opts.provider || !opts.model) {
+      console.error("--real-provider requires --provider <id> and --model <id>");
+      process.exit(2);
+    }
+    console.log(`Running real-provider gauntlet — provider=${opts.provider} model=${opts.model} cap=$${opts.maxCostUsd}…`);
+    const real = await runRealProviderGauntlet({ inventory, provider: opts.provider, model: opts.model, family: opts.family, maxCostUsd: opts.maxCostUsd });
+    const tally = real.results.reduce((acc, r) => { acc[r.classification] = (acc[r.classification] ?? 0) + 1; return acc; }, {});
+    const productFails = (tally.FAIL_PRODUCT ?? 0);
+    if (real.blocker) {
+      console.log(`\n⚠️  BLOCKED — ${real.blocker.classification}: ${real.blocker.reason}`);
+    } else {
+      console.log(`\n${productFails === 0 ? "✅ REAL-PROVIDER CERTIFIED" : "❌ FAIL_PRODUCT in real-provider run"}`);
+      console.log(`Counts: ${Object.entries(tally).map(([k, n]) => `${k}=${n}`).join(" · ") || "(empty)"}`);
+      console.log(`Totals: ${real.totals.distinctRunIds} run_ids · ${real.totals.distinctBundleIds} bundle_ids · $${real.totals.costUsd.toFixed(4)}`);
+    }
+    if (flags.writeReport) {
+      const realDir = join(opts.reportDir, "real-provider");
+      mkdirSync(realDir, { recursive: true });
+      const slug = `${opts.provider}-${opts.model.replace(/[/:]/g, "-")}`;
+      const tsSlug = new Date().toISOString().replace(/[:.]/g, "-");
+      const jsonPath = join(realDir, `${tsSlug}-${slug}.json`);
+      const mdPath = join(realDir, `${tsSlug}-${slug}.md`);
+      const latestJson = join(opts.reportDir, "latest-real-provider.json");
+      const latestMd = join(opts.reportDir, "latest-real-provider.md");
+      const payload = { generatedAt: new Date().toISOString(), real, mode: "real-provider" };
+      writeFileSync(jsonPath, JSON.stringify(payload, null, 2));
+      writeFileSync(latestJson, JSON.stringify(payload, null, 2));
+      const md = renderRealProviderMarkdown(real);
+      writeFileSync(mdPath, md);
+      writeFileSync(latestMd, md);
+      console.log(`Wrote: ${jsonPath}`);
+      console.log(`Wrote: ${mdPath}`);
+      console.log(`Wrote: ${latestJson} (overwritten)`);
+      console.log(`Wrote: ${latestMd} (overwritten)`);
+    }
+    process.exit((real.blocker || productFails > 0) ? 1 : 0);
   }
 
   console.log("Running mock-only gauntlet…");

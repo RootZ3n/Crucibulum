@@ -19,6 +19,8 @@ const REPO_ROOT = join(import.meta.dirname, "..", "..");
 const GAUNTLET = join(REPO_ROOT, "scripts", "release-gauntlet.mjs");
 
 function run(args: string[], opts: { allowNonZero?: boolean } = {}): { stdout: string; status: number } {
+  // Merge stdout + stderr so tests can grep error-channel messages
+  // (`console.error(...)` lands on stderr but we want to assert against it).
   try {
     const stdout = execFileSync(process.execPath, [GAUNTLET, ...args], {
       cwd: REPO_ROOT,
@@ -29,8 +31,8 @@ function run(args: string[], opts: { allowNonZero?: boolean } = {}): { stdout: s
     return { stdout, status: 0 };
   } catch (err) {
     if (!opts.allowNonZero) throw err;
-    const e = err as { stdout?: string; status?: number };
-    return { stdout: e.stdout ?? "", status: e.status ?? 1 };
+    const e = err as { stdout?: string; stderr?: string; status?: number };
+    return { stdout: `${e.stdout ?? ""}${e.stderr ?? ""}`, status: e.status ?? 1 };
   }
 }
 
@@ -74,6 +76,53 @@ describe("release-gauntlet: --help", () => {
 // `npm run gauntlet:mock` step and operators run it locally before tagging
 // releases. Source-pin the latest report file shape instead so a malformed
 // report (missing fields) trips this test.
+describe("release-gauntlet: --real-provider config guards", () => {
+  it("refuses --real-provider without --provider/--model", () => {
+    const { stdout, status } = run(["--real-provider", "--write-report"], { allowNonZero: true });
+    assert.equal(status, 2);
+    assert.match(stdout + "", /requires --provider <id> and --model <id>/);
+  });
+
+  it("refuses unknown providers", () => {
+    const { stdout, status } = run(["--real-provider", "--provider", "this-provider-does-not-exist", "--model", "any"], { allowNonZero: true });
+    // Should reach the gauntlet body and classify as BLOCKED/FAIL_CONFIG;
+    // exit non-zero either way.
+    assert.notEqual(status, 0);
+    // The script may print to stdout or stderr depending on where the
+    // blocker rendering lands — just confirm it ran past argv parsing.
+    assert.ok(stdout != null);
+  });
+});
+
+describe("release-gauntlet: real-provider report archive (when present)", () => {
+  it("latest-real-provider.md carries provider + model + certified verdict + per-test table", () => {
+    const latest = join(REPO_ROOT, "reports", "release-gauntlet", "latest-real-provider.md");
+    if (!existsSync(latest)) return;
+    const md = readFileSync(latest, "utf-8");
+    assert.match(md, /# Crucible Real-Provider Gauntlet/);
+    assert.match(md, /\*\*Provider:\*\*\s+`/);
+    assert.match(md, /\*\*Model:\*\*\s+`/);
+    assert.match(md, /\*\*Real-provider release-certified:\*\*\s+\*\*(YES|NO)\*\*/);
+    assert.match(md, /## Per-test results/);
+    assert.match(md, /\| Task \| Result \| Terminal \| run_id \| Notes \|/);
+  });
+
+  it("latest-real-provider.json carries mode=real-provider + run+bundle distinctness totals", () => {
+    const latest = join(REPO_ROOT, "reports", "release-gauntlet", "latest-real-provider.json");
+    if (!existsSync(latest)) return;
+    const json = JSON.parse(readFileSync(latest, "utf-8")) as { mode: string; real: { provider: string; model: string; results: unknown[]; totals?: { distinctRunIds: number; distinctBundleIds: number; tokensIn: number; tokensOut: number; costUsd: number } } };
+    assert.equal(json.mode, "real-provider");
+    assert.ok(json.real.provider && json.real.model, "must record provider and model");
+    assert.ok(Array.isArray(json.real.results), "results array required");
+    // Totals are present when not blocked.
+    if (json.real.totals) {
+      assert.equal(typeof json.real.totals.distinctRunIds, "number");
+      assert.equal(typeof json.real.totals.distinctBundleIds, "number");
+      assert.equal(typeof json.real.totals.costUsd, "number");
+    }
+  });
+});
+
 describe("release-gauntlet: latest report shape (when present)", () => {
   it("the most recent report carries the release-ready header + counts", () => {
     const latest = join(REPO_ROOT, "reports", "release-gauntlet", "latest.md");

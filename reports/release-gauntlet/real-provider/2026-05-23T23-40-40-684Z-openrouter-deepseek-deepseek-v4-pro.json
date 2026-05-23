@@ -1,0 +1,77 @@
+{
+  "generatedAt": "2026-05-23T23:40:40.684Z",
+  "real": {
+    "mode": "real-provider",
+    "provider": "openrouter",
+    "model": "deepseek/deepseek-v4-pro",
+    "family": "personality",
+    "maxCostUsd": 1,
+    "results": [
+      {
+        "task": "personality-001",
+        "kind": "easy",
+        "runId": "run_mpizr3zh_a9ce3702",
+        "bundleId": null,
+        "classification": "FAIL_PROVIDER",
+        "reason": "provider_error.kind=NETWORK stage=health_check reason=\"Network request failed — fetch failed\"",
+        "terminal": "error",
+        "observed": {
+          "statusClassification": "could_not_start",
+          "statusStage": "health_check",
+          "bundleHydrated": true
+        }
+      },
+      {
+        "task": "personality-002",
+        "kind": "longer",
+        "runId": "run_mpizr40w_f3ab789d",
+        "bundleId": "run_2026-05-23_personality-002_deepseek-deepseek-v4-pro_da0a69e0",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "terminal": "complete",
+        "observed": {
+          "statusClassification": null,
+          "statusStage": null,
+          "bundleHydrated": true
+        }
+      },
+      {
+        "task": "role-stress-001",
+        "kind": "multi-question",
+        "runId": "run_mpizraya_d7554c7b",
+        "bundleId": "run_2026-05-23_role-stress-001_deepseek-deepseek-v4-pro_809d3eb8",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "terminal": "complete",
+        "observed": {
+          "statusClassification": null,
+          "statusStage": null,
+          "bundleHydrated": true
+        }
+      },
+      {
+        "task": "personality-001",
+        "kind": "repeat-easy",
+        "runId": "run_mpizro8x_b9f3399c",
+        "bundleId": "run_2026-05-23_personality-001_deepseek-deepseek-v4-pro_9336c4dc",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "terminal": "complete",
+        "observed": {
+          "statusClassification": null,
+          "statusStage": null,
+          "bundleHydrated": true
+        }
+      }
+    ],
+    "totals": {
+      "tokensIn": 2773,
+      "tokensOut": 321,
+      "costUsd": 0.004844,
+      "distinctRunIds": 4,
+      "distinctBundleIds": 3
+    },
+    "runsDir": "/mnt/ai/tmp/claude/rgaunt-real-runs-wWIlrl"
+  },
+  "mode": "real-provider"
+}

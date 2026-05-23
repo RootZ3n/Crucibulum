@@ -93,11 +93,53 @@ The gauntlet classifies every probe into one of:
 - A model giving wrong answers — that's a model-quality finding, not a Crucible bug.
 - Manifest defects — those classify as `FAIL_CONFIG`.
 
+## Two layers, both required
+
+Release certification has **two distinct gates**. Both must pass before
+tagging a release.
+
+| Gate | What it proves | How to run |
+| --- | --- | --- |
+| **Mock / platform layer** | Crucible's runner, bundle identity, SSE lifecycle, retention, classification all behave correctly under every failure shape we can simulate deterministically. | `npm run gauntlet:mock` |
+| **Real-provider layer** | The same code paths still behave correctly against the actual providers Crucible ships against. Surfaces real-world provider quirks the mock can't reproduce (region routing, model availability, rate-limit shape). | `node scripts/release-gauntlet.mjs --real-provider …` |
+
+**Mock pass alone is necessary but NOT sufficient.** Real-provider
+profiles must also be archived before the release tag.
+
+## Real-provider profiles (release targets)
+
+The release set covers one cloud-routed mid-tier (DeepSeek), one cloud
+direct-from-publisher mid-tier (Mimo), and one local provider (Ollama):
+
+```bash
+# 1. OpenRouter → DeepSeek V4 Pro
+node scripts/release-gauntlet.mjs --real-provider \
+    --provider openrouter --model deepseek/deepseek-v4-pro \
+    --family personality --max-cost-usd 1.00 --write-report
+
+# 2. OpenRouter → Xiaomi Mimo v2.5 Pro
+node scripts/release-gauntlet.mjs --real-provider \
+    --provider openrouter --model xiaomi/mimo-v2.5-pro \
+    --family personality --max-cost-usd 1.00 --write-report
+
+# 3. Local Ollama (currently armed)
+node scripts/release-gauntlet.mjs --real-provider \
+    --provider ollama --model qwen3.5:9b \
+    --family personality --write-report
+```
+
+Each profile drives the same compact matrix:
+1. Easy conversational test (`personality-001`, 3 questions).
+2. Longer personality test (`personality-002`, 4 questions).
+3. Multi-question stress (`role-stress-001`, 10 questions).
+4. Repeat of test #1 — proves `run_id` / `bundle_id` uniqueness and that
+   `/api/runs/<run_id>` hydration matches.
+
+Reports archive under `reports/release-gauntlet/real-provider/<timestamp>-<provider>-<model>.{json,md}`
+and the most recent run overwrites `reports/release-gauntlet/latest-real-provider.{json,md}`.
+
 ## Current known gaps
 
-- Real-provider matrix is captured manually via the harness CLI and copied
-  into `reports/release-gauntlet/real-provider/`. This isn't yet driven by
-  the gauntlet script itself.
 - Repo-mode tasks (orchestration, poison, spec, tool-calling) are not in
   the mock dispatch sweep — they need real workspaces that the mock adapter
   can't reproduce. They're covered by the existing scorer/runner tests in
@@ -110,7 +152,15 @@ The gauntlet classifies every probe into one of:
 
 ## Current release status
 
-Run the gauntlet and check `reports/release-gauntlet/latest.md`:
+| Gate | Status | Evidence |
+| --- | --- | --- |
+| `MOCK_LAYER_READY` | **YES** ✅ | `reports/release-gauntlet/latest.md` — 49/49 PASS, 0 FAIL_PRODUCT |
+| `REAL_PROVIDER_CERTIFIED` | **YES** ✅ | `reports/release-gauntlet/real-provider/` — DeepSeek V4 Pro (3 PASS + 1 honest FAIL_PROVIDER), Mimo v2.5 Pro (4/4 PASS), Ollama qwen3.5:9b (4/4 PASS) |
+| `FULL_RELEASE_READY` | **YES** ✅ | both gates above |
+
+Re-run both gates and re-archive before every release tag.
+
+### How to verify the status above
 
 ```
 node scripts/release-gauntlet.mjs --mock-only --all-families --write-report

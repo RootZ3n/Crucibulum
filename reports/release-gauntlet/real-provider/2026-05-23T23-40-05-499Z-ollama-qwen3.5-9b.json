@@ -1,0 +1,77 @@
+{
+  "generatedAt": "2026-05-23T23:40:05.499Z",
+  "real": {
+    "mode": "real-provider",
+    "provider": "ollama",
+    "model": "qwen3.5:9b",
+    "family": "personality",
+    "maxCostUsd": 0,
+    "results": [
+      {
+        "task": "personality-001",
+        "kind": "easy",
+        "runId": "run_mpizp7h9_49fce3b0",
+        "bundleId": "run_2026-05-23_personality-001_qwen3.5-9b_9e1426c1",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "terminal": "complete",
+        "observed": {
+          "statusClassification": null,
+          "statusStage": null,
+          "bundleHydrated": true
+        }
+      },
+      {
+        "task": "personality-002",
+        "kind": "longer",
+        "runId": "run_mpizphcm_895219e2",
+        "bundleId": "run_2026-05-23_personality-002_qwen3.5-9b_73f31aaf",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "terminal": "complete",
+        "observed": {
+          "statusClassification": null,
+          "statusStage": null,
+          "bundleHydrated": true
+        }
+      },
+      {
+        "task": "role-stress-001",
+        "kind": "multi-question",
+        "runId": "run_mpizpyze_f54f03d5",
+        "bundleId": "run_2026-05-23_role-stress-001_qwen3.5-9b_de4960a0",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "terminal": "complete",
+        "observed": {
+          "statusClassification": null,
+          "statusStage": null,
+          "bundleHydrated": true
+        }
+      },
+      {
+        "task": "personality-001",
+        "kind": "repeat-easy",
+        "runId": "run_mpizqqmk_777cae08",
+        "bundleId": "run_2026-05-23_personality-001_qwen3.5-9b_ef3021a4",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "terminal": "complete",
+        "observed": {
+          "statusClassification": null,
+          "statusStage": null,
+          "bundleHydrated": true
+        }
+      }
+    ],
+    "totals": {
+      "tokensIn": 4092,
+      "tokensOut": 5152,
+      "costUsd": 0,
+      "distinctRunIds": 4,
+      "distinctBundleIds": 4
+    },
+    "runsDir": "/mnt/ai/tmp/claude/rgaunt-real-runs-eKMeJf"
+  },
+  "mode": "real-provider"
+}
