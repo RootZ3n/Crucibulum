@@ -426,11 +426,34 @@ const REGISTRY: RegistryDefinition[] = [
   },
 ];
 
+// Test-only registry: lets the run-lifecycle regression harness install a
+// deterministic adapter without modifying the production REGISTRY. Lookups
+// always consult this map first so an injected adapter overrides any
+// same-id production entry for the duration of the test.
+const TEST_ADAPTERS = new Map<string, RegistryDefinition>();
+
+/** Test-only: install a synthetic adapter under `def.id`. */
+export function __registerTestAdapter(def: RegistryDefinition): void {
+  TEST_ADAPTERS.set(def.id, def);
+}
+
+/** Test-only: drop a previously installed adapter. */
+export function __unregisterTestAdapter(id: string): void {
+  TEST_ADAPTERS.delete(id);
+}
+
+/** Test-only: drop every injected adapter. */
+export function __clearTestAdapters(): void {
+  TEST_ADAPTERS.clear();
+}
+
 export function listRegisteredAdapters(): RegistryDefinition[] {
-  return REGISTRY.slice();
+  return [...TEST_ADAPTERS.values(), ...REGISTRY];
 }
 
 export function resolveAdapter(adapterId: string): RegistryDefinition {
+  const testMatch = TEST_ADAPTERS.get(adapterId);
+  if (testMatch) return testMatch;
   const match = REGISTRY.find((entry) => entry.id === adapterId);
   if (!match) {
     throw new Error(`Unknown adapter: ${adapterId}`);

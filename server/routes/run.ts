@@ -4,6 +4,7 @@
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { randomBytes } from "node:crypto";
 import { sendJSON, readBody, parseJsonBody, isSafeId, loadBundles, getBundleById, filterBundlesByTaskFamilies, resolveLaneScope, bundleSummary, getStats, log, canonicalPercent } from "./shared.js";
 import { validateRunRequest, validateCrucibleLinkRequest } from "../validators.js";
 import type { EvidenceBundle } from "../../adapters/base.js";
@@ -53,6 +54,31 @@ const RUN_COMPLETED_AT = new Map<string, number>();
 const RUN_RETENTION_MS = 10 * 60 * 1000;
 // Hard cap so a flood of runs cannot exhaust heap.
 const MAX_ACTIVE_RUNS = 256;
+
+/**
+ * Generate a unique run id. Date.now() alone collides when two POSTs land in
+ * the same millisecond — a real hazard for fast batches (deterministic mock
+ * adapters, cached preflight, or any path that returns 202 in <1ms). When ids
+ * collide, the second `activeRuns.set` silently clobbers the first run's
+ * entry and both async IIFEs end up mutating the survivor — the user-visible
+ * symptom is "later tests fail instantly" because state from an earlier
+ * interrupted run bleeds into the active entry for the next one.
+ *
+ * The suffix is 8 hex chars of crypto-random bytes. Retry guard is a belt on
+ * top of the suspenders so even a (statistically impossible) collision under
+ * the same ms is still caught.
+ */
+function generateRunId(): string {
+  for (let i = 0; i < 4; i++) {
+    const id = `run_${Date.now().toString(36)}_${randomBytes(4).toString("hex")}`;
+    if (!activeRuns.has(id)) return id;
+  }
+  // Final fallback: widen the random suffix. Practically unreachable; logged
+  // so we notice if it ever fires.
+  const id = `run_${Date.now().toString(36)}_${randomBytes(8).toString("hex")}`;
+  log("warn", "api", `generateRunId fell back to wide-suffix path for ${id} — extreme collision pressure`);
+  return id;
+}
 
 export interface DispatchTarget {
   adapter: string;
@@ -123,11 +149,13 @@ function gcActiveRuns(): void {
 export function broadcastSSE(runId: string, event: string, data: unknown): void {
   const clients = sseClients.get(runId) ?? [];
   const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  let delivered = 0;
   for (const res of clients) {
-    try { res.write(msg); } catch { /* ignore */ }
+    try { res.write(msg); delivered++; } catch { /* ignore */ }
   }
   const run = activeRuns.get(runId);
   if (run) run.events.push(msg);
+  log("info", "sse", `broadcast ${event} runId=${runId} clients=${clients.length} delivered=${delivered}`);
 }
 
 export async function handleRunsList(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
@@ -451,7 +479,12 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
     },
   };
 
-  const runId = `run_${Date.now().toString(36)}`;
+  const runId = generateRunId();
+  // Structured lifecycle log — emitted at every transition so a "later tests
+  // fail instantly" pattern leaves an audit trail. The fields match the
+  // operator-facing report exactly: task id, run id, status before start,
+  // active-run slot count, and (later, in the IIFE) cleanup entry/exit.
+  log("info", "run-lifecycle", `start runId=${runId} task=${body.task} adapter=${adapterId} model=${dispatch.model} active=${activeRuns.size}+1 sseSlots=${sseClients.size} preflightConv=${taskIsConversational}`);
   activeRuns.set(runId, {
     id: runId,
     status: "running",
@@ -568,9 +601,20 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
       }
       const latestBundle = completedBundles[completedBundles.length - 1]!;
       const aggregate = summarizeRunSet(completedBundles);
+      // Identity-check the entry before mutating. `activeRuns.get(runId)` can
+      // return a different run's state if id generation ever collides — the
+      // primary fix is `generateRunId`'s random suffix, this is the belt that
+      // prevents poisoned cross-run state if anything ever slips past it.
       const active = activeRuns.get(runId);
-      if (active) {
-        active.status = "complete";
+      if (active && active.id === runId) {
+        // Populate result fields but DELAY the status flip until after
+        // broadcastSSE has pushed the 'complete' event into run.events.
+        // Otherwise /live's fast-path (`run.status === "complete"` → write
+        // cached events + res.end()) can fire between the status flip and
+        // broadcastSSE, leaving the client with only step events and no
+        // 'complete'. The EventSource then fires an error event with no
+        // parseable data, and the run looks like "could_not_start" even
+        // though the bundle is already on disk.
         active.bundle = latestBundle;
         active.bundles = completedBundles;
         active.aggregate = aggregate;
@@ -598,6 +642,7 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
         resolved_by_registry: dispatch.resolved_by_registry,
         routing_note: dispatch.routing_note,
       });
+      if (active && active.id === runId) active.status = "complete";
     } catch (err) {
       const stage = (typeof err === "object" && err && "stage" in err ? (err as { stage?: ActiveRun["failure_stage"] }).stage : failureStage) ?? "unknown";
       const message = failureReason || String(err);
@@ -605,21 +650,33 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
         (typeof err === "object" && err && "providerError" in err ? (err as { providerError?: StructuredProviderError | null }).providerError : null)
         ?? failureProviderError;
       const classification = stage === "execution" ? "failed" : stage === "preflight" ? "skipped_by_preflight" : "could_not_start";
+      // Same identity guard as the success path — never mutate another run's
+      // active entry on the strength of a colliding id.
       const active = activeRuns.get(runId);
-      if (active) {
-        active.status = "error";
+      if (active && active.id === runId) {
+        // Same ordering rule as the success path: flip status AFTER
+        // broadcastSSE so /live's fast-path always sees the terminal
+        // event in run.events.
         active.error = message;
         active.provider_error = providerError ?? undefined;
         active.failure_stage = stage;
       }
       broadcastSSE(runId, "error", { error: message, reason: message, provider_error: providerError, stage, classification });
+      if (active && active.id === runId) active.status = "error";
     } finally {
+      // Lifecycle log: cleanup-entered. Captures slot counts BEFORE we
+      // release this run's resources, so an operator can spot a leak ("slots
+      // grew but never shrunk").
+      const beforeSseSlots = sseClients.get(runId)?.length ?? 0;
+      log("info", "run-lifecycle", `cleanup-enter runId=${runId} sseClients=${beforeSseSlots} activeRunsSize=${activeRuns.size}`);
       const clients = sseClients.get(runId) ?? [];
       for (const client of clients) {
         try { client.end(); } catch { /* ignore */ }
       }
       sseClients.delete(runId);
       markRunSettled(runId);
+      const final = activeRuns.get(runId);
+      log("info", "run-lifecycle", `cleanup-exit  runId=${runId} finalStatus=${final?.status ?? "missing"} activeRunsSize=${activeRuns.size} sseSlots=${sseClients.size}`);
     }
   })();
 }
@@ -636,6 +693,11 @@ export async function handleRunLive(req: IncomingMessage, res: ServerResponse, p
   });
   const run = activeRuns.get(runId);
   if (run) {
+    const eventNames = run.events.map((evt) => {
+      const m = evt.match(/^event:\s*(\S+)/);
+      return m ? m[1] : "?";
+    }).join(",");
+    log("info", "sse", `live-open runId=${runId} status=${run.status} cached=[${eventNames}]`);
     for (const evt of run.events) res.write(evt);
     // Both "complete" and "error" are terminal states — replay cached events and
     // close the stream. Previously only "complete" closed, which meant late
@@ -644,6 +706,8 @@ export async function handleRunLive(req: IncomingMessage, res: ServerResponse, p
       res.end();
       return;
     }
+  } else {
+    log("warn", "sse", `live-open runId=${runId} NOT in activeRuns`);
   }
   if (!sseClients.has(runId)) sseClients.set(runId, []);
   sseClients.get(runId)!.push(res);
