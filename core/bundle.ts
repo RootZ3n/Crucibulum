@@ -373,6 +373,114 @@ export function storeBundle(bundle: EvidenceBundle): string {
 }
 
 /**
+ * Build a minimal evidence bundle for a run that never reached model
+ * execution — provider rate-limit at health-check, adapter-init failure,
+ * preflight rejection, etc. Without this, /api/runs/<run_id> 404s for
+ * such runs after activeRuns GC, and the UI displays "Run state
+ * unreachable" instead of the structured provider failure that's already
+ * available on the SSE error frame.
+ *
+ * The bundle is honest about the failure (score.pass=false, classification
+ * stamped in diagnosis.failure_mode, provider_error attached) but carries
+ * no model output / scoring — only the receipt that the run was attempted
+ * and rejected before any answer could be produced. Retention classifies
+ * these as `bundle_failed` because score.pass===false.
+ */
+export interface PreExecutionFailureInput {
+  runId: string;
+  taskId: string;
+  adapterId: string;
+  provider: string | null;
+  model: string;
+  stage: "preflight" | "adapter_init" | "health_check" | "execution" | "unknown";
+  classification: "could_not_start" | "skipped_by_preflight" | "failed";
+  reason: string;
+  providerError: import("../adapters/base.js").ProviderAttemptRecord["provider_error"] | null;
+  startTime: string;
+  endTime: string;
+}
+
+export function buildPreExecutionFailureBundle(input: PreExecutionFailureInput): EvidenceBundle {
+  const modelSlug = input.model.replace(/[/:]/g, "-");
+  const bundleId = generateBundleId(input.taskId, input.model, { isoDate: input.startTime });
+  // Try to enrich with manifest info but never fail if the manifest can't
+  // be loaded (the failure may be a missing-manifest itself, or the
+  // pre-execution failure happened before manifest load even tried).
+  let family = "unknown";
+  let difficulty: "easy" | "medium" | "hard" = "easy";
+  let manifest_hash = "";
+  try {
+    // Late import to avoid a circular dependency through manifest.ts.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { loadManifestRaw } = require("./manifest.js") as { loadManifestRaw: (id: string) => any };
+    const raw = loadManifestRaw(input.taskId);
+    if (raw && typeof raw === "object") {
+      if (typeof raw.family === "string") family = raw.family;
+      if (raw.difficulty === "easy" || raw.difficulty === "medium" || raw.difficulty === "hard") difficulty = raw.difficulty;
+      // Don't compute the canonical manifest hash — that's only available
+      // for full repo manifests. Stamp a sentinel so audits can tell this
+      // is a pre-execution failure receipt, not a normal scored bundle.
+      manifest_hash = "pre-execution-failure";
+    }
+  } catch { /* ignore — leave defaults */ }
+
+  const failureMode = `${input.classification}/${input.stage}`;
+  const reasonRedacted = String(input.reason).slice(0, 400); // keep small, no secrets
+
+  const bundle: EvidenceBundle = {
+    bundle_id: bundleId,
+    bundle_hash: "sha256:pending",
+    run_id: input.runId,
+    bundle_version: "1.0.0",
+    task: { id: input.taskId, manifest_hash, family, difficulty },
+    agent: { adapter: input.adapterId, adapter_version: "unknown", system: input.adapterId, system_version: "unknown", model: input.model, model_version: "latest", provider: input.provider ?? "unknown" },
+    environment: { os: `${platform()}-${arch()}`, arch: arch(), repo_commit: "none", crucibulum_version: "1.0.0", timestamp_start: input.startTime, timestamp_end: input.endTime },
+    timeline: [{ t: 0, type: "error", detail: `[${failureMode}] ${reasonRedacted}` }],
+    diff: { files_changed: [], files_created: [], files_deleted: [], forbidden_paths_touched: [] },
+    security: { injection_scan: "clean", forbidden_paths_violations: 0, anti_cheat_violations: 0, workspace_escape_attempts: 0 },
+    verification_results: {
+      // Not evaluable — the run never produced output. score:0 alone would
+      // be wrong (it implies "answered, scored zero"); not_evaluable is the
+      // honest flag.
+      correctness: { score: 0, details: {}, not_evaluable: true },
+      regression: { score: 0, details: {} },
+      integrity: { score: 0, details: {}, violations: [reasonRedacted] },
+      efficiency: { time_sec: 0, time_limit_sec: 0, steps_used: 0, steps_limit: 0, score: 0 },
+    },
+    score: {
+      scale: "fraction_0_1",
+      total: 0,
+      total_percent: 0,
+      breakdown: { correctness: 0, regression: 0, integrity: 0, efficiency: 0 },
+      breakdown_percent: { correctness: 0, regression: 0, integrity: 0, efficiency: 0 },
+      pass: false,
+      pass_threshold: 0.5,
+      pass_threshold_percent: 50,
+      integrity_violations: 1,
+    },
+    usage: { tokens_in: 0, tokens_out: 0, estimated_cost_usd: 0, provider_cost_note: reasonRedacted },
+    judge_usage: { provider: "", model: "", tokens_in: 0, tokens_out: 0, estimated_cost_usd: 0, kind: "deterministic", note: `pre-execution failure (${failureMode}) — no judge cost` },
+    judge: DETERMINISTIC_JUDGE_METADATA,
+    trust: { rubric_hidden: true, narration_ignored: true, state_based_scoring: true, bundle_verified: false, deterministic_judge_authoritative: true, review_layer_advisory: true },
+    diagnosis: { localized_correctly: false, avoided_decoys: false, first_fix_correct: false, self_verified: false, failure_mode: failureMode },
+    provider_attempts: input.providerError ? [{
+      attempt: 1,
+      started_at: input.startTime,
+      duration_ms: Math.max(0, new Date(input.endTime).getTime() - new Date(input.startTime).getTime()),
+      error_type: input.providerError.kind ?? null,
+      retry_decision: input.providerError.retryable ? "retry" : "stop",
+      provider_error: input.providerError,
+    }] : undefined,
+  };
+  // No verdict object — the verdict normaliser depends on
+  // executionMode/exitReason context that doesn't fit pre-execution
+  // failures cleanly. Leaving `verdict` undefined keeps the UI on the
+  // failure-mode field, which is sufficient for display.
+  bundle.bundle_hash = computeBundleHash(bundle);
+  return bundle;
+}
+
+/**
  * Verify a stored bundle's integrity by recomputing its hash.
  *
  * The stored bundle contains a `trust.bundle_verified` field that is set to

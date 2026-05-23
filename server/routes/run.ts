@@ -10,7 +10,7 @@ import { validateRunRequest, validateCrucibleLinkRequest } from "../validators.j
 import type { EvidenceBundle } from "../../adapters/base.js";
 import { instantiateAdapterForRun } from "../../adapters/registry.js";
 import { runTask } from "../../core/runner.js";
-import { storeBundle } from "../../core/bundle.js";
+import { storeBundle, buildPreExecutionFailureBundle } from "../../core/bundle.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "../../core/judge.js";
 import { summarizeRunSet, type CrucibleLink } from "../contracts.js";
 import { writeCrucibleLink } from "../validation-links.js";
@@ -683,6 +683,35 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
         active.error = message;
         active.provider_error = providerError ?? undefined;
         active.failure_stage = stage;
+      }
+      // Persist a minimal failure receipt so /api/runs/<runId> can hydrate
+      // the failure after activeRuns GC. Without this, the UI sees a 404
+      // on the bundle and falls back to "Run state unreachable" — even
+      // though the SSE error frame carried the structured cause.
+      // Only persist when nothing else stored a bundle for this run (the
+      // execution path's success leg already writes the real one).
+      if (stage !== "execution" || !active?.bundle) {
+        try {
+          const failureBundle = buildPreExecutionFailureBundle({
+            runId,
+            taskId: body.task,
+            adapterId,
+            provider: dispatch.provider,
+            model: dispatch.model,
+            stage,
+            classification,
+            reason: message,
+            providerError: providerError ?? null,
+            startTime: new Date().toISOString(),
+            endTime: new Date().toISOString(),
+          });
+          storeBundle(failureBundle);
+          if (active && active.id === runId) active.bundle = failureBundle;
+        } catch (bundleErr) {
+          // Receipt-write failure is non-fatal — the SSE error already
+          // surfaced the real cause. Log loudly so we notice in CI.
+          log("warn", "api", `Failed to persist pre-execution failure receipt for ${runId}: ${String(bundleErr).slice(0, 200)}`);
+        }
       }
       broadcastSSE(runId, "error", { error: message, reason: message, provider_error: providerError, stage, classification });
       if (active && active.id === runId) active.status = "error";

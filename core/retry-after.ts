@@ -66,9 +66,12 @@ export interface BackoffConfig {
 
 export function defaultBackoffConfig(overrides: Partial<BackoffConfig> = {}): BackoffConfig {
   return {
-    minMs: 10_000,
-    maxMs: 120_000,
-    factor: 2.5,
+    // Bumped from 10s/120s after operator observation that real provider
+    // (OpenRouter / DeepSeek-V4-Pro) per-minute quotas didn't clear within
+    // a 10-15s wait. 30s minimum, 180s ceiling.
+    minMs: 30_000,
+    maxMs: 180_000,
+    factor: 2,
     rng: Math.random,
     ...overrides,
   };

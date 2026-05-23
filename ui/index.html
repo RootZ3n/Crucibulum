@@ -2202,12 +2202,19 @@ function watchRunCompletion(tabKey,runId,taskId,modelId){
       let classification=started?'failed':'could_not_start';
       let parsed=false;
       let providerError=null;
+      // `originalPayload` is what the server emitted on this SSE error
+      // event (if anything). The polling fallback uses it as the source
+      // of truth when /status or /api/runs themselves fail — without
+      // this, we'd lose the structured cause and report "Run state
+      // unreachable" instead.
+      let originalPayload=null;
       try{
         const payload=JSON.parse(event.data);
         // Replace each field individually so a payload with *some* structure
         // but a blank `error` still surfaces stage/classification/provider_error
         // instead of the catch-all.
         if(payload&&typeof payload==='object'){
+          originalPayload=payload;
           if(typeof payload.error==='string'&&payload.error.trim())reason=payload.error;
           else if(typeof payload.reason==='string'&&payload.reason.trim())reason=payload.reason;
           if(typeof payload.stage==='string'&&payload.stage)stage=payload.stage;
@@ -2262,7 +2269,13 @@ function watchRunCompletion(tabKey,runId,taskId,modelId){
         render();
         resolve({status:'completed',executed:true,started:true,pass,reconciled:true});
       };
-      const POLL_INTERVAL_MS=300;
+      // Polling cadence: 1.5 s. Conservative enough to stay under the
+      // server's own RATE_READ limit (120/min ≈ 2/s) by a comfortable
+      // margin. The old 300ms interval tripped RATE_READ during long
+      // polling fallbacks and produced "Run state unreachable — /status
+      // query failed (rate_limited)" rows — that was the server telling
+      // us to slow down, not the run failing.
+      const POLL_INTERVAL_MS=1500;
       // 5-minute budget: a 10-question conversational task (role-stress-001)
       // on a slow cloud model can legitimately need ~100s end-to-end. The
       // server now sends SSE heartbeats every 10s so the connection rarely
@@ -2299,17 +2312,40 @@ function watchRunCompletion(tabKey,runId,taskId,modelId){
             :'Run could not be observed — SSE disconnected before any task_start event.';
           finish(started?'failed':'could_not_start',honestReason,stage,providerError);
         }).catch(async (err)=>{
+          // Our OWN server's read rate limit returned 429? Don't escalate
+          // to "unreachable" — back off and keep polling. fetchJSON
+          // surfaces the response body on err.body for 4xx/5xx, and the
+          // server's rate-limited payload is shaped
+          // {error:'rate_limited', rule:'read', retry_after_sec}.
+          const isReadRateLimit=err&&err.status===429&&err.body&&err.body.error==='rate_limited'&&err.body.rule==='read';
+          if(isReadRateLimit&&Date.now()-pollStart<POLL_BUDGET_MS){
+            const waitSec=Math.max(1,Number(err.body.retry_after_sec)||5);
+            trace_push('poll_self_rate_limited',`waiting ${waitSec}s`);
+            setTimeout(pollOnce,waitSec*1000);
+            return;
+          }
           // /status itself failed. Before falling back to the catch-all,
           // try one last lookup against /api/runs/<runId> — the bundle may
           // be on disk (and now reachable by run_id thanks to the previous
-          // identity fix). This is the path that previously hit the
-          // catch-all and produced "Run stream interrupted" rows for runs
-          // whose evidence existed but couldn't be hydrated through the
-          // polling endpoint.
+          // identity fix and the minimal-failure-bundle write on the
+          // server). This is the path that previously hit the catch-all
+          // and produced "Run stream interrupted" / "Run state unreachable"
+          // rows.
           try{
             const stored=await fetchJSON(`/api/runs/${encodeURIComponent(runId)}`);
             if(stored?.bundle?.bundle_id){
               const pass=stored.bundle.score?.pass===true;
+              // Minimal failure bundles record `failure_mode` like
+              // 'could_not_start/health_check' and ship without a real
+              // score — surface that as a structured failure, NOT a fake
+              // "completed". Honest receipt > silent recovery.
+              const failureMode=stored.bundle.diagnosis?.failure_mode;
+              if(failureMode&&typeof failureMode==='string'&&failureMode.includes('/')){
+                const [cls,stg]=failureMode.split('/');
+                const failReason=stored.bundle.timeline?.[0]?.detail||stored.bundle.usage?.provider_cost_note||`Pre-execution failure at ${stg}`;
+                finish(cls||'could_not_start',failReason,stg||stage,stored.bundle.provider_attempts?.[0]?.provider_error||providerError);
+                return;
+              }
               updateBatchItem(tabKey,taskId,modelId,{status:'completed',runId,pass,completedAt:new Date().toISOString()});
               state.runState[tabKey].lines.push(`[${taskId} :: ${modelId}] Reconciled from /api/runs after /status fetch failed.`);
               for(const key of Object.keys(TAB_CONFIG))await refreshTabData(key);
@@ -2330,8 +2366,17 @@ function watchRunCompletion(tabKey,runId,taskId,modelId){
               return;
             }
           }
-          // Final fallback — honest about what actually went wrong: /status
-          // unreachable AND no bundle on disk. Never the catch-all.
+          // Last resort. If the original SSE error frame WAS structured
+          // (parsed=true), use it as the source of truth — that beats
+          // "Run state unreachable" for the exact case the operator
+          // reported: a known RATE_LIMIT failure where /status itself
+          // got rate-limited by our read bucket and /api/runs hadn't
+          // yet learned about the bundle. Without this branch we drop
+          // the structured cause we already had in hand.
+          if(parsed&&originalPayload){
+            finish(classification,reason,stage,providerError);
+            return;
+          }
           const errLabel=err&&(err.message||err.status)?String(err.message||err.status):'unknown';
           finish(started?'failed':'could_not_start',`Run state unreachable — /status query failed (${errLabel}) and no evidence bundle was found.`,stage,providerError);
         });
@@ -2402,9 +2447,14 @@ async function resetAdapterCircuits(modelIds){
 
 const RATE_LIMIT_RETRY_ENABLED=true;
 const RATE_LIMIT_MAX_RETRIES=1;
-const RATE_LIMIT_BACKOFF_MIN_MS=10_000;
-const RATE_LIMIT_BACKOFF_MAX_MS=120_000;
-const RATE_LIMIT_BACKOFF_FACTOR=2.5;
+// Backoff tuned from observation: a 10–15s wait wasn't long enough to
+// clear OpenRouter/DeepSeek-V4-Pro rate-limit windows in real sessions —
+// the operator still saw rate-limits even after 12s and 22s waits. Bumped
+// to 30s / 60s / 120s with 180s ceiling so the second retry has a fighting
+// chance against per-minute provider quotas.
+const RATE_LIMIT_BACKOFF_MIN_MS=30_000;
+const RATE_LIMIT_BACKOFF_MAX_MS=180_000;
+const RATE_LIMIT_BACKOFF_FACTOR=2;
 
 function createCooldownState(){return{byKey:new Map(),totalCooldownMs:0,totalHits:0,totalRetries:0,totalRecoveries:0}}
 

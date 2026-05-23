@@ -173,8 +173,10 @@ describe("ui/index.html: cooldown wiring source pins", () => {
     const html = readFileSync(join(import.meta.dirname, "..", "..", "ui", "index.html"), "utf-8");
     assert.match(html, /RATE_LIMIT_RETRY_ENABLED=true/);
     assert.match(html, /RATE_LIMIT_MAX_RETRIES=1/);
-    assert.match(html, /RATE_LIMIT_BACKOFF_MIN_MS=10_000/);
-    assert.match(html, /RATE_LIMIT_BACKOFF_MAX_MS=120_000/);
+    // Tuned to 30s / 180s after operator observation that 10s/120s wasn't
+    // long enough to clear OpenRouter / DeepSeek-V4-Pro per-minute quotas.
+    assert.match(html, /RATE_LIMIT_BACKOFF_MIN_MS=30_000/);
+    assert.match(html, /RATE_LIMIT_BACKOFF_MAX_MS=180_000/);
     assert.match(html, /function isRateLimitOutcome\b/);
     assert.match(html, /function computeCooldownMs\b/);
     assert.match(html, /function cooldownSleep\b/);
