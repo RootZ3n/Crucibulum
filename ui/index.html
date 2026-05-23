@@ -2127,14 +2127,26 @@ function toggleSection(name){state.collapsed[name]=!state.collapsed[name];render
 // explicit and bubbles to progress display.
 function watchRunCompletion(tabKey,runId,taskId,modelId){
   return new Promise((resolve)=>{
+    // Launch trace — survives the run lifecycle and is dumped to console
+    // on terminal so an operator can paste a single line back when something
+    // is mis-classified. Per-run id keeps watchers isolated.
+    const trace={runId,taskId,modelId,t0:Date.now(),events:[]};
+    const trace_push=(ev,detail)=>{trace.events.push({t:Date.now()-trace.t0,ev,...(detail?{detail}:{})})};
+    trace_push('sse_open');
     const source=new EventSource(`/api/run/${encodeURIComponent(runId)}/live`);
     let started=false;
+    const dumpTrace=(finalLabel)=>{
+      trace_push('end',finalLabel);
+      // eslint-disable-next-line no-console
+      try{console.info(`[run-trace] ${taskId} :: ${modelId} :: ${runId} → ${finalLabel}`,trace.events)}catch{}
+    };
     source.addEventListener('step',(event)=>{
       try{
         const payload=JSON.parse(event.data);
         const line=payload.detail||payload.type||'Step';
         if(payload.type==='task_start'&&!started){
           started=true;
+          trace_push('task_start');
           updateBatchItem(tabKey,taskId,modelId,{status:'started',runId,startedAt:new Date().toISOString()});
           setRunPhase(tabKey,'executing');
           pushRunEvent(tabKey,'exec',`Executing ${humanizeToken(taskId)} · ${modelId}`);
@@ -2153,6 +2165,7 @@ function watchRunCompletion(tabKey,runId,taskId,modelId){
     });
     source.addEventListener('complete',async(event)=>{
       source.close();
+      trace_push('sse_complete');
       setRunPhase(tabKey,'judging');
       const payload=JSON.parse(event.data);
       const normalized=normalizeRunForDisplay({...payload,bundle_id:runId,task_id:taskId,model:modelId});
@@ -2169,24 +2182,49 @@ function watchRunCompletion(tabKey,runId,taskId,modelId){
       pushRunEvent(tabKey,'record','Recorded evidence bundle');
       for(const key of Object.keys(TAB_CONFIG))await refreshTabData(key);
       render();
+      dumpTrace('completed');
       resolve({status:'completed',executed:true,started:true,pass:normalized.completionState==='PASS',payload});
     });
     source.addEventListener('error',(event)=>{
       source.close();
-      let reason='Run stream interrupted — no evidence bundle produced.';
+      trace_push('sse_error',typeof event.data==='string'?'data':'connection-close');
+      // CATCH_ALL is the visible reason of last resort. Any structured
+      // signal — server-sent payload, polling /status, /api/runs hydration —
+      // must replace it before we show anything to the operator. Several
+      // earlier shapes of this handler fell through to the catch-all when a
+      // structured signal was present-but-partial (e.g. payload.error empty,
+      // /status returned non-2xx). That produced the operator-reported
+      // "Could not start · STREAM · Run stream interrupted" rows for runs
+      // that had really failed at health-check / adapter-init / rate-limit.
+      const CATCH_ALL='Run stream interrupted — no evidence bundle produced.';
+      let reason=CATCH_ALL;
       let stage='stream';
       let classification=started?'failed':'could_not_start';
       let parsed=false;
       let providerError=null;
       try{
         const payload=JSON.parse(event.data);
-        reason=payload.error||payload.reason||reason;
-        stage=payload.stage||stage;
-        classification=payload.classification||classification;
-        providerError=payload.provider_error||null;
-        parsed=true;
+        // Replace each field individually so a payload with *some* structure
+        // but a blank `error` still surfaces stage/classification/provider_error
+        // instead of the catch-all.
+        if(payload&&typeof payload==='object'){
+          if(typeof payload.error==='string'&&payload.error.trim())reason=payload.error;
+          else if(typeof payload.reason==='string'&&payload.reason.trim())reason=payload.reason;
+          if(typeof payload.stage==='string'&&payload.stage)stage=payload.stage;
+          if(typeof payload.classification==='string'&&payload.classification)classification=payload.classification;
+          if(payload.provider_error)providerError=payload.provider_error;
+          // If reason is still the catch-all but we *did* parse a structured
+          // payload, synthesise a non-generic reason from stage/classification
+          // so the operator sees the cause class even when the server omitted
+          // a free-form message.
+          if(reason===CATCH_ALL&&(stage!=='stream'||classification!=='could_not_start')){
+            reason=`Run ${classification.replace(/_/g,' ')} at ${stage}`;
+          }
+          parsed=true;
+        }
       }catch{}
       const finish=(finalStatus,finalReason,finalStage,finalProviderError)=>{
+        trace_push('finish',`${finalStatus}/${finalStage}`);
         updateBatchItem(tabKey,taskId,modelId,{status:finalStatus,runId,reason:finalReason,providerError:finalProviderError||providerError||null,stage:finalStage||stage||null,completedAt:new Date().toISOString()});
         state.runState[tabKey].lines.push(`[${taskId} :: ${modelId}] ${finalStatus==='failed'?'FAILED':'DID NOT RUN'} — ${finalReason}`);
         const kind=finalStatus==='skipped_by_preflight'?'skip':'fail';
@@ -2198,6 +2236,7 @@ function watchRunCompletion(tabKey,runId,taskId,modelId){
         const label=failureReasonLabel(category);
         pushRunEvent(tabKey,kind,`${verb} ${humanizeToken(taskId)} · ${label} · ${String(finalReason||'').slice(0,80)}`);
         render();
+        dumpTrace(`${finalStatus}/${finalStage}`);
         resolve({status:finalStatus,executed:false,started,pass:false,reason:finalReason,stage:finalStage,category});
       };
       if(parsed){
@@ -2259,9 +2298,42 @@ function watchRunCompletion(tabKey,runId,taskId,modelId){
             ?'Run timed out waiting for completion after SSE disconnect.'
             :'Run could not be observed — SSE disconnected before any task_start event.';
           finish(started?'failed':'could_not_start',honestReason,stage,providerError);
-        }).catch(()=>{
-          // /status itself failed — fall back to single-shot give-up.
-          finish(started?'failed':'could_not_start',reason,stage,providerError);
+        }).catch(async (err)=>{
+          // /status itself failed. Before falling back to the catch-all,
+          // try one last lookup against /api/runs/<runId> — the bundle may
+          // be on disk (and now reachable by run_id thanks to the previous
+          // identity fix). This is the path that previously hit the
+          // catch-all and produced "Run stream interrupted" rows for runs
+          // whose evidence existed but couldn't be hydrated through the
+          // polling endpoint.
+          try{
+            const stored=await fetchJSON(`/api/runs/${encodeURIComponent(runId)}`);
+            if(stored?.bundle?.bundle_id){
+              const pass=stored.bundle.score?.pass===true;
+              updateBatchItem(tabKey,taskId,modelId,{status:'completed',runId,pass,completedAt:new Date().toISOString()});
+              state.runState[tabKey].lines.push(`[${taskId} :: ${modelId}] Reconciled from /api/runs after /status fetch failed.`);
+              for(const key of Object.keys(TAB_CONFIG))await refreshTabData(key);
+              render();
+              dumpTrace('completed-via-runs-hydration');
+              resolve({status:'completed',executed:true,started:true,pass,reconciled:true});
+              return;
+            }
+          }catch(hyderr){
+            // Bundle lookup also failed — distinguish "removed by retention"
+            // (server says 404 with a structured reason) from "really gone".
+            const body=hyderr&&hyderr.body;
+            const retentionReason=(body&&typeof body==='object'&&body.error==='Evidence removed by retention')
+              ? `Evidence removed by retention. ${body.reason||''}`
+              : null;
+            if(retentionReason){
+              finish(started?'failed':'could_not_start',retentionReason,'retention',providerError);
+              return;
+            }
+          }
+          // Final fallback — honest about what actually went wrong: /status
+          // unreachable AND no bundle on disk. Never the catch-all.
+          const errLabel=err&&(err.message||err.status)?String(err.message||err.status):'unknown';
+          finish(started?'failed':'could_not_start',`Run state unreachable — /status query failed (${errLabel}) and no evidence bundle was found.`,stage,providerError);
         });
       };
       pollOnce();

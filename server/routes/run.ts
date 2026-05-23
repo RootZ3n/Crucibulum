@@ -391,7 +391,14 @@ export async function handleRunStatus(req: IncomingMessage, res: ServerResponse,
     });
     return;
   }
-  const stored = getBundleById(runId);
+  // After my previous fix, bundle_id carries a random suffix and is no
+  // longer derivable from runId. The bundle records `run_id` directly —
+  // try that lookup too so /status keeps working after activeRuns has
+  // GC'd the in-memory entry. Without this, the UI's polling fallback
+  // sees a 404, falls into its catch() branch, and reports the catch-all
+  // "Run stream interrupted" string for a run whose bundle is actually
+  // sitting on disk.
+  const stored = getBundleById(runId) ?? getBundleByRunId(runId);
   if (stored) {
     sendJSON(res, 200, {
       run_id: runId,
