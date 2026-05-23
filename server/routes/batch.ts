@@ -15,6 +15,7 @@ import { summarizeRunSet } from "../contracts.js";
 import { runSynthesis } from "../../core/synthesis.js";
 import { activeRuns, broadcastSSE, sseClients, markRunSettled } from "./run.js";
 import { resolveByModelIdWithHint } from "../../core/provider-registry.js";
+import { generateBatchId } from "../../core/identity.js";
 
 function resolveRequestedDispatch(adapter: string, provider: string | null, model: string): { adapter: string; provider: string | null; model: string } {
   const resolved = resolveByModelIdWithHint(model, provider);
@@ -33,7 +34,7 @@ export async function handleRunBatch(req: IncomingMessage, res: ServerResponse):
   if (!v.ok) { sendJSON(res, 400, { error: "Invalid run-batch request", details: v.errors }); return; }
   const body = v.value;
 
-  const batchId = `batch_${Date.now().toString(36)}`;
+  const batchId = generateBatchId((id) => activeRuns.has(id));
   const autoSynthesis = body.auto_synthesis;
   const reviewConfig = {
     secondOpinion: {

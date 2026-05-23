@@ -14,8 +14,9 @@
  */
 
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { generateBundleId, pickUniquePath } from "./identity.js";
 import { platform, arch } from "node:os";
 import type { TaskManifest, Oracle, ExecutionResult, EvidenceBundle, DiffEntry } from "../adapters/base.js";
 import type { JudgeResult } from "./judge.js";
@@ -62,6 +63,12 @@ export interface BundleBuildInput {
   suiteId?: string | undefined;
   adapter: CrucibulumAdapter;
   model: string;
+  /**
+   * Server-issued run id from POST /api/run. Stamped into `bundle.run_id` so
+   * /api/runs/<runId> can find the right evidence. Optional — CLI harness
+   * invocations leave it unset.
+   */
+  runId?: string | undefined;
 }
 
 export type BundleSignatureStatus = "valid" | "forged" | "legacy_unverified" | "unsigned_key_missing" | "tampered";
@@ -171,13 +178,17 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
   const provider = executionResult.adapter_metadata.provider;
   const costUsd = estimateCost(provider, executionResult.tokens_in ?? 0, executionResult.tokens_out ?? 0);
 
-  const modelSlug = model.replace(/[/:]/g, "-");
-  const timestamp = new Date(startTime).toISOString().replace(/[-:]/g, "").slice(0, 15);
-  const bundleId = `run_${timestamp}_${manifest.id}_${modelSlug}`;
+  // Bundle id now carries a crypto-random suffix — the old
+  // `run_${YYYYMMDDTHHMMSS}_${task}_${model}` shape collided to the
+  // *second* on fast batches, and storeBundle silently overwrote the
+  // earlier bundle's file. The date prefix is preserved so a human
+  // scanning the runs dir can still find the right window at a glance.
+  const bundleId = generateBundleId(manifest.id, model, { isoDate: startTime });
 
   const bundle: EvidenceBundle = {
     bundle_id: bundleId,
     bundle_hash: "sha256:pending",
+    ...(input.runId ? { run_id: input.runId } : {}),
     bundle_version: "1.0.0",
     task: {
       id: manifest.id,
@@ -324,12 +335,32 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
 
 /**
  * Store evidence bundle to disk.
+ *
+ * Never silently overwrites an existing bundle file. If `${bundle_id}.json`
+ * already exists (e.g. the bundle was reissued under a colliding id), the
+ * bundle's id is widened with a short random suffix until the path is
+ * unique, then the on-disk filename and bundle.bundle_id are both updated.
+ * The bundle hash is recomputed afterwards so the stored signature still
+ * matches the persisted id.
  */
 export function storeBundle(bundle: EvidenceBundle): string {
   const runsDir = process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs");
   mkdirSync(runsDir, { recursive: true });
 
-  const filePath = join(runsDir, `${bundle.bundle_id}.json`);
+  // Belt on top of the random-suffix suspenders: even if the random suffix
+  // collides (vanishingly unlikely) we never overwrite. Rename the bundle
+  // and recompute its hash + signature instead.
+  let filePath = join(runsDir, `${bundle.bundle_id}.json`);
+  if (existsSync(filePath)) {
+    const originalId = bundle.bundle_id;
+    const uniquePath = pickUniquePath((suffix) => join(runsDir, `${originalId}${suffix}.json`));
+    const slug = uniquePath.slice(runsDir.length + 1, -".json".length);
+    log("warn", "bundle", `Bundle id collision on ${originalId}; rewriting as ${slug}`);
+    bundle.bundle_id = slug;
+    bundle.bundle_hash = computeBundleHash(bundle);
+    filePath = uniquePath;
+  }
+
   signBundle(bundle);
   writeFileSync(filePath, JSON.stringify(bundle, null, 2) + "\n", "utf-8");
 

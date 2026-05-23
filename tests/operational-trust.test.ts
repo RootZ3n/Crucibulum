@@ -107,7 +107,7 @@ describe("operational trust trial metadata", () => {
     const ids = manifests.map((m) => m.id).sort();
     assert.deepEqual(ids, EXPECTED_IDS);
     for (const m of manifests) {
-      assert.equal(m.family, "operational-trust", `${m.id}: wrong family`);
+      assert.equal(m.family, "operational_trust", `${m.id}: wrong family`);
       assert.equal(m.execution_mode, "conversational", `${m.id}: wrong execution_mode`);
     }
   });

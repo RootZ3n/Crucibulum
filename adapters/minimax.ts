@@ -395,7 +395,8 @@ function executeToolCalls(response: string, workspacePath: string, observer: Obs
   let fileEdits = 0, commandsFound = 0;
 
   const donePatterns = [/^DONE\s*$/m, /\bDONE\b/, /\btask\s+(is\s+)?complete\b/i, /\bthe\s+fix\s+is\s+complete\b/i, /\bfix\s+(has\s+been|is)\s+(applied|complete|done)\b/i];
-  const hasWork = observer.getFilesWritten().length > 0;
+  const taskAllowsNoEdits = maxFileEdits === 0;
+  const hasWork = observer.getFilesWritten().length > 0 || taskAllowsNoEdits;
   if (donePatterns.some(p => p.test(response)) && hasWork) return { done: true, feedback: "", commandsFound: 1 };
   if (donePatterns.some(p => p.test(response)) && !hasWork) return { done: false, feedback: "You have signaled DONE but have not made any changes. Use WRITE_FILE to fix the bug first.", commandsFound: 1 };
 

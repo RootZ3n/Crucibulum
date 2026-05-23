@@ -44,8 +44,8 @@ describe("bundle ID collision", () => {
     const bundle1 = buildBundle(makeMinimalInput("2025-06-15T10:30:00.000Z") as any);
     const bundle2 = buildBundle(makeMinimalInput("2025-06-15T14:45:00.000Z") as any);
 
-    assert.notEqual(bundle1.bundle_id, bundle2.bundle_id, "Bundle IDs should differ for same-day runs at different times");
-    assert.match(bundle1.bundle_id, /run_\d{8}T\d{6}_/, "Bundle ID should contain date and time");
-    assert.match(bundle2.bundle_id, /run_\d{8}T\d{6}_/, "Bundle ID should contain date and time");
+    assert.notEqual(bundle1.bundle_id, bundle2.bundle_id, "Bundle IDs should differ for same-day reruns");
+    assert.match(bundle1.bundle_id, /^run_2025-06-15_test-task_test-model_[a-f0-9]{8}$/, "Bundle ID should keep date/task/model plus random suffix");
+    assert.match(bundle2.bundle_id, /^run_2025-06-15_test-task_test-model_[a-f0-9]{8}$/, "Bundle ID should keep date/task/model plus random suffix");
   });
 });

@@ -289,6 +289,8 @@ export interface ChatOptions {
   reasoningEffort?: "off" | "minimal" | "default" | undefined;
   retries?: number | undefined;
   timeoutMs?: number | undefined;
+  /** Internal harness hint for deterministic mock adapters; ignored by live adapters. */
+  currentQuestion?: ConversationalQuestion | undefined;
 }
 
 // ── Conversational task types ─────────────────────────────────────────────
@@ -313,7 +315,7 @@ export type ConversationalFamily =
   | "summarization"
   | "token-efficiency"
   | "thinking-mode"
-  | "operational-trust";
+  | "operational_trust";
 
 export type ConversationalScoringType =
   | "text_match"
@@ -498,6 +500,14 @@ export interface VerificationResults {
 export interface EvidenceBundle {
   bundle_id: string;
   bundle_hash: string;
+  /**
+   * Server-issued run id from POST /api/run that produced this bundle.
+   * Optional because legacy bundles + CLI-harness invocations have no
+   * dispatch id. When present, lets /api/runs/<runId> hydrate the right
+   * evidence even though `bundle_id` is now a separate random-suffixed
+   * slug that no client sees.
+   */
+  run_id?: string | undefined;
   /** HMAC-SHA256 over `${bundle_id}.${bundle_hash}`. Missing means legacy/unverified. */
   signature?: string | undefined;
   bundle_version: string;

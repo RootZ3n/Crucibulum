@@ -108,6 +108,20 @@ export function getBundleById(id: string): EvidenceBundle | null {
   } catch { return null; }
 }
 
+/**
+ * Lookup by the server-issued `run_id` that the runner stamped onto the
+ * bundle. The UI's `runId` (returned from POST /api/run) flows through to
+ * `bundle.run_id` so /api/runs/<runId> can hydrate even when the bundle's
+ * filename slug differs from the run id (bundle ids now carry a random
+ * suffix; run ids are crypto-random — they're never the same string).
+ */
+export function getBundleByRunId(runId: string): EvidenceBundle | null {
+  try {
+    const bundles = loadBundles();
+    return bundles.find(b => b.run_id === runId) ?? null;
+  } catch { return null; }
+}
+
 /** Explicit task-scoped lookup for callers that actually want every bundle for a task. */
 export function getBundlesByTaskId(taskId: string): EvidenceBundle[] {
   try {

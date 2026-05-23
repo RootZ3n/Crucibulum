@@ -153,8 +153,8 @@ describe("ui model/provider parity across lane tabs", () => {
       "xiaomi/mimo-v2.5",
       "xiaomi/mimo-v2.5-pro",
       "moonshotai/kimi-k2.6",
-      "qwen/qwen-3.6-plus",
-      "zhipu/glm-5.1",
+      "qwen/qwen3.6-plus",
+      "z-ai/glm-5.1",
       "x-ai/grok-4.3",
     ]) {
       assert.ok(ids.has(required), `OpenRouter curated list missing required model id: ${required}`);
@@ -163,7 +163,7 @@ describe("ui model/provider parity across lane tabs", () => {
 
   it("every required OpenRouter model is renderable from every lane tab's dropdown", () => {
     const ui = loadUi();
-    const required = ["xiaomi/mimo-v2.5", "xiaomi/mimo-v2.5-pro", "moonshotai/kimi-k2.6", "qwen/qwen-3.6-plus", "zhipu/glm-5.1", "x-ai/grok-4.3"];
+    const required = ["xiaomi/mimo-v2.5", "xiaomi/mimo-v2.5-pro", "moonshotai/kimi-k2.6", "qwen/qwen3.6-plus", "z-ai/glm-5.1", "x-ai/grok-4.3"];
     for (const tab of laneTabs(ui)) {
       const ids = new Set(optionIdsFromMarkup(ui.renderModelOptions(tab)));
       for (const id of required) {

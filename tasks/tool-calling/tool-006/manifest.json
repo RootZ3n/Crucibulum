@@ -8,7 +8,7 @@
     "source": "local",
     "path": "./tasks/tool-calling/tool-006/repo",
     "commit": "initial",
-    "setup_script": null,
+    "setup_script": ".crucibulum/setup.sh",
     "reset_script": null
   },
   "task": {
@@ -22,7 +22,7 @@
   "constraints": {
     "time_limit_sec": 120,
     "max_steps": 15,
-    "max_file_edits": 5,
+    "max_file_edits": 0,
     "max_files_read": 5,
     "allowed_tools": [
       "shell",

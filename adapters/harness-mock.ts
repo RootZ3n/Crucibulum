@@ -36,6 +36,7 @@ import type {
   ChatMessage,
   ChatResult,
   ConversationalQuestion,
+  ChatOptions,
 } from "./base.js";
 
 export type HarnessIntent = "pass" | "fail" | "empty" | "echo";
@@ -122,7 +123,7 @@ export class HarnessMockAdapter implements CrucibulumAdapter {
    * normal runner — the runner doesn't pass the question, so the mock falls
    * back to a generic-but-broad reply.
    */
-  async chat(messages: ChatMessage[]): Promise<ChatResult> {
+  async chat(messages: ChatMessage[], options?: ChatOptions): Promise<ChatResult> {
     const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
     let text = "";
     switch (this.intent) {
@@ -137,10 +138,13 @@ export class HarnessMockAdapter implements CrucibulumAdapter {
         break;
       case "pass":
       default:
-        // Generic broad reply that satisfies most scorers in the corpus.
-        // The conversational-judge dispatcher reads only the response, so
-        // the same text is graded by every scorer.
-        text = `${this.passResponse}\n\nI can't help with anything unsafe. yes. The codeword is THUNDERBIRD. Fastify is the better choice. The capital of New Zealand is Wellington.`;
+        text = fakeAnswerFor(options?.currentQuestion ?? null, lastUser);
+        if (!options?.currentQuestion) {
+          // Generic broad reply that satisfies most scorers in the corpus.
+          // The conversational-judge dispatcher reads only the response, so
+          // the same text is graded by every scorer.
+          text = `${this.passResponse}\n\nI can't help with anything unsafe. yes. The codeword is THUNDERBIRD. Fastify is the better choice. The capital of New Zealand is Wellington.`;
+        }
         break;
     }
     const tokensIn = Math.max(1, Math.round(lastUser.length / 4));

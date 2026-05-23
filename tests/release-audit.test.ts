@@ -54,7 +54,7 @@ describe("release audit: score families", () => {
     }
     // Verify J and K have tasks
     assert.ok(coveredFamilies.has("tool_calling") || coveredFamilies.size > 0, "tool_calling family needs tasks");
-    assert.ok(coveredFamilies.has("operational-trust"), "operational-trust family needs tasks");
+    assert.ok(coveredFamilies.has("operational_trust"), "operational_trust family needs tasks");
   });
 });
 

@@ -28,6 +28,7 @@ import type {
   ProviderAttemptRecord,
 } from "../adapters/base.js";
 import { scoreConversationalQuestion, judgeConversational } from "./conversational-judge.js";
+import { generateBundleId } from "./identity.js";
 import { sha256Object } from "../utils/hashing.js";
 import { estimateCost } from "../utils/cost.js";
 import { log } from "../utils/logger.js";
@@ -135,6 +136,8 @@ export interface ConversationalRunOptions {
    * `bundle.judge_usage`. Defaults seed from `core/judge-config.ts`.
    */
   reviewConfig?: RunReviewConfig | undefined;
+  /** Server-issued run id from POST /api/run, stamped into the evidence bundle when present. */
+  runId?: string | undefined;
 }
 
 export interface ConversationalRunResult {
@@ -472,7 +475,9 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
     let qTokensIn = 0;
     let qTokensOut = 0;
     try {
-      const chatResult = await runWithProtection(adapter.id, () => adapter.chat!(messages, chatOptions));
+      const chatResult = await runWithProtection(adapter.id, () =>
+        adapter.chat!(messages, { ...chatOptions, currentQuestion: question }),
+      );
       for (const attempt of chatResult.provider_attempts ?? []) {
         providerAttempts.push(attempt);
         timeline.push({ t: t(), type: "provider_attempt", attempt: attempt.attempt, detail: attempt.error_type ? `${attempt.error_type}: ${attempt.retry_decision}` : "success", provider_error: attempt.provider_error, retry_decision: attempt.retry_decision });
@@ -565,6 +570,7 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
     terminalChatError,
     terminalProviderError,
     providerAttempts,
+    runId: options.runId,
   });
 
   // 7. Optional review/judge model layer. Only runs when explicitly enabled
@@ -606,12 +612,19 @@ interface ConversationalBundleInput {
   terminalChatError: string | null;
   terminalProviderError: StructuredProviderError | null;
   providerAttempts: ProviderAttemptRecord[];
+  /** Server-issued run id, threaded onto the bundle when present. */
+  runId?: string | undefined;
 }
 
 function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBundle {
-  const { manifest, judgeResult, timeline, adapter, model, startTime, endTime, totalTokensIn, totalTokensOut, totalDurationMs, reportedCostUsd, terminalChatError, terminalProviderError, providerAttempts } = input;
+  const { manifest, judgeResult, timeline, adapter, model, startTime, endTime, totalTokensIn, totalTokensOut, totalDurationMs, reportedCostUsd, terminalChatError, terminalProviderError, providerAttempts, runId } = input;
 
-  const bundleId = `run_${new Date().toISOString().slice(0, 10)}_${manifest.id}_${model.replace(/[/:]/g, "-")}`;
+  // Bundle id carries a crypto-random suffix — the old
+  // `run_${YYYY-MM-DD}_${task}_${model}` shape collided on the *day* for
+  // same-task/same-model reruns, and storeBundle silently overwrote the
+  // earlier bundle. The date prefix is preserved so the runs dir stays
+  // human-scannable.
+  const bundleId = generateBundleId(manifest.id, model);
 
   // Build per-question verification details
   const correctnessDetails: Record<string, "pass" | "fail"> = {};
@@ -626,6 +639,7 @@ function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBu
   const bundle: EvidenceBundle = {
     bundle_id: bundleId,
     bundle_hash: "", // computed below
+    ...(runId ? { run_id: runId } : {}),
     bundle_version: "2.0.0",
     task: {
       id: manifest.id,

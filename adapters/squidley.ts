@@ -402,7 +402,8 @@ function executeToolCalls(
     /\bfinished\b.*\btask\b/i,
   ];
 
-  const hasWork = observer.getFilesWritten().length > 0;
+  const taskAllowsNoEdits = maxFileEdits === 0;
+  const hasWork = observer.getFilesWritten().length > 0 || taskAllowsNoEdits;
   const isDone = donePatterns.some(p => p.test(response));
 
   if (isDone && hasWork) {

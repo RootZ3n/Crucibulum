@@ -67,9 +67,11 @@ const DEFAULT_MODEL_GROUPS=[
     {id:'xiaomi/mimo-v2-flash',label:'xiaomi/mimo-v2-flash (MiMo Flash)'},
     {id:'xiaomi/mimo-v2-omni',label:'xiaomi/mimo-v2-omni (MiMo Omni)'},
     {id:'moonshotai/kimi-k2.6',label:'moonshotai/kimi-k2.6 (Kimi K2.6)'},
-    {id:'qwen/qwen-3.6-plus',label:'qwen/qwen-3.6-plus (Qwen 3.6 Plus)'},
-    {id:'zhipu/glm-5.1',label:'zhipu/glm-5.1 (GLM 5.1)'},
-    {id:'x-ai/grok-4.3',label:'x-ai/grok-4.3 (Grok 4.3)'}
+    {id:'qwen/qwen3.6-plus',label:'qwen/qwen3.6-plus (Qwen 3.6 Plus)'},
+    {id:'z-ai/glm-5.1',label:'z-ai/glm-5.1 (GLM 5.1)'},
+    {id:'x-ai/grok-4.3',label:'x-ai/grok-4.3 (Grok 4.3)'},
+    {id:'deepseek/deepseek-v4-pro',label:'deepseek/deepseek-v4-pro (DeepSeek V4 Pro)'},
+    {id:'deepseek/deepseek-v4-flash',label:'deepseek/deepseek-v4-flash (DeepSeek V4 Flash)'}
   ]},
   {key:'modelstudio',label:'ModelStudio',providerId:'modelstudio',adapterId:'squidley',kind:'cloud',models:[
     {id:'qwen3.6-plus',label:'qwen3.6-plus'},
@@ -2203,17 +2205,50 @@ function watchRunCompletion(tabKey,runId,taskId,modelId){
         finish(finalStatus,reason,stage,providerError);
         return;
       }
-      fetchJSON(`/api/run/${encodeURIComponent(runId)}/status`).then((status)=>{
-        if(status?.status==='complete'&&status?.bundle_id){
-          updateBatchItem(tabKey,taskId,modelId,{status:'completed',runId,completedAt:new Date().toISOString()});
-          state.runState[tabKey].lines.push(`[${taskId} :: ${modelId}] Stream closed after completion — reconciling from status endpoint.`);
-          render();
-          resolve({status:'completed',executed:true,started:true,pass:false,reconciled:true});
-          return;
-        }
-        const finalStatus=(status?.failure_stage==='execution'||started)?'failed':'could_not_start';
-        finish(finalStatus,status?.error||reason,status?.failure_stage||stage,status?.provider_error||providerError);
-      }).catch(()=>finish(started?'failed':'could_not_start',reason,stage,providerError));
+      // Connection-level SSE error with no parseable data. The run may still be
+      // mid-flight on the server (fast runs can finish before the EventSource
+      // fully attaches, or the server's res.end() after sending all events can
+      // race with the client's event dispatch order). Poll /status until it
+      // settles instead of giving up immediately — otherwise the for-loop above
+      // fires the next task while the current one is still running, the same
+      // SSE race repeats, and a whole batch can collapse into "could_not_start"
+      // while bundles quietly land on disk.
+      const reconcileCompleted=async(status)=>{
+        const stored=await fetchJSON(`/api/runs/${encodeURIComponent(status.bundle_id)}`).catch(()=>null);
+        const pass=stored?.bundle?.score?.pass===true||stored?.score?.pass===true||status?.aggregate?.pass===true;
+        updateBatchItem(tabKey,taskId,modelId,{status:'completed',runId,pass,completedAt:new Date().toISOString()});
+        state.runState[tabKey].lines.push(`[${taskId} :: ${modelId}] Stream closed after completion — reconciling from status endpoint.`);
+        // Refresh tabData so the new bundle shows up in stats/leaderboard/runs.
+        for(const key of Object.keys(TAB_CONFIG))await refreshTabData(key);
+        render();
+        resolve({status:'completed',executed:true,started:true,pass,reconciled:true});
+      };
+      const POLL_INTERVAL_MS=300;
+      const POLL_BUDGET_MS=45000;
+      const pollStart=Date.now();
+      const pollOnce=()=>{
+        fetchJSON(`/api/run/${encodeURIComponent(runId)}/status`).then((status)=>{
+          if(status?.status==='complete'&&status?.bundle_id){
+            reconcileCompleted(status);
+            return;
+          }
+          if(status?.status==='error'){
+            const finalStatus=(status?.failure_stage==='execution'||started)?'failed':'could_not_start';
+            finish(finalStatus,status?.error||reason,status?.failure_stage||stage,status?.provider_error||providerError);
+            return;
+          }
+          // status is still 'running' — keep polling until budget exhausted.
+          if(Date.now()-pollStart<POLL_BUDGET_MS){
+            setTimeout(pollOnce,POLL_INTERVAL_MS);
+            return;
+          }
+          finish(started?'failed':'could_not_start',reason,stage,providerError);
+        }).catch(()=>{
+          // /status itself failed — fall back to single-shot give-up.
+          finish(started?'failed':'could_not_start',reason,stage,providerError);
+        });
+      };
+      pollOnce();
     });
   });
 }
@@ -2495,12 +2530,19 @@ function classifyError(err,stage){
     if(origin==='NETWORK'||kind==='NETWORK'||kind==='CONNECTION_RESET'||kind==='DNS')return'network';
     if(origin==='PROVIDER'||origin==='ADAPTER'||origin==='LOCAL_RUNTIME')return'provider';
   }
+  const status=err&&typeof err.status==='number'?err.status:null;
+  if(status===429)return'rate_limited';
+  if(status===401||status===403)return'auth';
+  if(status&&status>=500&&status<=599)return'upstream_error';
   const msg=String(err&&(err.message||err.reason||err.error)||err||'').toLowerCase();
-  if(msg.includes('abort')||msg.includes('timeout'))return'timeout';
-  if(msg.includes('401')||msg.includes('403')||msg.includes('auth'))return'auth';
-  if(msg.includes('429')||msg.includes('rate'))return'rate_limited';
-  if(msg.includes('5')&&msg.match(/\b5\d\d\b/))return'upstream_error';
-  if(msg.includes('failed to fetch')||msg.includes('networkerror')||msg.includes('network')||msg.includes('enotfound')||msg.includes('econnrefused'))return'network';
+  if(msg.includes('abort')||msg.includes('timeout')||msg.includes('timed out'))return'timeout';
+  // Substring matchers below are intentionally specific: "auth", "rate", and "5"
+  // appear in too many benign strings ("generate", "author", "iterate", any number
+  // starting with 5). Require the actual signal token, not a fragment of one.
+  if(/\b(unauthori[sz]ed|forbidden|invalid[ _-]?api[ _-]?key|missing[ _-]?api[ _-]?key)\b/.test(msg))return'auth';
+  if(/\b(rate[ _-]?limit(ed|ing)?|ratelimit(ed|ing)?|too[ _-]many[ _-]requests)\b/.test(msg)||msg.includes('429'))return'rate_limited';
+  if(/\b5\d\d\b/.test(msg))return'upstream_error';
+  if(msg.includes('failed to fetch')||msg.includes('networkerror')||msg.includes('enotfound')||msg.includes('econnrefused')||/\bnetwork\b/.test(msg))return'network';
   if(stage==='health_check'||stage==='adapter_init')return'provider';
   if(stage==='preflight')return'preflight';
   return'other';

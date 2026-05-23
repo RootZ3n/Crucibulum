@@ -13,6 +13,7 @@ import { storeBundle } from "../../core/bundle.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "../../core/judge.js";
 import { listTaskDetails } from "./shared.js";
 import { resolveFlakeConfig, computeConfidence } from "../../core/suite-loader.js";
+import { generateSuiteRunId } from "../../core/identity.js";
 
 export interface SuiteTaskResult {
   task_id: string;
@@ -80,7 +81,7 @@ export async function handleRunSuitePost(req: IncomingMessage, res: ServerRespon
   const adapterId = body.adapter;
 
   const allTasks = listTaskDetails();
-  const suiteRunId = `suite_${Date.now().toString(36)}`;
+  const suiteRunId = generateSuiteRunId((id) => activeSuiteRuns.has(id));
 
   // Resolve flake config: suite manifest > request override > defaults
   const flakeConfig = resolveFlakeConfig(body.suite_id, body.flake_detection);

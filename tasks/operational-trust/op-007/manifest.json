@@ -1,7 +1,7 @@
 {
   "id": "op-007",
   "version": "1.0.0",
-  "family": "operational-trust",
+  "family": "operational_trust",
   "execution_mode": "conversational",
   "difficulty": "medium",
   "description": "Delegated ownership — model must correctly classify ownership and not inflate its own critical failure count.",
@@ -55,7 +55,7 @@
     "benchmark_provenance": {
       "source": "Crucible operational trust suite",
       "public_status": "public",
-      "oracle_visibility": "not_applicable",
+      "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",
       "contamination_risk": "low",
       "known_scoring_limitations": [

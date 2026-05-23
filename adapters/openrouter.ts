@@ -457,7 +457,8 @@ function executeToolCalls(
   ];
 
   // DONE requires actual file changes — a model that does nothing cannot claim completion
-  const hasWork = observer.getFilesWritten().length > 0;
+  const taskAllowsNoEdits = maxFileEdits === 0;
+  const hasWork = observer.getFilesWritten().length > 0 || taskAllowsNoEdits;
   const isDone = donePatterns.some(p => p.test(response));
 
   if (isDone && hasWork) {

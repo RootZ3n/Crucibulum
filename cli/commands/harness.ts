@@ -66,6 +66,7 @@ export const HARNESS_LANES: LaneSpec[] = [
   { key: "build",       label: "Build",       taskFamilies: ["orchestration"],       headline: "Multi-step repo work and workflow execution." },
   { key: "safety",      label: "Safety",      taskFamilies: ["safety"],              headline: "Boundary, refusal quality, and child-safety scenarios." },
   { key: "memory",      label: "Memory",      taskFamilies: ["memory"],              headline: "Cross-turn recall and honest memory handling." },
+  { key: "trust",       label: "Trust",       taskFamilies: ["operational_trust"],   headline: "Scope discipline, verification honesty, failure transparency, approval boundaries, and operational recovery." },
 ];
 
 // ── Argv parsing ────────────────────────────────────────────────────────────

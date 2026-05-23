@@ -31,6 +31,12 @@ export interface RunOptions {
   runs?: number | undefined;
   keepWorkspace?: boolean | undefined;
   reviewConfig?: RunReviewConfig | undefined;
+  /**
+   * Server-issued run id from POST /api/run. Threaded into the produced
+   * bundle so /api/runs/<runId> can hydrate evidence later. Optional —
+   * CLI harness invocations leave it unset.
+   */
+  runId?: string | undefined;
 }
 
 export interface RunResult {
@@ -54,6 +60,7 @@ export async function runTask(options: RunOptions): Promise<RunResult> {
       adapter,
       model,
       reviewConfig: options.reviewConfig,
+      runId: options.runId,
     });
     return {
       bundle: convResult.bundle,
@@ -154,6 +161,7 @@ export async function runTask(options: RunOptions): Promise<RunResult> {
       workspace,
       adapter,
       model,
+      runId: options.runId,
     });
 
     // 10. Review layer (optional, after deterministic judge)

@@ -4,8 +4,8 @@
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { randomBytes } from "node:crypto";
-import { sendJSON, readBody, parseJsonBody, isSafeId, loadBundles, getBundleById, filterBundlesByTaskFamilies, resolveLaneScope, bundleSummary, getStats, log, canonicalPercent } from "./shared.js";
+import { sendJSON, readBody, parseJsonBody, isSafeId, loadBundles, getBundleById, getBundleByRunId, filterBundlesByTaskFamilies, resolveLaneScope, bundleSummary, getStats, log, canonicalPercent } from "./shared.js";
+import { generateRunId as mintRunId } from "../../core/identity.js";
 import { validateRunRequest, validateCrucibleLinkRequest } from "../validators.js";
 import type { EvidenceBundle } from "../../adapters/base.js";
 import { instantiateAdapterForRun } from "../../adapters/registry.js";
@@ -56,28 +56,12 @@ const RUN_RETENTION_MS = 10 * 60 * 1000;
 const MAX_ACTIVE_RUNS = 256;
 
 /**
- * Generate a unique run id. Date.now() alone collides when two POSTs land in
- * the same millisecond — a real hazard for fast batches (deterministic mock
- * adapters, cached preflight, or any path that returns 202 in <1ms). When ids
- * collide, the second `activeRuns.set` silently clobbers the first run's
- * entry and both async IIFEs end up mutating the survivor — the user-visible
- * symptom is "later tests fail instantly" because state from an earlier
- * interrupted run bleeds into the active entry for the next one.
- *
- * The suffix is 8 hex chars of crypto-random bytes. Retry guard is a belt on
- * top of the suspenders so even a (statistically impossible) collision under
- * the same ms is still caught.
+ * Mint a unique run id for this dispatch. The check against `activeRuns`
+ * is the belt; the random suffix in `mintRunId` is the suspenders. See
+ * core/identity.ts for the collision-avoidance argument.
  */
 function generateRunId(): string {
-  for (let i = 0; i < 4; i++) {
-    const id = `run_${Date.now().toString(36)}_${randomBytes(4).toString("hex")}`;
-    if (!activeRuns.has(id)) return id;
-  }
-  // Final fallback: widen the random suffix. Practically unreachable; logged
-  // so we notice if it ever fires.
-  const id = `run_${Date.now().toString(36)}_${randomBytes(8).toString("hex")}`;
-  log("warn", "api", `generateRunId fell back to wide-suffix path for ${id} — extreme collision pressure`);
-  return id;
+  return mintRunId((id) => activeRuns.has(id));
 }
 
 export interface DispatchTarget {
@@ -234,7 +218,13 @@ export async function handleRunsList(req: IncomingMessage, res: ServerResponse, 
 
 export async function handleRunSummary(req: IncomingMessage, res: ServerResponse, path: string): Promise<void> {
   const id = path.replace("/api/runs/", "").replace("/summary", "");
-  const bundle = getBundleById(id);
+  // /api/runs/<id> accepts either the bundle_id (filename slug) or the
+  // server-issued run_id from POST /api/run. The UI threads the latter
+  // through `watchRunCompletion` → `hydrateFocusedRun`, so the run_id path
+  // is the live one in production. Falling through to getBundleByRunId is
+  // what makes evidence hydration work after the bundle_id changed shape
+  // to include a random suffix.
+  const bundle = getBundleById(id) ?? getBundleByRunId(id);
   if (!bundle) {
     sendJSON(res, 404, { error: "Run not found" });
     return;
@@ -245,7 +235,7 @@ export async function handleRunSummary(req: IncomingMessage, res: ServerResponse
 
 export async function handleRunGet(req: IncomingMessage, res: ServerResponse, path: string): Promise<void> {
   const id = path.replace("/api/runs/", "");
-  const bundle = getBundleById(id);
+  const bundle = getBundleById(id) ?? getBundleByRunId(id);
   if (!bundle) {
     sendJSON(res, 404, { error: "Run not found" });
     return;
@@ -576,6 +566,7 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
             model: dispatch.model,
             keepWorkspace: false,
             reviewConfig,
+            runId,
           });
           storeBundle(result.bundle);
           completedBundles.push(result.bundle);
@@ -620,6 +611,7 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
         active.aggregate = aggregate;
       }
       broadcastSSE(runId, "complete", {
+        run_id: runId,
         bundle_id: latestBundle.bundle_id,
         bundle_ids: completedBundles.map((bundle) => bundle.bundle_id),
         score: latestBundle.score,

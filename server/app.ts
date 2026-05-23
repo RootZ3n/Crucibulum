@@ -66,7 +66,15 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Cr
   try {
     if (path === "/" || path === "/index.html") {
       if (existsSync(UI_PATH)) {
-        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        // Single-file UI: every fix lives in this HTML. Browser heuristic
+        // caching of HTML defeats updates between sessions, so force a
+        // re-fetch on every load. Static assets (css/png) still cache normally.
+        res.writeHead(200, {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        });
         res.end(readFileSync(UI_PATH, "utf-8"));
       } else {
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
