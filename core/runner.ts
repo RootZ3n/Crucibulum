@@ -18,7 +18,7 @@ import { platform, arch } from "node:os";
 import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
 import { runReviewLayer, DEFAULT_REVIEW_CONFIG, DISABLED_REVIEW, type RunReviewConfig, type ReviewLayerResult } from "./review.js";
 import { applyReviewJudgeUsage } from "./judge-usage.js";
-import { isConversationalTask, runConversationalTask, type ConversationalRunResult } from "./conversational-runner.js";
+import { isConversationalTask, runConversationalTask, type ConversationalRunResult, type ConversationalProgressEvent } from "./conversational-runner.js";
 import { canonicalPercent } from "../types/scores.js";
 import { runWithProtection } from "./circuit-breaker.js";
 import { normalizeVerdict } from "./verdict.js";
@@ -37,6 +37,8 @@ export interface RunOptions {
    * CLI harness invocations leave it unset.
    */
   runId?: string | undefined;
+  /** Optional per-question progress callback (conversational tasks only). */
+  onProgress?: ((event: ConversationalProgressEvent) => void) | undefined;
 }
 
 export interface RunResult {
@@ -61,6 +63,7 @@ export async function runTask(options: RunOptions): Promise<RunResult> {
       model,
       reviewConfig: options.reviewConfig,
       runId: options.runId,
+      onProgress: options.onProgress,
     });
     return {
       bundle: convResult.bundle,

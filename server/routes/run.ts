@@ -567,6 +567,20 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
             keepWorkspace: false,
             reviewConfig,
             runId,
+            // Per-question progress → SSE 'step' frames. Without this, a
+            // 10-question conversational task (role-stress-001) sits silent
+            // for the duration of every model call. The heartbeat keeps the
+            // socket alive at the transport layer; this keeps the user-
+            // visible run panel ticking and proves the run is making
+            // forward progress.
+            onProgress: (event) => {
+              broadcastSSE(runId, "step", {
+                type: event.kind === "question_start" ? "task_start" : "task_complete",
+                detail: event.kind === "question_start"
+                  ? `Question ${event.index + 1}/${event.total} (${event.question_id}) sending`
+                  : `Question ${event.index + 1}/${event.total} (${event.question_id}) ${event.passed ? "PASS" : "FAIL"}`,
+              });
+            },
           });
           storeBundle(result.bundle);
           completedBundles.push(result.bundle);
@@ -673,6 +687,21 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
   })();
 }
 
+/**
+ * SSE heartbeat interval. Conversational tasks with many questions can sit
+ * idle for tens of seconds between server-emitted events (one model call per
+ * question = a long quiet stretch in between). Without a heartbeat,
+ * intermediaries (browser idle timers, reverse proxies, NAT) drop the
+ * connection and the client's EventSource fires an `error` event with no
+ * parseable data — the UI reports it as "Run stream interrupted — no
+ * evidence bundle produced", which is wrong: the run is still in flight on
+ * the server, just quiet.
+ *
+ * 10 seconds is well under every common intermediary's idle ceiling
+ * (typically 30-60s) and small enough to keep the cost negligible.
+ */
+const SSE_HEARTBEAT_MS = 10_000;
+
 export async function handleRunLive(req: IncomingMessage, res: ServerResponse, path: string): Promise<void> {
   // SSE stream — auth guard is in app.ts (top-level route handler enforces
   // token or session before routing here). No additional check needed.
@@ -703,7 +732,22 @@ export async function handleRunLive(req: IncomingMessage, res: ServerResponse, p
   }
   if (!sseClients.has(runId)) sseClients.set(runId, []);
   sseClients.get(runId)!.push(res);
+
+  // Heartbeat: an SSE comment line keeps the socket alive without the client
+  // having to do anything special — EventSource silently swallows comment
+  // lines (lines starting with `:`). Stop the timer when the request closes
+  // OR when the response ends naturally (terminal frame writes res.end()).
+  const heartbeat = setInterval(() => {
+    try { res.write(`: heartbeat ${Date.now()}\n\n`); }
+    catch { clearInterval(heartbeat); }
+  }, SSE_HEARTBEAT_MS);
+  // Don't keep the event loop alive solely for heartbeats; the runner's
+  // async work is what should hold the process open.
+  heartbeat.unref();
+  res.on("close", () => clearInterval(heartbeat));
+
   req.on("close", () => {
+    clearInterval(heartbeat);
     const clients = sseClients.get(runId);
     if (!clients) return;
     const idx = clients.indexOf(res);

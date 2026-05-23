@@ -138,6 +138,24 @@ export interface ConversationalRunOptions {
   reviewConfig?: RunReviewConfig | undefined;
   /** Server-issued run id from POST /api/run, stamped into the evidence bundle when present. */
   runId?: string | undefined;
+  /**
+   * Optional per-question progress callback. The HTTP layer wires this to
+   * `broadcastSSE` so a long conversational task surfaces visible "Question
+   * 3 of 10 …" activity instead of one task_start followed by ~60 seconds of
+   * radio silence and then a terminal frame. Without it, intermediaries
+   * sometimes drop the SSE socket during the quiet stretch — the symptom
+   * the operator saw as "Run stream interrupted" on role-stress-001.
+   */
+  onProgress?: ((event: ConversationalProgressEvent) => void) | undefined;
+}
+
+export interface ConversationalProgressEvent {
+  kind: "question_start" | "question_done";
+  question_id: string;
+  index: number;
+  total: number;
+  /** Set on question_done; PASS/FAIL of the deterministic scorer. */
+  passed?: boolean;
 }
 
 export interface ConversationalRunResult {
@@ -400,11 +418,16 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
     });
   }
 
-  for (const question of manifest.questions) {
+  for (let qIndex = 0; qIndex < manifest.questions.length; qIndex++) {
+    const question = manifest.questions[qIndex]!;
     const questionStartMs = Date.now();
     const t = () => Math.round((Date.now() - runStartMs) / 1000);
 
     log("info", "conv-runner", `[${question.id}] Sending question: ${question.question.slice(0, 80)}...`);
+    // Progress event — the HTTP layer turns these into SSE 'step' frames so
+    // the UI sees per-question activity instead of a silent stretch that
+    // looks like a dropped connection.
+    options.onProgress?.({ kind: "question_start", question_id: question.id, index: qIndex, total: manifest.questions.length });
 
     // 1. Send setup message if present (e.g., "Remember this codeword: THUNDERBIRD")
     if (question.setup) {
@@ -536,6 +559,7 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
       tokens_out: qTokensOut,
     };
     results.push(result);
+    options.onProgress?.({ kind: "question_done", question_id: question.id, index: qIndex, total: manifest.questions.length, passed: result.passed });
 
     timeline.push({
       t: t(),

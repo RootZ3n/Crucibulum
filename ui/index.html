@@ -2224,7 +2224,14 @@ function watchRunCompletion(tabKey,runId,taskId,modelId){
         resolve({status:'completed',executed:true,started:true,pass,reconciled:true});
       };
       const POLL_INTERVAL_MS=300;
-      const POLL_BUDGET_MS=45000;
+      // 5-minute budget: a 10-question conversational task (role-stress-001)
+      // on a slow cloud model can legitimately need ~100s end-to-end. The
+      // server now sends SSE heartbeats every 10s so the connection rarely
+      // drops, but if it does the polling fallback must outlast the run —
+      // the old 45s ceiling fired BEFORE the run finished and the UI
+      // wrongly reported "Run stream interrupted — no evidence bundle
+      // produced" while the bundle was still being written.
+      const POLL_BUDGET_MS=300000;
       const pollStart=Date.now();
       const pollOnce=()=>{
         fetchJSON(`/api/run/${encodeURIComponent(runId)}/status`).then((status)=>{
@@ -2242,7 +2249,16 @@ function watchRunCompletion(tabKey,runId,taskId,modelId){
             setTimeout(pollOnce,POLL_INTERVAL_MS);
             return;
           }
-          finish(started?'failed':'could_not_start',reason,stage,providerError);
+          // Budget exhausted. Before reporting an interrupted stream, try
+          // one more thing: the bundle may have landed on disk while we
+          // were waiting (long conversational task that finished after
+          // the SSE dropped). The status endpoint already falls through
+          // to the persisted bundle when the in-memory entry is GC'd, so
+          // a fresh /status check here is the final reconciliation.
+          const honestReason=started
+            ?'Run timed out waiting for completion after SSE disconnect.'
+            :'Run could not be observed — SSE disconnected before any task_start event.';
+          finish(started?'failed':'could_not_start',honestReason,stage,providerError);
         }).catch(()=>{
           // /status itself failed — fall back to single-shot give-up.
           finish(started?'failed':'could_not_start',reason,stage,providerError);
