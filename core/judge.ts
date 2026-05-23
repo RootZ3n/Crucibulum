@@ -383,6 +383,21 @@ function buildDiagnosis(
 // -- Command runner -----------------------------------------------------------
 
 function runCommand(id: string, scope: "correctness" | "regression", command: string, cwd: string): JudgeCommandResult {
+  const trimmed = command.trim();
+  if (trimmed === "true" || trimmed === "false") {
+    const passed = trimmed === "true";
+    return {
+      id,
+      scope,
+      command,
+      status: passed ? "pass" : "fail",
+      summary: passed ? "Command completed successfully" : "Command exited non-zero (1): false",
+      exitCode: passed ? 0 : 1,
+      stdout: "",
+      stderr: "",
+    };
+  }
+
   try {
     const stdout = execSync(command, { cwd, stdio: "pipe", timeout: 60_000, maxBuffer: 5 * 1024 * 1024, encoding: "utf-8" });
     return {
