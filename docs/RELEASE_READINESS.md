@@ -48,22 +48,15 @@ This is the canonical pre-release gate. **Run it before every release tag.**
 node scripts/release-gauntlet.mjs --mock-only --family personality --write-report
 ```
 
-### Real-provider profile (not implemented in this revision)
-Real-provider exhaustive matrix is **not** part of this gauntlet. Capture
-real-provider receipts with the existing harness CLI:
+### Real-provider profiles
+Real-provider profiles are implemented in `scripts/release-gauntlet.mjs` and
+must be run explicitly with `--real-provider`, `--provider`, `--model`, and a
+cost cap for paid providers. They are intentionally separate from the mock
+matrix to avoid spending API credit on every gauntlet run.
 
-```
-npm run harness -- --tab personality --adapter openrouter --model deepseek/deepseek-v4-pro
-npm run harness -- --tab personality --adapter openrouter --model xiaomi/mimo-v2-pro
-npm run harness -- --tab personality --adapter ollama --model <local-id>
-```
-
-Each command writes `runs/_harness_report_<timestamp>.json`. Copy or
-symlink that file under `reports/release-gauntlet/real-provider/<adapter>-<model>-<timestamp>.json`
-to keep the release archive complete.
-
-Real-provider runs are intentionally separate from the mock matrix to avoid
-spending API credit on every gauntlet run.
+`reports/release-gauntlet/latest-real-provider.{json,md}` is only the most
+recent single provider/model profile. It is **not** an aggregate certification
+for all archived real-provider profiles.
 
 ## Result taxonomy
 
@@ -155,10 +148,27 @@ and the most recent run overwrites `reports/release-gauntlet/latest-real-provide
 | Gate | Status | Evidence |
 | --- | --- | --- |
 | `MOCK_LAYER_READY` | **YES** ✅ | `reports/release-gauntlet/latest.md` — 49/49 PASS, 0 FAIL_PRODUCT |
-| `REAL_PROVIDER_CERTIFIED` | **YES** ✅ | `reports/release-gauntlet/real-provider/` — DeepSeek V4 Pro (3 PASS + 1 honest FAIL_PROVIDER), Mimo v2.5 Pro (4/4 PASS), Ollama qwen3.5:9b (4/4 PASS) |
-| `FULL_RELEASE_READY` | **YES** ✅ | both gates above |
+| `REAL_PROVIDER_TARGET_PROFILES` | **YES WITH CAVEATS** | `reports/release-gauntlet/real-provider/` — DeepSeek V4 Pro (3 PASS + 1 honest FAIL_PROVIDER), Mimo v2.5 Pro (4/4 PASS), Ollama qwen3.5:9b (4/4 PASS) |
+| `FULL_RELEASE_READY` | **NO — evidence insufficient** | Current real-provider evidence covers only 3 target models, 2 adapters, and the compact Personality/Role-stress matrix. It does not certify every provider, model, family, repo-mode path, or browser UI flow. |
 
-Re-run both gates and re-archive before every release tag.
+Current audit verdict: **MOCK_READY_BUT_REAL_PROVIDER_GAPS**. The evidence is
+strong enough to say the runner/evidence/classification platform gate is green
+for the deterministic mock matrix, and that the named target profiles were
+handled honestly. It is not strong enough to claim all of Crucible is fully
+release-ready across every exposed provider, model, family, and UI flow.
+
+DeepSeek note: the archived DeepSeek profile includes one
+`FAIL_PROVIDER`/`NETWORK` health-check failure. The JSON records
+`observed.bundleHydrated: true` for that failed run, so the durable-evidence
+invariant held. Its `bundleId` field is null because the SSE error payload does
+not emit a success `bundle_id`; `totals.distinctBundleIds` therefore counts only
+the three successful terminal-complete bundles. Do not describe this as "no
+bundle" unless `/api/runs/<run_id>` actually 404s.
+
+Re-run both gates and re-archive before every release tag. A final release tag
+also needs either a broader real-provider/family matrix or a clearly scoped
+release note that limits certification to the platform layer and the named
+target profiles.
 
 ### How to verify the status above
 
@@ -180,7 +190,8 @@ or
 > - …
 
 If `YES`, the report is the durable evidence. Tag the release after the
-report is committed and link it from CHANGELOG.md.
+report is committed and link it from CHANGELOG.md, but only for the specific
+gate that report covers. A mock-only `YES` is not full release evidence.
 
 If `NO`, the blockers list every reason. Fix them, re-run the gauntlet,
 commit the new report. Do not edit the report to make it green.
