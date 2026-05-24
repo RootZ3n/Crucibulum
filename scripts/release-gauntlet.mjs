@@ -161,10 +161,10 @@ function buildMetadata({ mode, profile, maxCostUsd, actualCostUsd = null }) {
     git: {
       commit: sh(["git", "rev-parse", "HEAD"], "unknown"),
       branch: sh(["git", "branch", "--show-current"], "unknown"),
-      dirtyTree: status.length > 0,
-      dirtyTreeEntries: status,
-      sourceDirtyTree: sourceDirty.length > 0,
-      sourceDirtyEntries: sourceDirty,
+      dirtyTree: sourceDirty.length > 0,
+      dirtyTreeEntries: sourceDirty,
+      workingTreeEntries: status,
+      reportArtifactEntries: status.filter((entry) => isReportOnlyStatus(entry)),
     },
     environmentProfile: envProfile,
     RELEASE_CERTIFICATION_INVALID_FOR_TAGGING: sourceDirty.length > 0,
@@ -966,6 +966,7 @@ async function runRealProviderGauntlet({ inventory, provider, model, family, max
   return {
     mode: "real-provider", profile: broadSmoke ? "broad-smoke" : "compact", provider, model, family, maxCostUsd,
     results,
+    tally: results.reduce((acc, r) => { acc[r.classification] = (acc[r.classification] ?? 0) + 1; return acc; }, {}),
     familyClasses: FAMILY_CLASSES,
     totals: { tokensIn: totalTokensIn, tokensOut: totalTokensOut, costUsd: totalCostUsd, distinctRunIds: seenRunIds.size, distinctBundleIds: seenBundleIds.size },
     runsDir: RUNS_DIR,
@@ -974,7 +975,7 @@ async function runRealProviderGauntlet({ inventory, provider, model, family, max
 
 function renderMetadataMarkdown(metadata) {
   if (!metadata) return "";
-  return `\n## Report metadata\n\n- Commit: \`${metadata.git.commit}\`\n- Branch: \`${metadata.git.branch}\`\n- Dirty tree: ${metadata.git.dirtyTree ? "true" : "false"}\n- Source dirty tree: ${metadata.git.sourceDirtyTree ? "true" : "false"}\n- RELEASE_CERTIFICATION_INVALID_FOR_TAGGING: ${metadata.RELEASE_CERTIFICATION_INVALID_FOR_TAGGING ? "true" : "false"}\n- Command: \`${metadata.command}\`\n- Node: \`${metadata.nodeVersion}\`\n- Package: \`${metadata.packageVersion ?? "unknown"}\`\n- Cost: $${Number(metadata.actualCostUsd ?? 0).toFixed(4)} / cap $${Number(metadata.maxCostUsd ?? 0).toFixed(4)}\n`;
+  return `\n## Report metadata\n\n- Commit: \`${metadata.git.commit}\`\n- Branch: \`${metadata.git.branch}\`\n- Dirty tree: ${metadata.git.dirtyTree ? "true" : "false"}\n- Report artifact entries: ${metadata.git.reportArtifactEntries?.length ?? 0}\n- RELEASE_CERTIFICATION_INVALID_FOR_TAGGING: ${metadata.RELEASE_CERTIFICATION_INVALID_FOR_TAGGING ? "true" : "false"}\n- Command: \`${metadata.command}\`\n- Node: \`${metadata.nodeVersion}\`\n- Package: \`${metadata.packageVersion ?? "unknown"}\`\n- Cost: $${Number(metadata.actualCostUsd ?? 0).toFixed(4)} / cap $${Number(metadata.maxCostUsd ?? 0).toFixed(4)}\n`;
 }
 
 function renderRealProviderMarkdown(real, metadata = null) {
