@@ -167,28 +167,28 @@ and the most recent run overwrites `reports/release-gauntlet/latest-real-provide
 
 | Gate | Status | Evidence |
 | --- | --- | --- |
-| `MOCK_LAYER_READY` | **YES** ✅ | `reports/release-gauntlet/latest.md` — 49/49 PASS, 0 FAIL_PRODUCT |
-| `REAL_PROVIDER_TARGET_PROFILES` | **YES WITH CAVEATS** | `reports/release-gauntlet/real-provider/` — DeepSeek V4 Pro (3 PASS + 1 honest FAIL_PROVIDER), Mimo v2.5 Pro (4/4 PASS), Ollama qwen3.5:9b (4/4 PASS) |
-| `FULL_RELEASE_READY` | **NO — evidence insufficient** | Requires broad real-provider profiles, repo-mode certification, UI certification, clean metadata, and no overclaimed provider/model scope. |
+| `MOCK_READY` | **YES** | `reports/release-gauntlet/2026-05-24T00-28-43-441Z.{json,md}` — 49/49 PASS, 0 `FAIL_PRODUCT`, clean source metadata |
+| `REAL_PROVIDER_BROAD_READY` | **YES FOR RELEASE TARGETS** | `reports/release-gauntlet/real-provider/2026-05-24T00-31-06-889Z-openrouter-deepseek-deepseek-v4-pro.{json,md}`, `2026-05-24T00-32-14-849Z-openrouter-xiaomi-mimo-v2.5-pro.{json,md}`, `2026-05-24T00-33-18-590Z-ollama-qwen3.5-9b.{json,md}` — each 5/5 PASS |
+| `REPO_MODE_CERTIFIED` | **REPRESENTATIVE ONLY** | `reports/release-gauntlet/2026-05-24T00-28-57-869Z.{json,md}` — `coord-001`, `spec-001`, and `tool-003` repo-smoke PASS; 22 repo-mode tasks remain outside direct smoke coverage |
+| `UI_CERTIFIED` | **NO — MANUAL BROWSER CHECKLIST OPEN** | `reports/release-gauntlet/2026-05-24T00-30-17-934Z.{json,md}` automated UI-shape checks PASS, but `docs/UI_RELEASE_CERTIFICATION.md` is not marked completed |
+| `FULL_RELEASE_READY` | **NO — scoped certification only** | Full release still requires completed browser/manual UI certification and either exhaustive repo-mode coverage or explicit release notes limiting repo-mode claims. |
 
-Current audit verdict: **MOCK_READY_BUT_REAL_PROVIDER_GAPS**. The evidence is
-strong enough to say the runner/evidence/classification platform gate is green
-for the deterministic mock matrix, and that the named target profiles were
-handled honestly. It is not strong enough to claim all of Crucible is fully
-release-ready across every exposed provider, model, family, and UI flow.
+Current audit verdict: **RELEASE_SCOPED_TO_CERTIFIED_TARGETS**. The evidence
+supports the deterministic platform gate, representative repo-mode smoke, and
+broad real-provider smoke for the named release targets:
+OpenRouter/DeepSeek V4 Pro, OpenRouter/Xiaomi Mimo v2.5 Pro, and local
+Ollama/qwen3.5:9b. It does not certify every exposed adapter, every picker
+model, every repo-mode task, or the browser/operator workflow.
 
-DeepSeek note: the archived DeepSeek profile includes one
-`FAIL_PROVIDER`/`NETWORK` health-check failure. The JSON records
-`observed.bundleHydrated: true` for that failed run, so the durable-evidence
-invariant held. Its `bundleId` field is null because the SSE error payload does
-not emit a success `bundle_id`; `totals.distinctBundleIds` therefore counts only
-the three successful terminal-complete bundles. Do not describe this as "no
-bundle" unless `/api/runs/<run_id>` actually 404s.
+The older archived compact DeepSeek run that included a
+`FAIL_PROVIDER`/`NETWORK` health-check failure remains valid historical
+evidence that provider outages are classified honestly and hydrate durable
+failure evidence. It is not the current broad release-target result.
 
-Re-run both gates and re-archive before every release tag. A final release tag
-also needs either a broader real-provider/family matrix or a clearly scoped
-release note that limits certification to the platform layer and the named
-target profiles.
+Re-run all gates and re-archive before every release tag. Do not claim
+`FULL_RELEASE_READY` unless the UI manual checklist is completed and the release
+notes explicitly scope any providers, models, or repo-mode tasks that remain
+uncertified.
 
 ### How to verify the status above
 
