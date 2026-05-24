@@ -8,6 +8,10 @@ Current status: `UI_CERTIFIED = NO` until this checklist is completed and
 archived for the current release candidate. Passing automated UI-shape checks
 does not make Crucible `FULL_RELEASE_READY`.
 
+Latest attempt: `reports/release-gauntlet/ui-manual/2026-05-24T00-53-44Z.md`
+stopped as `FAIL_PRODUCT` because the browser UI did not visibly distinguish
+certified release targets from other operator-selectable providers/models.
+
 Before `UI_CERTIFIED=YES`, record the browser, viewport, provider/model, task
 selection, report path, and operator initials in the release notes.
 

@@ -199,15 +199,23 @@ and the most recent run overwrites `reports/release-gauntlet/latest-real-provide
 | `MOCK_READY` | **YES** | `reports/release-gauntlet/2026-05-24T00-28-43-441Z.{json,md}` — 49/49 PASS, 0 `FAIL_PRODUCT`, clean source metadata |
 | `REAL_PROVIDER_BROAD_READY` | **YES FOR RELEASE TARGETS** | `reports/release-gauntlet/real-provider/2026-05-24T00-31-06-889Z-openrouter-deepseek-deepseek-v4-pro.{json,md}`, `2026-05-24T00-32-14-849Z-openrouter-xiaomi-mimo-v2.5-pro.{json,md}`, `2026-05-24T00-33-18-590Z-ollama-qwen3.5-9b.{json,md}` — each 5/5 PASS |
 | `REPO_MODE_CERTIFIED` | **REPRESENTATIVE ONLY** | `reports/release-gauntlet/2026-05-24T00-28-57-869Z.{json,md}` — `coord-001`, `spec-001`, and `tool-003` repo-smoke PASS; 22 repo-mode tasks remain outside direct smoke coverage |
-| `UI_CERTIFIED` | **NO — MANUAL BROWSER CHECKLIST OPEN** | `reports/release-gauntlet/2026-05-24T00-30-17-934Z.{json,md}` automated UI-shape checks PASS, but `docs/UI_RELEASE_CERTIFICATION.md` is not marked completed |
-| `FULL_RELEASE_READY` | **NO — scoped certification only** | Full release still requires completed browser/manual UI certification and either exhaustive repo-mode coverage or explicit release notes limiting repo-mode claims. |
+| `UI_CERTIFIED` | **NO — MANUAL BROWSER CHECKLIST FAILED** | `reports/release-gauntlet/2026-05-24T00-30-17-934Z.{json,md}` automated UI-shape checks PASS, but `reports/release-gauntlet/ui-manual/2026-05-24T00-53-44Z.md` found the browser UI does not make certified release scope visible/honest |
+| `FULL_RELEASE_READY` | **NO — scoped certification only; UI blocker open** | Full release still requires completed browser/manual UI certification and either exhaustive repo-mode coverage or explicit release notes limiting repo-mode claims. |
 
-Current audit verdict: **RELEASE_SCOPED_TO_CERTIFIED_TARGETS**. The evidence
-supports the deterministic platform gate, representative repo-mode smoke, and
-broad real-provider smoke for the named release targets:
+Current audit verdict: **RELEASE_SCOPED_TO_CERTIFIED_TARGETS**, with
+`UI_CERTIFIED = NO`. The evidence supports the deterministic platform gate,
+representative repo-mode smoke, and broad real-provider smoke for the named
+release targets:
 OpenRouter/DeepSeek V4 Pro, OpenRouter/Xiaomi Mimo v2.5 Pro, and local
 Ollama/qwen3.5:9b. It does not certify every exposed adapter, every picker
 model, every repo-mode task, or the browser/operator workflow.
+
+Manual UI certification was attempted in
+`reports/release-gauntlet/ui-manual/2026-05-24T00-53-44Z.md` and stopped as
+`FAIL_PRODUCT`: the browser UI did not visibly distinguish certified release
+targets from other operator-selectable providers/models. Do not claim
+`UI_CERTIFIED` or unqualified full release until that blocker is fixed and the
+manual browser checklist is rerun.
 
 The older archived compact DeepSeek run that included a
 `FAIL_PROVIDER`/`NETWORK` health-check failure remains valid historical
