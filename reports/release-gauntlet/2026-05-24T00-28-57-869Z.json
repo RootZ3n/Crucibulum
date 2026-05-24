@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-05-24T00:35:42.318Z",
+  "generatedAt": "2026-05-24T00:28:57.872Z",
   "metadata": {
-    "timestamp": "2026-05-24T00:35:42.318Z",
-    "command": "node scripts/release-gauntlet.mjs --mock-only --ui-shape --write-report",
+    "timestamp": "2026-05-24T00:28:57.872Z",
+    "command": "node scripts/release-gauntlet.mjs --mock-only --repo-smoke --write-report",
     "nodeVersion": "v22.22.2",
     "packageVersion": "0.1.0",
     "mode": "mock-only",
-    "profile": "platform",
+    "profile": "repo-smoke",
     "maxCostUsd": 0,
     "actualCostUsd": 0,
     "git": {
-      "commit": "bc0812debcd9d3793508000b0791ff22a1d085eb",
+      "commit": "a943aa5c084ffccb2fab791ad391dc08897dd256",
       "branch": "master",
       "dirtyTree": false,
       "dirtyTreeEntries": [],
@@ -27,26 +27,12 @@
         "?? reports/release-gauntlet/2026-05-24T00-06-25-618Z.md",
         "?? reports/release-gauntlet/2026-05-24T00-28-43-441Z.json",
         "?? reports/release-gauntlet/2026-05-24T00-28-43-441Z.md",
-        "?? reports/release-gauntlet/2026-05-24T00-28-57-869Z.json",
-        "?? reports/release-gauntlet/2026-05-24T00-28-57-869Z.md",
-        "?? reports/release-gauntlet/2026-05-24T00-30-17-934Z.json",
-        "?? reports/release-gauntlet/2026-05-24T00-30-17-934Z.md",
-        "?? reports/release-gauntlet/2026-05-24T00-35-30-770Z.json",
-        "?? reports/release-gauntlet/2026-05-24T00-35-30-770Z.md",
-        "?? reports/release-gauntlet/2026-05-24T00-35-38-261Z.json",
-        "?? reports/release-gauntlet/2026-05-24T00-35-38-261Z.md",
         "?? reports/release-gauntlet/real-provider/2026-05-24T00-07-02-290Z-openrouter-deepseek-deepseek-v4-pro.json",
         "?? reports/release-gauntlet/real-provider/2026-05-24T00-07-02-290Z-openrouter-deepseek-deepseek-v4-pro.md",
         "?? reports/release-gauntlet/real-provider/2026-05-24T00-11-02-043Z-openrouter-xiaomi-mimo-v2.5-pro.json",
         "?? reports/release-gauntlet/real-provider/2026-05-24T00-11-02-043Z-openrouter-xiaomi-mimo-v2.5-pro.md",
         "?? reports/release-gauntlet/real-provider/2026-05-24T00-12-22-695Z-ollama-qwen3.5-9b.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T00-12-22-695Z-ollama-qwen3.5-9b.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T00-31-06-889Z-openrouter-deepseek-deepseek-v4-pro.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T00-31-06-889Z-openrouter-deepseek-deepseek-v4-pro.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T00-32-14-849Z-openrouter-xiaomi-mimo-v2.5-pro.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T00-32-14-849Z-openrouter-xiaomi-mimo-v2.5-pro.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T00-33-18-590Z-ollama-qwen3.5-9b.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T00-33-18-590Z-ollama-qwen3.5-9b.md"
+        "?? reports/release-gauntlet/real-provider/2026-05-24T00-12-22-695Z-ollama-qwen3.5-9b.md"
       ],
       "reportArtifactEntries": [
         "M reports/release-gauntlet/latest-real-provider.json",
@@ -61,26 +47,12 @@
         "?? reports/release-gauntlet/2026-05-24T00-06-25-618Z.md",
         "?? reports/release-gauntlet/2026-05-24T00-28-43-441Z.json",
         "?? reports/release-gauntlet/2026-05-24T00-28-43-441Z.md",
-        "?? reports/release-gauntlet/2026-05-24T00-28-57-869Z.json",
-        "?? reports/release-gauntlet/2026-05-24T00-28-57-869Z.md",
-        "?? reports/release-gauntlet/2026-05-24T00-30-17-934Z.json",
-        "?? reports/release-gauntlet/2026-05-24T00-30-17-934Z.md",
-        "?? reports/release-gauntlet/2026-05-24T00-35-30-770Z.json",
-        "?? reports/release-gauntlet/2026-05-24T00-35-30-770Z.md",
-        "?? reports/release-gauntlet/2026-05-24T00-35-38-261Z.json",
-        "?? reports/release-gauntlet/2026-05-24T00-35-38-261Z.md",
         "?? reports/release-gauntlet/real-provider/2026-05-24T00-07-02-290Z-openrouter-deepseek-deepseek-v4-pro.json",
         "?? reports/release-gauntlet/real-provider/2026-05-24T00-07-02-290Z-openrouter-deepseek-deepseek-v4-pro.md",
         "?? reports/release-gauntlet/real-provider/2026-05-24T00-11-02-043Z-openrouter-xiaomi-mimo-v2.5-pro.json",
         "?? reports/release-gauntlet/real-provider/2026-05-24T00-11-02-043Z-openrouter-xiaomi-mimo-v2.5-pro.md",
         "?? reports/release-gauntlet/real-provider/2026-05-24T00-12-22-695Z-ollama-qwen3.5-9b.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T00-12-22-695Z-ollama-qwen3.5-9b.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T00-31-06-889Z-openrouter-deepseek-deepseek-v4-pro.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T00-31-06-889Z-openrouter-deepseek-deepseek-v4-pro.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T00-32-14-849Z-openrouter-xiaomi-mimo-v2.5-pro.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T00-32-14-849Z-openrouter-xiaomi-mimo-v2.5-pro.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T00-33-18-590Z-ollama-qwen3.5-9b.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T00-33-18-590Z-ollama-qwen3.5-9b.md"
+        "?? reports/release-gauntlet/real-provider/2026-05-24T00-12-22-695Z-ollama-qwen3.5-9b.md"
       ]
     },
     "environmentProfile": {
@@ -1107,14 +1079,14 @@
           "structuredReason": false
         },
         "observed": {
-          "runId": "run_mpj1qhp1_41bdf728",
+          "runId": "run_mpj1htif_fb9c0a3b",
           "terminal": "complete",
           "classification": null,
           "stage": null,
           "providerErrorKind": null,
           "reasonText": "",
           "bundleHydrated": true,
-          "bundleRunId": "run_mpj1qhp1_41bdf728",
+          "bundleRunId": "run_mpj1htif_fb9c0a3b",
           "statusEndpoint": "complete"
         }
       },
@@ -1132,14 +1104,14 @@
           "structuredReason": true
         },
         "observed": {
-          "runId": "run_mpj1qhpf_5fa1f401",
+          "runId": "run_mpj1htit_dd84cfd5",
           "terminal": "error",
           "classification": "could_not_start",
           "stage": "health_check",
           "providerErrorKind": "RATE_LIMIT",
           "reasonText": "Rate limited (429) — rate limited",
           "bundleHydrated": true,
-          "bundleRunId": "run_mpj1qhpf_5fa1f401",
+          "bundleRunId": "run_mpj1htit_dd84cfd5",
           "statusEndpoint": "error"
         }
       },
@@ -1157,14 +1129,14 @@
           "structuredReason": true
         },
         "observed": {
-          "runId": "run_mpj1qhpl_791a0fe0",
+          "runId": "run_mpj1htiy_2f45be0a",
           "terminal": "error",
           "classification": "could_not_start",
           "stage": "health_check",
           "providerErrorKind": "RATE_LIMIT",
           "reasonText": "Rate limited (429) — rate limited",
           "bundleHydrated": true,
-          "bundleRunId": "run_mpj1qhpl_791a0fe0",
+          "bundleRunId": "run_mpj1htiy_2f45be0a",
           "statusEndpoint": "error"
         }
       },
@@ -1182,14 +1154,14 @@
           "structuredReason": true
         },
         "observed": {
-          "runId": "run_mpj1qhpq_4c0017fc",
+          "runId": "run_mpj1htj3_da297f73",
           "terminal": "error",
           "classification": "could_not_start",
           "stage": "health_check",
           "providerErrorKind": "UNAVAILABLE",
           "reasonText": "Provider unavailable (503) — service unavailable",
           "bundleHydrated": true,
-          "bundleRunId": "run_mpj1qhpq_4c0017fc",
+          "bundleRunId": "run_mpj1htj3_da297f73",
           "statusEndpoint": "error"
         }
       },
@@ -1207,14 +1179,14 @@
           "structuredReason": true
         },
         "observed": {
-          "runId": "run_mpj1qhpt_2f7308fc",
+          "runId": "run_mpj1htj6_34057ad7",
           "terminal": "error",
           "classification": "could_not_start",
           "stage": "health_check",
           "providerErrorKind": "TIMEOUT",
           "reasonText": "Provider request timed out — request timed out",
           "bundleHydrated": true,
-          "bundleRunId": "run_mpj1qhpt_2f7308fc",
+          "bundleRunId": "run_mpj1htj6_34057ad7",
           "statusEndpoint": "error"
         }
       },
@@ -1250,14 +1222,14 @@
           "structuredReason": false
         },
         "observed": {
-          "runId": "run_mpj1qhpx_0890593c",
+          "runId": "run_mpj1htja_5e9ca27e",
           "terminal": "complete",
           "classification": null,
           "stage": null,
           "providerErrorKind": null,
           "reasonText": "",
           "bundleHydrated": true,
-          "bundleRunId": "run_mpj1qhpx_0890593c",
+          "bundleRunId": "run_mpj1htja_5e9ca27e",
           "statusEndpoint": "complete"
         }
       },
@@ -1272,14 +1244,14 @@
           "structuredReason": false
         },
         "observed": {
-          "runId": "run_mpj1qhq1_aa3f31e9",
+          "runId": "run_mpj1htje_63a32aba",
           "terminal": "complete",
           "classification": null,
           "stage": null,
           "providerErrorKind": null,
           "reasonText": "",
           "bundleHydrated": true,
-          "bundleRunId": "run_mpj1qhq1_aa3f31e9",
+          "bundleRunId": "run_mpj1htje_63a32aba",
           "statusEndpoint": "complete"
         }
       },
@@ -1294,14 +1266,14 @@
           "structuredReason": false
         },
         "observed": {
-          "runId": "run_mpj1qhq5_104ac34d",
+          "runId": "run_mpj1htji_a04c51b6",
           "terminal": "complete",
           "classification": null,
           "stage": null,
           "providerErrorKind": null,
           "reasonText": "",
           "bundleHydrated": true,
-          "bundleRunId": "run_mpj1qhq5_104ac34d",
+          "bundleRunId": "run_mpj1htji_a04c51b6",
           "statusEndpoint": "complete"
         }
       }
@@ -1311,263 +1283,318 @@
         "family": "classification",
         "task": "classification-001",
         "classification": "PASS",
-        "runId": "run_mpj1qi48_fa5365b6",
-        "bundleId": "run_2026-05-24_classification-001_gauntlet-model_995bc3ec"
+        "runId": "run_mpj1htxp_43226587",
+        "bundleId": "run_2026-05-24_classification-001_gauntlet-model_bf1cda48"
       },
       {
         "family": "code",
         "task": "code-001",
         "classification": "PASS",
-        "runId": "run_mpj1qi4c_cd3314ab",
-        "bundleId": "run_2026-05-24_code-001_gauntlet-model_81e83253"
+        "runId": "run_mpj1htxv_1f0f58c6",
+        "bundleId": "run_2026-05-24_code-001_gauntlet-model_942c69cc"
       },
       {
         "family": "context-degradation",
         "task": "context-degradation-001",
         "classification": "PASS",
-        "runId": "run_mpj1qi4i_49f20ec7",
-        "bundleId": "run_2026-05-24_context-degradation-001_gauntlet-model_0b09fd74"
+        "runId": "run_mpj1hty1_28276b0f",
+        "bundleId": "run_2026-05-24_context-degradation-001_gauntlet-model_68fc77e9"
       },
       {
         "family": "identity",
         "task": "identity-squidley-001",
         "classification": "PASS",
-        "runId": "run_mpj1qi4m_e03b88f1",
-        "bundleId": "run_2026-05-24_identity-squidley-001_gauntlet-model_39234fdc"
+        "runId": "run_mpj1hty6_099d486b",
+        "bundleId": "run_2026-05-24_identity-squidley-001_gauntlet-model_29ea878d"
       },
       {
         "family": "instruction-obedience",
         "task": "instruction-obedience-001",
         "classification": "PASS",
-        "runId": "run_mpj1qi4q_6e253fa0",
-        "bundleId": "run_2026-05-24_instruction-obedience-001_gauntlet-model_36da3e57"
+        "runId": "run_mpj1htya_76f11abe",
+        "bundleId": "run_2026-05-24_instruction-obedience-001_gauntlet-model_fbfe15c0"
       },
       {
         "family": "memory",
         "task": "memory-001",
         "classification": "PASS",
-        "runId": "run_mpj1qi4v_2559c9cc",
-        "bundleId": "run_2026-05-24_memory-001_gauntlet-model_1a8b1216"
+        "runId": "run_mpj1htyg_1b23aad1",
+        "bundleId": "run_2026-05-24_memory-001_gauntlet-model_a6960cd4"
       },
       {
         "family": "memory",
         "task": "memory-002",
         "classification": "PASS",
-        "runId": "run_mpj1qi50_f8f1d8fe",
-        "bundleId": "run_2026-05-24_memory-002_gauntlet-model_41938fba"
+        "runId": "run_mpj1htyl_54346458",
+        "bundleId": "run_2026-05-24_memory-002_gauntlet-model_b4d3bdc1"
       },
       {
         "family": "memory",
         "task": "memory-003",
         "classification": "PASS",
-        "runId": "run_mpj1qi56_49faa128",
-        "bundleId": "run_2026-05-24_memory-003_gauntlet-model_27c2c8d8"
+        "runId": "run_mpj1htyr_4785acad",
+        "bundleId": "run_2026-05-24_memory-003_gauntlet-model_0bc91d0a"
       },
       {
         "family": "operational-trust",
         "task": "op-001",
         "classification": "PASS",
-        "runId": "run_mpj1qi5b_ba2685f6",
-        "bundleId": "run_2026-05-24_op-001_gauntlet-model_047be457"
+        "runId": "run_mpj1htyw_17106c5a",
+        "bundleId": "run_2026-05-24_op-001_gauntlet-model_dd8d01da"
       },
       {
         "family": "operational-trust",
         "task": "op-002",
         "classification": "PASS",
-        "runId": "run_mpj1qi5g_e6e22a17",
-        "bundleId": "run_2026-05-24_op-002_gauntlet-model_fd5e225b"
+        "runId": "run_mpj1htz1_564716b3",
+        "bundleId": "run_2026-05-24_op-002_gauntlet-model_ccf99ee4"
       },
       {
         "family": "operational-trust",
         "task": "op-003",
         "classification": "PASS",
-        "runId": "run_mpj1qi5l_2d22202a",
-        "bundleId": "run_2026-05-24_op-003_gauntlet-model_3eadbc45"
+        "runId": "run_mpj1htz6_12bbdf6e",
+        "bundleId": "run_2026-05-24_op-003_gauntlet-model_8f4ca591"
       },
       {
         "family": "operational-trust",
         "task": "op-004",
         "classification": "PASS",
-        "runId": "run_mpj1qi5q_69e6ca65",
-        "bundleId": "run_2026-05-24_op-004_gauntlet-model_b8544187"
+        "runId": "run_mpj1htzb_6d210341",
+        "bundleId": "run_2026-05-24_op-004_gauntlet-model_281347cb"
       },
       {
         "family": "operational-trust",
         "task": "op-005",
         "classification": "PASS",
-        "runId": "run_mpj1qi5v_c6c3a9a4",
-        "bundleId": "run_2026-05-24_op-005_gauntlet-model_b8b52f63"
+        "runId": "run_mpj1htzh_c3fc5c26",
+        "bundleId": "run_2026-05-24_op-005_gauntlet-model_83c93f75"
       },
       {
         "family": "operational-trust",
         "task": "op-006",
         "classification": "PASS",
-        "runId": "run_mpj1qi61_9c58edc2",
-        "bundleId": "run_2026-05-24_op-006_gauntlet-model_4a9737c5"
+        "runId": "run_mpj1htzm_657b82d0",
+        "bundleId": "run_2026-05-24_op-006_gauntlet-model_176084f9"
       },
       {
         "family": "operational-trust",
         "task": "op-007",
         "classification": "PASS",
-        "runId": "run_mpj1qi67_9b187667",
-        "bundleId": "run_2026-05-24_op-007_gauntlet-model_7b7a1438"
+        "runId": "run_mpj1htzs_856127f0",
+        "bundleId": "run_2026-05-24_op-007_gauntlet-model_52d7be77"
       },
       {
         "family": "operational-trust",
         "task": "op-008",
         "classification": "PASS",
-        "runId": "run_mpj1qi6c_58bf0935",
-        "bundleId": "run_2026-05-24_op-008_gauntlet-model_417f4130"
+        "runId": "run_mpj1htzx_0ceaf3de",
+        "bundleId": "run_2026-05-24_op-008_gauntlet-model_fe93245f"
       },
       {
         "family": "operational-trust",
         "task": "op-009",
         "classification": "PASS",
-        "runId": "run_mpj1qi6i_546b7d94",
-        "bundleId": "run_2026-05-24_op-009_gauntlet-model_3268d884"
+        "runId": "run_mpj1hu03_d2c2361b",
+        "bundleId": "run_2026-05-24_op-009_gauntlet-model_68819e51"
       },
       {
         "family": "operational-trust",
         "task": "op-010",
         "classification": "PASS",
-        "runId": "run_mpj1qi6o_f73e72f7",
-        "bundleId": "run_2026-05-24_op-010_gauntlet-model_08592468"
+        "runId": "run_mpj1hu09_33e0544f",
+        "bundleId": "run_2026-05-24_op-010_gauntlet-model_da0655fe"
       },
       {
         "family": "operational-trust",
         "task": "op-011",
         "classification": "PASS",
-        "runId": "run_mpj1qi6t_834aaeb0",
-        "bundleId": "run_2026-05-24_op-011_gauntlet-model_c70f9b92"
+        "runId": "run_mpj1hu0f_5f80d4c0",
+        "bundleId": "run_2026-05-24_op-011_gauntlet-model_8048e4fd"
       },
       {
         "family": "operational-trust",
         "task": "op-012",
         "classification": "PASS",
-        "runId": "run_mpj1qi6z_d927bff7",
-        "bundleId": "run_2026-05-24_op-012_gauntlet-model_1d8f4a37"
+        "runId": "run_mpj1hu0k_fa2126c8",
+        "bundleId": "run_2026-05-24_op-012_gauntlet-model_6e84a097"
       },
       {
         "family": "personality",
         "task": "personality-001",
         "classification": "PASS",
-        "runId": "run_mpj1qi76_f67d74c9",
-        "bundleId": "run_2026-05-24_personality-001_gauntlet-model_fcd07079"
+        "runId": "run_mpj1hu0r_9e1debce",
+        "bundleId": "run_2026-05-24_personality-001_gauntlet-model_966253be"
       },
       {
         "family": "personality",
         "task": "personality-002",
         "classification": "PASS",
-        "runId": "run_mpj1qi7b_ddf15433",
-        "bundleId": "run_2026-05-24_personality-002_gauntlet-model_a9b52672"
+        "runId": "run_mpj1hu0x_46ce8add",
+        "bundleId": "run_2026-05-24_personality-002_gauntlet-model_d9b21f89"
       },
       {
         "family": "personality",
         "task": "personality-003",
         "classification": "PASS",
-        "runId": "run_mpj1qi7i_b67786a2",
-        "bundleId": "run_2026-05-24_personality-003_gauntlet-model_934227e1"
+        "runId": "run_mpj1hu13_4900ef37",
+        "bundleId": "run_2026-05-24_personality-003_gauntlet-model_a5c26c94"
       },
       {
         "family": "personality",
         "task": "personality-004",
         "classification": "PASS",
-        "runId": "run_mpj1qi7o_d996a485",
-        "bundleId": "run_2026-05-24_personality-004_gauntlet-model_7062323d"
+        "runId": "run_mpj1hu19_eaed6804",
+        "bundleId": "run_2026-05-24_personality-004_gauntlet-model_b3cfe761"
       },
       {
         "family": "personality",
         "task": "personality-005",
         "classification": "PASS",
-        "runId": "run_mpj1qi7v_2dfa20dd",
-        "bundleId": "run_2026-05-24_personality-005_gauntlet-model_8b215287"
+        "runId": "run_mpj1hu1g_1ce615f6",
+        "bundleId": "run_2026-05-24_personality-005_gauntlet-model_6e297921"
       },
       {
         "family": "prompt-sensitivity",
         "task": "prompt-sensitivity-001",
         "classification": "PASS",
-        "runId": "run_mpj1qi81_fcd466b4",
-        "bundleId": "run_2026-05-24_prompt-sensitivity-001_gauntlet-model_b48cd1a4"
+        "runId": "run_mpj1hu1m_96a6cb8c",
+        "bundleId": "run_2026-05-24_prompt-sensitivity-001_gauntlet-model_a5127372"
       },
       {
         "family": "reasoning",
         "task": "reasoning-001",
         "classification": "PASS",
-        "runId": "run_mpj1qi88_46ca61ac",
-        "bundleId": "run_2026-05-24_reasoning-001_gauntlet-model_be925d60"
+        "runId": "run_mpj1hu1t_0a886b68",
+        "bundleId": "run_2026-05-24_reasoning-001_gauntlet-model_20faa046"
       },
       {
         "family": "role-stress",
         "task": "role-stress-001",
         "classification": "PASS",
-        "runId": "run_mpj1qi8f_d6a99873",
-        "bundleId": "run_2026-05-24_role-stress-001_gauntlet-model_10c1cf69"
+        "runId": "run_mpj1hu21_25871f3e",
+        "bundleId": "run_2026-05-24_role-stress-001_gauntlet-model_f4f3f029"
       },
       {
         "family": "safety",
         "task": "safety-001",
         "classification": "PASS",
-        "runId": "run_mpj1qi8n_b101b500",
-        "bundleId": "run_2026-05-24_safety-001_gauntlet-model_121ef642"
+        "runId": "run_mpj1hu28_dcb34e61",
+        "bundleId": "run_2026-05-24_safety-001_gauntlet-model_0989ae2f"
       },
       {
         "family": "safety",
         "task": "safety-002",
         "classification": "PASS",
-        "runId": "run_mpj1qi8u_3ea60abe",
-        "bundleId": "run_2026-05-24_safety-002_gauntlet-model_783abeaa"
+        "runId": "run_mpj1hu2g_fbd0d823",
+        "bundleId": "run_2026-05-24_safety-002_gauntlet-model_408ad94a"
       },
       {
         "family": "safety",
         "task": "safety-003",
         "classification": "PASS",
-        "runId": "run_mpj1qi92_b1cff50f",
-        "bundleId": "run_2026-05-24_safety-003_gauntlet-model_d7008115"
+        "runId": "run_mpj1hu2o_526f8427",
+        "bundleId": "run_2026-05-24_safety-003_gauntlet-model_6e2f32ce"
       },
       {
         "family": "summarization",
         "task": "summarization-001",
         "classification": "PASS",
-        "runId": "run_mpj1qi99_029203ea",
-        "bundleId": "run_2026-05-24_summarization-001_gauntlet-model_95b6fc6c"
+        "runId": "run_mpj1hu2w_d9d90567",
+        "bundleId": "run_2026-05-24_summarization-001_gauntlet-model_69b7dc8c"
       },
       {
         "family": "thinking-mode",
         "task": "thinking-mode-001",
         "classification": "PASS",
-        "runId": "run_mpj1qi9h_71bb1283",
-        "bundleId": "run_2026-05-24_thinking-mode-001_gauntlet-model_7a7c2ba2"
+        "runId": "run_mpj1hu33_65a18b17",
+        "bundleId": "run_2026-05-24_thinking-mode-001_gauntlet-model_f9f5b829"
       },
       {
         "family": "token-efficiency",
         "task": "token-efficiency-001",
         "classification": "PASS",
-        "runId": "run_mpj1qi9o_0945b9d9",
-        "bundleId": "run_2026-05-24_token-efficiency-001_gauntlet-model_17e3d7b0"
+        "runId": "run_mpj1hu3b_d344a059",
+        "bundleId": "run_2026-05-24_token-efficiency-001_gauntlet-model_52907545"
       },
       {
         "family": "truthfulness",
         "task": "truthfulness-001",
         "classification": "PASS",
-        "runId": "run_mpj1qi9w_332e584c",
-        "bundleId": "run_2026-05-24_truthfulness-001_gauntlet-model_6f8efe86"
+        "runId": "run_mpj1hu3j_90ab3a2f",
+        "bundleId": "run_2026-05-24_truthfulness-001_gauntlet-model_84d0c7bf"
       },
       {
         "family": "truthfulness",
         "task": "truthfulness-002",
         "classification": "PASS",
-        "runId": "run_mpj1qia4_00342293",
-        "bundleId": "run_2026-05-24_truthfulness-002_gauntlet-model_08e3b551"
+        "runId": "run_mpj1hu3r_8e661784",
+        "bundleId": "run_2026-05-24_truthfulness-002_gauntlet-model_1749d2e9"
       },
       {
         "family": "workflow",
         "task": "workflow-001",
         "classification": "PASS",
-        "runId": "run_mpj1qiad_a4cd543c",
-        "bundleId": "run_2026-05-24_workflow-001_gauntlet-model_712d3605"
+        "runId": "run_mpj1hu40_88d161cc",
+        "bundleId": "run_2026-05-24_workflow-001_gauntlet-model_6be416dc"
       }
     ],
-    "repoSmoke": [],
+    "repoSmoke": [
+      {
+        "classId": "repo-mode/build/code",
+        "family": "orchestration",
+        "task": "coord-001",
+        "fixtureProbe": "tasks/orchestration/coord-001/repo/src/users/register.js",
+        "runId": "run_mpj1hu49_b5ab280c",
+        "bundleId": "run_2026-05-24_coord-001_gauntlet-model_ba460d55",
+        "terminal": "complete",
+        "classification": "PASS",
+        "reason": "repo-mode smoke produced hydratable evidence and preserved source fixture",
+        "observed": {
+          "bundleHydrated": true,
+          "bundleRunId": "run_mpj1hu49_b5ab280c",
+          "sourceFixtureUnchanged": true,
+          "scorePass": true,
+          "taskFamily": "orchestration"
+        }
+      },
+      {
+        "classId": "repo-mode/build/code",
+        "family": "spec",
+        "task": "spec-001",
+        "fixtureProbe": "tasks/spec/spec-001/repo/src/api/validate.js",
+        "runId": "run_mpj1hu5y_5239df5c",
+        "bundleId": "run_2026-05-24_spec-001_gauntlet-model_07cca408",
+        "terminal": "complete",
+        "classification": "PASS",
+        "reason": "repo-mode smoke produced hydratable evidence and preserved source fixture",
+        "observed": {
+          "bundleHydrated": true,
+          "bundleRunId": "run_mpj1hu5y_5239df5c",
+          "sourceFixtureUnchanged": true,
+          "scorePass": true,
+          "taskFamily": "spec_discipline"
+        }
+      },
+      {
+        "classId": "tool-calling",
+        "family": "tool-calling",
+        "task": "tool-003",
+        "fixtureProbe": "tasks/tool-calling/tool-003/repo/tool-trial/greet.sh",
+        "runId": "run_mpj1hu7h_636441af",
+        "bundleId": "run_2026-05-24_tool-003_gauntlet-model_28b1eae7",
+        "terminal": "complete",
+        "classification": "PASS",
+        "reason": "repo-mode smoke produced hydratable evidence and preserved source fixture",
+        "observed": {
+          "bundleHydrated": true,
+          "bundleRunId": "run_mpj1hu7h_636441af",
+          "sourceFixtureUnchanged": true,
+          "scorePass": true,
+          "taskFamily": "tool_calling"
+        }
+      }
+    ],
     "gc": [
       {
         "probe": "activeRuns evict → /status + /api/runs/<runId>",
@@ -1576,10 +1603,10 @@
           "statusHttp": 200,
           "statusBody": "complete",
           "bundleHttp": 200,
-          "bundleRunId": "run_mpj1qial_d6de1730",
-          "postRunId": "run_mpj1qial_d6de1730",
+          "bundleRunId": "run_mpj1hu89_3737aca1",
+          "postRunId": "run_mpj1hu89_3737aca1",
           "bundleFileOnDiskBeforeDelete": true,
-          "fileCount": 46
+          "fileCount": 49
         }
       }
     ],
@@ -1598,8 +1625,8 @@
         "probe": "retention dry-run scans runs dir, classifies entries",
         "classification": "PASS",
         "observed": {
-          "totalFiles": 132,
-          "totalBytes": 550131,
+          "totalFiles": 138,
+          "totalBytes": 578084,
           "eligible": 0,
           "dryRun": true
         }
@@ -1610,41 +1637,14 @@
       "unreachableOccurrences": 0,
       "emptyReasonOnError": 0
     },
-    "uiCertification": {
-      "automated": [
-        {
-          "id": "evidence-inspector-hydration",
-          "pass": true
-        },
-        {
-          "id": "provider-cooldown-surfaced",
-          "pass": true
-        },
-        {
-          "id": "catch-all-bounded",
-          "pass": true
-        },
-        {
-          "id": "unreachable-fallback-bundle-first",
-          "pass": true
-        },
-        {
-          "id": "all-release-tabs-visible",
-          "pass": true
-        }
-      ],
-      "automatedPassed": true,
-      "browserManualChecklistPath": "docs/UI_RELEASE_CERTIFICATION.md",
-      "browserManualCompleted": false,
-      "classification": "PASS_AUTOMATED_SHAPE_ONLY"
-    },
-    "runsDir": "/mnt/ai/tmp/claude/rgaunt-runs-LhLGY6"
+    "uiCertification": null,
+    "runsDir": "/mnt/ai/tmp/claude/rgaunt-runs-s2Ixrx"
   },
   "decision": {
     "ready": true,
     "blockers": [],
     "tally": {
-      "PASS": 49,
+      "PASS": 52,
       "FAIL_PRODUCT": 0,
       "FAIL_PROVIDER": 0,
       "FAIL_CONFIG": 0,
