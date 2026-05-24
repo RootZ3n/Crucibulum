@@ -15,7 +15,13 @@
 
 ## Final verdict
 
-`UI_CERTIFIED_FOR_SCOPED_RELEASE = YES`
+`UI_CERTIFIED_FOR_SCOPED_RELEASE = NO`
+
+Superseding note, 2026-05-24: a later manual real-browser Benchmark lane run
+with OpenRouter `deepseek/deepseek-v4-pro` exposed a `Run state unreachable`
+row for `truthfulness-001` under provider/read rate limiting. This document is
+retained as historical evidence only and no longer certifies the current UI
+candidate.
 
 This is not an all-provider/all-model certification. It certifies the browser UI
 for the current scoped release claim only: the three certified target models,
@@ -116,7 +122,7 @@ Residual caveats:
 
 ## Final status
 
-`UI_CERTIFIED_FOR_SCOPED_RELEASE = YES`
+`UI_CERTIFIED_FOR_SCOPED_RELEASE = NO`
 
 `UNQUALIFIED_FULL_RELEASE_READY = NO`
 

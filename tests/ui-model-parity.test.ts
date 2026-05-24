@@ -196,8 +196,8 @@ describe("ui model/provider parity across lane tabs", () => {
     const ui = loadUi();
     const banner = ui.renderReleaseCertificationBanner("personality");
     assert.match(banner, /FULL_RELEASE_READY · NO/);
-    assert.match(banner, /RELEASE_SCOPED_TO_CERTIFIED_TARGETS · YES/);
-    assert.match(banner, /UI_CERTIFIED_FOR_SCOPED_RELEASE · YES/);
+    assert.match(banner, /RELEASE_SCOPED_TO_CERTIFIED_TARGETS · NOT UI-CERTIFIED/);
+    assert.match(banner, /UI_CERTIFIED_FOR_SCOPED_RELEASE · NO/);
     assert.match(banner, /Release certification is scoped/);
     assert.match(banner, /OpenRouter DeepSeek V4 Pro/);
     assert.match(banner, /OpenRouter Mimo v2\.5 Pro/);

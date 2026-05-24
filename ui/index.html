@@ -48,7 +48,8 @@ const TASK_FAMILY_LABELS={
 
 const RELEASE_CERTIFICATION={
   status:'RELEASE_SCOPED_TO_CERTIFIED_TARGETS',
-  fullReleaseReady:true,
+  fullReleaseReady:false,
+  uiCertified:false,
   repoModeScope:'representative repo-mode smoke only',
   targets:[
     {providerId:'openrouter',adapterId:'openrouter',modelId:'deepseek/deepseek-v4-pro',label:'OpenRouter DeepSeek V4 Pro',certificationLabel:'Certified release target',reportPath:'reports/release-gauntlet/real-provider/2026-05-24T00-31-06-889Z-openrouter-deepseek-deepseek-v4-pro.json'},
@@ -1252,6 +1253,18 @@ async function refreshTabData(tabKey){
   if(!state.focusedResult[tabKey]&&state.tabData[tabKey].runs[0])state.focusedResult[tabKey]=normalizeRunForDisplay(state.tabData[tabKey].runs[0]);
 }
 
+function laneDataTabKeys(){return Object.keys(TAB_CONFIG).filter((key)=>!TAB_CONFIG[key]?.isSettings)}
+async function refreshRunSurfaces(tabKey,opts){
+  const all=opts&&opts.all===true;
+  const keys=all?laneDataTabKeys():[tabKey].filter((key)=>TAB_CONFIG[key]&&!TAB_CONFIG[key].isSettings);
+  const seen=new Set();
+  for(const key of keys){
+    if(seen.has(key))continue;
+    seen.add(key);
+    await refreshTabData(key);
+  }
+}
+
 function setActiveTab(tabKey){state.activeTab=tabKey;localStorage.setItem('crucibulum-active-tab',tabKey);render()}
 function updateTabField(tabKey,field,value){state.tabData[tabKey]={...(state.tabData[tabKey]||defaultTabState()),[field]:value};if(field==='selectedTask')render()}
 function updateSelectedModels(tabKey,selectEl){const values=Array.from(selectEl.selectedOptions).map((opt)=>opt.value);state.tabData[tabKey]={...(state.tabData[tabKey]||defaultTabState()),selectedModels:values};syncRouting(tabKey);render()}
@@ -1803,7 +1816,7 @@ function renderReleaseCertificationBanner(tabKey){
     ? `<div class="inline-warn">Uncertified target — results are useful for exploration but are outside the certified release scope: ${esc(summary.uncertified.map((item)=>item.id).join(', '))}.</div>`
     : '';
   return `<div class="release-cert-banner" role="note" aria-label="Release certification scope">
-    <div><span class="chip fail">FULL_RELEASE_READY · NO</span><span class="chip cyan hot">${esc(RELEASE_CERTIFICATION.status)} · YES</span><span class="chip teal">UI_CERTIFIED_FOR_SCOPED_RELEASE · YES</span><span class="chip teal">CERTIFIED TARGETS · ${RELEASE_CERTIFICATION.targets.length}</span></div>
+    <div><span class="chip fail">FULL_RELEASE_READY · NO</span><span class="chip cyan hot">${esc(RELEASE_CERTIFICATION.status)} · NOT UI-CERTIFIED</span><span class="chip fail">UI_CERTIFIED_FOR_SCOPED_RELEASE · NO</span><span class="chip teal">CERTIFIED TARGETS · ${RELEASE_CERTIFICATION.targets.length}</span></div>
     <div class="rcb-copy">Release certification is scoped. Certified targets: ${esc(targets)}. Other selectable providers/models are available for testing but are not release-certified.</div>
     <div class="rcb-meta">${esc(selectedNote)} Repo-mode: ${esc(RELEASE_CERTIFICATION.repoModeScope)}.</div>
     ${uncertWarn}
@@ -2249,7 +2262,7 @@ function watchRunCompletion(tabKey,runId,taskId,modelId){
       updateBatchItem(tabKey,taskId,modelId,{status:'completed',runId,pass:normalized.completionState==='PASS',completedAt:new Date().toISOString(),reason:normalized.verdictSummary||''});
       setRunPhase(tabKey,'recording');
       pushRunEvent(tabKey,'record','Recorded evidence bundle');
-      for(const key of Object.keys(TAB_CONFIG))await refreshTabData(key);
+      await refreshRunSurfaces(tabKey);
       render();
       dumpTrace('completed');
       resolve({status:'completed',executed:true,started:true,pass:normalized.completionState==='PASS',payload});
@@ -2334,7 +2347,7 @@ function watchRunCompletion(tabKey,runId,taskId,modelId){
         updateBatchItem(tabKey,taskId,modelId,{status:'completed',runId,pass,completedAt:new Date().toISOString()});
         state.runState[tabKey].lines.push(`[${taskId} :: ${modelId}] Stream closed after completion — reconciling from status endpoint.`);
         // Refresh tabData so the new bundle shows up in stats/leaderboard/runs.
-        for(const key of Object.keys(TAB_CONFIG))await refreshTabData(key);
+        await refreshRunSurfaces(tabKey);
         render();
         resolve({status:'completed',executed:true,started:true,pass,reconciled:true});
       };
@@ -2357,10 +2370,12 @@ function watchRunCompletion(tabKey,runId,taskId,modelId){
       const pollOnce=()=>{
         fetchJSON(`/api/run/${encodeURIComponent(runId)}/status`).then((status)=>{
           if(status?.status==='complete'&&status?.bundle_id){
+            trace_push('poll_status_complete',status.bundle_id);
             reconcileCompleted(status);
             return;
           }
           if(status?.status==='error'){
+            trace_push('poll_status_error',status?.failure_stage||'unknown');
             const finalStatus=(status?.failure_stage==='execution'||started)?'failed':'could_not_start';
             finish(finalStatus,status?.error||reason,status?.failure_stage||stage,status?.provider_error||providerError);
             return;
@@ -2390,6 +2405,7 @@ function watchRunCompletion(tabKey,runId,taskId,modelId){
           if(isReadRateLimit&&Date.now()-pollStart<POLL_BUDGET_MS){
             const waitSec=Math.max(1,Number(err.body.retry_after_sec)||5);
             trace_push('poll_self_rate_limited',`waiting ${waitSec}s`);
+            pushRunEvent(tabKey,'info',`Status polling rate-limited; backing off ${waitSec}s`);
             setTimeout(pollOnce,waitSec*1000);
             return;
           }
@@ -2417,7 +2433,7 @@ function watchRunCompletion(tabKey,runId,taskId,modelId){
               }
               updateBatchItem(tabKey,taskId,modelId,{status:'completed',runId,pass,completedAt:new Date().toISOString()});
               state.runState[tabKey].lines.push(`[${taskId} :: ${modelId}] Reconciled from /api/runs after /status fetch failed.`);
-              for(const key of Object.keys(TAB_CONFIG))await refreshTabData(key);
+              await refreshRunSurfaces(tabKey);
               render();
               dumpTrace('completed-via-runs-hydration');
               resolve({status:'completed',executed:true,started:true,pass,reconciled:true});
@@ -2723,6 +2739,7 @@ async function runBatch(tabKey,taskIds,modelIds,label){
   const summary=`${summaryParts.join(' — ')}.`;
   state.runState[tabKey].lines.push(summary);
   pushRunEvent(tabKey,'done',summary);
+  await refreshRunSurfaces(tabKey,{all:true});
   render();
 }
 

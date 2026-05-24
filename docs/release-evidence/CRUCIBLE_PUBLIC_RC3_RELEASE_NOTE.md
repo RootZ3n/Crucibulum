@@ -4,13 +4,18 @@ Commit: 7321c50
 
 Tag: crucible-public-rc3
 
-Verdict: READY_FOR_SCOPED_TAG
+Verdict: NOT_READY_FOR_SCOPED_TAG
 
 FULL_RELEASE_READY = NO
 
-RELEASE_SCOPED_TO_CERTIFIED_TARGETS = YES
+RELEASE_SCOPED_TO_CERTIFIED_TARGETS = NOT UI-CERTIFIED
 
-UI_CERTIFIED_FOR_SCOPED_RELEASE = YES
+UI_CERTIFIED_FOR_SCOPED_RELEASE = NO
+
+Superseding note, 2026-05-24: the manual real-browser Benchmark lane exposed
+`Run state unreachable` for `truthfulness-001` under provider/read rate
+limiting. This release note is retained as historical evidence only and must
+not be used to claim release readiness.
 
 ## Certified Targets
 

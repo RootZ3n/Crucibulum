@@ -12,9 +12,14 @@
 
 ## Verdict
 
-`UI_CERTIFIED = YES`
+`UI_CERTIFIED = NO`
 
-`FULL_RELEASE_READY = YES — CERTIFIED TARGET SCOPE ONLY`
+`FULL_RELEASE_READY = NO`
+
+Superseding note, 2026-05-24: a later manual real-browser Benchmark lane run
+with OpenRouter `deepseek/deepseek-v4-pro` exposed `Run state unreachable` for
+`truthfulness-001` under provider/read rate limiting. This report is historical
+and no longer certifies the current UI candidate.
 
 Unqualified all-provider/all-model release readiness remains **NO**. The
 passing release scope is limited to OpenRouter DeepSeek V4 Pro, OpenRouter Mimo
@@ -77,11 +82,11 @@ the browser inspector after refresh.
 
 ## Final Status
 
-`UI_CERTIFIED = YES`
+`UI_CERTIFIED = NO`
 
-`RELEASE_SCOPED_TO_CERTIFIED_TARGETS = YES`
+`RELEASE_SCOPED_TO_CERTIFIED_TARGETS = NOT UI-CERTIFIED`
 
-`FULL_RELEASE_READY = YES — CERTIFIED TARGET SCOPE ONLY`
+`FULL_RELEASE_READY = NO`
 
 Do not restate this as universal readiness for every visible adapter, every
 picker model, or every repo-mode task family.

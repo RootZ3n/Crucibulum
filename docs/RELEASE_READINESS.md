@@ -8,10 +8,9 @@ must point at a gauntlet report.
 
 `FULL_RELEASE_READY = NO`.
 
-The supported release claim is `RELEASE_SCOPED_TO_CERTIFIED_TARGETS`. That
-scope is limited to the platform/mock gate, representative repo-mode smoke,
-broad real-provider smoke, and browser/manual UI certification for these
-release-target models:
+The intended scoped release target set is limited to the platform/mock gate,
+representative repo-mode smoke, broad real-provider smoke, and browser/manual
+UI verification for these release-target models:
 
 | Provider | Adapter | Model | Certification scope |
 | --- | --- | --- | --- |
@@ -21,9 +20,11 @@ release-target models:
 
 Visible UI providers or picker models outside that table are not
 release-certified. Repo-mode evidence is representative, not exhaustive.
-Automated UI shape checks and the manual/browser UI certification pass for
-this scoped release. Do not describe this candidate as `FULL_RELEASE_READY`;
-the current tag candidate remains scoped-only.
+Automated UI shape checks previously passed, but the manual real browser
+Benchmark lane has since exposed a `Run state unreachable` regression under
+provider/read rate limiting. Do not describe this candidate as
+`FULL_RELEASE_READY` or UI-certified; the current tag candidate remains
+scoped-only and not UI-certified until the Benchmark lane is reverified.
 
 ## What must pass before release
 
@@ -201,11 +202,11 @@ and the most recent run overwrites `reports/release-gauntlet/latest-real-provide
 | `MOCK_READY` | **YES** | `reports/release-gauntlet/2026-05-24T00-28-43-441Z.{json,md}` — 49/49 PASS, 0 `FAIL_PRODUCT`, clean source metadata |
 | `REAL_PROVIDER_BROAD_READY` | **YES FOR RELEASE TARGETS** | `reports/release-gauntlet/real-provider/2026-05-24T00-31-06-889Z-openrouter-deepseek-deepseek-v4-pro.{json,md}`, `2026-05-24T00-32-14-849Z-openrouter-xiaomi-mimo-v2.5-pro.{json,md}`, `2026-05-24T00-33-18-590Z-ollama-qwen3.5-9b.{json,md}` — each 5/5 PASS |
 | `REPO_MODE_CERTIFIED` | **REPRESENTATIVE ONLY** | `reports/release-gauntlet/2026-05-24T00-28-57-869Z.{json,md}` — `coord-001`, `spec-001`, and `tool-003` repo-smoke PASS; 22 repo-mode tasks remain outside direct smoke coverage |
-| `UI_CERTIFIED` | **YES — CERTIFIED TARGET SCOPE ONLY** | `reports/release-gauntlet/2026-05-24T00-30-17-934Z.{json,md}` automated UI-shape checks PASS; `reports/release-gauntlet/ui-manual/2026-05-24T01-36-16Z.md` confirms browser-visible scoped release banner, certified/uncertified picker labels, refresh, and evidence inspector hydration |
+| `UI_CERTIFIED` | **NO — Benchmark browser regression under investigation** | Manual real-browser Benchmark lane exposed `Run state unreachable` for `truthfulness-001` under provider/read rate limiting after the prior scoped UI certification evidence. |
 | `FULL_RELEASE_READY` | **NO — scoped certification only** | Release support is limited to OpenRouter DeepSeek V4 Pro, OpenRouter Mimo v2.5 Pro, and Ollama `qwen3.5:9b`; representative repo-mode coverage; uncertified providers/models excluded. |
 
 Current audit verdict: **RELEASE_SCOPED_TO_CERTIFIED_TARGETS**, with
-`UI_CERTIFIED = YES` for the scoped target set. The evidence supports the deterministic platform gate,
+`UI_CERTIFIED = NO` for the scoped target set until the Benchmark lane regression is reverified. The evidence supports the deterministic platform gate,
 representative repo-mode smoke, and broad real-provider smoke for the named
 release targets:
 OpenRouter/DeepSeek V4 Pro, OpenRouter/Xiaomi Mimo v2.5 Pro, and local
