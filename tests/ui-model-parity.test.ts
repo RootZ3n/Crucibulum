@@ -26,7 +26,11 @@ import { join } from "node:path";
 import vm from "node:vm";
 
 const UI_PATH = join(process.cwd(), "ui", "index.html");
+const RELEASE_READINESS_PATH = join(process.cwd(), "docs", "RELEASE_READINESS.md");
+const UI_CERTIFICATION_PATH = join(process.cwd(), "docs", "UI_RELEASE_CERTIFICATION.md");
 const uiHtml = readFileSync(UI_PATH, "utf-8");
+const releaseReadinessMd = readFileSync(RELEASE_READINESS_PATH, "utf-8");
+const uiCertificationMd = readFileSync(UI_CERTIFICATION_PATH, "utf-8");
 
 function extractScript(): string {
   const match = uiHtml.match(/^<script>\n([\s\S]*?)\n<\/script>/m);
@@ -59,6 +63,9 @@ interface UiHandle {
   canRunModel: (modelId: string) => boolean;
   gateSelectedModels: (modelIds: string[]) => string[] | null;
   TAB_CONFIG: Record<string, { taskFamilies: string[]; isSettings?: boolean }>;
+  RELEASE_CERTIFICATION: { status: string; targets: Array<{ providerId: string; adapterId: string; modelId: string; certificationLabel: string; reportPath: string }> };
+  releaseCertificationForModel: (modelId: string, route?: { providerId: string; adapterId: string; kind?: string }) => { status: string; label: string };
+  renderReleaseCertificationBanner: (tabKey: string) => string;
 }
 
 function loadUi(opts: { registry?: { providers?: unknown[]; models?: unknown[]; catalog?: unknown[]; presets?: unknown[] } } = {}): UiHandle {
@@ -88,7 +95,7 @@ function loadUi(opts: { registry?: { providers?: unknown[]; models?: unknown[]; 
   sandbox.globalThis = sandbox;
   const prelude = "function render(){}\n";
   const withoutRender = script.replace(/function render\(\)\{[\s\S]*?\n\}\n/, "/* render stubbed */\n");
-  const exporter = `;globalThis.__ui={state,defaultTabState,mergedModelGroups,mergedProviders,filteredModelGroupsForTab,renderModelOptions,renderProviderOptions,syncRouting,setRoutingFilter,modelSelectionNote,deriveRoutingForModel,canRunModel,gateSelectedModels,TAB_CONFIG};`;
+  const exporter = `;globalThis.__ui={state,defaultTabState,mergedModelGroups,mergedProviders,filteredModelGroupsForTab,renderModelOptions,renderProviderOptions,syncRouting,setRoutingFilter,modelSelectionNote,deriveRoutingForModel,canRunModel,gateSelectedModels,TAB_CONFIG,RELEASE_CERTIFICATION,releaseCertificationForModel,renderReleaseCertificationBanner};`;
   const context = vm.createContext(sandbox);
   vm.runInContext(prelude + withoutRender + exporter, context, { filename: "ui/index.html::script" });
   const ui = (sandbox as { __ui: UiHandle }).__ui;
@@ -183,6 +190,59 @@ describe("ui model/provider parity across lane tabs", () => {
         assert.ok(html.includes(`optgroup`) && group.models.some((m) => html.includes(`value="${m.id}"`)), `lane "${tab}" dropdown is missing models from preset "${presetId}"`);
       }
     }
+  });
+
+  it("renders scoped release certification banner language in the UI", () => {
+    const ui = loadUi();
+    const banner = ui.renderReleaseCertificationBanner("personality");
+    assert.match(banner, /RELEASE_SCOPED_TO_CERTIFIED_TARGETS/);
+    assert.match(banner, /Release certification is scoped/);
+    assert.match(banner, /OpenRouter DeepSeek V4 Pro/);
+    assert.match(banner, /OpenRouter Mimo v2\.5 Pro/);
+    assert.match(banner, /Ollama qwen3\.5:9b/);
+    assert.match(banner, /not release-certified/);
+  });
+
+  it("certification registry contains exactly the three current release target model ids", () => {
+    const ui = loadUi();
+    const ids = ui.RELEASE_CERTIFICATION.targets.map((target) => `${target.providerId}/${target.adapterId}/${target.modelId}`).sort();
+    assert.equal(JSON.stringify(ids), JSON.stringify([
+      "ollama/ollama/qwen3.5:9b",
+      "openrouter/openrouter/deepseek/deepseek-v4-pro",
+      "openrouter/openrouter/xiaomi/mimo-v2.5-pro",
+    ]));
+  });
+
+  it("certified labels appear for the three release targets and uncertified labels appear for non-target models", () => {
+    const ui = loadUi();
+    const html = ui.renderModelOptions("personality");
+    assert.match(html, /deepseek\/deepseek-v4-pro[^<]*Certified release target/);
+    assert.match(html, /xiaomi\/mimo-v2\.5-pro[^<]*Certified release target/);
+    assert.match(html, /qwen3\.5:9b[^<]*Certified local release target/);
+    assert.match(html, /gpt-5\.4[^<]*Uncertified \/ not release target/);
+    assert.match(html, /claude-opus-4-6[^<]*Uncertified \/ not release target/);
+  });
+
+  it("provider-certified but non-target models are labeled as model-uncertified, not fully certified", () => {
+    const ui = loadUi();
+    const html = ui.renderModelOptions("personality");
+    assert.match(html, /deepseek\/deepseek-v4-flash[^<]*Provider certified \/ model uncertified/);
+    assert.match(html, /qwen3\.5:4b[^<]*Provider certified \/ model uncertified/);
+  });
+
+  it("docs/RELEASE_READINESS.md and the UI certification registry agree on the target ids", () => {
+    const ui = loadUi();
+    for (const target of ui.RELEASE_CERTIFICATION.targets) {
+      assert.match(releaseReadinessMd, new RegExp(target.modelId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    }
+    assert.equal((releaseReadinessMd.match(/deepseek\/deepseek-v4-pro/g) ?? []).length > 0, true);
+    assert.equal((releaseReadinessMd.match(/xiaomi\/mimo-v2\.5-pro/g) ?? []).length > 0, true);
+    assert.equal((releaseReadinessMd.match(/qwen3\.5:9b/g) ?? []).length > 0, true);
+  });
+
+  it("manual UI certification checklist requires certified/uncertified label verification", () => {
+    assert.match(uiCertificationMd, /certified\/uncertified model labels/i);
+    assert.match(uiCertificationMd, /not release-certified/i);
   });
 
   it("syncRouting does NOT mutate selectedProvider/selectedAdapter — the original bug aliasing fix", () => {

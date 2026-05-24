@@ -46,6 +46,17 @@ const TASK_FAMILY_LABELS={
   operational_trust:'Trust'
 };
 
+const RELEASE_CERTIFICATION={
+  status:'RELEASE_SCOPED_TO_CERTIFIED_TARGETS',
+  fullReleaseReady:true,
+  repoModeScope:'representative repo-mode smoke only',
+  targets:[
+    {providerId:'openrouter',adapterId:'openrouter',modelId:'deepseek/deepseek-v4-pro',label:'OpenRouter DeepSeek V4 Pro',certificationLabel:'Certified release target',reportPath:'reports/release-gauntlet/real-provider/2026-05-24T00-31-06-889Z-openrouter-deepseek-deepseek-v4-pro.json'},
+    {providerId:'openrouter',adapterId:'openrouter',modelId:'xiaomi/mimo-v2.5-pro',label:'OpenRouter Mimo v2.5 Pro',certificationLabel:'Certified release target',reportPath:'reports/release-gauntlet/real-provider/2026-05-24T00-32-14-849Z-openrouter-xiaomi-mimo-v2.5-pro.json'},
+    {providerId:'ollama',adapterId:'ollama',modelId:'qwen3.5:9b',label:'Ollama qwen3.5:9b',certificationLabel:'Certified local release target',reportPath:'reports/release-gauntlet/real-provider/2026-05-24T00-33-18-590Z-ollama-qwen3.5-9b.json'}
+  ]
+};
+
 const DEFAULT_MODEL_GROUPS=[
   {key:'ollama',label:'Local (Ollama)',providerId:'ollama',adapterId:'ollama',kind:'local',models:[
     {id:'gemma4:e4b',label:'gemma4:e4b'},
@@ -953,7 +964,8 @@ function mergedModelGroups(){
   // preset's UI group picks up manually-registered models from the Providers
   // tab. Without this, anything the user added shows up in Providers but is
   // invisible in the lane model picker.
-  const registryProviders=state.registry?.providers||[];
+  const registryProviders=Array.isArray(state.registry?.providers)?state.registry.providers:[];
+  const registryCatalog=Array.isArray(state.registry?.catalog)?state.registry.catalog:[];
   const providersByPreset=new Map();
   for(const provider of registryProviders){
     if(!provider.enabled)continue;
@@ -961,7 +973,7 @@ function mergedModelGroups(){
     providersByPreset.get(provider.presetId).push(provider);
   }
   const registryModelsByTarget=new Map();
-  for(const entry of state.registry?.catalog||[]){
+  for(const entry of registryCatalog){
     if(!entry.providerEnabled||!entry.enabled)continue;
     const targetKey=`${entry.presetId}:${entry.adapter}`;
     if(!registryModelsByTarget.has(targetKey))registryModelsByTarget.set(targetKey,new Map());
@@ -998,7 +1010,7 @@ function mergedModelGroups(){
     if(DEFAULT_MODEL_GROUPS.some((g)=>g.key===presetId))continue;
     const providers=providersByPreset.get(presetId)||[];
     const first=providers[0];
-    const entry=(state.registry?.catalog||[]).find((c)=>c.presetId===presetId&&c.adapter===adapterId);
+    const entry=registryCatalog.find((c)=>c.presetId===presetId&&c.adapter===adapterId);
     if(!entry)continue;
     groups.push({
       key:presetId,
@@ -1012,7 +1024,7 @@ function mergedModelGroups(){
   }
   return groups;
 }
-function catalogEntries(){return mergedModelGroups().flatMap((group)=>group.models.map((model)=>({...model,providerId:group.providerId,adapterId:group.adapterId,providerLabel:group.label,kind:group.kind,inventoryMode:group.inventoryMode})))}
+function catalogEntries(){return mergedModelGroups().flatMap((group)=>(Array.isArray(group.models)?group.models:[]).map((model)=>({...model,providerId:group.providerId,adapterId:group.adapterId,providerLabel:group.label,kind:group.kind,inventoryMode:group.inventoryMode})))}
 function preferredDefaultModelId(){
   const groups=mergedModelGroups();
   const registeredCloud=groups.find((group)=>group.kind==='cloud'&&group.inventoryMode==='registered'&&group.models.length>0);
@@ -1049,7 +1061,7 @@ function deriveRoutingForModel(modelId){
 
 function mergedProviders(){return mergedModelGroups().map((group)=>({id:group.providerId,label:group.label,available:true}))}
 
-function allModelIdsByKind(kind){return mergedModelGroups().flatMap((group)=>group.kind===kind?group.models.map((m)=>m.id):[])}
+function allModelIdsByKind(kind){return mergedModelGroups().flatMap((group)=>group.kind===kind?(Array.isArray(group.models)?group.models:[]).map((m)=>m.id):[])}
 function buildBatchItems(taskIds,modelIds){
   return taskIds.flatMap((taskId)=>modelIds.map((modelId)=>({
     key:`${taskId}::${modelId}`,
@@ -1135,7 +1147,7 @@ function reconcileTabSelection(tabKey,tabState){
   if(!next.selectedTasks.length&&tasks[0])next.selectedTasks=[tasks[0].id];
   // Keep selectedTask pointing at the first selected (task-brief + current-test highlighting).
   next.selectedTask=next.selectedTasks[0]||'';
-  const validModelIds=new Set(mergedModelGroups().flatMap((group)=>group.models.map((model)=>normalizeId(model.id))));
+  const validModelIds=new Set(mergedModelGroups().flatMap((group)=>(Array.isArray(group.models)?group.models:[]).map((model)=>normalizeId(model.id))));
   next.selectedModels=Array.isArray(next.selectedModels)?next.selectedModels.filter((id)=>validModelIds.has(normalizeId(id))):[];
   if(!next.selectedModels.length){
     const first=preferredDefaultModelId();
@@ -1741,6 +1753,62 @@ function renderTelemetryRow(focused){
     <div class="tel-cell"><div class="tel-k">COST</div><div class="tel-v">${costHtml}</div></div>
   </div>`;
 }
+function releaseTargetForRoute(providerId,adapterId,modelId){
+  const p=normalizeId(providerId);
+  const a=normalizeId(adapterId);
+  const m=normalizeId(modelId);
+  return RELEASE_CERTIFICATION.targets.find((target)=>normalizeId(target.providerId)===p&&normalizeId(target.adapterId)===a&&normalizeId(target.modelId)===m)||null;
+}
+function releaseCertifiedProviderIds(){
+  return new Set(RELEASE_CERTIFICATION.targets.map((target)=>normalizeId(target.providerId)));
+}
+function releaseCertificationForModel(modelId,route){
+  const resolved=route||deriveRoutingForModel(modelId);
+  const providerId=resolved.providerId||resolved.provider||'';
+  const adapterId=resolved.adapterId||resolved.adapter||providerId;
+  const target=releaseTargetForRoute(providerId,adapterId,modelId);
+  if(target)return{status:'certified',label:target.certificationLabel,css:normalizeId(providerId)==='ollama'?'teal':'cyan',target,providerId,adapterId,modelId};
+  const certifiedProviders=releaseCertifiedProviderIds();
+  if(certifiedProviders.has(normalizeId(providerId)))return{status:'provider_certified_model_uncertified',label:'Provider certified / model uncertified',css:'dim',target:null,providerId,adapterId,modelId};
+  return{status:'uncertified',label:'Uncertified / not release target',css:'dim',target:null,providerId,adapterId,modelId};
+}
+function releaseCertificationOptionLabel(model,group,presetHealth){
+  const cert=releaseCertificationForModel(model.id,{providerId:group.providerId,adapterId:group.adapterId,kind:group.kind});
+  const disabled=presetHealth.status==='down'||presetHealth.status==='unconfigured';
+  const availability=disabled?' · Disabled/unavailable':'';
+  const id=safeStr(model.id);
+  const label=safeStr(model.label);
+  const display=label&&normalizeId(label)!==normalizeId(id)?`${id} (${label})`:id||label;
+  return `${display} — ${cert.label}${availability}`;
+}
+function selectedReleaseCertificationSummary(modelIds){
+  const seen=new Map();
+  for(const id of modelIds||[]){
+    const cert=releaseCertificationForModel(id);
+    seen.set(normalizeId(id),{id,cert});
+  }
+  const items=Array.from(seen.values());
+  const certified=items.filter((item)=>item.cert.status==='certified');
+  const uncertified=items.filter((item)=>item.cert.status!=='certified');
+  return{items,certified,uncertified};
+}
+function renderReleaseCertificationBanner(tabKey){
+  const targets=RELEASE_CERTIFICATION.targets.map((target)=>target.label).join(', ');
+  const tab=state.tabData[tabKey]||defaultTabState();
+  const summary=selectedReleaseCertificationSummary(tab.selectedModels||[]);
+  const selectedNote=summary.items.length
+    ? `${summary.certified.length} certified target${summary.certified.length===1?'':'s'} selected · ${summary.uncertified.length} uncertified/not-target selected.`
+    : 'No models selected.';
+  const uncertWarn=summary.uncertified.length
+    ? `<div class="inline-warn">Uncertified target — results are useful for exploration but are outside the certified release scope: ${esc(summary.uncertified.map((item)=>item.id).join(', '))}.</div>`
+    : '';
+  return `<div class="release-cert-banner" role="note" aria-label="Release certification scope">
+    <div><span class="chip cyan hot">${esc(RELEASE_CERTIFICATION.status)}</span><span class="chip teal">FULL_RELEASE_READY · CERTIFIED SCOPE ONLY</span><span class="chip teal">CERTIFIED TARGETS · ${RELEASE_CERTIFICATION.targets.length}</span></div>
+    <div class="rcb-copy">Release certification is scoped. Certified targets: ${esc(targets)}. Other selectable providers/models are available for testing but are not release-certified.</div>
+    <div class="rcb-meta">${esc(selectedNote)} Repo-mode: ${esc(RELEASE_CERTIFICATION.repoModeScope)}.</div>
+    ${uncertWarn}
+  </div>`;
+}
 function modelSelectionNote(tabKey){
   const tab=state.tabData[tabKey]||defaultTabState();
   const models=tab.selectedModels||[];
@@ -1758,7 +1826,9 @@ function modelSelectionNote(tabKey){
   const routes=models.map(deriveRoutingForModel);
   const localCount=routes.filter((r)=>r.kind==='local').length;
   const cloudCount=routes.filter((r)=>r.kind==='cloud').length;
-  const base=`${models.length} model${models.length===1?'':'s'} selected: ${localCount} local and ${cloudCount} cloud.`;
+  const cert=selectedReleaseCertificationSummary(models);
+  const outside=cert.uncertified.length?` ${cert.uncertified.length} uncertified/not release target.`:' All selected models are certified release targets.';
+  const base=`${models.length} model${models.length===1?'':'s'} selected: ${localCount} local and ${cloudCount} cloud.${outside}`;
   return filterNote?`${base} ${filterNote}`:base;
 }
 function modelInventoryNote(){
@@ -2664,6 +2734,12 @@ async function runBatch(tabKey,taskIds,modelIds,label){
 // cancels.
 function gateSelectedModels(selectedModels){
   const blocked=blockedRunReasons(selectedModels);
+  const releaseSummary=selectedReleaseCertificationSummary(selectedModels);
+  if(releaseSummary.uncertified.length&&typeof confirm==='function'){
+    const names=releaseSummary.uncertified.map((item)=>`${item.id} — ${item.cert.label}`).join('\n');
+    const msg=`Uncertified target — results are useful for exploration but are outside the certified release scope.\n\n${names}\n\nContinue anyway?`;
+    if(!confirm(msg))return null;
+  }
   if(!blocked.length)return selectedModels;
   const reachable=selectedModels.filter((id)=>canRunModel(id));
   if(typeof alert!=='function'&&typeof confirm!=='function'){
@@ -2729,7 +2805,7 @@ function renderModelOptions(tabKey){
     else if(presetHealth.status==='unconfigured')tag=' — not configured';
     else if(presetHealth.status==='unknown'&&group.kind!=='local')tag=' — untested';
     const optgroupLabel=`${group.label}${tag}`;
-    return`<optgroup label="${esc(optgroupLabel)}">${group.models.map((model)=>`<option value="${esc(model.id)}" ${selected.some((id)=>normalizeId(id)===normalizeId(model.id))?'selected':''}>${esc(model.label)}${tag?' · '+tag.replace(/^\s—\s/,''):''}</option>`).join('')}</optgroup>`;
+    return`<optgroup label="${esc(optgroupLabel)}">${group.models.map((model)=>`<option value="${esc(model.id)}" data-certification="${esc(releaseCertificationForModel(model.id,{providerId:group.providerId,adapterId:group.adapterId,kind:group.kind}).status)}" ${selected.some((id)=>normalizeId(id)===normalizeId(model.id))?'selected':''}>${esc(releaseCertificationOptionLabel(model,group,presetHealth))}</option>`).join('')}</optgroup>`;
   }).join('');
 }
 function renderMetrics(tabKey){
@@ -3920,6 +3996,7 @@ function renderLaneCommandTop(tabKey){
       <div class="stack-grid" style="display:grid;gap:12px">
         <div class="field"><label>ADAPTER</label><select class="select" onchange="setRoutingFilter('${tab.key}','adapter',this.value)">${renderAdapterOptions(tab.key)}</select></div>
         <div class="field"><label>PROVIDER</label><select class="select" onchange="setRoutingFilter('${tab.key}','provider',this.value)">${renderProviderOptions(tab.key)}</select></div>
+        ${renderReleaseCertificationBanner(tab.key)}
         <div class="field"><label>MODELS · ${modelCount} ARMED</label><select class="select" multiple size="8" onchange="updateSelectedModels('${tab.key}',this)">${renderModelOptions(tab.key)}</select><div class="field-note">${esc(modelSelectionNote(tab.key))}</div></div>
         ${renderRunCount(tab.key)}
         <div class="button-grid">

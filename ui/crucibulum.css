@@ -1629,6 +1629,24 @@ body::after{
 }
 .ls-latest::before{content:"› ";color:var(--cyan);opacity:.75}
 .field-note{margin-top:8px;font-family:var(--mono);font-size:10px;line-height:1.45;color:var(--ink-dim)}
+.release-cert-banner{
+  display:grid;
+  gap:7px;
+  padding:10px 12px;
+  border:1px solid rgba(72,211,255,.24);
+  border-left:3px solid var(--cyan);
+  border-radius:8px;
+  background:rgba(4,10,24,.72);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+}
+.release-cert-banner .chip{margin-right:6px;margin-bottom:2px}
+.rcb-copy,.rcb-meta{
+  font-family:var(--mono);
+  font-size:11px;
+  line-height:1.45;
+  color:var(--ink-soft);
+}
+.rcb-meta{color:var(--ink-dim)}
 .ls-telemetry{margin-top:2px}
 .tel-row{
   display:grid;
