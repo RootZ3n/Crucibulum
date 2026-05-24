@@ -195,12 +195,16 @@ describe("ui model/provider parity across lane tabs", () => {
   it("renders scoped release certification banner language in the UI", () => {
     const ui = loadUi();
     const banner = ui.renderReleaseCertificationBanner("personality");
-    assert.match(banner, /RELEASE_SCOPED_TO_CERTIFIED_TARGETS/);
+    assert.match(banner, /FULL_RELEASE_READY · NO/);
+    assert.match(banner, /RELEASE_SCOPED_TO_CERTIFIED_TARGETS · YES/);
+    assert.match(banner, /UI_CERTIFIED_FOR_SCOPED_RELEASE · YES/);
     assert.match(banner, /Release certification is scoped/);
     assert.match(banner, /OpenRouter DeepSeek V4 Pro/);
     assert.match(banner, /OpenRouter Mimo v2\.5 Pro/);
     assert.match(banner, /Ollama qwen3\.5:9b/);
     assert.match(banner, /not release-certified/);
+    assert.doesNotMatch(banner, /FULL_RELEASE_READY · CERTIFIED/);
+    assert.doesNotMatch(banner, /FULL_RELEASE_READY · YES/);
   });
 
   it("certification registry contains exactly the three current release target model ids", () => {

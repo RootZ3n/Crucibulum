@@ -1803,7 +1803,7 @@ function renderReleaseCertificationBanner(tabKey){
     ? `<div class="inline-warn">Uncertified target — results are useful for exploration but are outside the certified release scope: ${esc(summary.uncertified.map((item)=>item.id).join(', '))}.</div>`
     : '';
   return `<div class="release-cert-banner" role="note" aria-label="Release certification scope">
-    <div><span class="chip cyan hot">${esc(RELEASE_CERTIFICATION.status)}</span><span class="chip teal">FULL_RELEASE_READY · CERTIFIED SCOPE ONLY</span><span class="chip teal">CERTIFIED TARGETS · ${RELEASE_CERTIFICATION.targets.length}</span></div>
+    <div><span class="chip fail">FULL_RELEASE_READY · NO</span><span class="chip cyan hot">${esc(RELEASE_CERTIFICATION.status)} · YES</span><span class="chip teal">UI_CERTIFIED_FOR_SCOPED_RELEASE · YES</span><span class="chip teal">CERTIFIED TARGETS · ${RELEASE_CERTIFICATION.targets.length}</span></div>
     <div class="rcb-copy">Release certification is scoped. Certified targets: ${esc(targets)}. Other selectable providers/models are available for testing but are not release-certified.</div>
     <div class="rcb-meta">${esc(selectedNote)} Repo-mode: ${esc(RELEASE_CERTIFICATION.repoModeScope)}.</div>
     ${uncertWarn}
