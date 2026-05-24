@@ -5,10 +5,14 @@ automated `--ui-shape` gauntlet check only proves the expected UI code paths
 are present; it does not prove a browser successfully drove them.
 
 Current status: `UI_CERTIFIED = YES` for the certified target scope archived
-in `reports/release-gauntlet/ui-manual/2026-05-24T01-36-16Z.md`. Passing
-automated UI-shape checks alone does not make Crucible `FULL_RELEASE_READY`.
+in `docs/release-evidence/UI_RELEASE_CERTIFICATION_2026-05-24.md` and
+`reports/release-gauntlet/ui-manual/2026-05-24T01-36-16Z.md`. Passing
+automated UI-shape checks alone does not make Crucible unqualified
+`FULL_RELEASE_READY`.
 
 Latest passing attempt:
+`docs/release-evidence/UI_RELEASE_CERTIFICATION_2026-05-24.md`
+and
 `reports/release-gauntlet/ui-manual/2026-05-24T01-36-16Z.md`.
 
 Previous failed attempt:
