@@ -6,6 +6,10 @@ All notable public-release changes for Crucible are tracked here.
 
 Initial public release candidate.
 
+Release-readiness status: scoped certification only. This candidate is not
+unqualified `FULL_RELEASE_READY`; see `docs/RELEASE_READINESS.md` for the
+evidence and blockers.
+
 ### Added
 
 - Local scoreboard, receipt, and evidence-viewer UI for model and agent trial outputs.
@@ -18,8 +22,15 @@ Initial public release candidate.
 
 ### Known Limitations
 
+- Certified real-provider release targets are limited to OpenRouter
+  `deepseek/deepseek-v4-pro`, OpenRouter `xiaomi/mimo-v2.5-pro`, and Ollama
+  `qwen3.5:9b`. UI-visible providers/models outside that set are not
+  release-certified.
+- Repo-mode certification is representative smoke coverage only, not exhaustive
+  coverage of every repo task family.
+- Automated UI-shape checks pass, but manual browser release certification
+  remains required before claiming `FULL_RELEASE_READY`.
 - Demo, mock, local historical, and unverified data may exist in a local workspace but is not eligible for default public rankings.
 - Local-only behavior depends on operator configuration, provider adapters, and network exposure. Crucible does not guarantee local/cloud isolation.
 - HMAC signatures and provenance metadata help detect tampering and establish local evidence integrity, but they are not a security certification.
 - Crucible compares observed behavior under configured tasks and scoring policy. It is not a universal model ranking or proof that any model is safe.
-

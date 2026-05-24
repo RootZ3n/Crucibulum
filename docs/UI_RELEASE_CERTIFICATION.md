@@ -4,8 +4,23 @@ This checklist is the manual/browser half of release certification. The
 automated `--ui-shape` gauntlet check only proves the expected UI code paths
 are present; it does not prove a browser successfully drove them.
 
+Current status: `UI_CERTIFIED = NO` until this checklist is completed and
+archived for the current release candidate. Passing automated UI-shape checks
+does not make Crucible `FULL_RELEASE_READY`.
+
 Before `UI_CERTIFIED=YES`, record the browser, viewport, provider/model, task
 selection, report path, and operator initials in the release notes.
+
+Use one certified release-target model for the certification run:
+
+| Provider | Adapter | Model |
+| --- | --- | --- |
+| OpenRouter | `openrouter` | `deepseek/deepseek-v4-pro` |
+| OpenRouter | `openrouter` | `xiaomi/mimo-v2.5-pro` |
+| Ollama | `ollama` | `qwen3.5:9b` |
+
+Models and providers visible in the UI but absent from this table are
+operator-selectable, not release-certified.
 
 Required checks:
 

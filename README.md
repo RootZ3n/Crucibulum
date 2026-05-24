@@ -376,6 +376,25 @@ That means you can compare:
 
 without losing track of who actually ran the task and under what identity.
 
+### Current Release Certification Scope
+
+The current release candidate is not unqualified `FULL_RELEASE_READY`.
+Certification is scoped to the evidence archived in `docs/RELEASE_READINESS.md`.
+
+Certified release-target models:
+
+- OpenRouter / `deepseek/deepseek-v4-pro`
+- OpenRouter / `xiaomi/mimo-v2.5-pro`
+- Ollama / `qwen3.5:9b`
+
+Other providers and models may appear in the UI or adapter registry, but
+visibility does not mean release certification. Those routes remain
+uncertified unless a matching real-provider report is archived. Repo-mode
+certification is representative smoke coverage only, not proof that every
+repo task family has been live-certified. Automated UI-shape checks pass, but
+manual browser certification is still required before claiming
+`FULL_RELEASE_READY`.
+
 ## Methodology and Trust Docs
 
 Crucible is being documented as a public audit and evidence-inspection system rather than only a codebase. Start here:
@@ -685,7 +704,13 @@ To add an adapter, implement `CrucibulumAdapter` from `adapters/base.ts`, regist
 
 ## Release Limitations
 
-Crucible currently emphasizes deterministic, auditable evidence over broad benchmark coverage. Safety tasks are caveated diagnostics, not a certification or proof of universal safety. Provider behavior, model versions, and pricing can change. Repeat runs are recommended before making claims.
+Crucible currently emphasizes deterministic, auditable evidence over broad benchmark coverage. Safety tasks are caveated diagnostics, not a certification or proof of universal safety. Provider behavior, model versions, pricing, and rate-limit behavior can change. Repeat runs are recommended before making claims.
+
+Current release evidence supports scoped certification only: the platform/mock
+gate, representative repo-mode smoke, and broad real-provider smoke for
+OpenRouter DeepSeek, OpenRouter Mimo, and Ollama `qwen3.5:9b`. It does not
+certify every UI-visible provider/model, every repo-mode task family, or the
+manual browser/operator workflow.
 
 See `SECURITY.md` for the public security policy and trust model, and `CHANGELOG.md` for release notes. The included `crucible.service` is an advanced Linux/systemd example only; it is not required for the local quickstart.
 

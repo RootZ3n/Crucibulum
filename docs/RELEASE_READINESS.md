@@ -4,6 +4,25 @@ This document defines what "release-ready" means for Crucible and how to
 verify it. The bar is **evidence-driven**: every release-readiness claim
 must point at a gauntlet report.
 
+## Current release verdict
+
+`FULL_RELEASE_READY = NO`.
+
+The current evidence supports only `RELEASE_SCOPED_TO_CERTIFIED_TARGETS`.
+That scope is limited to the platform/mock gate, representative repo-mode
+smoke, and broad real-provider smoke for these release-target models:
+
+| Provider | Adapter | Model | Certification scope |
+| --- | --- | --- | --- |
+| OpenRouter | `openrouter` | `deepseek/deepseek-v4-pro` | Broad real-provider smoke only |
+| OpenRouter | `openrouter` | `xiaomi/mimo-v2.5-pro` | Broad real-provider smoke only |
+| Ollama | `ollama` | `qwen3.5:9b` | Broad real-provider smoke only |
+
+Visible UI providers or picker models outside that table are not
+release-certified. Repo-mode evidence is representative, not exhaustive.
+Automated UI shape checks pass, but manual/browser UI certification remains
+open. Do not describe this candidate as unqualified `FULL_RELEASE_READY`.
+
 ## What must pass before release
 
 The release-gauntlet must produce a report with:
@@ -86,7 +105,7 @@ The gauntlet classifies every probe into one of:
 - A model giving wrong answers — that's a model-quality finding, not a Crucible bug.
 - Manifest defects — those classify as `FAIL_CONFIG`.
 
-## Two layers, both required
+## Release gates, all required
 
 Release certification has distinct gates. All must pass before an unqualified
 release tag.
@@ -105,6 +124,11 @@ profiles must also be archived before the release tag.
 
 The release set covers one cloud-routed mid-tier (DeepSeek), one cloud
 direct-from-publisher mid-tier (Mimo), and one local provider (Ollama):
+
+This is not a certification of every adapter registered in the repo, and it is
+not a certification of every provider/model visible in the browser picker.
+Provider/model visibility means "operator-selectable or discoverable"; it does
+not mean "release-certified."
 
 ```bash
 # 1. OpenRouter → DeepSeek V4 Pro
@@ -162,6 +186,11 @@ and the most recent run overwrites `reports/release-gauntlet/latest-real-provide
 - Only release-target providers/models are certified. Other exposed adapters
   and picker models remain `UNCERTIFIED_NOT_RELEASE_TARGET` unless a report
   says otherwise.
+- Rate-limit and provider-error handling is bounded and covered by mock/source
+  checks, and provider outages must remain `FAIL_PROVIDER` when classified
+  honestly. That does not certify rate-limit behavior across every exposed
+  provider/model; broad real-provider certification currently covers only the
+  three release targets listed above.
 
 ## Current release status
 
