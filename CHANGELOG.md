@@ -28,8 +28,9 @@ evidence and blockers.
   release-certified.
 - Repo-mode certification is representative smoke coverage only, not exhaustive
   coverage of every repo task family.
-- Automated UI-shape checks pass, but manual browser release certification
-  remains required before claiming `FULL_RELEASE_READY`.
+- Automated UI-shape checks and manual browser release certification pass for
+  the scoped target set, but the candidate remains scoped-only and not
+  `FULL_RELEASE_READY`.
 - Demo, mock, local historical, and unverified data may exist in a local workspace but is not eligible for default public rankings.
 - Local-only behavior depends on operator configuration, provider adapters, and network exposure. Crucible does not guarantee local/cloud isolation.
 - HMAC signatures and provenance metadata help detect tampering and establish local evidence integrity, but they are not a security certification.

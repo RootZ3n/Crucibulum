@@ -67,7 +67,7 @@ release-scope display.
 | 2 | No console errors on initial load. | PASS WITH NOTE | No JS exceptions. Only `favicon.ico` 404 was captured. |
 | 3 | Provider/model picker displays certified and uncertified options honestly. | PASS | Picker labels included `deepseek/deepseek-v4-pro — Certified release target`, `xiaomi/mimo-v2.5-pro — Certified release target`, `qwen3.5:9b — Certified local release target`, `Uncertified / not release target`, `Provider certified / model uncertified`, and `Disabled/unavailable`. |
 | 4 | UI indicates visible providers/models are not all release-certified. | PASS | Banner text included `Release certification is scoped` and stated other selectable providers/models are not release-certified. |
-| 5 | Certified targets are identifiable or docs link makes scope clear. | PASS | Certified targets were visible in the picker with exact model ids and certified labels. Banner included `RELEASE_SCOPED_TO_CERTIFIED_TARGETS` and `FULL_RELEASE_READY · CERTIFIED SCOPE ONLY`. |
+| 5 | Certified targets are identifiable or docs link makes scope clear. | PASS WITH CAVEAT | Certified targets were visible in the picker with exact model ids and certified labels. Banner included `RELEASE_SCOPED_TO_CERTIFIED_TARGETS`. The browser text also included `FULL_RELEASE_READY · CERTIFIED SCOPE ONLY`; final release docs now treat any `FULL_RELEASE_READY` wording as denied for this candidate. |
 | 6 | Rate-limit/429 messaging is understandable if simulated or inspectable. | PASS BY SOURCE INSPECTION | Browser runtime confirmed `runBatch` contains bounded provider cooldown/rate-limit messaging including Retry-After handling. No live 429 occurred during this pass. |
 | 7 | Leaderboard/scoreboard does not imply universal benchmark status. | PASS | Personality lane showed lane scope (`SCOPE · LANE · PERSONALITY`) and `PROVISIONAL`; docs and banner constrain release claims to certified targets. |
 | 8 | Evidence bundle viewer displays verification status honestly. | PASS | Focused run `run_2026-05-24_role-stress-001_qwen3.5-9b_fadd2e86` opened in the evidence inspector and showed bundle trace, hash, auth, target, tested model, and `LEGACY · UNVERIFIED · NOT RANKED`. |
@@ -77,7 +77,7 @@ release-scope display.
 | 12 | Mobile/narrow viewport is not broken if easy to test. | PASS | Chromium mobile emulation at `390x844`; banner visible; nav visible; no horizontal overflow (`scrollWidth = 390`, viewport width `390`). |
 | 13 | No obvious broken navigation/buttons. | PASS | Lanes loaded: Personality, Poison, Build, Safety, Memory, Tools, Trust, Providers. Select All selected 10 tests, Clear selected 0 tests, individual toggle selected `personality-001`. |
 | 14 | No visible secret/env leakage in UI. | PASS | Rendered text did not match API-key or env secret patterns (`sk-*`, `*_API_KEY=`, `SECRET=`, `TOKEN=`). |
-| 15 | UI links/docs match scoped release claims. | PASS | `README.md` avoids universal benchmark claims; `docs/RELEASE_READINESS.md` and UI banner state scoped release readiness only. |
+| 15 | UI links/docs match scoped release claims. | PASS WITH CAVEAT | `README.md` avoids universal benchmark claims and `docs/RELEASE_READINESS.md` denies `FULL_RELEASE_READY`. Any UI wording containing `FULL_RELEASE_READY` must be read as superseded by the scoped-only release docs before tagging. |
 
 ## Forbidden fallback check
 
@@ -119,3 +119,6 @@ Residual caveats:
 `UI_CERTIFIED_FOR_SCOPED_RELEASE = YES`
 
 `UNQUALIFIED_FULL_RELEASE_READY = NO`
+
+Preflight note: final tag readiness requires UI-visible wording to avoid
+claiming `FULL_RELEASE_READY`, even when qualified by scope.

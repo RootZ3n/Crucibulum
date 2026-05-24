@@ -6,12 +6,11 @@ must point at a gauntlet report.
 
 ## Current release verdict
 
-`FULL_RELEASE_READY = YES — CERTIFIED TARGET SCOPE ONLY`.
+`FULL_RELEASE_READY = NO`.
 
-Unqualified all-provider/all-model readiness remains **NO**. The supported
-release claim is `RELEASE_SCOPED_TO_CERTIFIED_TARGETS`. That scope is limited
-to the platform/mock gate, representative repo-mode smoke, broad
-real-provider smoke, and browser/manual UI certification for these
+The supported release claim is `RELEASE_SCOPED_TO_CERTIFIED_TARGETS`. That
+scope is limited to the platform/mock gate, representative repo-mode smoke,
+broad real-provider smoke, and browser/manual UI certification for these
 release-target models:
 
 | Provider | Adapter | Model | Certification scope |
@@ -23,8 +22,8 @@ release-target models:
 Visible UI providers or picker models outside that table are not
 release-certified. Repo-mode evidence is representative, not exhaustive.
 Automated UI shape checks and the manual/browser UI certification pass for
-this scoped release. Do not describe this candidate as unqualified
-all-provider/all-model `FULL_RELEASE_READY`.
+this scoped release. Do not describe this candidate as `FULL_RELEASE_READY`;
+the current tag candidate remains scoped-only.
 
 ## What must pass before release
 
@@ -203,7 +202,7 @@ and the most recent run overwrites `reports/release-gauntlet/latest-real-provide
 | `REAL_PROVIDER_BROAD_READY` | **YES FOR RELEASE TARGETS** | `reports/release-gauntlet/real-provider/2026-05-24T00-31-06-889Z-openrouter-deepseek-deepseek-v4-pro.{json,md}`, `2026-05-24T00-32-14-849Z-openrouter-xiaomi-mimo-v2.5-pro.{json,md}`, `2026-05-24T00-33-18-590Z-ollama-qwen3.5-9b.{json,md}` — each 5/5 PASS |
 | `REPO_MODE_CERTIFIED` | **REPRESENTATIVE ONLY** | `reports/release-gauntlet/2026-05-24T00-28-57-869Z.{json,md}` — `coord-001`, `spec-001`, and `tool-003` repo-smoke PASS; 22 repo-mode tasks remain outside direct smoke coverage |
 | `UI_CERTIFIED` | **YES — CERTIFIED TARGET SCOPE ONLY** | `reports/release-gauntlet/2026-05-24T00-30-17-934Z.{json,md}` automated UI-shape checks PASS; `reports/release-gauntlet/ui-manual/2026-05-24T01-36-16Z.md` confirms browser-visible scoped release banner, certified/uncertified picker labels, refresh, and evidence inspector hydration |
-| `FULL_RELEASE_READY` | **YES — CERTIFIED TARGET SCOPE ONLY** | Release-ready only for OpenRouter DeepSeek V4 Pro, OpenRouter Mimo v2.5 Pro, and Ollama `qwen3.5:9b`; representative repo-mode coverage; uncertified providers/models excluded. |
+| `FULL_RELEASE_READY` | **NO — scoped certification only** | Release support is limited to OpenRouter DeepSeek V4 Pro, OpenRouter Mimo v2.5 Pro, and Ollama `qwen3.5:9b`; representative repo-mode coverage; uncertified providers/models excluded. |
 
 Current audit verdict: **RELEASE_SCOPED_TO_CERTIFIED_TARGETS**, with
 `UI_CERTIFIED = YES` for the scoped target set. The evidence supports the deterministic platform gate,
@@ -216,7 +215,7 @@ model, or every repo-mode task.
 The manual UI blocker found in
 `reports/release-gauntlet/ui-manual/2026-05-24T00-53-44Z.md` is fixed and
 recertified in `reports/release-gauntlet/ui-manual/2026-05-24T01-36-16Z.md`.
-Do not claim unqualified full release; the passing status is scoped to the
+Do not claim full release readiness; the passing status is scoped to the
 certified target set above.
 
 The older archived compact DeepSeek run that included a

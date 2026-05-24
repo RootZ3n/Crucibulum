@@ -391,9 +391,9 @@ Other providers and models may appear in the UI or adapter registry, but
 visibility does not mean release certification. Those routes remain
 uncertified unless a matching real-provider report is archived. Repo-mode
 certification is representative smoke coverage only, not proof that every
-repo task family has been live-certified. Automated UI-shape checks pass, but
-manual browser certification is still required before claiming
-`FULL_RELEASE_READY`.
+repo task family has been live-certified. Automated UI-shape checks and the
+manual browser UI checklist pass for the scoped target set, but this remains
+`RELEASE_SCOPED_TO_CERTIFIED_TARGETS`, not `FULL_RELEASE_READY`.
 
 ## Methodology and Trust Docs
 
@@ -710,7 +710,7 @@ Current release evidence supports scoped certification only: the platform/mock
 gate, representative repo-mode smoke, and broad real-provider smoke for
 OpenRouter DeepSeek, OpenRouter Mimo, and Ollama `qwen3.5:9b`. It does not
 certify every UI-visible provider/model, every repo-mode task family, or the
-manual browser/operator workflow.
+full all-provider/all-model release.
 
 See `SECURITY.md` for the public security policy and trust model, and `CHANGELOG.md` for release notes. The included `crucible.service` is an advanced Linux/systemd example only; it is not required for the local quickstart.
 
