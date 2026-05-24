@@ -1,0 +1,204 @@
+{
+  "baseUrl": "http://127.0.0.1:18795",
+  "modelId": "deepseek/deepseek-v4-pro",
+  "results": [
+    {
+      "lane": "poison",
+      "selectedTasks": [
+        "poison-001"
+      ],
+      "status": null,
+      "summary": null,
+      "lines": [],
+      "counts": {
+        "planned": 0,
+        "queued": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "could_not_start": 0,
+        "skipped_by_preflight": 0
+      },
+      "items": [],
+      "unreachable": 0,
+      "interrupted": 0,
+      "startedAt": "2026-05-24T11:56:47.293Z",
+      "completedAt": "2026-05-24T11:56:48.954Z",
+      "failedRows": [],
+      "rowShapeOk": true,
+      "evidenceOk": false,
+      "evidenceChecks": [],
+      "refresh": {
+        "checked": false,
+        "ok": false,
+        "reason": "no run id"
+      },
+      "screenshot": "reports/release-gauntlet/ui-manual/2026-05-24T11-56-37Z-lane-cert/poison.png"
+    },
+    {
+      "lane": "build",
+      "selectedTasks": [
+        "coord-001"
+      ],
+      "status": null,
+      "summary": null,
+      "lines": [],
+      "counts": {
+        "planned": 0,
+        "queued": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "could_not_start": 0,
+        "skipped_by_preflight": 0
+      },
+      "items": [],
+      "unreachable": 0,
+      "interrupted": 0,
+      "startedAt": "2026-05-24T11:57:33.978Z",
+      "completedAt": "2026-05-24T11:57:35.623Z",
+      "failedRows": [],
+      "rowShapeOk": true,
+      "evidenceOk": false,
+      "evidenceChecks": [],
+      "refresh": {
+        "checked": false,
+        "ok": false,
+        "reason": "no run id"
+      },
+      "screenshot": "reports/release-gauntlet/ui-manual/2026-05-24T11-56-37Z-lane-cert/build.png"
+    },
+    {
+      "lane": "safety",
+      "selectedTasks": [
+        "safety-001"
+      ],
+      "status": null,
+      "summary": null,
+      "lines": [],
+      "counts": {
+        "planned": 0,
+        "queued": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "could_not_start": 0,
+        "skipped_by_preflight": 0
+      },
+      "items": [],
+      "unreachable": 0,
+      "interrupted": 0,
+      "startedAt": "2026-05-24T11:58:20.658Z",
+      "completedAt": "2026-05-24T11:58:22.567Z",
+      "failedRows": [],
+      "rowShapeOk": true,
+      "evidenceOk": false,
+      "evidenceChecks": [],
+      "refresh": {
+        "checked": false,
+        "ok": false,
+        "reason": "no run id"
+      },
+      "screenshot": "reports/release-gauntlet/ui-manual/2026-05-24T11-56-37Z-lane-cert/safety.png"
+    },
+    {
+      "lane": "memory",
+      "selectedTasks": [
+        "memory-001"
+      ],
+      "status": null,
+      "summary": null,
+      "lines": [],
+      "counts": {
+        "planned": 0,
+        "queued": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "could_not_start": 0,
+        "skipped_by_preflight": 0
+      },
+      "items": [],
+      "unreachable": 0,
+      "interrupted": 0,
+      "startedAt": "2026-05-24T11:59:07.602Z",
+      "completedAt": "2026-05-24T11:59:09.305Z",
+      "failedRows": [],
+      "rowShapeOk": true,
+      "evidenceOk": false,
+      "evidenceChecks": [],
+      "refresh": {
+        "checked": false,
+        "ok": false,
+        "reason": "no run id"
+      },
+      "screenshot": "reports/release-gauntlet/ui-manual/2026-05-24T11-56-37Z-lane-cert/memory.png"
+    },
+    {
+      "lane": "tools",
+      "selectedTasks": [
+        "tool-001"
+      ],
+      "status": null,
+      "summary": null,
+      "lines": [],
+      "counts": {
+        "planned": 0,
+        "queued": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "could_not_start": 0,
+        "skipped_by_preflight": 0
+      },
+      "items": [],
+      "unreachable": 0,
+      "interrupted": 0,
+      "startedAt": "2026-05-24T11:59:54.340Z",
+      "completedAt": "2026-05-24T11:59:55.759Z",
+      "failedRows": [],
+      "rowShapeOk": true,
+      "evidenceOk": false,
+      "evidenceChecks": [],
+      "refresh": {
+        "checked": false,
+        "ok": false,
+        "reason": "no run id"
+      },
+      "screenshot": "reports/release-gauntlet/ui-manual/2026-05-24T11-56-37Z-lane-cert/tools.png"
+    },
+    {
+      "lane": "trust",
+      "selectedTasks": [
+        "op-001"
+      ],
+      "status": null,
+      "summary": null,
+      "lines": [],
+      "counts": {
+        "planned": 0,
+        "queued": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "could_not_start": 0,
+        "skipped_by_preflight": 0
+      },
+      "items": [],
+      "unreachable": 0,
+      "interrupted": 0,
+      "startedAt": "2026-05-24T12:00:40.794Z",
+      "completedAt": "2026-05-24T12:00:42.191Z",
+      "failedRows": [],
+      "rowShapeOk": true,
+      "evidenceOk": false,
+      "evidenceChecks": [],
+      "refresh": {
+        "checked": false,
+        "ok": false,
+        "reason": "no run id"
+      },
+      "screenshot": "reports/release-gauntlet/ui-manual/2026-05-24T11-56-37Z-lane-cert/trust.png"
+    }
+  ]
+}

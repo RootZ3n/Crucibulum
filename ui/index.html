@@ -161,16 +161,28 @@ const state={
   // everything else is the raw shapes the Providers tab edits directly.
   registry:{presets:[],providers:[],models:[],catalog:[]},
   registryUi:{expandedProvider:null,bulkFor:null},
+  // Records the last pre-dispatch gate decision so callers / tests can prove
+  // a "silent no-op" did NOT happen. Populated by gateSelectedModels.
+  lastDispatchGate:null,
   // System health snapshot — populated by runHealthChecks() on boot and every
   // HEALTH_POLL_MS ms. UI reads from here to render the status bar, gate runs,
   // and grey out unreachable model groups. `summary` collapses the details
   // into a single traffic-light state used by the global strip.
+  // `lastSuccessAt` / `lastSuccessNet` / `lastSuccessProviders` capture the
+  // last good probe so a transient /api/health 429 (Crucible's own read-rate
+  // limit during a broad browser sweep) does not silently flip the UI to
+  // "offline" and silently block cloud dispatch. See `runHealthChecks`.
   health:{
-    net:{ok:null,lastCheckedAt:0,error:null,latencyMs:0},
+    net:{ok:null,lastCheckedAt:0,error:null,latencyMs:0,rateLimited:false},
     providers:{},
     summary:'unknown',
     checking:false,
-    lastSummaryAt:0
+    lastSummaryAt:0,
+    lastSuccessAt:0,
+    lastSuccessNet:null,
+    lastSuccessProviders:null,
+    lastRequestAt:0,
+    rateLimit:null
   }
 };
 // Poll cadence — 20 s is enough to catch connection drops without chattering
@@ -180,6 +192,16 @@ const HEALTH_POLL_MS=20000;
 // Fetch timeout for the ping. Keeps the UI responsive even when the server is
 // wedged — we'd rather fail-open-as-offline than hang the poller.
 const HEALTH_PING_TIMEOUT_MS=4000;
+// Minimum interval between two /api/health calls. Collapses bursts caused by
+// visibility/online events firing back-to-back with the interval poll, so a
+// broad browser sweep cannot itself trip the server's RATE_READ bucket.
+const HEALTH_MIN_INTERVAL_MS=4000;
+// Window during which a previous successful probe is still considered
+// authoritative if /api/health later returns 429. The UI keeps the last-known
+// providers and continues to allow cloud dispatch with a visible
+// "rate-limited; using last known health" banner. Beyond this window the
+// state degrades to "unknown" with explicit reason.
+const HEALTH_LAST_KNOWN_TTL_MS=120000;
 
 const esc=(v)=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const fmtMoney=(v)=>`$${Number(v??0).toFixed(4)}`;
@@ -1613,8 +1635,13 @@ function renderLiveStatus(tabKey){
   const scopeKindCls=scope.kind==='global'?'cyan':scope.kind==='lane'?'teal':'dim';
   const scopeChip=`<span class="chip ${scopeKindCls} scope-chip" data-scope-kind="${scope.kind}" title="${esc(scope.familiesLabel)}">SCOPE · ${esc(scope.scopeLabel)}</span>`;
   const healthSummary=state.health?.summary||'unknown';
-  const healthClsMap={online:'teal',degraded:'amber',offline:'red',unknown:'dim'};
-  const healthChip=`<span class="chip ${healthClsMap[healthSummary]||'dim'}" title="System health summary">SYS · ${esc(String(healthSummary).toUpperCase())}</span>`;
+  const healthClsMap={online:'teal',degraded:'amber',offline:'red',unknown:'dim',rate_limited:'amber'};
+  const healthLabelMap={rate_limited:'RATE-LIMITED · LKG'};
+  const healthLabel=healthLabelMap[healthSummary]||String(healthSummary).toUpperCase();
+  const healthTitle=healthSummary==='rate_limited'
+    ?(state.health?.net?.error||'Health refresh rate-limited; using last known health')
+    :'System health summary';
+  const healthChip=`<span class="chip ${healthClsMap[healthSummary]||'dim'}" title="${esc(healthTitle)}">SYS · ${esc(healthLabel)}</span>`;
   if(!run){
     // Idle copy names the lane so the operator can tell two idle lanes
     // apart at a glance — "Build lane idle · 0 runs in scope" vs "Safety
@@ -2749,27 +2776,53 @@ async function runBatch(tabKey,taskIds,modelIds,label){
 // the user is shown a plain-English summary + offered to continue with the
 // reachable subset, or cancel. Returns the filtered list, or null if the user
 // cancels.
+// Records the last gate decision on `state.lastDispatchGate` so callers (and
+// tests) can verify a "silent no-op" did NOT happen — a block always records
+// a structured reason whether or not a confirm dialog was shown.
 function gateSelectedModels(selectedModels){
   const blocked=blockedRunReasons(selectedModels);
   const releaseSummary=selectedReleaseCertificationSummary(selectedModels);
   if(releaseSummary.uncertified.length&&typeof confirm==='function'){
     const names=releaseSummary.uncertified.map((item)=>`${item.id} — ${item.cert.label}`).join('\n');
     const msg=`Uncertified target — results are useful for exploration but are outside the certified release scope.\n\n${names}\n\nContinue anyway?`;
-    if(!confirm(msg))return null;
+    if(!confirm(msg)){state.lastDispatchGate={result:'cancelled_uncertified',blocked:[],selectedModels,at:Date.now()};return null}
   }
-  if(!blocked.length)return selectedModels;
+  if(!blocked.length){
+    state.lastDispatchGate={result:'allowed',blocked:[],selectedModels,at:Date.now()};
+    return selectedModels;
+  }
   const reachable=selectedModels.filter((id)=>canRunModel(id));
   if(typeof alert!=='function'&&typeof confirm!=='function'){
+    state.lastDispatchGate={result:reachable.length?'partial_no_prompt':'blocked_no_prompt',blocked,selectedModels,reachable,at:Date.now()};
     return reachable.length?reachable:null;
   }
   const lines=blocked.map((b)=>`• ${b.modelId} — ${b.reason}`).join('\n');
   if(!reachable.length){
     if(typeof alert==='function')alert(`None of the ${selectedModels.length} selected models can run right now.\n\n${lines}\n\nCheck the status bar, fix providers, and try again.`);
+    state.lastDispatchGate={result:'blocked_alerted',blocked,selectedModels,reachable:[],at:Date.now()};
     return null;
   }
   const msg=`${blocked.length} of ${selectedModels.length} selected model${selectedModels.length===1?'':'s'} can't run right now:\n\n${lines}\n\nContinue with the ${reachable.length} reachable model${reachable.length===1?'':'s'}? (Cancel to abort and fix providers.)`;
-  if(!confirm(msg))return null;
+  if(!confirm(msg)){state.lastDispatchGate={result:'partial_cancelled',blocked,selectedModels,reachable,at:Date.now()};return null}
+  state.lastDispatchGate={result:'partial_allowed',blocked,selectedModels,reachable,at:Date.now()};
   return reachable;
+}
+function surfaceBlockedDispatch(tabKey,label){
+  // Make a blocked dispatch visible to the operator instead of letting the
+  // run button silently no-op. Pushes a structured entry onto the lane's
+  // activity feed and records a sentinel record on state so a broad sweep
+  // can detect "dispatch was blocked" rather than "dispatch silently
+  // disappeared". This is the failure mode the 2026-05-24 broad browser
+  // sweep hit.
+  const gate=state.lastDispatchGate;
+  if(!gate)return;
+  const reasons=(gate.blocked||[]).map((b)=>`${b.modelId}: ${b.reason}`).join(' | ');
+  const summary=`Dispatch blocked — ${gate.result}. ${reasons||'No reachable models for current health snapshot.'}`;
+  if(!state.runState[tabKey])state.runState[tabKey]={lines:[],events:[],status:'blocked',startedAt:new Date().toISOString()};
+  if(!Array.isArray(state.runState[tabKey].lines))state.runState[tabKey].lines=[];
+  state.runState[tabKey].lines.push(`[${label}] ${summary}`);
+  pushRunEvent(tabKey,'blocked',summary);
+  render();
 }
 async function handleRun(tabKey){
   const tab=state.tabData[tabKey]||defaultTabState();
@@ -2780,12 +2833,12 @@ async function handleRun(tabKey){
   const taskIds=selectedTasks.slice(0,Math.max(0,limit));
   const label=rc==='all'?`Run all ${taskIds.length} selected`:`Run ${taskIds.length} of ${selectedTasks.length} selected`;
   const models=gateSelectedModels(tab.selectedModels||[]);
-  if(models===null)return;
+  if(models===null){surfaceBlockedDispatch(tabKey,label);return}
   await runBatch(tabKey,taskIds,models,label);
 }
 async function handleRunAll(tabKey){
   const models=gateSelectedModels((state.tabData[tabKey]?.selectedModels)||[]);
-  if(models===null)return;
+  if(models===null){surfaceBlockedDispatch(tabKey,'Lane batch run');return}
   await runBatch(tabKey,taskOptionsForTab(tabKey).map((task)=>task.id),models,'Lane batch run');
 }
 
@@ -2914,38 +2967,109 @@ function failureReasonLabel(kind){
     default:return'Failed';
   }
 }
-async function runHealthChecks(){
+function healthLastKnownGoodFresh(now){
+  const t=Number(state.health.lastSuccessAt||0);
+  if(!t)return false;
+  return(now-t)<HEALTH_LAST_KNOWN_TTL_MS;
+}
+function healthIsRateLimited(now){
+  const rl=state.health.rateLimit;
+  if(!rl)return false;
+  return Number(rl.until||0)>now;
+}
+async function runHealthChecks(opts){
+  const force=!!(opts&&opts.force);
+  const now=Date.now();
   if(state.health.checking)return;
+  // Dedupe: collapse bursts caused by online/visibilitychange + interval
+  // firing back-to-back. Forced refreshes still respect a small floor so a
+  // tight loop of `runHealthChecks({force:true})` cannot itself trip the
+  // server's RATE_READ bucket — that was the regression captured in the
+  // 2026-05-24T11-* lane-cert evidence.
+  if(!force&&(now-Number(state.health.lastRequestAt||0))<HEALTH_MIN_INTERVAL_MS)return;
+  // Respect server-issued Retry-After: while the rate-limit window is active,
+  // do not issue further /api/health requests. The UI continues to use the
+  // last-known-good snapshot during this window.
+  if(healthIsRateLimited(now)&&!force)return;
   state.health.checking=true;
+  state.health.lastRequestAt=now;
   // 1. Browser-level indicator — if the browser already knows we're offline,
   // skip the fetch (it'd fail anyway) and record the verdict.
   if(typeof navigator!=='undefined'&&navigator.onLine===false){
-    state.health.net={ok:false,lastCheckedAt:Date.now(),error:'browser reports offline',latencyMs:0};
+    state.health.net={ok:false,lastCheckedAt:now,error:'browser reports offline',latencyMs:0,rateLimited:false};
+    state.health.rateLimit=null;
   }else{
-    const started=Date.now();
+    const started=now;
     const{signal,cancel}=withTimeout(HEALTH_PING_TIMEOUT_MS);
     try{
       const res=await fetch('/api/health',{method:'GET',signal,cache:'no-store'});
       cancel();
+      const completedAt=Date.now();
       if(res.ok){
-        state.health.net={ok:true,lastCheckedAt:Date.now(),error:null,latencyMs:Date.now()-started};
+        state.health.net={ok:true,lastCheckedAt:completedAt,error:null,latencyMs:completedAt-started,rateLimited:false};
+        state.health.lastSuccessAt=completedAt;
+        state.health.rateLimit=null;
+      }else if(res.status===429){
+        // Crucible's own RATE_READ kicked in (broad browser sweep, polling
+        // fallback storm, etc.). Treat as transient: if we have a recent
+        // last-known-good snapshot, keep using it and surface a visible
+        // "rate-limited; using last known health" warning. If we have no
+        // baseline yet, degrade to `unknown` (NOT `false`), so cloud dispatch
+        // can be blocked with an honest reason instead of pretending the
+        // provider itself is offline.
+        let retryAfterSec=0;
+        try{
+          const headerValue=typeof res.headers?.get==='function'?res.headers.get('Retry-After'):null;
+          if(headerValue){retryAfterSec=Math.max(0,Number(headerValue)||0)}
+          if(!retryAfterSec){
+            const body=await res.clone().json().catch(()=>null);
+            if(body&&Number(body.retry_after_sec))retryAfterSec=Math.max(0,Number(body.retry_after_sec));
+          }
+        }catch{/* ignore parse failures */}
+        if(!retryAfterSec)retryAfterSec=10;
+        const until=completedAt+retryAfterSec*1000;
+        state.health.rateLimit={until,retryAfterSec,lastHit:completedAt};
+        const fresh=healthLastKnownGoodFresh(completedAt);
+        state.health.net={
+          ok:fresh?true:null,
+          lastCheckedAt:completedAt,
+          error:fresh
+            ?`Health refresh rate-limited (HTTP 429); using last known health (${Math.round((completedAt-state.health.lastSuccessAt)/1000)}s old). Retry after ${retryAfterSec}s.`
+            :`Health refresh rate-limited (HTTP 429) and no recent last-known-good snapshot. Retry after ${retryAfterSec}s.`,
+          latencyMs:completedAt-started,
+          rateLimited:true
+        };
       }else{
-        state.health.net={ok:false,lastCheckedAt:Date.now(),error:`HTTP ${res.status}`,latencyMs:Date.now()-started};
+        state.health.net={ok:false,lastCheckedAt:completedAt,error:`HTTP ${res.status}`,latencyMs:completedAt-started,rateLimited:false};
+        state.health.rateLimit=null;
       }
     }catch(err){
       cancel();
+      const completedAt=Date.now();
       const kind=classifyError(err);
-      state.health.net={ok:false,lastCheckedAt:Date.now(),error:`${failureReasonLabel(kind)}${err&&err.message?' · '+err.message.slice(0,80):''}`,latencyMs:Date.now()-started};
+      state.health.net={ok:false,lastCheckedAt:completedAt,error:`${failureReasonLabel(kind)}${err&&err.message?' · '+err.message.slice(0,80):''}`,latencyMs:completedAt-started,rateLimited:false};
+      state.health.rateLimit=null;
     }
   }
   // 2. Provider reachability — if the server is up, refresh the registry so
   // lastTestedOk/lastTestedReason are current, then aggregate per preset key
   // (openrouter / anthropic / etc.). Skipping the registry refresh when the
   // server is down avoids adding more failures to the log.
-  if(state.health.net.ok){
+  // When we are inside a transient 429 window, do NOT refresh the registry —
+  // that would just stack more reads into the same RATE_READ bucket.
+  if(state.health.net.ok&&!state.health.net.rateLimited){
     try{await loadRegistry()}catch{/* already logged upstream */}
   }
   state.health.providers=aggregateProviderHealth();
+  // When we have a fresh last-known-good snapshot but the current probe was
+  // rate-limited, preserve the previous per-provider verdicts so cloud
+  // dispatch keeps working. We still update lastSuccessProviders only on
+  // success so a long 429 window cannot ratchet the baseline forward.
+  if(state.health.net.rateLimited&&healthLastKnownGoodFresh(Date.now())&&state.health.lastSuccessProviders){
+    state.health.providers=state.health.lastSuccessProviders;
+  }else if(!state.health.net.rateLimited&&state.health.net.ok){
+    state.health.lastSuccessProviders=JSON.parse(JSON.stringify(state.health.providers));
+  }
   state.health.summary=computeHealthSummary();
   state.health.lastSummaryAt=Date.now();
   state.health.checking=false;
@@ -2961,10 +3085,16 @@ function aggregateProviderHealth(){
   const out={};
   const registered=state.registry?.providers||[];
   const groups=mergedModelGroups();
+  const now=Date.now();
+  // Treat the net as "up" for aggregation purposes when /api/health was just
+  // rate-limited but we have a fresh last-known-good snapshot. Aggregation
+  // running with a stale-offline net would mark every cloud preset 'down'
+  // even though the providers themselves are believed reachable.
+  const netUpForAggregation=state.health.net.ok===true||(state.health.net.rateLimited&&healthLastKnownGoodFresh(now));
   for(const group of groups){
     const presetId=group.providerId;
     if(group.kind==='local'){
-      const netUp=state.health.net.ok===true;
+      const netUp=netUpForAggregation;
       const hasModels=(state.liveModels||[]).length>0;
       out[presetId]={
         status:netUp&&hasModels?'ok':netUp?'unknown':'down',
@@ -2983,7 +3113,7 @@ function aggregateProviderHealth(){
     const okAny=entries.some((p)=>p.lastTestedOk===true);
     const failedAll=entries.every((p)=>p.lastTestedOk===false);
     const lastTestedAt=Math.max(0,...entries.map((p)=>Number(p.lastTestedAt||0)));
-    if(!state.health.net.ok){
+    if(!netUpForAggregation){
       out[presetId]={status:'down',reason:'Offline — no network',kind:'cloud',lastTestedAt};
       continue;
     }
@@ -2998,6 +3128,11 @@ function aggregateProviderHealth(){
   return out;
 }
 function computeHealthSummary(){
+  // Transient self-rate-limit with a fresh last-known-good snapshot: the UI
+  // should not lie and say "offline" — providers are believed reachable, the
+  // health *probe* itself is just temporarily throttled. Surfaced as a
+  // dedicated "rate_limited" state so the chip can render it distinctly.
+  if(state.health.net.rateLimited&&healthLastKnownGoodFresh(Date.now()))return'rate_limited';
   if(state.health.net.ok===false)return'offline';
   if(state.health.net.ok===null)return'unknown';
   const providers=Object.values(state.health.providers||{});
@@ -3025,16 +3160,30 @@ function canRunModel(modelId){
   // Cloud: require an ok or unknown verdict + net up. "Unconfigured" is
   // blocked so a visible but unavailable provider cannot silently attempt a
   // run and look like a model failure.
-  if(!state.health.net.ok)return false;
+  // When /api/health is rate-limited but the last-known-good snapshot is
+  // still fresh, we treat the net as up — refusing to dispatch in this case
+  // was the regression that caused the 2026-05-24 broad sweep to silently
+  // no-op every lane after the first /api/health 429.
+  const netOk=state.health.net.ok===true||(state.health.net.rateLimited&&healthLastKnownGoodFresh(Date.now()));
+  if(!netOk)return false;
   return health.status==='ok'||health.status==='unknown';
 }
 function blockedRunReasons(modelIds){
   const blocked=[];
+  const now=Date.now();
+  const rateLimited=state.health.net.rateLimited===true;
+  const lkgFresh=healthLastKnownGoodFresh(now);
   for(const modelId of modelIds||[]){
     const{routing,health}=healthProviderForModelId(modelId);
     if(canRunModel(modelId))continue;
     let reason=health.reason||'Unreachable';
-    if(routing.kind==='cloud'&&!state.health.net.ok)reason='Offline — no network for cloud provider';
+    if(routing.kind==='cloud'){
+      if(rateLimited&&!lkgFresh){
+        reason='Health check rate-limited and last-known-good is stale — cannot confirm provider availability';
+      }else if(!state.health.net.ok){
+        reason='Offline — no network for cloud provider';
+      }
+    }
     blocked.push({modelId,kind:routing.kind,presetId:routing.providerId,reason});
   }
   return blocked;
@@ -3042,18 +3191,20 @@ function blockedRunReasons(modelIds){
 let __healthPollTimer=null;
 function startHealthPolling(){
   if(__healthPollTimer)return;
-  runHealthChecks();
-  __healthPollTimer=setInterval(runHealthChecks,HEALTH_POLL_MS);
+  runHealthChecks({force:true});
+  __healthPollTimer=setInterval(()=>{runHealthChecks()},HEALTH_POLL_MS);
   if(typeof window!=='undefined'){
-    window.addEventListener('online',()=>{runHealthChecks()});
+    window.addEventListener('online',()=>{runHealthChecks({force:true})});
     window.addEventListener('offline',()=>{
-      state.health.net={ok:false,lastCheckedAt:Date.now(),error:'browser reports offline',latencyMs:0};
+      state.health.net={ok:false,lastCheckedAt:Date.now(),error:'browser reports offline',latencyMs:0,rateLimited:false};
+      state.health.rateLimit=null;
       state.health.providers=aggregateProviderHealth();
       state.health.summary=computeHealthSummary();
       render();
     });
     // Re-check on tab visibility resume so a laptop returning from sleep
-    // doesn't show stale "online" for up to 20 seconds.
+    // doesn't show stale "online" for up to 20 seconds. Throttled by
+    // HEALTH_MIN_INTERVAL_MS so it cannot itself trip RATE_READ.
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)runHealthChecks()});
   }
 }

@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-05-24T12:55:42.765Z",
+  "generatedAt": "2026-05-24T12:55:30.796Z",
   "metadata": {
-    "timestamp": "2026-05-24T12:55:42.765Z",
-    "command": "node scripts/release-gauntlet.mjs --real-provider --provider minimax --model MiniMax-M2.7 --broad-smoke --max-cost-usd 1.00 --write-report",
+    "timestamp": "2026-05-24T12:55:30.796Z",
+    "command": "node scripts/release-gauntlet.mjs --real-provider --provider openai --model gpt-5.4-mini --broad-smoke --max-cost-usd 1.00 --write-report",
     "nodeVersion": "v22.22.2",
     "packageVersion": "0.1.0",
     "mode": "real-provider",
@@ -31,8 +31,6 @@
         "?? reports/release-gauntlet/real-provider/2026-05-24T12-55-16-240Z-openrouter-xiaomi-mimo-v2.5-pro.md",
         "?? reports/release-gauntlet/real-provider/2026-05-24T12-55-20-070Z-anthropic-claude-haiku-4-5-20251001.json",
         "?? reports/release-gauntlet/real-provider/2026-05-24T12-55-20-070Z-anthropic-claude-haiku-4-5-20251001.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T12-55-30-792Z-openai-gpt-5.4-mini.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T12-55-30-792Z-openai-gpt-5.4-mini.md",
         "?? reports/release-gauntlet/ui-manual/2026-05-24T11-38-47Z-lane-cert/",
         "?? reports/release-gauntlet/ui-manual/2026-05-24T11-52-25Z-lane-cert/",
         "?? reports/release-gauntlet/ui-manual/2026-05-24T11-56-37Z-lane-cert/",
@@ -52,8 +50,6 @@
         "?? reports/release-gauntlet/real-provider/2026-05-24T12-55-16-240Z-openrouter-xiaomi-mimo-v2.5-pro.md",
         "?? reports/release-gauntlet/real-provider/2026-05-24T12-55-20-070Z-anthropic-claude-haiku-4-5-20251001.json",
         "?? reports/release-gauntlet/real-provider/2026-05-24T12-55-20-070Z-anthropic-claude-haiku-4-5-20251001.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T12-55-30-792Z-openai-gpt-5.4-mini.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T12-55-30-792Z-openai-gpt-5.4-mini.md",
         "?? reports/release-gauntlet/ui-manual/2026-05-24T11-38-47Z-lane-cert/",
         "?? reports/release-gauntlet/ui-manual/2026-05-24T11-52-25Z-lane-cert/",
         "?? reports/release-gauntlet/ui-manual/2026-05-24T11-56-37Z-lane-cert/",
@@ -477,8 +473,8 @@
   "real": {
     "mode": "real-provider",
     "profile": "broad-smoke",
-    "provider": "minimax",
-    "model": "MiniMax-M2.7",
+    "provider": "openai",
+    "model": "gpt-5.4-mini",
     "family": null,
     "maxCostUsd": 1,
     "results": [
@@ -486,10 +482,10 @@
         "classId": "conversational/personality",
         "task": "personality-001",
         "kind": "personality-easy",
-        "runId": "run_mpjs65bj_f1dcdbe3",
+        "runId": "run_mpjs5wm5_c907d213",
         "bundleId": null,
         "classification": "FAIL_PROVIDER",
-        "reason": "provider_error.kind=INVALID_RESPONSE stage=health_check reason=\"Invalid provider payload — MiniMax error 1004: token is unusable (base=https://api.minimax.io/v1)\"",
+        "reason": "provider_error.kind=AUTH stage=health_check reason=\"Authentication failed (401) — openai returned HTTP 401: {\n  \"error\": {\n    \"message\": \"Incorrect API\"",
         "terminal": "error",
         "observed": {
           "statusClassification": "could_not_start",
@@ -501,10 +497,10 @@
         "classId": "role-stress/prompt-sensitivity",
         "task": "role-stress-001",
         "kind": "role-stress-slow",
-        "runId": "run_mpjs65py_1a26c034",
+        "runId": "run_mpjs5woq_0c7853ca",
         "bundleId": null,
         "classification": "FAIL_PROVIDER",
-        "reason": "provider_error.kind=INVALID_RESPONSE stage=health_check reason=\"Invalid provider payload — MiniMax error 1004: token is unusable (base=https://api.minimax.io/v1)\"",
+        "reason": "provider_error.kind=AUTH stage=health_check reason=\"Authentication failed (401) — openai returned HTTP 401: {\n  \"error\": {\n    \"message\": \"Incorrect API\"",
         "terminal": "error",
         "observed": {
           "statusClassification": "could_not_start",
@@ -625,7 +621,7 @@
       "distinctRunIds": 2,
       "distinctBundleIds": 0
     },
-    "runsDir": "/mnt/ai/tmp/claude/rgaunt-real-runs-KRFTli"
+    "runsDir": "/mnt/ai/tmp/claude/rgaunt-real-runs-Hansu6"
   },
   "mode": "real-provider"
 }

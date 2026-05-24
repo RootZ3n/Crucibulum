@@ -1,0 +1,106 @@
+{
+  "baseUrl": "http://127.0.0.1:18795",
+  "modelId": "deepseek/deepseek-v4-pro",
+  "outDir": "reports/release-gauntlet/ui-manual/2026-05-24T12-16-17Z-lane-cert",
+  "generatedAt": "2026-05-24T12:17:57.581Z",
+  "lanes": [
+    {
+      "lane": "benchmark",
+      "selectedTasks": [
+        "code-001"
+      ],
+      "status": "complete",
+      "summary": null,
+      "lines": [
+        "Run all 1 selected: 1 test × 1 model = 1 run planned.",
+        "Running Code 001 on deepseek/deepseek-v4-pro… (1/1 planned)",
+        "Queued code-001 on deepseek/deepseek-v4-pro.",
+        "Run ID: run_mpjqrmq6_54a8d9c0",
+        "[code-001 :: deepseek/deepseek-v4-pro] Target code-001 via openrouter/deepseek/deepseek-v4-pro (1 run) — Resolved registered model deepseek/deepseek-v4-pro for openrouter/openrouter.",
+        "[code-001 :: deepseek/deepseek-v4-pro] Run 1/1 executing",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 1/8 (CD1-Q1) sending",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 1/8 (CD1-Q1) PASS",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 2/8 (CD1-Q2) sending",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 2/8 (CD1-Q2) PASS",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 3/8 (CD1-Q3) sending",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 3/8 (CD1-Q3) PASS",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 4/8 (CD1-Q4) sending",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 4/8 (CD1-Q4) FAIL",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 5/8 (CD1-Q5) sending",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 5/8 (CD1-Q5) PASS",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 6/8 (CD1-Q6) sending",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 6/8 (CD1-Q6) PASS",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 7/8 (CD1-Q7) sending",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 7/8 (CD1-Q7) PASS",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 8/8 (CD1-Q8) sending",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 8/8 (CD1-Q8) PASS",
+        "[code-001 :: deepseek/deepseek-v4-pro] PASS at 89%",
+        "Done. 1 of 1 actually ran — 1 passed."
+      ],
+      "counts": {
+        "planned": 1,
+        "queued": 0,
+        "started": 0,
+        "completed": 1,
+        "failed": 0,
+        "could_not_start": 0,
+        "skipped_by_preflight": 0
+      },
+      "items": [
+        {
+          "persistedRunId": "run_2026-05-24_code-001_deepseek-deepseek-v4-pro_4574ace9",
+          "taskId": "code-001",
+          "modelId": "deepseek/deepseek-v4-pro",
+          "status": "completed",
+          "pass": true,
+          "runId": "run_mpjqrmq6_54a8d9c0",
+          "attempt": null,
+          "reason": "Score 89%: passed with good coverage.",
+          "stage": null,
+          "providerError": null,
+          "classification": null
+        }
+      ],
+      "unreachable": 0,
+      "interrupted": 0,
+      "startedAt": "2026-05-24T12:16:24.546Z",
+      "completedAt": "2026-05-24T12:17:12.089Z",
+      "failedRows": [],
+      "rowShapeOk": true,
+      "evidenceOk": true,
+      "evidenceChecks": [
+        {
+          "taskId": "code-001",
+          "status": "completed",
+          "pass": true,
+          "runId": "run_2026-05-24_code-001_deepseek-deepseek-v4-pro_4574ace9",
+          "streamRunId": "run_mpjqrmq6_54a8d9c0",
+          "persistedRunId": "run_2026-05-24_code-001_deepseek-deepseek-v4-pro_4574ace9",
+          "http": 200,
+          "hasBundle": true,
+          "failureMode": null,
+          "reason": null
+        }
+      ],
+      "refresh": {
+        "checked": true,
+        "ok": true,
+        "focusedRunId": "run_2026-05-24_code-001_deepseek-deepseek-v4-pro_4574ace9",
+        "unreachable": 0,
+        "interrupted": 0
+      },
+      "screenshot": "reports/release-gauntlet/ui-manual/2026-05-24T12-16-17Z-lane-cert/benchmark.png"
+    }
+  ],
+  "providers": {
+    "surfaced": true,
+    "providers": 1,
+    "models": 5,
+    "catalog": 5,
+    "openrouterConfigured": true,
+    "deepseekVisible": true,
+    "unreachable": 0,
+    "interrupted": 0,
+    "screenshot": "reports/release-gauntlet/ui-manual/2026-05-24T12-16-17Z-lane-cert/providers.png"
+  }
+}

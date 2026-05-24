@@ -199,16 +199,52 @@ and the most recent run overwrites `reports/release-gauntlet/latest-real-provide
 
 | Gate | Status | Evidence |
 | --- | --- | --- |
-| `MOCK_READY` | **YES** | `reports/release-gauntlet/2026-05-24T00-28-43-441Z.{json,md}` — 49/49 PASS, 0 `FAIL_PRODUCT`, clean source metadata |
+| `MOCK_LAYER_READY` | **YES** | `reports/release-gauntlet/2026-05-24T00-28-43-441Z.{json,md}` — 49/49 PASS, 0 `FAIL_PRODUCT`, clean source metadata |
+| `UI_VISIBLE_LANES_CERTIFIED` | **YES — SCOPED SMOKE ONLY** | `reports/release-gauntlet/ui-manual/2026-05-24T12-19-05Z-all-visible-lanes-certification.md` — Personality `classification-001`, Benchmark `code-001`, Poison `poison-001`, Build `coord-001`, Safety `safety-001`, Memory `memory-001`, Tools `tool-001`, Trust `op-001` each `complete` with persisted bundle + refresh hydration; Providers tab surfaced with OpenRouter / DeepSeek V4 Pro visible. 0 `Run state unreachable`, 0 `Run stream interrupted`, 0 silent no-op dispatch in the certifying pass. |
+| `UI_FAILED_ROW_CLASSIFICATION_CERTIFIED` | **NO — NOT EXERCISED** | No default-selected run in the 2026-05-24 certifying pass produced a failed row; the failed-row classification/stage/reason path therefore was not exercised. UI cert remains partial until a failed-row scenario is driven through the browser. |
 | `REAL_PROVIDER_BROAD_READY` | **YES FOR RELEASE TARGETS** | `reports/release-gauntlet/real-provider/2026-05-24T00-31-06-889Z-openrouter-deepseek-deepseek-v4-pro.{json,md}`, `2026-05-24T00-32-14-849Z-openrouter-xiaomi-mimo-v2.5-pro.{json,md}`, `2026-05-24T00-33-18-590Z-ollama-qwen3.5-9b.{json,md}` — each 5/5 PASS |
+| `PROVIDER_SWEEP_READY` | **PARTIAL** | `reports/release-gauntlet/provider-sweep/2026-05-24T12-55-56Z-multi-provider-sweep.{json,md}` — Ollama `qwen3.5:9b`, OpenRouter `deepseek/deepseek-v4-pro`, OpenRouter `xiaomi/mimo-v2.5-pro` all 5/5 PASS. Anthropic `claude-haiku-4-5-20251001`, OpenAI `gpt-5.4-mini`, MiniMax `MiniMax-M2.7` blocked at AUTH/INVALID_RESPONSE (stale `.env` credentials) — classified `FAIL_CONFIG`, NOT a Crucible product bug. 0 `FAIL_PRODUCT` across the sweep. |
+| `RELEASE_TARGETS_CERTIFIED` | **YES — scoped to 3 named targets** | OpenRouter `deepseek/deepseek-v4-pro`, OpenRouter `xiaomi/mimo-v2.5-pro`, Ollama `qwen3.5:9b`. |
+| `ALL_VISIBLE_PROVIDERS_CERTIFIED` | **NO** | Anthropic direct, OpenAI direct, MiniMax direct, Z.ai, Google, Squidley/OpenClaw/ClaudeCode/Grimoire adapters remain `UNCERTIFIED_NOT_RELEASE_TARGET`. |
 | `REPO_MODE_CERTIFIED` | **REPRESENTATIVE ONLY** | `reports/release-gauntlet/2026-05-24T00-28-57-869Z.{json,md}` — `coord-001`, `spec-001`, and `tool-003` repo-smoke PASS; 22 repo-mode tasks remain outside direct smoke coverage |
-| `UI_CERTIFIED` | **NO — Benchmark browser regression under investigation** | Manual real-browser Benchmark lane exposed `Run state unreachable` for `truthfulness-001` under provider/read rate limiting after the prior scoped UI certification evidence. |
-| `FULL_RELEASE_READY` | **NO — scoped certification only** | Release support is limited to OpenRouter DeepSeek V4 Pro, OpenRouter Mimo v2.5 Pro, and Ollama `qwen3.5:9b`; representative repo-mode coverage; uncertified providers/models excluded. |
+| `FULL_RELEASE_READY` | **NO — scoped certification only** | Release support is limited to OpenRouter DeepSeek V4 Pro, OpenRouter Mimo v2.5 Pro, and Ollama `qwen3.5:9b`; representative repo-mode coverage; uncertified providers/models excluded; full-multi-provider sweep still outstanding; UI failed-row classification path not exercised. |
+
+### 2026-05-24 /api/health hardening note
+
+The 2026-05-24 broad manual UI sweep hit Crucible's own `RATE_READ` bucket on
+`/api/health`: the browser flipped to `state.health.net.ok = false`, cloud
+presets aggregated as `down`, and `gateSelectedModels()` silently no-op'd
+remaining cloud dispatches because no operator-visible activity entry was
+recorded.
+
+That regression is now blocked by:
+
+- `ui/index.html` — `runHealthChecks()` keeps a `lastSuccessAt` snapshot and
+  treats `/api/health` 429 as transient when the last-known-good probe is
+  within `HEALTH_LAST_KNOWN_TTL_MS` (120s). Net stays `ok=true` with a
+  visible `rateLimited` flag, Retry-After is parsed and respected, and a
+  `HEALTH_MIN_INTERVAL_MS` floor (4s) collapses burst calls. Beyond the TTL,
+  net degrades to `unknown` (not `false`) so cloud dispatch is blocked with
+  an explicit reason instead of a fake "offline" verdict.
+- `gateSelectedModels()` records every decision on `state.lastDispatchGate`
+  and `handleRun` / `handleRunAll` surface a blocked dispatch via
+  `surfaceBlockedDispatch()` so a stale-health block is always visible in the
+  lane activity feed.
+- `tests/ui-health-rate-limit.test.ts` pins all of the above with 9
+  subtests covering: 429 + fresh LKG keeps cloud reachable, 429 + stale LKG
+  degrades to `unknown` not `false`, visible rate-limited summary chip, gate
+  allows dispatch when LKG fresh, gate refuses dispatch with structured
+  reason when LKG stale, throttle dedupes bursts, Retry-After suppresses
+  non-forced refresh, source-pinned absence of silent no-op branch, visible
+  activity-feed entry on block.
 
 Current audit verdict: **RELEASE_SCOPED_TO_CERTIFIED_TARGETS**, with
-`UI_CERTIFIED = NO` for the scoped target set until the Benchmark lane regression is reverified. The evidence supports the deterministic platform gate,
-representative repo-mode smoke, and broad real-provider smoke for the named
-release targets:
+`UI_VISIBLE_LANES_CERTIFIED = YES` for the scoped smoke set only (one
+default-selected task per visible lane), `UI_FAILED_ROW_CLASSIFICATION_CERTIFIED = NO`
+(no failed row exercised), and `PROVIDER_SWEEP_READY = NO` (multi-provider
+browser sweep across all 5 providers still outstanding). The evidence
+supports the deterministic platform gate, representative repo-mode smoke,
+and broad real-provider smoke for the named release targets:
 OpenRouter/DeepSeek V4 Pro, OpenRouter/Xiaomi Mimo v2.5 Pro, and local
 Ollama/qwen3.5:9b. It does not certify every exposed adapter, every picker
 model, or every repo-mode task.

@@ -1,0 +1,395 @@
+{
+  "baseUrl": "http://127.0.0.1:18795",
+  "modelId": "deepseek/deepseek-v4-pro",
+  "outDir": "reports/release-gauntlet/ui-manual/2026-05-24T11-52-25Z-lane-cert",
+  "generatedAt": "2026-05-24T11:55:07.479Z",
+  "lanes": [
+    {
+      "lane": "personality",
+      "selectedTasks": [
+        "classification-001"
+      ],
+      "status": "complete",
+      "summary": null,
+      "lines": [
+        "Run all 1 selected: 1 test × 1 model = 1 run planned.",
+        "Running Classification 001 on deepseek/deepseek-v4-pro… (1/1 planned)",
+        "Queued classification-001 on deepseek/deepseek-v4-pro.",
+        "Run ID: run_mpjpxk0n_5228a489",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Target classification-001 via openrouter/deepseek/deepseek-v4-pro (1 run) — Resolved registered model deepseek/deepseek-v4-pro for openrouter/openrouter.",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Run 1/1 executing",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 1/10 (CL1-Q1) sending",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 1/10 (CL1-Q1) PASS",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 2/10 (CL1-Q2) sending",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 2/10 (CL1-Q2) PASS",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 3/10 (CL1-Q3) sending",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 3/10 (CL1-Q3) PASS",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 4/10 (CL1-Q4) sending",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 4/10 (CL1-Q4) PASS",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 5/10 (CL1-Q5) sending",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 5/10 (CL1-Q5) PASS",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 6/10 (CL1-Q6) sending",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 6/10 (CL1-Q6) PASS",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 7/10 (CL1-Q7) sending",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 7/10 (CL1-Q7) PASS",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 8/10 (CL1-Q8) sending",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 8/10 (CL1-Q8) PASS",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 9/10 (CL1-Q9) sending",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 9/10 (CL1-Q9) PASS",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 10/10 (CL1-Q10) sending",
+        "[classification-001 :: deepseek/deepseek-v4-pro] Question 10/10 (CL1-Q10) PASS",
+        "[classification-001 :: deepseek/deepseek-v4-pro] STRONG_PASS at 100%",
+        "Done. 1 of 1 actually ran — 1 passed."
+      ],
+      "counts": {
+        "planned": 1,
+        "queued": 0,
+        "started": 0,
+        "completed": 1,
+        "failed": 0,
+        "could_not_start": 0,
+        "skipped_by_preflight": 0
+      },
+      "items": [
+        {
+          "persistedRunId": "run_2026-05-24_classification-001_deepseek-deepseek-v4-pro_cfb327e1",
+          "taskId": "classification-001",
+          "modelId": "deepseek/deepseek-v4-pro",
+          "status": "completed",
+          "pass": true,
+          "runId": "run_mpjpxk0n_5228a489",
+          "attempt": null,
+          "reason": "Score 100%: near-complete pass with only minor or no misses.",
+          "stage": null,
+          "providerError": null,
+          "classification": null
+        }
+      ],
+      "unreachable": 0,
+      "interrupted": 0,
+      "startedAt": "2026-05-24T11:53:01.629Z",
+      "completedAt": "2026-05-24T11:53:44.102Z",
+      "failedRows": [],
+      "rowShapeOk": true,
+      "evidenceOk": true,
+      "evidenceChecks": [
+        {
+          "taskId": "classification-001",
+          "status": "completed",
+          "pass": true,
+          "runId": "run_2026-05-24_classification-001_deepseek-deepseek-v4-pro_cfb327e1",
+          "streamRunId": "run_mpjpxk0n_5228a489",
+          "persistedRunId": "run_2026-05-24_classification-001_deepseek-deepseek-v4-pro_cfb327e1",
+          "http": 200,
+          "hasBundle": true,
+          "failureMode": null,
+          "reason": null
+        }
+      ],
+      "refresh": {
+        "checked": true,
+        "ok": true,
+        "focusedRunId": "run_2026-05-24_classification-001_deepseek-deepseek-v4-pro_cfb327e1",
+        "unreachable": 0,
+        "interrupted": 0
+      },
+      "screenshot": "reports/release-gauntlet/ui-manual/2026-05-24T11-52-25Z-lane-cert/personality.png"
+    },
+    {
+      "lane": "benchmark",
+      "selectedTasks": [
+        "code-001"
+      ],
+      "status": "complete",
+      "summary": null,
+      "lines": [
+        "Run all 1 selected: 1 test × 1 model = 1 run planned.",
+        "Running Code 001 on deepseek/deepseek-v4-pro… (1/1 planned)",
+        "Queued code-001 on deepseek/deepseek-v4-pro.",
+        "Run ID: run_mpjpykn4_c2f4532f",
+        "[code-001 :: deepseek/deepseek-v4-pro] Target code-001 via openrouter/deepseek/deepseek-v4-pro (1 run) — Resolved registered model deepseek/deepseek-v4-pro for openrouter/openrouter.",
+        "[code-001 :: deepseek/deepseek-v4-pro] Run 1/1 executing",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 1/8 (CD1-Q1) sending",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 1/8 (CD1-Q1) PASS",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 2/8 (CD1-Q2) sending",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 2/8 (CD1-Q2) PASS",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 3/8 (CD1-Q3) sending",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 3/8 (CD1-Q3) PASS",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 4/8 (CD1-Q4) sending",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 4/8 (CD1-Q4) FAIL",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 5/8 (CD1-Q5) sending",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 5/8 (CD1-Q5) PASS",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 6/8 (CD1-Q6) sending",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 6/8 (CD1-Q6) PASS",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 7/8 (CD1-Q7) sending",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 7/8 (CD1-Q7) PASS",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 8/8 (CD1-Q8) sending",
+        "[code-001 :: deepseek/deepseek-v4-pro] Question 8/8 (CD1-Q8) PASS",
+        "[code-001 :: deepseek/deepseek-v4-pro] PASS at 89%",
+        "Done. 1 of 1 actually ran — 1 passed."
+      ],
+      "counts": {
+        "planned": 1,
+        "queued": 0,
+        "started": 0,
+        "completed": 1,
+        "failed": 0,
+        "could_not_start": 0,
+        "skipped_by_preflight": 0
+      },
+      "items": [
+        {
+          "persistedRunId": "run_2026-05-24_code-001_deepseek-deepseek-v4-pro_12f305ce",
+          "taskId": "code-001",
+          "modelId": "deepseek/deepseek-v4-pro",
+          "status": "completed",
+          "pass": true,
+          "runId": "run_mpjpykn4_c2f4532f",
+          "attempt": null,
+          "reason": "Score 89%: passed with good coverage.",
+          "stage": null,
+          "providerError": null,
+          "classification": null
+        }
+      ],
+      "unreachable": 0,
+      "interrupted": 0,
+      "startedAt": "2026-05-24T11:53:49.106Z",
+      "completedAt": "2026-05-24T11:54:22.738Z",
+      "failedRows": [],
+      "rowShapeOk": true,
+      "evidenceOk": true,
+      "evidenceChecks": [
+        {
+          "taskId": "code-001",
+          "status": "completed",
+          "pass": true,
+          "runId": "run_2026-05-24_code-001_deepseek-deepseek-v4-pro_12f305ce",
+          "streamRunId": "run_mpjpykn4_c2f4532f",
+          "persistedRunId": "run_2026-05-24_code-001_deepseek-deepseek-v4-pro_12f305ce",
+          "http": 200,
+          "hasBundle": true,
+          "failureMode": null,
+          "reason": null
+        }
+      ],
+      "refresh": {
+        "checked": true,
+        "ok": false,
+        "focusedRunId": null,
+        "unreachable": 0,
+        "interrupted": 0
+      },
+      "screenshot": "reports/release-gauntlet/ui-manual/2026-05-24T11-52-25Z-lane-cert/benchmark.png"
+    },
+    {
+      "lane": "poison",
+      "selectedTasks": [
+        "poison-001"
+      ],
+      "status": null,
+      "summary": null,
+      "lines": [],
+      "counts": {
+        "planned": 0,
+        "queued": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "could_not_start": 0,
+        "skipped_by_preflight": 0
+      },
+      "items": [],
+      "unreachable": 0,
+      "interrupted": 0,
+      "startedAt": "2026-05-24T11:54:27.742Z",
+      "completedAt": "2026-05-24T11:54:29.256Z",
+      "failedRows": [],
+      "rowShapeOk": true,
+      "evidenceOk": false,
+      "evidenceChecks": [],
+      "refresh": {
+        "checked": false,
+        "ok": false,
+        "reason": "no run id"
+      },
+      "screenshot": "reports/release-gauntlet/ui-manual/2026-05-24T11-52-25Z-lane-cert/poison.png"
+    },
+    {
+      "lane": "build",
+      "selectedTasks": [
+        "coord-001"
+      ],
+      "status": null,
+      "summary": null,
+      "lines": [],
+      "counts": {
+        "planned": 0,
+        "queued": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "could_not_start": 0,
+        "skipped_by_preflight": 0
+      },
+      "items": [],
+      "unreachable": 0,
+      "interrupted": 0,
+      "startedAt": "2026-05-24T11:54:34.258Z",
+      "completedAt": "2026-05-24T11:54:35.752Z",
+      "failedRows": [],
+      "rowShapeOk": true,
+      "evidenceOk": false,
+      "evidenceChecks": [],
+      "refresh": {
+        "checked": false,
+        "ok": false,
+        "reason": "no run id"
+      },
+      "screenshot": "reports/release-gauntlet/ui-manual/2026-05-24T11-52-25Z-lane-cert/build.png"
+    },
+    {
+      "lane": "safety",
+      "selectedTasks": [
+        "safety-001"
+      ],
+      "status": null,
+      "summary": null,
+      "lines": [],
+      "counts": {
+        "planned": 0,
+        "queued": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "could_not_start": 0,
+        "skipped_by_preflight": 0
+      },
+      "items": [],
+      "unreachable": 0,
+      "interrupted": 0,
+      "startedAt": "2026-05-24T11:54:40.754Z",
+      "completedAt": "2026-05-24T11:54:42.327Z",
+      "failedRows": [],
+      "rowShapeOk": true,
+      "evidenceOk": false,
+      "evidenceChecks": [],
+      "refresh": {
+        "checked": false,
+        "ok": false,
+        "reason": "no run id"
+      },
+      "screenshot": "reports/release-gauntlet/ui-manual/2026-05-24T11-52-25Z-lane-cert/safety.png"
+    },
+    {
+      "lane": "memory",
+      "selectedTasks": [
+        "memory-001"
+      ],
+      "status": null,
+      "summary": null,
+      "lines": [],
+      "counts": {
+        "planned": 0,
+        "queued": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "could_not_start": 0,
+        "skipped_by_preflight": 0
+      },
+      "items": [],
+      "unreachable": 0,
+      "interrupted": 0,
+      "startedAt": "2026-05-24T11:54:47.329Z",
+      "completedAt": "2026-05-24T11:54:48.807Z",
+      "failedRows": [],
+      "rowShapeOk": true,
+      "evidenceOk": false,
+      "evidenceChecks": [],
+      "refresh": {
+        "checked": false,
+        "ok": false,
+        "reason": "no run id"
+      },
+      "screenshot": "reports/release-gauntlet/ui-manual/2026-05-24T11-52-25Z-lane-cert/memory.png"
+    },
+    {
+      "lane": "tools",
+      "selectedTasks": [
+        "tool-001"
+      ],
+      "status": null,
+      "summary": null,
+      "lines": [],
+      "counts": {
+        "planned": 0,
+        "queued": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "could_not_start": 0,
+        "skipped_by_preflight": 0
+      },
+      "items": [],
+      "unreachable": 0,
+      "interrupted": 0,
+      "startedAt": "2026-05-24T11:54:53.809Z",
+      "completedAt": "2026-05-24T11:54:55.300Z",
+      "failedRows": [],
+      "rowShapeOk": true,
+      "evidenceOk": false,
+      "evidenceChecks": [],
+      "refresh": {
+        "checked": false,
+        "ok": false,
+        "reason": "no run id"
+      },
+      "screenshot": "reports/release-gauntlet/ui-manual/2026-05-24T11-52-25Z-lane-cert/tools.png"
+    },
+    {
+      "lane": "trust",
+      "selectedTasks": [
+        "op-001"
+      ],
+      "status": null,
+      "summary": null,
+      "lines": [],
+      "counts": {
+        "planned": 0,
+        "queued": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "could_not_start": 0,
+        "skipped_by_preflight": 0
+      },
+      "items": [],
+      "unreachable": 0,
+      "interrupted": 0,
+      "startedAt": "2026-05-24T11:55:00.302Z",
+      "completedAt": "2026-05-24T11:55:01.786Z",
+      "failedRows": [],
+      "rowShapeOk": true,
+      "evidenceOk": false,
+      "evidenceChecks": [],
+      "refresh": {
+        "checked": false,
+        "ok": false,
+        "reason": "no run id"
+      },
+      "screenshot": "reports/release-gauntlet/ui-manual/2026-05-24T11-52-25Z-lane-cert/trust.png"
+    }
+  ],
+  "providers": {
+    "surfaced": true,
+    "providers": 1,
+    "models": 5,
+    "catalog": 5,
+    "openrouterConfigured": false,
+    "deepseekVisible": false,
+    "unreachable": 0,
+    "interrupted": 0,
+    "screenshot": "reports/release-gauntlet/ui-manual/2026-05-24T11-52-25Z-lane-cert/providers.png"
+  }
+}
