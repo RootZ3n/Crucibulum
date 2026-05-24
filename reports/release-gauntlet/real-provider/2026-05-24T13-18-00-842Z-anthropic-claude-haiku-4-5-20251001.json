@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-05-24T13:18:15.817Z",
+  "generatedAt": "2026-05-24T13:18:00.846Z",
   "metadata": {
-    "timestamp": "2026-05-24T13:18:15.817Z",
-    "command": "node scripts/release-gauntlet.mjs --real-provider --provider minimax --model MiniMax-M2.7 --broad-smoke --max-cost-usd 1.00 --write-report",
+    "timestamp": "2026-05-24T13:18:00.846Z",
+    "command": "node scripts/release-gauntlet.mjs --real-provider --provider anthropic --model claude-haiku-4-5-20251001 --broad-smoke --max-cost-usd 1.00 --write-report",
     "nodeVersion": "v22.22.2",
     "packageVersion": "0.1.0",
     "mode": "real-provider",
@@ -14,22 +14,8 @@
       "branch": "master",
       "dirtyTree": false,
       "dirtyTreeEntries": [],
-      "workingTreeEntries": [
-        "M reports/release-gauntlet/latest-real-provider.json",
-        " M reports/release-gauntlet/latest-real-provider.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T13-18-00-842Z-anthropic-claude-haiku-4-5-20251001.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T13-18-00-842Z-anthropic-claude-haiku-4-5-20251001.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T13-18-10-077Z-openai-gpt-5.4-mini.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T13-18-10-077Z-openai-gpt-5.4-mini.md"
-      ],
-      "reportArtifactEntries": [
-        "M reports/release-gauntlet/latest-real-provider.json",
-        " M reports/release-gauntlet/latest-real-provider.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T13-18-00-842Z-anthropic-claude-haiku-4-5-20251001.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T13-18-00-842Z-anthropic-claude-haiku-4-5-20251001.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T13-18-10-077Z-openai-gpt-5.4-mini.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-24T13-18-10-077Z-openai-gpt-5.4-mini.md"
-      ]
+      "workingTreeEntries": [],
+      "reportArtifactEntries": []
     },
     "environmentProfile": {
       "openrouter": {
@@ -446,8 +432,8 @@
   "real": {
     "mode": "real-provider",
     "profile": "broad-smoke",
-    "provider": "minimax",
-    "model": "MiniMax-M2.7",
+    "provider": "anthropic",
+    "model": "claude-haiku-4-5-20251001",
     "family": null,
     "maxCostUsd": 1,
     "results": [
@@ -455,10 +441,10 @@
         "classId": "conversational/personality",
         "task": "personality-001",
         "kind": "personality-easy",
-        "runId": "run_mpjsz5dd_6447711a",
+        "runId": "run_mpjsytyj_6f9a2f49",
         "bundleId": null,
         "classification": "FAIL_PROVIDER",
-        "reason": "provider_error.kind=INVALID_RESPONSE stage=health_check reason=\"Invalid provider payload — MiniMax error 1004: token is unusable (base=https://api.minimax.io/v1)\"",
+        "reason": "provider_error.kind=AUTH stage=health_check reason=\"Authentication failed (401) — anthropic returned HTTP 401: {\"type\":\"error\",\"error\":{\"type\":\"authenti\"",
         "terminal": "error",
         "observed": {
           "statusClassification": "could_not_start",
@@ -470,10 +456,10 @@
         "classId": "role-stress/prompt-sensitivity",
         "task": "role-stress-001",
         "kind": "role-stress-slow",
-        "runId": "run_mpjsz5pz_83676351",
+        "runId": "run_mpjsyud3_9aff1e29",
         "bundleId": null,
         "classification": "FAIL_PROVIDER",
-        "reason": "provider_error.kind=INVALID_RESPONSE stage=health_check reason=\"Invalid provider payload — MiniMax error 1004: token is unusable (base=https://api.minimax.io/v1)\"",
+        "reason": "provider_error.kind=AUTH stage=health_check reason=\"Authentication failed (401) — anthropic returned HTTP 401: {\"type\":\"error\",\"error\":{\"type\":\"authenti\"",
         "terminal": "error",
         "observed": {
           "statusClassification": "could_not_start",
@@ -594,7 +580,7 @@
       "distinctRunIds": 2,
       "distinctBundleIds": 0
     },
-    "runsDir": "/mnt/ai/tmp/claude/rgaunt-real-runs-Ei0P6W"
+    "runsDir": "/mnt/ai/tmp/claude/rgaunt-real-runs-ZqkjSH"
   },
   "mode": "real-provider"
 }
