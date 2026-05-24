@@ -12,7 +12,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { closeSync, existsSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const REPO_ROOT = join(import.meta.dirname, "..", "..");
@@ -21,18 +22,27 @@ const GAUNTLET = join(REPO_ROOT, "scripts", "release-gauntlet.mjs");
 function run(args: string[], opts: { allowNonZero?: boolean } = {}): { stdout: string; status: number } {
   // Merge stdout + stderr so tests can grep error-channel messages
   // (`console.error(...)` lands on stderr but we want to assert against it).
+  const dir = mkdtempSync(join(tmpdir(), "crucible-gauntlet-test-"));
+  const outPath = join(dir, "child.log");
+  const outFd = openSync(outPath, "w+");
   try {
-    const stdout = execFileSync(process.execPath, [GAUNTLET, ...args], {
+    execFileSync(process.execPath, [GAUNTLET, ...args], {
       cwd: REPO_ROOT,
       encoding: "utf-8",
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["ignore", outFd, outFd],
       env: { ...process.env, NO_COLOR: "1" },
     });
+    closeSync(outFd);
+    const stdout = readFileSync(outPath, "utf-8");
+    rmSync(dir, { recursive: true, force: true });
     return { stdout, status: 0 };
   } catch (err) {
+    closeSync(outFd);
+    const stdout = readFileSync(outPath, "utf-8");
+    rmSync(dir, { recursive: true, force: true });
     if (!opts.allowNonZero) throw err;
     const e = err as { stdout?: string; stderr?: string; status?: number };
-    return { stdout: `${e.stdout ?? ""}${e.stderr ?? ""}`, status: e.status ?? 1 };
+    return { stdout: `${stdout}${e.stdout ?? ""}${e.stderr ?? ""}`, status: e.status ?? 1 };
   }
 }
 
@@ -62,7 +72,8 @@ describe("release-gauntlet: --help", () => {
     assert.equal(status, 0);
     for (const flag of [
       "--dry-run-inventory", "--mock-only", "--real-provider",
-      "--all-families", "--family", "--provider", "--model",
+      "--all-families", "--repo-smoke", "--broad-smoke", "--ui-shape",
+      "--family", "--provider", "--model",
       "--max-cost-usd", "--stop-on-product-failure", "--write-report",
     ]) {
       assert.match(stdout, new RegExp(flag));
@@ -102,9 +113,13 @@ describe("release-gauntlet: real-provider report archive (when present)", () => 
     assert.match(md, /# Crucible Real-Provider Gauntlet/);
     assert.match(md, /\*\*Provider:\*\*\s+`/);
     assert.match(md, /\*\*Model:\*\*\s+`/);
-    assert.match(md, /\*\*Real-provider release-certified:\*\*\s+\*\*(YES|NO)\*\*/);
+    assert.match(md, /\*\*Real-provider .*certified:\*\*\s+\*\*(YES|NO)\*\*/);
     assert.match(md, /## Per-test results/);
-    assert.match(md, /\| Task \| Result \| Terminal \| run_id \| Notes \|/);
+    assert.ok(
+      /\| Class \| Task \| Result \| Terminal \| run_id \| Notes \|/.test(md)
+      || /\| Task \| Result \| Terminal \| run_id \| Notes \|/.test(md),
+      "latest real-provider report must carry either the current broad-smoke table or legacy compact table",
+    );
   });
 
   it("latest-real-provider.json carries mode=real-provider + run+bundle distinctness totals", () => {

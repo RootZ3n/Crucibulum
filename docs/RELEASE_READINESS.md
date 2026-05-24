@@ -88,13 +88,15 @@ The gauntlet classifies every probe into one of:
 
 ## Two layers, both required
 
-Release certification has **two distinct gates**. Both must pass before
-tagging a release.
+Release certification has distinct gates. All must pass before an unqualified
+release tag.
 
 | Gate | What it proves | How to run |
 | --- | --- | --- |
 | **Mock / platform layer** | Crucible's runner, bundle identity, SSE lifecycle, retention, classification all behave correctly under every failure shape we can simulate deterministically. | `npm run gauntlet:mock` |
 | **Real-provider layer** | The same code paths still behave correctly against the actual providers Crucible ships against. Surfaces real-world provider quirks the mock can't reproduce (region routing, model availability, rate-limit shape). | `node scripts/release-gauntlet.mjs --real-provider …` |
+| **Repo-mode layer** | Representative repo-mode tasks create isolated workspaces, produce diffs, pass through the deterministic judge, store bundles, hydrate by `run_id`, and leave source fixtures unchanged. | `node scripts/release-gauntlet.mjs --mock-only --repo-smoke --write-report` |
+| **UI layer** | Browser/operator flow can select lanes/models, run batches, display cooldowns, open completed and failure evidence, survive refresh, and avoid catch-all leaks. | `node scripts/release-gauntlet.mjs --mock-only --ui-shape --write-report` plus `docs/UI_RELEASE_CERTIFICATION.md` |
 
 **Mock pass alone is necessary but NOT sufficient.** Real-provider
 profiles must also be archived before the release tag.
@@ -108,40 +110,58 @@ direct-from-publisher mid-tier (Mimo), and one local provider (Ollama):
 # 1. OpenRouter → DeepSeek V4 Pro
 node scripts/release-gauntlet.mjs --real-provider \
     --provider openrouter --model deepseek/deepseek-v4-pro \
-    --family personality --max-cost-usd 1.00 --write-report
+    --broad-smoke --max-cost-usd 1.00 --write-report
 
 # 2. OpenRouter → Xiaomi Mimo v2.5 Pro
 node scripts/release-gauntlet.mjs --real-provider \
     --provider openrouter --model xiaomi/mimo-v2.5-pro \
-    --family personality --max-cost-usd 1.00 --write-report
+    --broad-smoke --max-cost-usd 1.00 --write-report
 
 # 3. Local Ollama (currently armed)
 node scripts/release-gauntlet.mjs --real-provider \
     --provider ollama --model qwen3.5:9b \
-    --family personality --write-report
+    --broad-smoke --write-report
 ```
 
-Each profile drives the same compact matrix:
+Compact profiles drive:
 1. Easy conversational test (`personality-001`, 3 questions).
 2. Longer personality test (`personality-002`, 4 questions).
 3. Multi-question stress (`role-stress-001`, 10 questions).
 4. Repeat of test #1 — proves `run_id` / `bundle_id` uniqueness and that
    `/api/runs/<run_id>` hydration matches.
 
+Broad profiles drive one representative smoke from each certified release
+class where supported:
+1. Personality (`personality-001`).
+2. Role stress / prompt sensitivity (`role-stress-001`).
+3. Safety / adversarial (`safety-001`).
+4. Operational trust (`op-001`).
+5. Repo/tool-calling (`tool-003`).
+
 Reports archive under `reports/release-gauntlet/real-provider/<timestamp>-<provider>-<model>.{json,md}`
 and the most recent run overwrites `reports/release-gauntlet/latest-real-provider.{json,md}`.
 
+## Release states
+
+| State | Requirement |
+| --- | --- |
+| `MOCK_READY` | Mock/platform gauntlet passes with 0 `FAIL_PRODUCT`, 0 unexplained `BLOCKED`, 0 catch-all leaks, clean source metadata. |
+| `REAL_PROVIDER_COMPACT_READY` | Compact profiles are archived for every release-target provider/model; provider outages are classified honestly. |
+| `REAL_PROVIDER_BROAD_READY` | Broad-smoke profiles are archived for every release-target provider/model with no `FAIL_PRODUCT`. |
+| `REPO_MODE_CERTIFIED` | Repo-smoke report passes or repo-mode is explicitly excluded from the release scope. |
+| `UI_CERTIFIED` | Automated UI-shape smoke passes and the manual browser checklist in `docs/UI_RELEASE_CERTIFICATION.md` is completed for the candidate. |
+| `FULL_RELEASE_READY` | All states above are true, no stale/dirty-source reports, no overclaimed providers/models, and no unexplained `FAIL_CONFIG`/`BLOCKED`. |
+
 ## Current known gaps
 
-- Repo-mode tasks (orchestration, poison, spec, tool-calling) are not in
-  the mock dispatch sweep — they need real workspaces that the mock adapter
-  can't reproduce. They're covered by the existing scorer/runner tests in
-  `npm test`.
-- Browser-driven UI tests are not in the gauntlet. The UI-shape smokes
-  (`tests/run-lifecycle.test.ts`, `tests/bundle-identity.test.ts`,
-  `tests/role-stress-lifecycle.test.ts`, `tests/run-classification.test.ts`,
-  `tests/rate-limit-flow.test.ts`, `tests/pre-execution-failure-bundle.test.ts`)
-  cover the UI flow by driving the same HTTP path the browser uses.
+- Repo-mode smoke is representative, not exhaustive: it covers three repo
+  fixtures (`coord-001`, `spec-001`, `tool-003`) while 25 repo-mode tasks
+  exist.
+- Browser certification is not satisfied by source/static tests alone. The
+  manual checklist must be completed for the release candidate.
+- Only release-target providers/models are certified. Other exposed adapters
+  and picker models remain `UNCERTIFIED_NOT_RELEASE_TARGET` unless a report
+  says otherwise.
 
 ## Current release status
 
@@ -149,7 +169,7 @@ and the most recent run overwrites `reports/release-gauntlet/latest-real-provide
 | --- | --- | --- |
 | `MOCK_LAYER_READY` | **YES** ✅ | `reports/release-gauntlet/latest.md` — 49/49 PASS, 0 FAIL_PRODUCT |
 | `REAL_PROVIDER_TARGET_PROFILES` | **YES WITH CAVEATS** | `reports/release-gauntlet/real-provider/` — DeepSeek V4 Pro (3 PASS + 1 honest FAIL_PROVIDER), Mimo v2.5 Pro (4/4 PASS), Ollama qwen3.5:9b (4/4 PASS) |
-| `FULL_RELEASE_READY` | **NO — evidence insufficient** | Current real-provider evidence covers only 3 target models, 2 adapters, and the compact Personality/Role-stress matrix. It does not certify every provider, model, family, repo-mode path, or browser UI flow. |
+| `FULL_RELEASE_READY` | **NO — evidence insufficient** | Requires broad real-provider profiles, repo-mode certification, UI certification, clean metadata, and no overclaimed provider/model scope. |
 
 Current audit verdict: **MOCK_READY_BUT_REAL_PROVIDER_GAPS**. The evidence is
 strong enough to say the runner/evidence/classification platform gate is green

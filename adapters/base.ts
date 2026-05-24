@@ -593,7 +593,7 @@ export interface EvidenceBundle {
   judge_usage?: {
     /** Provider id of the judge model (e.g. "openrouter"). Empty when no model judge ran. */
     provider: string;
-    /** Model id of the judge (e.g. "xiaomi/mimo-v2-pro"). Empty when none ran. */
+    /** Model id of the judge (e.g. "xiaomi/mimo-v2.5-pro"). Empty when none ran. */
     model: string;
     tokens_in: number;
     tokens_out: number;

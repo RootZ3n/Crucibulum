@@ -318,10 +318,10 @@ Review inputs are sanitized and structured before model calls. Review outputs ar
 
 ### Default Judge Model
 
-The advisory model judge defaults to **OpenRouter `xiaomi/mimo-v2-pro`** (closest registered identifier for the Xiaomi MiMo V2.5 Pro line). Configure via `OPENROUTER_API_KEY`. Override with:
+The advisory model judge defaults to **OpenRouter `xiaomi/mimo-v2.5-pro`**. Configure via `OPENROUTER_API_KEY`. Override with:
 
 - `CRUCIBLE_JUDGE_PROVIDER` — provider id (default `openrouter`)
-- `CRUCIBLE_JUDGE_MODEL` — model id (default `xiaomi/mimo-v2-pro`)
+- `CRUCIBLE_JUDGE_MODEL` — model id (default `xiaomi/mimo-v2.5-pro`)
 
 Fallback: when the configured judge provider is unreachable, only the deterministic scorer runs and the model judge is recorded as `judge_usage.kind = "skipped"`. The run is never silently re-routed to a different model.
 

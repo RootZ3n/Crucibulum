@@ -228,7 +228,7 @@ export function planAdapter(args: HarnessArgs): AdapterPlan {
       args.model
       ?? process.env["CRUCIBLE_JUDGE_MODEL"]?.trim()
       ?? process.env["OPENROUTER_JUDGE_MODEL"]?.trim()
-      ?? "xiaomi/mimo-v2-pro";
+      ?? "xiaomi/mimo-v2.5-pro";
     return {
       kind: "live",
       adapterId: "openrouter",

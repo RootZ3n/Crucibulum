@@ -190,10 +190,10 @@ describe("Harness lane registry", () => {
 // ── 5. Judge-config + judge_usage shape ─────────────────────────────────────
 
 describe("judge configuration", () => {
-  it("default judge resolves to OpenRouter / xiaomi/mimo-v2-pro", () => {
+  it("default judge resolves to OpenRouter / xiaomi/mimo-v2.5-pro", () => {
     const cfg = resolveJudgeConfig();
     assert.equal(cfg.provider, "openrouter");
-    assert.match(cfg.model, /^xiaomi\/mimo/);
+    assert.equal(cfg.model, "xiaomi/mimo-v2.5-pro");
   });
 
   it("env override CRUCIBLE_JUDGE_MODEL takes precedence", () => {
@@ -248,8 +248,8 @@ describe("applyReviewJudgeUsage", () => {
         authority: "advisory" as const,
         deterministic_result_authoritative: true as const,
         security: { review_input_scanned: true, review_input_sanitized: true, injection_flags_count: 0, flagged_sources: [], flagged_artifacts: [], review_blocked_reason: null, review_output_invalid: false, trust_boundary_violations: [] },
-        secondOpinion: { enabled: true, provider: "openrouter", model: "xiaomi/mimo-v2-pro", status: "completed" as const, summary: "ok", flags: [], confidence: "high" as const, recommendation: "accept" as const, disagreement: false, tokens_in: 100, tokens_out: 50 },
-        qcReview: { enabled: true, provider: "openrouter", model: "xiaomi/mimo-v2-pro", status: "completed" as const, summary: "ok", flags: [], confidence: "high" as const, recommendation: "accept" as const, disagreement: false, tokens_in: 80, tokens_out: 40 },
+        secondOpinion: { enabled: true, provider: "openrouter", model: "xiaomi/mimo-v2.5-pro", status: "completed" as const, summary: "ok", flags: [], confidence: "high" as const, recommendation: "accept" as const, disagreement: false, tokens_in: 100, tokens_out: 50 },
+        qcReview: { enabled: true, provider: "openrouter", model: "xiaomi/mimo-v2.5-pro", status: "completed" as const, summary: "ok", flags: [], confidence: "high" as const, recommendation: "accept" as const, disagreement: false, tokens_in: 80, tokens_out: 40 },
       },
     } as any;
     applyReviewJudgeUsage(bundle);
@@ -257,7 +257,7 @@ describe("applyReviewJudgeUsage", () => {
     assert.equal(bundle.judge_usage.tokens_in, 180);
     assert.equal(bundle.judge_usage.tokens_out, 90);
     assert.equal(bundle.judge_usage.provider, "openrouter");
-    assert.equal(bundle.judge_usage.model, "xiaomi/mimo-v2-pro");
+    assert.equal(bundle.judge_usage.model, "xiaomi/mimo-v2.5-pro");
     assert.ok(bundle.judge_usage.estimated_cost_usd > 0, "cost must be estimated for cloud provider");
   });
 
@@ -267,7 +267,7 @@ describe("applyReviewJudgeUsage", () => {
         authority: "advisory" as const,
         deterministic_result_authoritative: true as const,
         security: { review_input_scanned: true, review_input_sanitized: true, injection_flags_count: 0, flagged_sources: [], flagged_artifacts: [], review_blocked_reason: null, review_output_invalid: false, trust_boundary_violations: [] },
-        secondOpinion: { enabled: true, provider: "openrouter", model: "xiaomi/mimo-v2-pro", status: "error" as const, summary: "", flags: [], confidence: "low" as const, recommendation: null, disagreement: false, tokens_in: 0, tokens_out: 0 },
+        secondOpinion: { enabled: true, provider: "openrouter", model: "xiaomi/mimo-v2.5-pro", status: "error" as const, summary: "", flags: [], confidence: "low" as const, recommendation: null, disagreement: false, tokens_in: 0, tokens_out: 0 },
         qcReview: { enabled: false, provider: "", model: "", status: "skipped" as const, summary: "", flags: [], confidence: "high" as const, recommendation: null, disagreement: false },
       },
     } as any;

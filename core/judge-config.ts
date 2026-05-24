@@ -10,8 +10,7 @@
  * Defaults
  * --------
  * - provider: openrouter
- * - model:    xiaomi/mimo-v2-pro          (Xiaomi MiMo V2 Pro — closest
- *             registered OpenRouter id for the "MiMo V2.5 Pro" line)
+ * - model:    xiaomi/mimo-v2.5-pro        (Xiaomi MiMo v2.5 Pro)
  * - api key:  process.env.OPENROUTER_API_KEY
  *
  * Override
@@ -34,7 +33,7 @@
  */
 
 const DEFAULT_JUDGE_PROVIDER = "openrouter";
-const DEFAULT_JUDGE_MODEL = "xiaomi/mimo-v2-pro";
+const DEFAULT_JUDGE_MODEL = "xiaomi/mimo-v2.5-pro";
 
 export interface JudgeModelConfig {
   /** Provider id (matches adapter ids in adapters/registry.ts). */

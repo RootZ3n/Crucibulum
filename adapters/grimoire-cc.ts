@@ -5,7 +5,7 @@
  * For benchmark runs, auto_approve is set to true.
  *
  * CLI usage:
- *   --adapter grimoire-cc --model mimo-v2-pro
+ *   --adapter grimoire-cc --model xiaomi/mimo-v2.5-pro
  */
 
 import type {

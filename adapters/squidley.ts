@@ -10,7 +10,7 @@
  * CLI usage:
  *   --model squidley:qwen3.6-plus
  *   --model squidley:claude-opus-4-6
- *   --model squidley:mimo-v2-pro
+ *   --model squidley:xiaomi/mimo-v2.5-pro
  */
 
 import { execSync } from "node:child_process";

@@ -25,7 +25,8 @@
  *   reports/release-gauntlet/<timestamp>.md
  */
 
-import { mkdtempSync, mkdirSync, copyFileSync, writeFileSync, readdirSync, statSync, readFileSync, existsSync, unlinkSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, copyFileSync, cpSync, writeFileSync, readdirSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -40,6 +41,8 @@ const flags = {
   realProvider: argv.includes("--real-provider"),
   allFamilies: argv.includes("--all-families"),
   allProviders: argv.includes("--all-providers"),
+  repoSmoke: argv.includes("--repo-smoke"),
+  broadSmoke: argv.includes("--broad-smoke"),
   uiShape: argv.includes("--ui-shape"),
   stopOnProductFailure: argv.includes("--stop-on-product-failure"),
   writeReport: argv.includes("--write-report") || argv.includes("--write"),
@@ -67,6 +70,9 @@ Modes:
 
 Scope:
   --all-families               Run a dispatch sweep across every conversational task.
+  --repo-smoke                 Run representative repo-mode smoke tasks with the deterministic adapter.
+  --broad-smoke                Run broader real-provider family-class smoke tasks.
+  --ui-shape                   Include automated UI-shape certification checks.
   --all-providers              Run the inventory against every registered adapter.
   --family <name>              Restrict to a single task family.
   --provider <id>              Restrict to a single adapter id (only meaningful with --real-provider).
@@ -81,6 +87,156 @@ Output:
   --report-dir <path>          Override the report directory.
 `);
   process.exit(0);
+}
+
+// ── Release metadata + static audits ───────────────────────────────────────
+
+const RELEASE_TARGETS = [
+  { provider: "openrouter", adapter: "openrouter", model: "deepseek/deepseek-v4-pro" },
+  { provider: "openrouter", adapter: "openrouter", model: "xiaomi/mimo-v2.5-pro" },
+  { provider: "ollama", adapter: "ollama", model: "qwen3.5:9b" },
+];
+
+const FAMILY_CLASSES = [
+  { id: "conversational/personality", families: ["personality", "identity", "classification"], representative: "personality-001", mode: "conversational" },
+  { id: "role-stress/prompt-sensitivity", families: ["role-stress", "prompt-sensitivity", "context-degradation"], representative: "role-stress-001", mode: "conversational", slow: true },
+  { id: "safety/poison/adversarial", families: ["safety", "poison"], representative: "safety-001", repoRepresentative: "poison-001", mode: "mixed" },
+  { id: "tool-calling", families: ["tool-calling"], representative: "tool-003", mode: "repo" },
+  { id: "trust/operational-trust", families: ["operational-trust"], representative: "op-001", mode: "conversational" },
+  { id: "repo-mode/build/code", families: ["orchestration", "spec", "code", "workflow"], representative: "coord-001", mode: "repo" },
+  { id: "provider/adapter-health", families: [], representative: "health_check", mode: "provider" },
+  { id: "legacy-surfaced", families: ["memory", "reasoning", "summarization", "thinking-mode", "token-efficiency", "truthfulness", "instruction-obedience"], representative: "memory-001", mode: "conversational" },
+];
+
+const REPO_SMOKE_TASKS = [
+  { classId: "repo-mode/build/code", family: "orchestration", task: "coord-001", fixtureProbe: "tasks/orchestration/coord-001/repo/src/users/register.js" },
+  { classId: "repo-mode/build/code", family: "spec", task: "spec-001", fixtureProbe: "tasks/spec/spec-001/repo/src/api/validate.js" },
+  { classId: "tool-calling", family: "tool-calling", task: "tool-003", fixtureProbe: "tasks/tool-calling/tool-003/repo/tool-trial/greet.sh" },
+];
+
+const BROAD_REAL_PROVIDER_TEST_PLAN = [
+  { classId: "conversational/personality", kind: "personality-easy", task: "personality-001" },
+  { classId: "role-stress/prompt-sensitivity", kind: "role-stress-slow", task: "role-stress-001" },
+  { classId: "safety/poison/adversarial", kind: "safety-smoke", task: "safety-001" },
+  { classId: "trust/operational-trust", kind: "trust-smoke", task: "op-001" },
+  { classId: "tool-calling", kind: "repo-tool-smoke", task: "tool-003" },
+];
+
+function sh(args, fallback = "") {
+  try { return execFileSync(args[0], args.slice(1), { cwd: REPO_ROOT, encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }).trim(); }
+  catch { return fallback; }
+}
+
+function packageVersion() {
+  try { return JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf-8")).version ?? null; }
+  catch { return null; }
+}
+
+function gitStatusEntries() {
+  const out = sh(["git", "status", "--short"], "");
+  return out ? out.split("\n").filter(Boolean) : [];
+}
+
+function isReportOnlyStatus(entry) {
+  return / reports\/release-gauntlet\//.test(entry) || /^\?\? reports\/release-gauntlet\//.test(entry);
+}
+
+function buildMetadata({ mode, profile, maxCostUsd, actualCostUsd = null }) {
+  loadEnvFile();
+  const status = gitStatusEntries();
+  const sourceDirty = status.filter((entry) => !isReportOnlyStatus(entry));
+  const envProfile = Object.fromEntries(Object.entries(ADAPTER_KEY_BY_PROVIDER).map(([provider, envKey]) => [
+    provider,
+    envKey == null ? { envKey: null, configured: true, source: "local/no-key" } : { envKey, configured: !!process.env[envKey], source: process.env[envKey] ? "env-present-redacted" : "unset" },
+  ]));
+  return {
+    timestamp: new Date().toISOString(),
+    command: `node scripts/release-gauntlet.mjs ${argv.join(" ")}`.trim(),
+    nodeVersion: process.version,
+    packageVersion: packageVersion(),
+    mode,
+    profile,
+    maxCostUsd,
+    actualCostUsd,
+    git: {
+      commit: sh(["git", "rev-parse", "HEAD"], "unknown"),
+      branch: sh(["git", "branch", "--show-current"], "unknown"),
+      dirtyTree: status.length > 0,
+      dirtyTreeEntries: status,
+      sourceDirtyTree: sourceDirty.length > 0,
+      sourceDirtyEntries: sourceDirty,
+    },
+    environmentProfile: envProfile,
+    RELEASE_CERTIFICATION_INVALID_FOR_TAGGING: sourceDirty.length > 0,
+  };
+}
+
+function readUiModelGroups() {
+  const html = readFileSync(join(REPO_ROOT, "ui", "index.html"), "utf-8");
+  const groups = [];
+  const groupRe = /\{key:'([^']+)',label:'([^']+)',providerId:'([^']+)',adapterId:'([^']+)',kind:'([^']+)',models:\[([\s\S]*?)\]\}/g;
+  let m;
+  while ((m = groupRe.exec(html))) {
+    const models = [...m[6].matchAll(/\{id:'([^']+)',label:'([^']+)'/g)].map((mm) => ({ id: mm[1], label: mm[2] }));
+    groups.push({ key: m[1], label: m[2], providerId: m[3], adapterId: m[4], kind: m[5], models });
+  }
+  return groups;
+}
+
+function buildAdapterExposureAudit(inventory) {
+  loadEnvFile();
+  const groups = readUiModelGroups();
+  const visibleAdapters = new Set(groups.map((g) => g.adapterId));
+  const targetAdapters = new Set(RELEASE_TARGETS.map((t) => t.adapter));
+  const envByAdapter = { openrouter: "OPENROUTER_API_KEY", anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY", minimax: "MINIMAX_API_KEY", zai: "ZAI_API_KEY", google: "GOOGLE_AI_API_KEY" };
+  return inventory.adapters.map((adapter) => {
+    const envKey = envByAdapter[adapter] ?? null;
+    const configured = envKey ? !!process.env[envKey] : adapter === "ollama" || visibleAdapters.has(adapter);
+    const certified = targetAdapters.has(adapter);
+    return {
+      adapter,
+      visibleInModelPicker: visibleAdapters.has(adapter),
+      configured,
+      certified,
+      releaseSupported: certified,
+      status: certified ? "CERTIFIED_RELEASE_TARGET" : configured ? "UNCERTIFIED_NOT_RELEASE_TARGET" : "BLOCKED_CONFIG",
+      envKey,
+    };
+  });
+}
+
+function buildModelPickerAudit() {
+  const groups = readUiModelGroups();
+  return groups.flatMap((group) => group.models.map((model) => {
+    const target = RELEASE_TARGETS.find((t) => t.provider === group.providerId && t.adapter === group.adapterId && t.model === model.id);
+    return {
+      modelId: model.id,
+      provider: group.providerId,
+      adapter: group.adapterId,
+      certified: !!target,
+      releaseTarget: !!target,
+      lastCertifiedReportPath: target ? `reports/release-gauntlet/real-provider/*-${target.provider}-${target.model.replace(/[/:]/g, "-")}.json` : null,
+      status: target ? "CERTIFIED_RELEASE_TARGET" : "UNCERTIFIED_NOT_RELEASE_TARGET",
+    };
+  }));
+}
+
+function buildUiCertification() {
+  const html = readFileSync(join(REPO_ROOT, "ui", "index.html"), "utf-8");
+  const checks = [
+    { id: "evidence-inspector-hydration", pass: /\/api\/runs\/\$\{encodeURIComponent\(status\.bundle_id\)\}/.test(html) && /\/api\/runs\/\$\{encodeURIComponent\(runId\)\}/.test(html) },
+    { id: "provider-cooldown-surfaced", pass: /Provider cooling down after rate limit/.test(html) && /RATE_LIMIT_MAX_RETRIES/.test(html) },
+    { id: "catch-all-bounded", pass: (html.match(/Run stream interrupted — no evidence bundle produced/g) ?? []).length <= 2 },
+    { id: "unreachable-fallback-bundle-first", pass: /no evidence bundle was found/.test(html) && /Reconciled from \/api\/runs/.test(html) },
+    { id: "all-release-tabs-visible", pass: ["personality", "poison", "build", "safety", "memory", "tools", "trust", "providers"].every((key) => new RegExp(`${key}:\\{key:'${key}'`).test(html)) },
+  ];
+  return {
+    automated: checks,
+    automatedPassed: checks.every((c) => c.pass),
+    browserManualChecklistPath: "docs/UI_RELEASE_CERTIFICATION.md",
+    browserManualCompleted: false,
+    classification: checks.every((c) => c.pass) ? "PASS_AUTOMATED_SHAPE_ONLY" : "FAIL_PRODUCT",
+  };
 }
 
 // ── Inventory walker ────────────────────────────────────────────────────────
@@ -129,14 +285,18 @@ async function runMockGauntlet({ inventory }) {
   process.env["CRUCIBULUM_TASKS_DIR"] = TASKS_DIR;
 
   // Mirror every conversational manifest into the temp tasks dir so the
-  // server can dispatch any of them. Repo-mode tasks need workspaces that
-  // we don't reproduce here; we skip them by design.
+  // server can dispatch any of them. When --repo-smoke is enabled, also copy
+  // the representative repo fixtures so the real repo-mode runner, workspace
+  // isolation, diff collector, judge, bundle store, and hydration path run.
   for (const fam of Object.keys(inventory.families)) {
     for (const t of inventory.families[fam].tasks) {
-      if (t.mode !== "conversational") continue;
+      const repoSmokeTask = flags.repoSmoke && REPO_SMOKE_TASKS.some((r) => r.task === t.id);
+      if (t.mode !== "conversational" && !repoSmokeTask) continue;
       const dst = join(TASKS_DIR, fam, t.id);
       mkdirSync(dst, { recursive: true });
       copyFileSync(join(REPO_ROOT, "tasks", fam, t.id, "manifest.json"), join(dst, "manifest.json"));
+      const srcRepo = join(REPO_ROOT, "tasks", fam, t.id, "repo");
+      if (repoSmokeTask && existsSync(srcRepo)) cpSync(srcRepo, join(dst, "repo"), { recursive: true });
     }
   }
 
@@ -202,6 +362,53 @@ async function runMockGauntlet({ inventory }) {
         return { ok: true };
       },
       async teardown() {},
+      async execute(input) {
+        const start = Date.now();
+        const timeline = [{ t: 0, type: "task_start", detail: "deterministic repo smoke start" }];
+        const filesWritten = [];
+        const write = (rel, content) => {
+          writeFileSync(join(input.workspace_path, rel), content, "utf-8");
+          filesWritten.push(rel);
+          timeline.push({ t: Date.now() - start, type: "file_write", path: rel, detail: "deterministic fixture fix" });
+        };
+        const entrypoints = input.task.task.entrypoints.join(" ");
+        if (entrypoints.includes("src/users/register.js")) {
+          const rel = "src/users/register.js";
+          const src = readFileSync(join(input.workspace_path, rel), "utf-8");
+          write(rel, src.replace("const validation = validate(email);", "const validation = await validate(email);"));
+        } else if (entrypoints.includes("src/api/validate.js")) {
+          const rel = "src/api/validate.js";
+          const src = readFileSync(join(input.workspace_path, rel), "utf-8");
+          write(rel, src.replace("return { status: 200, body: { valid: false, errors } };", "return { status: 422, body: { valid: false, errors } };"));
+        } else if (entrypoints.includes("tool-trial/greet.sh")) {
+          write("tool-trial/greet.sh", "#!/bin/bash\necho \"hello\"\n");
+        } else {
+          timeline.push({ t: Date.now() - start, type: "error", detail: `no deterministic repo fix mapped for ${entrypoints}` });
+          return {
+            exit_reason: "error",
+            timeline,
+            duration_ms: Date.now() - start,
+            steps_used: timeline.length,
+            files_read: [],
+            files_written: filesWritten,
+            tokens_in: 0,
+            tokens_out: 0,
+            adapter_metadata: { adapter_id: "gauntlet", adapter_version: "1", system_version: "gauntlet-v1", model: "gauntlet-model", provider: "gauntlet" },
+          };
+        }
+        timeline.push({ t: Date.now() - start, type: "task_complete", detail: "deterministic repo smoke complete" });
+        return {
+          exit_reason: "complete",
+          timeline,
+          duration_ms: Date.now() - start,
+          steps_used: timeline.length,
+          files_read: input.task.task.entrypoints,
+          files_written: filesWritten,
+          tokens_in: 0,
+          tokens_out: 0,
+          adapter_metadata: { adapter_id: "gauntlet", adapter_version: "1", system_version: "gauntlet-v1", model: "gauntlet-model", provider: "gauntlet" },
+        };
+      },
       async chat(messages) {
         chatCallCount++;
         if (intent === "chat-mid-run-failure" && chatCallCount > 1) {
@@ -220,7 +427,6 @@ async function runMockGauntlet({ inventory }) {
           tokens_in: 4, tokens_out: 12, duration_ms: 1, cost_usd: 0,
         };
       },
-      async execute() { throw new Error("repo-mode not implemented for the gauntlet adapter"); },
     }),
     provider_options: [{ id: "gauntlet", name: "Gauntlet", kind: "local", configurable: false }],
     listModels: async () => [{ id: "gauntlet-model", name: "gauntlet-model", provider: "gauntlet", kind: "local", available: true, reason: null }],
@@ -404,6 +610,46 @@ async function runMockGauntlet({ inventory }) {
     }
   }
 
+  const repoSmokeResults = [];
+  if (flags.repoSmoke) {
+    reset("success");
+    for (const smoke of REPO_SMOKE_TASKS) {
+      const probePath = join(REPO_ROOT, smoke.fixtureProbe);
+      const before = existsSync(probePath) ? readFileSync(probePath, "utf-8") : null;
+      const p = await postRun(smoke.task);
+      if (p.status !== 202) {
+        repoSmokeResults.push({ ...smoke, classification: "FAIL_CONFIG", reason: `POST returned ${p.status}: ${JSON.stringify(p.body).slice(0, 160)}` });
+        continue;
+      }
+      const runId = p.body.run_id;
+      const live = await drainLive(runId, 30_000);
+      const terminal = live.frames.find((f) => f.event === "complete" || f.event === "error");
+      const bundle = await getBundle(runId);
+      const after = existsSync(probePath) ? readFileSync(probePath, "utf-8") : null;
+      const failures = [];
+      if (!terminal) failures.push("no terminal SSE frame within timeout");
+      if (terminal?.event === "error") failures.push(`unexpected error frame: ${terminal.data?.error ?? "unknown"}`);
+      if (!bundle.found) failures.push("bundle not hydratable by run_id");
+      if (bundle.found && bundle.body?.bundle?.run_id !== runId) failures.push(`bundle.run_id (${bundle.body?.bundle?.run_id}) does not match POST run_id (${runId})`);
+      if (before !== after) failures.push("source fixture changed outside isolated workspace");
+      repoSmokeResults.push({
+        ...smoke,
+        runId,
+        bundleId: bundle.body?.bundle?.bundle_id ?? null,
+        terminal: terminal?.event ?? "missing",
+        classification: failures.length ? "FAIL_PRODUCT" : "PASS",
+        reason: failures.join("; ") || "repo-mode smoke produced hydratable evidence and preserved source fixture",
+        observed: {
+          bundleHydrated: bundle.found,
+          bundleRunId: bundle.body?.bundle?.run_id ?? null,
+          sourceFixtureUnchanged: before === after,
+          scorePass: bundle.body?.bundle?.score?.pass ?? null,
+          taskFamily: bundle.body?.bundle?.task?.family ?? null,
+        },
+      });
+    }
+  }
+
   // ── activeRuns GC fallback ──────────────────────────────────────────────
   // After a real failure, evicting the activeRuns entry must NOT lose the
   // failure receipt — /api/runs/<runId> must still hydrate.
@@ -480,7 +726,8 @@ async function runMockGauntlet({ inventory }) {
   __clearTestAdapters();
   await new Promise((r) => server.close(r));
 
-  return { scenarios: results, dispatch: dispatchResults, gc: gcResults, identity: identityResults, retention: retentionResults, classificationAudit, runsDir: RUNS_DIR };
+  const uiCertification = flags.uiShape ? buildUiCertification() : null;
+  return { scenarios: results, dispatch: dispatchResults, repoSmoke: repoSmokeResults, gc: gcResults, identity: identityResults, retention: retentionResults, classificationAudit, uiCertification, runsDir: RUNS_DIR };
 }
 
 // ── Real-provider gauntlet ──────────────────────────────────────────────────
@@ -530,7 +777,7 @@ const ADAPTER_KEY_BY_PROVIDER = {
   ollama: null, // local, no key
 };
 
-async function runRealProviderGauntlet({ inventory, provider, model, family, maxCostUsd }) {
+async function runRealProviderGauntlet({ inventory, provider, model, family, maxCostUsd, broadSmoke }) {
   loadEnvFile();
 
   // Sanity: required env var, if any.
@@ -614,11 +861,17 @@ async function runRealProviderGauntlet({ inventory, provider, model, family, max
   const seenRunIds = new Set();
   let totalCostUsd = 0; let totalTokensIn = 0; let totalTokensOut = 0;
   const results = [];
+  const plan = broadSmoke ? BROAD_REAL_PROVIDER_TEST_PLAN : REAL_PROVIDER_TEST_PLAN.map((item) => ({ ...item, classId: item.task.startsWith("role-stress") ? "role-stress/prompt-sensitivity" : "conversational/personality" }));
+  let consecutiveProviderFailures = 0;
 
-  for (const item of REAL_PROVIDER_TEST_PLAN) {
+  for (const item of plan) {
     // Cost cap — checked BEFORE each test so we never overshoot.
     if (maxCostUsd > 0 && totalCostUsd >= maxCostUsd) {
-      results.push({ task: item.task, kind: item.kind, classification: "SKIPPED_EXPLAINED", reason: `Cost cap reached (${totalCostUsd.toFixed(4)} ≥ ${maxCostUsd}) before this test could run` });
+      results.push({ classId: item.classId, task: item.task, kind: item.kind, classification: "SKIPPED_EXPLAINED", reason: `Cost cap reached (${totalCostUsd.toFixed(4)} ≥ ${maxCostUsd}) before this test could run` });
+      continue;
+    }
+    if (consecutiveProviderFailures >= 2) {
+      results.push({ classId: item.classId, task: item.task, kind: item.kind, classification: "SKIPPED_EXPLAINED", reason: "Stopped early after repeated provider failures; avoiding noisy spend/retry loop" });
       continue;
     }
     const post = await postRun(item.task);
@@ -628,12 +881,14 @@ async function runRealProviderGauntlet({ inventory, provider, model, family, max
       // 422 adapter_cannot_run_task is a config issue; 400 adapter unavailable
       // is provider/auth — we report both honestly.
       const cls = post.status === 422 ? "FAIL_CONFIG" : (post.status === 400 ? "FAIL_PROVIDER" : "FAIL_PRODUCT");
-      results.push({ task: item.task, kind: item.kind, classification: cls, reason: `${post.status}: ${String(reason).slice(0, 200)}`, observed: { httpStatus: post.status } });
+      if (cls === "FAIL_PROVIDER") consecutiveProviderFailures++;
+      else consecutiveProviderFailures = 0;
+      results.push({ classId: item.classId, task: item.task, kind: item.kind, classification: cls, reason: `${post.status}: ${String(reason).slice(0, 200)}`, observed: { httpStatus: post.status } });
       continue;
     }
     const runId = post.body.run_id;
     if (seenRunIds.has(runId)) {
-      results.push({ task: item.task, kind: item.kind, classification: "FAIL_PRODUCT", reason: `run_id collision: ${runId} already seen this batch`, runId });
+      results.push({ classId: item.classId, task: item.task, kind: item.kind, classification: "FAIL_PRODUCT", reason: `run_id collision: ${runId} already seen this batch`, runId });
       continue;
     }
     seenRunIds.add(runId);
@@ -687,7 +942,7 @@ async function runRealProviderGauntlet({ inventory, provider, model, family, max
     }
 
     results.push({
-      task: item.task, kind: item.kind, runId, bundleId,
+      classId: item.classId, task: item.task, kind: item.kind, runId, bundleId,
       classification,
       reason: notes.join("; ") || "all contracts satisfied",
       terminal: terminal?.event ?? "missing",
@@ -697,6 +952,7 @@ async function runRealProviderGauntlet({ inventory, provider, model, family, max
         bundleHydrated: bundle.found,
       },
     });
+    consecutiveProviderFailures = classification === "FAIL_PROVIDER" ? consecutiveProviderFailures + 1 : 0;
 
     // Stop early if we've blown the cap (defensive — we re-check before
     // the next test, but a single multi-question run could push us over).
@@ -708,14 +964,20 @@ async function runRealProviderGauntlet({ inventory, provider, model, family, max
   await new Promise((r) => server.close(r));
 
   return {
-    mode: "real-provider", provider, model, family, maxCostUsd,
+    mode: "real-provider", profile: broadSmoke ? "broad-smoke" : "compact", provider, model, family, maxCostUsd,
     results,
+    familyClasses: FAMILY_CLASSES,
     totals: { tokensIn: totalTokensIn, tokensOut: totalTokensOut, costUsd: totalCostUsd, distinctRunIds: seenRunIds.size, distinctBundleIds: seenBundleIds.size },
     runsDir: RUNS_DIR,
   };
 }
 
-function renderRealProviderMarkdown(real) {
+function renderMetadataMarkdown(metadata) {
+  if (!metadata) return "";
+  return `\n## Report metadata\n\n- Commit: \`${metadata.git.commit}\`\n- Branch: \`${metadata.git.branch}\`\n- Dirty tree: ${metadata.git.dirtyTree ? "true" : "false"}\n- Source dirty tree: ${metadata.git.sourceDirtyTree ? "true" : "false"}\n- RELEASE_CERTIFICATION_INVALID_FOR_TAGGING: ${metadata.RELEASE_CERTIFICATION_INVALID_FOR_TAGGING ? "true" : "false"}\n- Command: \`${metadata.command}\`\n- Node: \`${metadata.nodeVersion}\`\n- Package: \`${metadata.packageVersion ?? "unknown"}\`\n- Cost: $${Number(metadata.actualCostUsd ?? 0).toFixed(4)} / cap $${Number(metadata.maxCostUsd ?? 0).toFixed(4)}\n`;
+}
+
+function renderRealProviderMarkdown(real, metadata = null) {
   if (real.blocker) {
     return `# Crucible Real-Provider Gauntlet
 _Generated: ${new Date().toISOString()}_
@@ -730,23 +992,24 @@ _Generated: ${new Date().toISOString()}_
   const head = `# Crucible Real-Provider Gauntlet
 _Generated: ${new Date().toISOString()}_
 
-**Provider:** \`${real.provider}\` · **Model:** \`${real.model}\`
-**Real-provider release-certified:** ${productFails ? "**YES** ✅" : "**NO** ❌"}
+**Provider:** \`${real.provider}\` · **Model:** \`${real.model}\` · **Profile:** \`${real.profile ?? "compact"}\`
+**Real-provider ${real.profile === "broad-smoke" ? "broad-smoke" : "compact"} certified:** ${productFails ? "**YES** ✅" : "**NO** ❌"}
 **Counts:** ${Object.entries(tally).map(([k, n]) => `${k}: ${n}`).join(" · ")}
 
 **Totals:** ${real.totals.distinctRunIds} distinct run_ids · ${real.totals.distinctBundleIds} distinct bundle_ids · ${real.totals.tokensIn} tokens in · ${real.totals.tokensOut} tokens out · $${real.totals.costUsd.toFixed(4)} (cap: $${real.maxCostUsd})
 `;
   const rows = real.results.map((r) => {
     const mark = r.classification === "PASS" ? "✅" : r.classification === "FAIL_PRODUCT" ? "❌" : r.classification === "FAIL_PROVIDER" ? "🟡" : r.classification === "SKIPPED_EXPLAINED" ? "⏭" : "⚠️";
-    return `| \`${r.task}\` (${r.kind}) | ${mark} ${r.classification} | ${r.terminal ?? "—"} | \`${r.runId ?? "—"}\` | ${r.reason.slice(0, 160)} |`;
+    return `| \`${r.classId ?? "—"}\` | \`${r.task}\` (${r.kind}) | ${mark} ${r.classification} | ${r.terminal ?? "—"} | \`${r.runId ?? "—"}\` | ${r.reason.slice(0, 160)} |`;
   }).join("\n");
   return `${head}
 
 ## Per-test results
 
-| Task | Result | Terminal | run_id | Notes |
-|---|---|---|---|---|
+| Class | Task | Result | Terminal | run_id | Notes |
+|---|---|---|---|---|---|
 ${rows}
+${renderMetadataMarkdown(metadata)}
 `;
 }
 
@@ -757,9 +1020,11 @@ function tally(report) {
   const bucket = (item) => { tally[item.classification] = (tally[item.classification] ?? 0) + 1; };
   for (const it of report.scenarios) bucket(it);
   for (const it of report.dispatch) bucket(it);
+  for (const it of report.repoSmoke ?? []) bucket(it);
   for (const it of report.gc) bucket(it);
   for (const it of report.identity) bucket(it);
   for (const it of report.retention) bucket(it);
+  if (report.uiCertification?.classification === "FAIL_PRODUCT") bucket(report.uiCertification);
   return tally;
 }
 
@@ -776,7 +1041,7 @@ function decide(report) {
 
 // ── Markdown report renderer ────────────────────────────────────────────────
 
-function renderMarkdown(report, decision, inventory) {
+function renderMarkdown(report, decision, inventory, metadata = null) {
   const ts = new Date().toISOString();
   const head = `# Crucible Release Gauntlet
 _Generated: ${ts}_
@@ -808,6 +1073,12 @@ ${decision.ready ? "" : `\n**Blockers:**\n${decision.blockers.map((b) => `- ${b}
       : report.dispatch.filter((d) => d.classification !== "PASS").map((d) => `- ${renderRow(d)} **${d.family}/${d.task}** — ${d.reason}`).join("\n")
   }\n\nPass count: ${report.dispatch.filter((d) => d.classification === "PASS").length}/${report.dispatch.length}\n`;
 
+  const repo = !report.repoSmoke?.length ? "" : `\n## Repo-mode smoke\n\n${report.repoSmoke.length} repo tasks dispatched. Failures:\n\n${
+    report.repoSmoke.filter((d) => d.classification !== "PASS").length === 0
+      ? "_(none)_"
+      : report.repoSmoke.filter((d) => d.classification !== "PASS").map((d) => `- ${renderRow(d)} **${d.family}/${d.task}** — ${d.reason}`).join("\n")
+  }\n\nPass count: ${report.repoSmoke.filter((d) => d.classification === "PASS").length}/${report.repoSmoke.length}\n`;
+
   const gc = `\n## activeRuns GC fallback\n\n${report.gc.map((p) => `- ${renderRow(p)} \`${p.probe}\` — ${JSON.stringify(p.observed ?? p.reason)}`).join("\n")}\n`;
   const ident = `\n## Identity (run_id uniqueness)\n\n${report.identity.map((p) => `- ${renderRow(p)} \`${p.probe}\` — ${JSON.stringify(p.observed)}`).join("\n")}\n`;
   const retn = `\n## Retention\n\n${report.retention.map((p) => `- ${renderRow(p)} \`${p.probe}\` — ${JSON.stringify(p.observed ?? p.reason)}`).join("\n")}\n`;
@@ -818,7 +1089,9 @@ ${decision.ready ? "" : `\n**Blockers:**\n${decision.blockers.map((b) => `- ${b}
 - Empty reason on error frames: ${report.classificationAudit.emptyReasonOnError}
 `;
 
-  return head + inv + scenSec + disp + gc + ident + retn + audit;
+  const ui = !report.uiCertification ? "" : `\n## UI certification\n\n- Automated shape checks: ${report.uiCertification.automatedPassed ? "PASS" : "FAIL"}\n- Browser manual checklist: ${report.uiCertification.browserManualCompleted ? "completed" : `not completed (${report.uiCertification.browserManualChecklistPath})`}\n`;
+
+  return head + inv + scenSec + disp + repo + gc + ident + retn + audit + ui + renderMetadataMarkdown(metadata);
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
@@ -847,7 +1120,7 @@ ${decision.ready ? "" : `\n**Blockers:**\n${decision.blockers.map((b) => `- ${b}
       process.exit(2);
     }
     console.log(`Running real-provider gauntlet — provider=${opts.provider} model=${opts.model} cap=$${opts.maxCostUsd}…`);
-    const real = await runRealProviderGauntlet({ inventory, provider: opts.provider, model: opts.model, family: opts.family, maxCostUsd: opts.maxCostUsd });
+    const real = await runRealProviderGauntlet({ inventory, provider: opts.provider, model: opts.model, family: opts.family, maxCostUsd: opts.maxCostUsd, broadSmoke: flags.broadSmoke });
     const tally = real.results.reduce((acc, r) => { acc[r.classification] = (acc[r.classification] ?? 0) + 1; return acc; }, {});
     const productFails = (tally.FAIL_PRODUCT ?? 0);
     if (real.blocker) {
@@ -866,10 +1139,18 @@ ${decision.ready ? "" : `\n**Blockers:**\n${decision.blockers.map((b) => `- ${b}
       const mdPath = join(realDir, `${tsSlug}-${slug}.md`);
       const latestJson = join(opts.reportDir, "latest-real-provider.json");
       const latestMd = join(opts.reportDir, "latest-real-provider.md");
-      const payload = { generatedAt: new Date().toISOString(), real, mode: "real-provider" };
+      const metadata = buildMetadata({ mode: "real-provider", profile: real.profile ?? (flags.broadSmoke ? "broad-smoke" : "compact"), maxCostUsd: opts.maxCostUsd, actualCostUsd: real.totals?.costUsd ?? null });
+      const payload = {
+        generatedAt: metadata.timestamp,
+        metadata,
+        adapterExposureAudit: buildAdapterExposureAudit(inventory),
+        modelPickerAudit: buildModelPickerAudit(),
+        real,
+        mode: "real-provider",
+      };
       writeFileSync(jsonPath, JSON.stringify(payload, null, 2));
       writeFileSync(latestJson, JSON.stringify(payload, null, 2));
-      const md = renderRealProviderMarkdown(real);
+      const md = renderRealProviderMarkdown(real, metadata);
       writeFileSync(mdPath, md);
       writeFileSync(latestMd, md);
       console.log(`Wrote: ${jsonPath}`);
@@ -896,10 +1177,21 @@ ${decision.ready ? "" : `\n**Blockers:**\n${decision.blockers.map((b) => `- ${b}
     const mdPath = join(opts.reportDir, `${tsSlug}.md`);
     const latestJson = join(opts.reportDir, "latest.json");
     const latestMd = join(opts.reportDir, "latest.md");
-    const payload = { generatedAt: new Date().toISOString(), inventory, report, decision, mode: "mock-only" };
+    const metadata = buildMetadata({ mode: "mock-only", profile: flags.repoSmoke ? "repo-smoke" : "platform", maxCostUsd: 0, actualCostUsd: 0 });
+    const payload = {
+      generatedAt: metadata.timestamp,
+      metadata,
+      inventory,
+      familyClasses: FAMILY_CLASSES,
+      adapterExposureAudit: buildAdapterExposureAudit(inventory),
+      modelPickerAudit: buildModelPickerAudit(),
+      report,
+      decision,
+      mode: "mock-only",
+    };
     writeFileSync(jsonPath, JSON.stringify(payload, null, 2));
     writeFileSync(latestJson, JSON.stringify(payload, null, 2));
-    const md = renderMarkdown(report, decision, inventory);
+    const md = renderMarkdown(report, decision, inventory, metadata);
     writeFileSync(mdPath, md);
     writeFileSync(latestMd, md);
     console.log(`Wrote: ${jsonPath}`);
