@@ -1,0 +1,97 @@
+{
+  "schema": "crucible.model-certification.v1",
+  "schemaNotes": "Provider+modelId is the certification key. Tier is one of: RELEASE_CERTIFIED, PROVIDER_TESTED, EXPERIMENTAL, BLOCKED_CONFIG, UNSUPPORTED_CAPABILITY. Updated by scripts/model-certify.mjs; never edited by hand.",
+  "generatedAt": "2026-05-25T20-36-28Z",
+  "tiers": {
+    "RELEASE_CERTIFIED": "Passed the full release-certified profile (personality + truthfulness + safety + op-trust + tool/repo if supported + repeat-uniqueness + hydration + refresh). Approved for release-scoped claims.",
+    "PROVIDER_TESTED": "Passed the minimum provider-tested profile (personality + truthfulness/benchmark + safety/op-trust + hydration + refresh). Confidence-of-use OK but not approved for release claims.",
+    "EXPERIMENTAL": "Visible in the picker but unproven or recently failed at least one tier check. Operator may explore; warnings remain harsh.",
+    "BLOCKED_CONFIG": "Provider/model cannot be tested due to missing credentials, missing local pull, or model-access denial.",
+    "UNSUPPORTED_CAPABILITY": "Model does not support the requested test type (e.g. text-only model on a tool/vision task)."
+  },
+  "models": [
+    {
+      "provider": "openrouter",
+      "adapter": "openrouter",
+      "modelId": "deepseek/deepseek-v4-pro",
+      "tier": "PROVIDER_TESTED",
+      "evidence": "reports/model-certification/openrouter/deepseek-deepseek-v4-pro/2026-05-25T20-36-28Z.json",
+      "certifiedAt": "2026-05-25T20-36-28Z",
+      "lastChecked": "2026-05-25T20-36-28Z",
+      "campaign": "2026-05-25",
+      "profile": "release-certified",
+      "totalCostUsd": 0.021915
+    },
+    {
+      "provider": "openrouter",
+      "adapter": "openrouter",
+      "modelId": "xiaomi/mimo-v2.5-pro",
+      "tier": "RELEASE_CERTIFIED",
+      "evidence": "reports/model-certification/openrouter/xiaomi-mimo-v2.5-pro/2026-05-25T20-23-37Z.json",
+      "certifiedAt": "2026-05-25T20-23-37Z",
+      "lastChecked": "2026-05-25T20-23-37Z",
+      "campaign": "2026-05-25",
+      "profile": "release-certified",
+      "totalCostUsd": 0.022022
+    },
+    {
+      "provider": "ollama",
+      "adapter": "ollama",
+      "modelId": "qwen3.5:9b",
+      "tier": "RELEASE_CERTIFIED",
+      "label": "Ollama qwen3.5:9b",
+      "evidence": "reports/release-gauntlet/real-provider/2026-05-24T00-33-18-590Z-ollama-qwen3.5-9b.json",
+      "certifiedAt": "2026-05-24T00-33-18Z",
+      "lastChecked": "2026-05-24T00-33-18Z",
+      "campaign": "pre-2026-05-25"
+    },
+    {
+      "provider": "openrouter",
+      "adapter": "openrouter",
+      "modelId": "xiaomi/mimo-v2-flash",
+      "tier": "PROVIDER_TESTED",
+      "evidence": "reports/model-certification/openrouter/xiaomi-mimo-v2-flash/2026-05-25T20-07-23Z.json",
+      "certifiedAt": "2026-05-25T20-07-23Z",
+      "lastChecked": "2026-05-25T20-07-23Z",
+      "campaign": "2026-05-25",
+      "profile": "provider-tested",
+      "totalCostUsd": 0.00046499999999999997
+    },
+    {
+      "provider": "openrouter",
+      "adapter": "openrouter",
+      "modelId": "xiaomi/mimo-v2.5",
+      "tier": "PROVIDER_TESTED",
+      "evidence": "reports/model-certification/openrouter/xiaomi-mimo-v2.5/2026-05-25T20-09-27Z.json",
+      "certifiedAt": "2026-05-25T20-09-27Z",
+      "lastChecked": "2026-05-25T20-09-27Z",
+      "campaign": "2026-05-25",
+      "profile": "provider-tested",
+      "totalCostUsd": 0.005168
+    },
+    {
+      "provider": "openrouter",
+      "adapter": "openrouter",
+      "modelId": "xiaomi/mimo-v2-omni",
+      "tier": "PROVIDER_TESTED",
+      "evidence": "reports/model-certification/openrouter/xiaomi-mimo-v2-omni/2026-05-25T20-10-57Z.json",
+      "certifiedAt": "2026-05-25T20-10-57Z",
+      "lastChecked": "2026-05-25T20-10-57Z",
+      "campaign": "2026-05-25",
+      "profile": "provider-tested",
+      "totalCostUsd": 0.005926000000000001
+    },
+    {
+      "provider": "openrouter",
+      "adapter": "openrouter",
+      "modelId": "deepseek/deepseek-v4-flash",
+      "tier": "PROVIDER_TESTED",
+      "evidence": "reports/model-certification/openrouter/deepseek-deepseek-v4-flash/2026-05-25T20-32-42Z.json",
+      "certifiedAt": "2026-05-25T20-32-42Z",
+      "lastChecked": "2026-05-25T20-32-42Z",
+      "campaign": "2026-05-25",
+      "profile": "provider-tested",
+      "totalCostUsd": 0.0015149999999999999
+    }
+  ]
+}

@@ -52,11 +52,48 @@ const RELEASE_CERTIFICATION={
   uiCertified:false,
   repoModeScope:'representative repo-mode smoke only',
   targets:[
-    {providerId:'openrouter',adapterId:'openrouter',modelId:'deepseek/deepseek-v4-pro',label:'OpenRouter DeepSeek V4 Pro',certificationLabel:'Certified release target',reportPath:'reports/release-gauntlet/real-provider/2026-05-24T00-31-06-889Z-openrouter-deepseek-deepseek-v4-pro.json'},
-    {providerId:'openrouter',adapterId:'openrouter',modelId:'xiaomi/mimo-v2.5-pro',label:'OpenRouter Mimo v2.5 Pro',certificationLabel:'Certified release target',reportPath:'reports/release-gauntlet/real-provider/2026-05-24T00-32-14-849Z-openrouter-xiaomi-mimo-v2.5-pro.json'},
+    {providerId:'openrouter',adapterId:'openrouter',modelId:'xiaomi/mimo-v2.5-pro',label:'OpenRouter Mimo v2.5 Pro',certificationLabel:'Certified release target',reportPath:'reports/model-certification/openrouter/xiaomi-mimo-v2.5-pro/2026-05-25T20-23-37Z.json'},
     {providerId:'ollama',adapterId:'ollama',modelId:'qwen3.5:9b',label:'Ollama qwen3.5:9b',certificationLabel:'Certified local release target',reportPath:'reports/release-gauntlet/real-provider/2026-05-24T00-33-18-590Z-ollama-qwen3.5-9b.json'}
   ]
 };
+
+// MODEL_CERTIFICATION — full tier map for every model that has been
+// certified at any tier. Mirrors reports/model-certification/
+// certified-models.json. Updated by scripts/model-certify.mjs after
+// each campaign run. Tiers (worst → best):
+//   EXPERIMENTAL · BLOCKED_CONFIG · UNSUPPORTED_CAPABILITY · PROVIDER_TESTED · RELEASE_CERTIFIED
+const MODEL_CERTIFICATION={
+  generatedAt:'2026-05-25T20-36-28Z',
+  tiers:{
+    RELEASE_CERTIFIED:{label:'Certified release target',short:'CERTIFIED',cls:'teal',tone:'pass',warning:''},
+    PROVIDER_TESTED:{label:'Provider-tested',short:'TESTED',cls:'cyan',tone:'cyan',warning:'Provider-tested — confidence-of-use OK, but not approved for release-scope claims.'},
+    EXPERIMENTAL:{label:'Uncertified visible / experimental',short:'EXPERIMENTAL',cls:'amber',tone:'warn',warning:'Uncertified target — results are useful for exploration but outside certified release scope.'},
+    BLOCKED_CONFIG:{label:'Blocked config',short:'BLOCKED',cls:'red',tone:'fail',warning:'Provider/credentials missing or model not pulled. Fix config before running.'},
+    UNSUPPORTED_CAPABILITY:{label:'Unsupported capability',short:'UNSUPPORTED',cls:'dim',tone:'',warning:'Model does not support this test family. Pick a different task or model.'},
+    UNKNOWN:{label:'Uncertified visible',short:'UNCERTIFIED',cls:'amber',tone:'warn',warning:'Uncertified target — results are useful for exploration but outside certified release scope.'}
+  },
+  models:[
+    // Pre-2026-05-25 release certifications still valid (qwen3.5:9b local).
+    {providerId:'ollama',modelId:'qwen3.5:9b',tier:'RELEASE_CERTIFIED',evidence:'reports/release-gauntlet/real-provider/2026-05-24T00-33-18-590Z-ollama-qwen3.5-9b.json',campaign:'pre-2026-05-25'},
+    // 2026-05-25 OpenRouter certification campaign — see reports/model-certification/.
+    {providerId:'openrouter',modelId:'xiaomi/mimo-v2.5-pro',tier:'RELEASE_CERTIFIED',evidence:'reports/model-certification/openrouter/xiaomi-mimo-v2.5-pro/2026-05-25T20-23-37Z.json',campaign:'2026-05-25'},
+    {providerId:'openrouter',modelId:'deepseek/deepseek-v4-pro',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/deepseek-deepseek-v4-pro/2026-05-25T20-36-28Z.json',campaign:'2026-05-25',note:'Released cleanly 4/5 today; one transient FAIL_PROVIDER on personality. Was RELEASE_CERTIFIED on 2026-05-24; can re-promote when provider stabilizes.'},
+    {providerId:'openrouter',modelId:'deepseek/deepseek-v4-flash',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/deepseek-deepseek-v4-flash/2026-05-25T20-32-42Z.json',campaign:'2026-05-25'},
+    {providerId:'openrouter',modelId:'xiaomi/mimo-v2.5',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/xiaomi-mimo-v2.5/2026-05-25T20-09-27Z.json',campaign:'2026-05-25'},
+    {providerId:'openrouter',modelId:'xiaomi/mimo-v2-flash',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/xiaomi-mimo-v2-flash/2026-05-25T20-07-23Z.json',campaign:'2026-05-25'},
+    {providerId:'openrouter',modelId:'xiaomi/mimo-v2-omni',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/xiaomi-mimo-v2-omni/2026-05-25T20-10-57Z.json',campaign:'2026-05-25'}
+  ]
+};
+
+function modelCertificationTier(providerId,modelId){
+  if(!providerId||!modelId)return'UNKNOWN';
+  const hit=(MODEL_CERTIFICATION.models||[]).find((m)=>m.providerId===providerId&&m.modelId===modelId);
+  return hit?hit.tier:'UNKNOWN';
+}
+function modelCertificationMeta(providerId,modelId){
+  const tier=modelCertificationTier(providerId,modelId);
+  return{tier,...((MODEL_CERTIFICATION.tiers||{})[tier]||MODEL_CERTIFICATION.tiers.UNKNOWN)};
+}
 
 const DEFAULT_MODEL_GROUPS=[
   {key:'ollama',label:'Local (Ollama)',providerId:'ollama',adapterId:'ollama',kind:'local',models:[
@@ -1808,6 +1845,15 @@ function releaseCertificationForModel(modelId,route){
   const adapterId=resolved.adapterId||resolved.adapter||providerId;
   const target=releaseTargetForRoute(providerId,adapterId,modelId);
   if(target)return{status:'certified',label:target.certificationLabel,css:normalizeId(providerId)==='ollama'?'teal':'cyan',target,providerId,adapterId,modelId};
+  // Promote-and-soften: models in MODEL_CERTIFICATION at PROVIDER_TESTED tier
+  // get a softer "Provider-tested" label so the picker doesn't lump them in
+  // with truly experimental models. Other MODEL_CERTIFICATION tiers fall
+  // through to their tier label.
+  const certTier=modelCertificationTier(providerId,modelId);
+  if(certTier==='PROVIDER_TESTED')return{status:'provider_tested',label:'Provider-tested',css:'cyan',target:null,providerId,adapterId,modelId};
+  if(certTier==='BLOCKED_CONFIG')return{status:'blocked_config',label:'Blocked config',css:'red',target:null,providerId,adapterId,modelId};
+  if(certTier==='UNSUPPORTED_CAPABILITY')return{status:'unsupported_capability',label:'Unsupported capability',css:'dim',target:null,providerId,adapterId,modelId};
+  if(certTier==='EXPERIMENTAL')return{status:'experimental',label:'Uncertified visible / experimental',css:'dim',target:null,providerId,adapterId,modelId};
   const certifiedProviders=releaseCertifiedProviderIds();
   if(certifiedProviders.has(normalizeId(providerId)))return{status:'provider_certified_model_uncertified',label:'Provider certified / model uncertified',css:'dim',target:null,providerId,adapterId,modelId};
   return{status:'uncertified',label:'Uncertified / not release target',css:'dim',target:null,providerId,adapterId,modelId};
@@ -1835,17 +1881,34 @@ function selectedReleaseCertificationSummary(modelIds){
 function renderReleaseCertificationBanner(tabKey){
   const targets=RELEASE_CERTIFICATION.targets.map((target)=>target.label).join(', ');
   const tab=state.tabData[tabKey]||defaultTabState();
-  const summary=selectedReleaseCertificationSummary(tab.selectedModels||[]);
-  const selectedNote=summary.items.length
-    ? `${summary.certified.length} certified target${summary.certified.length===1?'':'s'} selected · ${summary.uncertified.length} uncertified/not-target selected.`
+  const selectedIds=tab.selectedModels||[];
+  // Bucket selected models by MODEL_CERTIFICATION tier so the operator
+  // sees provider-tested as a soft, useful state — not the same harsh
+  // "uncertified target" warning as Experimental models.
+  const buckets={RELEASE_CERTIFIED:[],PROVIDER_TESTED:[],EXPERIMENTAL:[],BLOCKED_CONFIG:[],UNSUPPORTED_CAPABILITY:[],UNKNOWN:[]};
+  for(const id of selectedIds){
+    const [providerId,...rest]=String(id).split(':');
+    const modelId=rest.join(':');
+    const tier=modelCertificationTier(providerId,modelId);
+    (buckets[tier]||buckets.UNKNOWN).push(modelId||id);
+  }
+  const certifiedCount=buckets.RELEASE_CERTIFIED.length;
+  const providerTestedCount=buckets.PROVIDER_TESTED.length;
+  const experimentalCount=buckets.EXPERIMENTAL.length+buckets.UNKNOWN.length;
+  const selectedNote=selectedIds.length
+    ? `${certifiedCount} release-certified · ${providerTestedCount} provider-tested · ${experimentalCount} experimental selected.`
     : 'No models selected.';
-  const uncertWarn=summary.uncertified.length
-    ? `<div class="inline-warn">Uncertified target — results are useful for exploration but are outside the certified release scope: ${esc(summary.uncertified.map((item)=>item.id).join(', '))}.</div>`
+  const providerTestedNote=providerTestedCount
+    ? `<div class="inline-warn" style="border-color:rgba(34,211,238,.35);background:rgba(34,211,238,.06);color:var(--cyan,#22d3ee)">Provider-tested — confidence-of-use OK, but not approved for release-scope claims: ${esc(buckets.PROVIDER_TESTED.join(', '))}.</div>`
+    : '';
+  const uncertWarn=experimentalCount
+    ? `<div class="inline-warn">Uncertified target — results are useful for exploration but are outside the certified release scope: ${esc([...buckets.EXPERIMENTAL,...buckets.UNKNOWN].join(', '))}.</div>`
     : '';
   return `<div class="release-cert-banner" role="note" aria-label="Release certification scope">
-    <div><span class="chip fail">FULL_RELEASE_READY · NO</span><span class="chip cyan hot">${esc(RELEASE_CERTIFICATION.status)} · NOT UI-CERTIFIED</span><span class="chip fail">UI_CERTIFIED_FOR_SCOPED_RELEASE · NO</span><span class="chip teal">CERTIFIED TARGETS · ${RELEASE_CERTIFICATION.targets.length}</span></div>
-    <div class="rcb-copy">Release certification is scoped. Certified targets: ${esc(targets)}. Other selectable providers/models are available for testing but are not release-certified.</div>
+    <div><span class="chip fail">FULL_RELEASE_READY · NO</span><span class="chip cyan hot">${esc(RELEASE_CERTIFICATION.status)} · NOT UI-CERTIFIED</span><span class="chip fail">UI_CERTIFIED_FOR_SCOPED_RELEASE · NO</span><span class="chip teal">CERTIFIED TARGETS · ${RELEASE_CERTIFICATION.targets.length}</span><span class="chip cyan">PROVIDER-TESTED · ${(MODEL_CERTIFICATION.models||[]).filter(m=>m.tier==='PROVIDER_TESTED').length}</span></div>
+    <div class="rcb-copy">Release certification is scoped. Certified targets: ${esc(targets)}. Provider-tested models are usable with confidence but outside release scope. Other selectable models are experimental.</div>
     <div class="rcb-meta">${esc(selectedNote)} Repo-mode: ${esc(RELEASE_CERTIFICATION.repoModeScope)}.</div>
+    ${providerTestedNote}
     ${uncertWarn}
   </div>`;
 }
@@ -4794,19 +4857,30 @@ function renderFailureBoardDeck(){
 
 function selectedProviderModelSummary(tabKey){
   // Pulls the first armed model from the current tab's selection so the
-  // Provider Bay shows the operator what they're about to run.
+  // Provider Bay shows the operator what they're about to run. The
+  // certification label uses MODEL_CERTIFICATION which has 5 tiers,
+  // not just CERTIFIED/UNCERTIFIED. Provider-tested models get a
+  // softer label than the harsh "Uncertified visible" copy.
   const tabState=state.tabData[tabKey]||defaultTabState();
   const modelIds=tabState.selectedModels||[];
-  if(!modelIds.length)return{label:'No model armed',providerLabel:'—',certLabel:'Idle',certCls:''};
+  if(!modelIds.length)return{label:'No model armed',providerLabel:'—',certLabel:'Idle',certCls:'',certTier:'UNKNOWN',certWarning:''};
   const first=String(modelIds[0]);
   const [providerId,...modelParts]=first.split(':');
   const modelId=modelParts.join(':');
   const groups=mergedModelGroups();
   const group=groups.find((g)=>g.providerId===providerId)||{label:providerId,providerId};
-  const cert=RELEASE_CERTIFICATION.targets.find((t)=>t.providerId===providerId&&t.modelId===modelId);
-  const certLabel=cert?'Certified target':'Uncertified visible';
-  const certCls=cert?'teal':'warn';
-  return{label:modelId||first,providerLabel:group.label||providerId,certLabel,certCls};
+  const meta=modelCertificationMeta(providerId,modelId);
+  // Keep the canonical certCls back-compat (teal for certified, warn otherwise)
+  // so the cmd-rail chip cls argument still works.
+  const certCls=meta.tier==='RELEASE_CERTIFIED'?'teal':meta.tier==='PROVIDER_TESTED'?'cyan':meta.tier==='BLOCKED_CONFIG'?'red':'warn';
+  return{
+    label:modelId||first,
+    providerLabel:group.label||providerId,
+    certLabel:meta.label,
+    certCls,
+    certTier:meta.tier,
+    certWarning:meta.warning
+  };
 }
 
 function providerHealthMini(){

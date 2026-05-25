@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-05-25T20:36:28.354Z",
+  "generatedAt": "2026-05-25T20:31:59.320Z",
   "metadata": {
-    "timestamp": "2026-05-25T20:36:28.354Z",
-    "command": "node scripts/release-gauntlet.mjs --real-provider --provider openrouter --model deepseek/deepseek-v4-pro --family role-stress --max-cost-usd 0.482277 --write-report",
+    "timestamp": "2026-05-25T20:31:59.320Z",
+    "command": "node scripts/release-gauntlet.mjs --real-provider --provider openrouter --model deepseek/deepseek-v4-flash --family truthfulness --max-cost-usd 0.499611 --write-report",
     "nodeVersion": "v22.22.2",
     "packageVersion": "0.1.0",
     "mode": "real-provider",
     "profile": "compact",
-    "maxCostUsd": 0.482277,
-    "actualCostUsd": 0.004192,
+    "maxCostUsd": 0.499611,
+    "actualCostUsd": 0.000468,
     "git": {
       "commit": "06d6d1ea0d9b974e04a352b11906019bcb2da46b",
       "branch": "master",
@@ -91,18 +91,6 @@
         "?? reports/release-gauntlet/real-provider/2026-05-25T20-30-36-000Z-openrouter-deepseek-deepseek-v4-pro.md",
         "?? reports/release-gauntlet/real-provider/2026-05-25T20-31-18-946Z-openrouter-deepseek-deepseek-v4-flash.json",
         "?? reports/release-gauntlet/real-provider/2026-05-25T20-31-18-946Z-openrouter-deepseek-deepseek-v4-flash.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-31-59-316Z-openrouter-deepseek-deepseek-v4-flash.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-31-59-316Z-openrouter-deepseek-deepseek-v4-flash.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-32-42-378Z-openrouter-deepseek-deepseek-v4-flash.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-32-42-378Z-openrouter-deepseek-deepseek-v4-flash.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-33-23-276Z-openrouter-deepseek-deepseek-v4-pro.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-33-23-276Z-openrouter-deepseek-deepseek-v4-pro.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-34-29-428Z-openrouter-deepseek-deepseek-v4-pro.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-34-29-428Z-openrouter-deepseek-deepseek-v4-pro.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-34-59-878Z-openrouter-deepseek-deepseek-v4-pro.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-34-59-878Z-openrouter-deepseek-deepseek-v4-pro.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-35-38-964Z-openrouter-deepseek-deepseek-v4-pro.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-35-38-964Z-openrouter-deepseek-deepseek-v4-pro.md",
         "?? scripts/model-certify.mjs"
       ],
       "reportArtifactEntries": [
@@ -177,19 +165,7 @@
         "?? reports/release-gauntlet/real-provider/2026-05-25T20-30-36-000Z-openrouter-deepseek-deepseek-v4-pro.json",
         "?? reports/release-gauntlet/real-provider/2026-05-25T20-30-36-000Z-openrouter-deepseek-deepseek-v4-pro.md",
         "?? reports/release-gauntlet/real-provider/2026-05-25T20-31-18-946Z-openrouter-deepseek-deepseek-v4-flash.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-31-18-946Z-openrouter-deepseek-deepseek-v4-flash.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-31-59-316Z-openrouter-deepseek-deepseek-v4-flash.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-31-59-316Z-openrouter-deepseek-deepseek-v4-flash.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-32-42-378Z-openrouter-deepseek-deepseek-v4-flash.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-32-42-378Z-openrouter-deepseek-deepseek-v4-flash.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-33-23-276Z-openrouter-deepseek-deepseek-v4-pro.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-33-23-276Z-openrouter-deepseek-deepseek-v4-pro.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-34-29-428Z-openrouter-deepseek-deepseek-v4-pro.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-34-29-428Z-openrouter-deepseek-deepseek-v4-pro.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-34-59-878Z-openrouter-deepseek-deepseek-v4-pro.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-34-59-878Z-openrouter-deepseek-deepseek-v4-pro.md",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-35-38-964Z-openrouter-deepseek-deepseek-v4-pro.json",
-        "?? reports/release-gauntlet/real-provider/2026-05-25T20-35-38-964Z-openrouter-deepseek-deepseek-v4-pro.md"
+        "?? reports/release-gauntlet/real-provider/2026-05-25T20-31-18-946Z-openrouter-deepseek-deepseek-v4-flash.md"
       ]
     },
     "environmentProfile": {
@@ -608,16 +584,16 @@
     "mode": "real-provider",
     "profile": "compact",
     "provider": "openrouter",
-    "model": "deepseek/deepseek-v4-pro",
-    "family": "role-stress",
-    "maxCostUsd": 0.482277,
+    "model": "deepseek/deepseek-v4-flash",
+    "family": "truthfulness",
+    "maxCostUsd": 0.499611,
     "results": [
       {
         "classId": "conversational/personality",
         "task": "personality-001",
         "kind": "easy",
-        "runId": "run_mplo1i1r_71da469e",
-        "bundleId": "run_2026-05-25_personality-001_deepseek-deepseek-v4-pro_accb4457",
+        "runId": "run_mplnvxf0_11e76a9e",
+        "bundleId": "run_2026-05-25_personality-001_deepseek-deepseek-v4-flash_edff0a09",
         "classification": "PASS",
         "reason": "all contracts satisfied",
         "terminal": "complete",
@@ -631,8 +607,8 @@
         "classId": "conversational/personality",
         "task": "personality-002",
         "kind": "longer",
-        "runId": "run_mplo1ocs_10cee3bf",
-        "bundleId": "run_2026-05-25_personality-002_deepseek-deepseek-v4-pro_8dd5c47e",
+        "runId": "run_mplnvz8t_06213ae4",
+        "bundleId": "run_2026-05-25_personality-002_deepseek-deepseek-v4-flash_0e8725f0",
         "classification": "PASS",
         "reason": "all contracts satisfied",
         "terminal": "complete",
@@ -646,8 +622,8 @@
         "classId": "role-stress/prompt-sensitivity",
         "task": "role-stress-001",
         "kind": "multi-question",
-        "runId": "run_mplo24ex_b01e7f8c",
-        "bundleId": "run_2026-05-25_role-stress-001_deepseek-deepseek-v4-pro_951a0ae6",
+        "runId": "run_mplnwfqw_5400d8da",
+        "bundleId": "run_2026-05-25_role-stress-001_deepseek-deepseek-v4-flash_95eb4d42",
         "classification": "PASS",
         "reason": "all contracts satisfied",
         "terminal": "complete",
@@ -661,8 +637,8 @@
         "classId": "conversational/personality",
         "task": "personality-001",
         "kind": "repeat-easy",
-        "runId": "run_mplo2hmm_e83ea17f",
-        "bundleId": "run_2026-05-25_personality-001_deepseek-deepseek-v4-pro_47340666",
+        "runId": "run_mplnwnig_2e4be5db",
+        "bundleId": "run_2026-05-25_personality-001_deepseek-deepseek-v4-flash_89462a5f",
         "classification": "PASS",
         "reason": "all contracts satisfied",
         "terminal": "complete",
@@ -757,13 +733,13 @@
       }
     ],
     "totals": {
-      "tokensIn": 3108,
-      "tokensOut": 346,
-      "costUsd": 0.004192,
+      "tokensIn": 3084,
+      "tokensOut": 389,
+      "costUsd": 0.000468,
       "distinctRunIds": 4,
       "distinctBundleIds": 4
     },
-    "runsDir": "/mnt/ai/tmp/claude/rgaunt-real-runs-EE3G40"
+    "runsDir": "/mnt/ai/tmp/claude/rgaunt-real-runs-ONa1pJ"
   },
   "mode": "real-provider"
 }

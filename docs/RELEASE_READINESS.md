@@ -12,11 +12,27 @@ The intended scoped release target set is limited to the platform/mock gate,
 representative repo-mode smoke, broad real-provider smoke, and browser/manual
 UI verification for these release-target models:
 
-| Provider | Adapter | Model | Certification scope |
+After the 2026-05-25 OpenRouter certification campaign, the registry
+splits into RELEASE_CERTIFIED (release-scope claims OK) and
+PROVIDER_TESTED (usable, but not a release target). See
+`docs/MODEL_CERTIFICATION.md` for tier definitions.
+
+### Release-certified targets
+
+| Provider | Adapter | Model | Certification scope | Last checked |
+| --- | --- | --- | --- | --- |
+| OpenRouter | `openrouter` | `xiaomi/mimo-v2.5-pro` | release-certified profile passed clean | 2026-05-25 |
+| Ollama | `ollama` | `qwen3.5:9b` | release-certified profile, broad smoke | 2026-05-24 |
+
+### Provider-tested (usable, not a release target)
+
+| Provider | Adapter | Model | Notes |
 | --- | --- | --- | --- |
-| OpenRouter | `openrouter` | `deepseek/deepseek-v4-pro` | Broad real-provider smoke only |
-| OpenRouter | `openrouter` | `xiaomi/mimo-v2.5-pro` | Broad real-provider smoke only |
-| Ollama | `ollama` | `qwen3.5:9b` | Broad real-provider smoke only |
+| OpenRouter | `openrouter` | `deepseek/deepseek-v4-pro` | Was RELEASE_CERTIFIED on 2026-05-24. Re-cert today: 4/5 PASS, 1 transient `FAIL_PROVIDER`. Demote per "transient infra → cap at PROVIDER_TESTED" rule. |
+| OpenRouter | `openrouter` | `deepseek/deepseek-v4-flash` | Earned 2026-05-25 |
+| OpenRouter | `openrouter` | `xiaomi/mimo-v2.5` | Earned 2026-05-25 |
+| OpenRouter | `openrouter` | `xiaomi/mimo-v2-flash` | Earned 2026-05-25 |
+| OpenRouter | `openrouter` | `xiaomi/mimo-v2-omni` | Earned 2026-05-25 |
 
 Visible UI providers or picker models outside that table are not
 release-certified. Repo-mode evidence is representative, not exhaustive.

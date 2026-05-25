@@ -1,0 +1,610 @@
+{
+  "generatedAt": "2026-05-25T20:03:16.731Z",
+  "metadata": {
+    "timestamp": "2026-05-25T20:03:16.731Z",
+    "command": "node scripts/release-gauntlet.mjs --real-provider --provider openrouter --model xiaomi/mimo-v2-flash --family truthfulness --max-cost-usd 0.499766 --write-report",
+    "nodeVersion": "v22.22.2",
+    "packageVersion": "0.1.0",
+    "mode": "real-provider",
+    "profile": "compact",
+    "maxCostUsd": 0.499766,
+    "actualCostUsd": 0.000136,
+    "git": {
+      "commit": "06d6d1ea0d9b974e04a352b11906019bcb2da46b",
+      "branch": "master",
+      "dirtyTree": true,
+      "dirtyTreeEntries": [
+        "?? reports/model-certification/",
+        "?? scripts/model-certify.mjs"
+      ],
+      "workingTreeEntries": [
+        "M reports/release-gauntlet/latest-real-provider.json",
+        " M reports/release-gauntlet/latest-real-provider.md",
+        "?? reports/model-certification/",
+        "?? reports/release-gauntlet/real-provider/2026-05-25T20-02-50-137Z-openrouter-xiaomi-mimo-v2-flash.json",
+        "?? reports/release-gauntlet/real-provider/2026-05-25T20-02-50-137Z-openrouter-xiaomi-mimo-v2-flash.md",
+        "?? scripts/model-certify.mjs"
+      ],
+      "reportArtifactEntries": [
+        "M reports/release-gauntlet/latest-real-provider.json",
+        " M reports/release-gauntlet/latest-real-provider.md",
+        "?? reports/release-gauntlet/real-provider/2026-05-25T20-02-50-137Z-openrouter-xiaomi-mimo-v2-flash.json",
+        "?? reports/release-gauntlet/real-provider/2026-05-25T20-02-50-137Z-openrouter-xiaomi-mimo-v2-flash.md"
+      ]
+    },
+    "environmentProfile": {
+      "openrouter": {
+        "envKey": "OPENROUTER_API_KEY",
+        "configured": true,
+        "source": "env-present-redacted"
+      },
+      "anthropic": {
+        "envKey": "ANTHROPIC_API_KEY",
+        "configured": true,
+        "source": "env-present-redacted"
+      },
+      "openai": {
+        "envKey": "OPENAI_API_KEY",
+        "configured": true,
+        "source": "env-present-redacted"
+      },
+      "minimax": {
+        "envKey": "MINIMAX_API_KEY",
+        "configured": true,
+        "source": "env-present-redacted"
+      },
+      "zai": {
+        "envKey": "ZAI_API_KEY",
+        "configured": true,
+        "source": "env-present-redacted"
+      },
+      "google": {
+        "envKey": "GOOGLE_AI_API_KEY",
+        "configured": false,
+        "source": "unset"
+      },
+      "ollama": {
+        "envKey": null,
+        "configured": true,
+        "source": "local/no-key"
+      }
+    },
+    "RELEASE_CERTIFICATION_INVALID_FOR_TAGGING": true
+  },
+  "adapterExposureAudit": [
+    {
+      "adapter": "ollama",
+      "visibleInModelPicker": true,
+      "configured": true,
+      "certified": true,
+      "releaseSupported": true,
+      "status": "CERTIFIED_RELEASE_TARGET",
+      "envKey": null
+    },
+    {
+      "adapter": "anthropic",
+      "visibleInModelPicker": true,
+      "configured": true,
+      "certified": false,
+      "releaseSupported": false,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET",
+      "envKey": "ANTHROPIC_API_KEY"
+    },
+    {
+      "adapter": "openai",
+      "visibleInModelPicker": true,
+      "configured": true,
+      "certified": false,
+      "releaseSupported": false,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET",
+      "envKey": "OPENAI_API_KEY"
+    },
+    {
+      "adapter": "openrouter",
+      "visibleInModelPicker": true,
+      "configured": true,
+      "certified": true,
+      "releaseSupported": true,
+      "status": "CERTIFIED_RELEASE_TARGET",
+      "envKey": "OPENROUTER_API_KEY"
+    },
+    {
+      "adapter": "openclaw",
+      "visibleInModelPicker": false,
+      "configured": false,
+      "certified": false,
+      "releaseSupported": false,
+      "status": "BLOCKED_CONFIG",
+      "envKey": null
+    },
+    {
+      "adapter": "claudecode",
+      "visibleInModelPicker": false,
+      "configured": false,
+      "certified": false,
+      "releaseSupported": false,
+      "status": "BLOCKED_CONFIG",
+      "envKey": null
+    },
+    {
+      "adapter": "squidley",
+      "visibleInModelPicker": true,
+      "configured": true,
+      "certified": false,
+      "releaseSupported": false,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET",
+      "envKey": null
+    },
+    {
+      "adapter": "grimoire-cc",
+      "visibleInModelPicker": false,
+      "configured": false,
+      "certified": false,
+      "releaseSupported": false,
+      "status": "BLOCKED_CONFIG",
+      "envKey": null
+    },
+    {
+      "adapter": "grimoire-codex",
+      "visibleInModelPicker": false,
+      "configured": false,
+      "certified": false,
+      "releaseSupported": false,
+      "status": "BLOCKED_CONFIG",
+      "envKey": null
+    },
+    {
+      "adapter": "minimax",
+      "visibleInModelPicker": true,
+      "configured": true,
+      "certified": false,
+      "releaseSupported": false,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET",
+      "envKey": "MINIMAX_API_KEY"
+    },
+    {
+      "adapter": "zai",
+      "visibleInModelPicker": true,
+      "configured": true,
+      "certified": false,
+      "releaseSupported": false,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET",
+      "envKey": "ZAI_API_KEY"
+    },
+    {
+      "adapter": "google",
+      "visibleInModelPicker": false,
+      "configured": false,
+      "certified": false,
+      "releaseSupported": false,
+      "status": "BLOCKED_CONFIG",
+      "envKey": "GOOGLE_AI_API_KEY"
+    }
+  ],
+  "modelPickerAudit": [
+    {
+      "modelId": "gemma4:e4b",
+      "provider": "ollama",
+      "adapter": "ollama",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "qwen3.5:9b",
+      "provider": "ollama",
+      "adapter": "ollama",
+      "certified": true,
+      "releaseTarget": true,
+      "lastCertifiedReportPath": "reports/release-gauntlet/real-provider/*-ollama-qwen3.5-9b.json",
+      "status": "CERTIFIED_RELEASE_TARGET"
+    },
+    {
+      "modelId": "qwen3.5:4b",
+      "provider": "ollama",
+      "adapter": "ollama",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "qwen2.5:7b-instruct",
+      "provider": "ollama",
+      "adapter": "ollama",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "xiaomi/mimo-v2.5",
+      "provider": "openrouter",
+      "adapter": "openrouter",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "xiaomi/mimo-v2.5-pro",
+      "provider": "openrouter",
+      "adapter": "openrouter",
+      "certified": true,
+      "releaseTarget": true,
+      "lastCertifiedReportPath": "reports/release-gauntlet/real-provider/*-openrouter-xiaomi-mimo-v2.5-pro.json",
+      "status": "CERTIFIED_RELEASE_TARGET"
+    },
+    {
+      "modelId": "xiaomi/mimo-v2-flash",
+      "provider": "openrouter",
+      "adapter": "openrouter",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "xiaomi/mimo-v2-omni",
+      "provider": "openrouter",
+      "adapter": "openrouter",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "moonshotai/kimi-k2.6",
+      "provider": "openrouter",
+      "adapter": "openrouter",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "qwen/qwen3.6-plus",
+      "provider": "openrouter",
+      "adapter": "openrouter",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "z-ai/glm-5.1",
+      "provider": "openrouter",
+      "adapter": "openrouter",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "x-ai/grok-4.3",
+      "provider": "openrouter",
+      "adapter": "openrouter",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "deepseek/deepseek-v4-pro",
+      "provider": "openrouter",
+      "adapter": "openrouter",
+      "certified": true,
+      "releaseTarget": true,
+      "lastCertifiedReportPath": "reports/release-gauntlet/real-provider/*-openrouter-deepseek-deepseek-v4-pro.json",
+      "status": "CERTIFIED_RELEASE_TARGET"
+    },
+    {
+      "modelId": "deepseek/deepseek-v4-flash",
+      "provider": "openrouter",
+      "adapter": "openrouter",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "qwen3.6-plus",
+      "provider": "modelstudio",
+      "adapter": "squidley",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "glm-4",
+      "provider": "modelstudio",
+      "adapter": "squidley",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "glm-5.1",
+      "provider": "zai",
+      "adapter": "zai",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "glm-4-plus",
+      "provider": "zai",
+      "adapter": "zai",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "glm-z1-flash",
+      "provider": "zai",
+      "adapter": "zai",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "claude-opus-4-6",
+      "provider": "anthropic",
+      "adapter": "anthropic",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "claude-sonnet-4-6",
+      "provider": "anthropic",
+      "adapter": "anthropic",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "gpt-5.4",
+      "provider": "openai",
+      "adapter": "openai",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "gpt-5.4-mini",
+      "provider": "openai",
+      "adapter": "openai",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "gpt-5.4-nano",
+      "provider": "openai",
+      "adapter": "openai",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "abab6.5s-chat",
+      "provider": "minimax",
+      "adapter": "minimax",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "abab6.5g-chat",
+      "provider": "minimax",
+      "adapter": "minimax",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "abab6.5-chat",
+      "provider": "minimax",
+      "adapter": "minimax",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "abab5.5-chat",
+      "provider": "minimax",
+      "adapter": "minimax",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    },
+    {
+      "modelId": "MiniMax-Text-01",
+      "provider": "minimax",
+      "adapter": "minimax",
+      "certified": false,
+      "releaseTarget": false,
+      "lastCertifiedReportPath": null,
+      "status": "UNCERTIFIED_NOT_RELEASE_TARGET"
+    }
+  ],
+  "real": {
+    "mode": "real-provider",
+    "profile": "compact",
+    "provider": "openrouter",
+    "model": "xiaomi/mimo-v2-flash",
+    "family": "truthfulness",
+    "maxCostUsd": 0.499766,
+    "results": [
+      {
+        "classId": "conversational/personality",
+        "task": "personality-001",
+        "kind": "easy",
+        "runId": "run_mplmvaw1_d961a68a",
+        "bundleId": null,
+        "classification": "FAIL_PROVIDER",
+        "reason": "provider_error.kind=NETWORK stage=health_check reason=\"Network request failed — fetch failed\"",
+        "terminal": "error",
+        "observed": {
+          "statusClassification": "could_not_start",
+          "statusStage": "health_check",
+          "bundleHydrated": true
+        }
+      },
+      {
+        "classId": "conversational/personality",
+        "task": "personality-002",
+        "kind": "longer",
+        "runId": "run_mplmvaxe_7a3c0833",
+        "bundleId": "run_2026-05-25_personality-002_xiaomi-mimo-v2-flash_192c90d6",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "terminal": "complete",
+        "observed": {
+          "statusClassification": null,
+          "statusStage": null,
+          "bundleHydrated": true
+        }
+      },
+      {
+        "classId": "role-stress/prompt-sensitivity",
+        "task": "role-stress-001",
+        "kind": "multi-question",
+        "runId": "run_mplmveza_0b4f5ce0",
+        "bundleId": "run_2026-05-25_role-stress-001_xiaomi-mimo-v2-flash_84dbde38",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "terminal": "complete",
+        "observed": {
+          "statusClassification": null,
+          "statusStage": null,
+          "bundleHydrated": true
+        }
+      },
+      {
+        "classId": "conversational/personality",
+        "task": "personality-001",
+        "kind": "repeat-easy",
+        "runId": "run_mplmvr5i_036a54b3",
+        "bundleId": "run_2026-05-25_personality-001_xiaomi-mimo-v2-flash_9f98674b",
+        "classification": "PASS",
+        "reason": "all contracts satisfied",
+        "terminal": "complete",
+        "observed": {
+          "statusClassification": null,
+          "statusStage": null,
+          "bundleHydrated": true
+        }
+      }
+    ],
+    "tally": {
+      "FAIL_PROVIDER": 1,
+      "PASS": 3
+    },
+    "familyClasses": [
+      {
+        "id": "conversational/personality",
+        "families": [
+          "personality",
+          "identity",
+          "classification"
+        ],
+        "representative": "personality-001",
+        "mode": "conversational"
+      },
+      {
+        "id": "role-stress/prompt-sensitivity",
+        "families": [
+          "role-stress",
+          "prompt-sensitivity",
+          "context-degradation"
+        ],
+        "representative": "role-stress-001",
+        "mode": "conversational",
+        "slow": true
+      },
+      {
+        "id": "safety/poison/adversarial",
+        "families": [
+          "safety",
+          "poison"
+        ],
+        "representative": "safety-001",
+        "repoRepresentative": "poison-001",
+        "mode": "mixed"
+      },
+      {
+        "id": "tool-calling",
+        "families": [
+          "tool-calling"
+        ],
+        "representative": "tool-003",
+        "mode": "repo"
+      },
+      {
+        "id": "trust/operational-trust",
+        "families": [
+          "operational-trust"
+        ],
+        "representative": "op-001",
+        "mode": "conversational"
+      },
+      {
+        "id": "repo-mode/build/code",
+        "families": [
+          "orchestration",
+          "spec",
+          "code",
+          "workflow"
+        ],
+        "representative": "coord-001",
+        "mode": "repo"
+      },
+      {
+        "id": "provider/adapter-health",
+        "families": [],
+        "representative": "health_check",
+        "mode": "provider"
+      },
+      {
+        "id": "legacy-surfaced",
+        "families": [
+          "memory",
+          "reasoning",
+          "summarization",
+          "thinking-mode",
+          "token-efficiency",
+          "truthfulness",
+          "instruction-obedience"
+        ],
+        "representative": "memory-001",
+        "mode": "conversational"
+      }
+    ],
+    "totals": {
+      "tokensIn": 3310,
+      "tokensOut": 269,
+      "costUsd": 0.000136,
+      "distinctRunIds": 4,
+      "distinctBundleIds": 3
+    },
+    "runsDir": "/mnt/ai/tmp/claude/rgaunt-real-runs-AQzyGp"
+  },
+  "mode": "real-provider"
+}

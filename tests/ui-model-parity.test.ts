@@ -64,6 +64,7 @@ interface UiHandle {
   gateSelectedModels: (modelIds: string[]) => string[] | null;
   TAB_CONFIG: Record<string, { taskFamilies: string[]; isSettings?: boolean }>;
   RELEASE_CERTIFICATION: { status: string; targets: Array<{ providerId: string; adapterId: string; modelId: string; certificationLabel: string; reportPath: string }> };
+  MODEL_CERTIFICATION: { generatedAt: string; tiers: Record<string, { label: string; short: string; cls: string; tone: string; warning: string }>; models: Array<{ providerId: string; modelId: string; tier: string; evidence: string; campaign: string; note?: string }> };
   releaseCertificationForModel: (modelId: string, route?: { providerId: string; adapterId: string; kind?: string }) => { status: string; label: string };
   renderReleaseCertificationBanner: (tabKey: string) => string;
 }
@@ -95,7 +96,7 @@ function loadUi(opts: { registry?: { providers?: unknown[]; models?: unknown[]; 
   sandbox.globalThis = sandbox;
   const prelude = "function render(){}\n";
   const withoutRender = script.replace(/function render\(\)\{[\s\S]*?\n\}\n/, "/* render stubbed */\n");
-  const exporter = `;globalThis.__ui={state,defaultTabState,mergedModelGroups,mergedProviders,filteredModelGroupsForTab,renderModelOptions,renderProviderOptions,syncRouting,setRoutingFilter,modelSelectionNote,deriveRoutingForModel,canRunModel,gateSelectedModels,TAB_CONFIG,RELEASE_CERTIFICATION,releaseCertificationForModel,renderReleaseCertificationBanner};`;
+  const exporter = `;globalThis.__ui={state,defaultTabState,mergedModelGroups,mergedProviders,filteredModelGroupsForTab,renderModelOptions,renderProviderOptions,syncRouting,setRoutingFilter,modelSelectionNote,deriveRoutingForModel,canRunModel,gateSelectedModels,TAB_CONFIG,RELEASE_CERTIFICATION,MODEL_CERTIFICATION,releaseCertificationForModel,renderReleaseCertificationBanner};`;
   const context = vm.createContext(sandbox);
   vm.runInContext(prelude + withoutRender + exporter, context, { filename: "ui/index.html::script" });
   const ui = (sandbox as { __ui: UiHandle }).__ui;
@@ -199,39 +200,75 @@ describe("ui model/provider parity across lane tabs", () => {
     assert.match(banner, /RELEASE_SCOPED_TO_CERTIFIED_TARGETS · NOT UI-CERTIFIED/);
     assert.match(banner, /UI_CERTIFIED_FOR_SCOPED_RELEASE · NO/);
     assert.match(banner, /Release certification is scoped/);
-    assert.match(banner, /OpenRouter DeepSeek V4 Pro/);
+    // Release-certified targets after the 2026-05-25 OpenRouter campaign:
+    // mimo-v2.5-pro + qwen3.5:9b. deepseek-v4-pro was demoted to
+    // PROVIDER_TESTED (consistent transient FAIL_PROVIDER), so it now
+    // appears in MODEL_CERTIFICATION rather than RELEASE_CERTIFICATION.
     assert.match(banner, /OpenRouter Mimo v2\.5 Pro/);
     assert.match(banner, /Ollama qwen3\.5:9b/);
-    assert.match(banner, /not release-certified/);
     assert.doesNotMatch(banner, /FULL_RELEASE_READY · CERTIFIED/);
     assert.doesNotMatch(banner, /FULL_RELEASE_READY · YES/);
   });
 
-  it("certification registry contains exactly the three current release target model ids", () => {
+  it("certification registry contains the current release target model ids", () => {
     const ui = loadUi();
     const ids = ui.RELEASE_CERTIFICATION.targets.map((target) => `${target.providerId}/${target.adapterId}/${target.modelId}`).sort();
-    assert.equal(JSON.stringify(ids), JSON.stringify([
+    // After the 2026-05-25 OpenRouter certification campaign, the two
+    // models that still hold RELEASE_CERTIFIED tier are mimo-v2.5-pro
+    // and the local qwen3.5:9b. The rest are tracked in MODEL_CERTIFICATION
+    // at PROVIDER_TESTED tier (deepseek-v4-pro included).
+    // Membership compare — vm-context arrays trip deepStrictEqual via
+    // Array prototype identity even when contents match.
+    const expected = [
       "ollama/ollama/qwen3.5:9b",
-      "openrouter/openrouter/deepseek/deepseek-v4-pro",
       "openrouter/openrouter/xiaomi/mimo-v2.5-pro",
-    ]));
+    ];
+    assert.equal(ids.length, expected.length, `expected ${expected.length} certified targets, got ${ids.length}: ${ids.join(",")}`);
+    for (const e of expected) {
+      assert.ok(ids.includes(e), `missing release target id ${e}`);
+    }
+    // And MODEL_CERTIFICATION must surface deepseek-v4-pro at PROVIDER_TESTED.
+    assert.ok(
+      ui.MODEL_CERTIFICATION.models.some((m) =>
+        m.providerId === "openrouter" &&
+        m.modelId === "deepseek/deepseek-v4-pro" &&
+        m.tier === "PROVIDER_TESTED",
+      ),
+      "deepseek/deepseek-v4-pro must be tracked in MODEL_CERTIFICATION at PROVIDER_TESTED tier",
+    );
   });
 
-  it("certified labels appear for the three release targets and uncertified labels appear for non-target models", () => {
+  it("certified labels appear for release targets, provider-tested labels for the cert campaign models, and uncertified labels for the rest", () => {
     const ui = loadUi();
     const html = ui.renderModelOptions("personality");
-    assert.match(html, /deepseek\/deepseek-v4-pro[^<]*Certified release target/);
+    // After the 2026-05-25 OpenRouter campaign:
+    //   - mimo-v2.5-pro stays Certified release target
+    //   - qwen3.5:9b stays Certified local release target
+    //   - deepseek-v4-pro is now Provider-tested (consistent transient FAIL_PROVIDER)
+    //   - mimo-v2-flash/v2.5/v2-omni/deepseek-v4-flash all earned Provider-tested
     assert.match(html, /xiaomi\/mimo-v2\.5-pro[^<]*Certified release target/);
     assert.match(html, /qwen3\.5:9b[^<]*Certified local release target/);
+    assert.match(html, /deepseek\/deepseek-v4-pro[^<]*Provider-tested/);
+    assert.match(html, /xiaomi\/mimo-v2-flash[^<]*Provider-tested/);
+    // Models with no cert at all still get the harsh uncertified label.
     assert.match(html, /gpt-5\.4[^<]*Uncertified \/ not release target/);
     assert.match(html, /claude-opus-4-6[^<]*Uncertified \/ not release target/);
   });
 
-  it("provider-certified but non-target models are labeled as model-uncertified, not fully certified", () => {
+  it("provider-certified but non-target models are labeled as model-uncertified or provider-tested, not fully certified", () => {
     const ui = loadUi();
     const html = ui.renderModelOptions("personality");
-    assert.match(html, /deepseek\/deepseek-v4-flash[^<]*Provider certified \/ model uncertified/);
+    // qwen3.5:4b has no MODEL_CERTIFICATION tier, so it keeps the
+    // legacy "Provider certified / model uncertified" label (provider
+    // was certified for at least one other model).
     assert.match(html, /qwen3\.5:4b[^<]*Provider certified \/ model uncertified/);
+    // deepseek-v4-flash now has an explicit PROVIDER_TESTED tier from
+    // the 2026-05-25 campaign, so it gets the softer Provider-tested
+    // label instead of the legacy "model uncertified" fallback.
+    assert.match(html, /deepseek\/deepseek-v4-flash[^<]*Provider-tested/);
+    // Neither row should be labeled as a release target.
+    assert.doesNotMatch(html, /deepseek\/deepseek-v4-flash[^<]*Certified release target/);
+    assert.doesNotMatch(html, /qwen3\.5:4b[^<]*Certified release target/);
   });
 
   it("docs/RELEASE_READINESS.md and the UI certification registry agree on the target ids", () => {
