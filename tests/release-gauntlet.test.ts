@@ -50,9 +50,12 @@ describe("release-gauntlet: --dry-run-inventory", () => {
   it("prints families, tasks, conversational + repo counts, and the adapter list", () => {
     const { stdout, status } = run(["--dry-run-inventory"]);
     assert.equal(status, 0);
-    assert.match(stdout, /families:\s+21/);
-    assert.match(stdout, /tasks total:\s+62/);
-    assert.match(stdout, /conversational:\s+37/);
+    // Bumped from 21 → 23 by the 2026-05-25 roleplay + vision scaffold
+    // (5 roleplay POC manifests under tasks/roleplay/, 5 vision under
+    // tasks/vision/). Conversational total bumps by 10.
+    assert.match(stdout, /families:\s+23/);
+    assert.match(stdout, /tasks total:\s+72/);
+    assert.match(stdout, /conversational:\s+47/);
     assert.match(stdout, /repo:\s+25/);
     assert.match(stdout, /registered adapters:\s+12/);
     // Sample of expected families.

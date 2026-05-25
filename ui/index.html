@@ -25,6 +25,14 @@ const TAB_CONFIG={
   memory:{key:'memory',label:'Memory',scoreFamilies:['I'],taskFamilies:['memory'],laneTitle:'Memory Checks',headline:'Retention, cross-run recall, and honest memory handling.'},
   tools:{key:'tools',label:'Tools',scoreFamilies:['J'],taskFamilies:['tool_calling'],laneTitle:'Tool Calling Checks',headline:'Schema compliance, scope discipline, observation use, error recovery, and verification discipline.'},
   trust:{key:'trust',label:'Trust',scoreFamilies:['K'],taskFamilies:['operational_trust'],laneTitle:'Operational Trust',headline:'Scope discipline, verification honesty, failure transparency, approval boundaries, and operational recovery.'},
+  // Roleplay — experimental scaffold (2026-05-25). Not release-certified.
+  // See docs/ROLEPLAY_TEST_SUITE.md. Tab is gated to EXPERIMENTAL until
+  // POC tasks land + judge rubric reliability is proven.
+  roleplay:{key:'roleplay',label:'Roleplay',scoreFamilies:[],taskFamilies:['roleplay'],laneTitle:'Roleplay Checks',headline:'Character consistency, scene continuity, tone control, in-fiction boundary handling. Experimental.',experimental:true,requiresCapability:'supportsRoleplay'},
+  // Vision / Multimodal — experimental scaffold (2026-05-25). Requires
+  // a vision-capable model; non-vision models are SKIPPED (not failed).
+  // See docs/MULTIMODAL_VISION_SUITE.md.
+  vision:{key:'vision',label:'Vision',scoreFamilies:[],taskFamilies:['vision'],laneTitle:'Vision / Multimodal Checks',headline:'OCR, UI diagnosis, chart reading, object/count, spatial reasoning, uncertainty honesty. Requires image-capable model. Experimental.',experimental:true,requiresCapability:'supportsVision'},
   // Settings tab — provider/model registry CRUD. Not a benchmark lane; its
   // tab body is rendered by renderProvidersView() instead of renderLane().
   providers:{key:'providers',label:'Providers',scoreFamilies:[],taskFamilies:[],laneTitle:'Provider Registry',headline:'Add providers, register models, test connectivity, monitor OpenRouter spend.',isSettings:true}
@@ -43,7 +51,9 @@ const TASK_FAMILY_LABELS={
   safety:'Safety',
   memory:'Memory',
   tool_calling:'Tools',
-  operational_trust:'Trust'
+  operational_trust:'Trust',
+  roleplay:'Roleplay',
+  vision:'Vision'
 };
 
 const RELEASE_CERTIFICATION={
@@ -72,18 +82,64 @@ const MODEL_CERTIFICATION={
     UNSUPPORTED_CAPABILITY:{label:'Unsupported capability',short:'UNSUPPORTED',cls:'dim',tone:'',warning:'Model does not support this test family. Pick a different task or model.'},
     UNKNOWN:{label:'Uncertified visible',short:'UNCERTIFIED',cls:'amber',tone:'warn',warning:'Uncertified target — results are useful for exploration but outside certified release scope.'}
   },
+  // Capability defaults — used by the runner to gate roleplay + vision
+  // tasks. A model that doesn't declare a capability is assumed text-only,
+  // tool-capable, repo-capable, NOT vision-capable, NOT roleplay-restricted.
+  // Override per-model in the `models` list below or via the registry.
+  capabilityDefaults:{
+    supportsText:true,
+    supportsTools:true,
+    supportsRepo:true,
+    supportsRoleplay:true,
+    supportsVision:false,
+    supportsImageInput:false,
+    supportsMultipleImages:false,
+    supportsOCR:false,
+    supportsAudio:false,
+    multimodalTransport:'unsupported',
+    contextWindow:null
+  },
+  // Per-provider adapter notes — what shape the adapter sends to the
+  // upstream when an image is attached. Consumed by the future
+  // multimodal runner; documented here so the capability registry
+  // and the adapter agree on the wire format.
+  adapterImageTransport:{
+    openai:{supports:true,transport:'openai_image_url',maxImageMb:20,acceptedMimes:['image/png','image/jpeg','image/webp','image/gif'],multiImage:true,note:'URL or base64; vision models only (GPT-5.4 family).'},
+    anthropic:{supports:true,transport:'anthropic_image',maxImageMb:5,acceptedMimes:['image/png','image/jpeg','image/webp','image/gif'],multiImage:true,note:'Base64 only; Claude Opus/Sonnet 4.x.'},
+    openrouter:{supports:true,transport:'openai_image_url',maxImageMb:20,acceptedMimes:['image/png','image/jpeg','image/webp'],multiImage:true,note:'Per-routed-model capability; must be declared on each model entry.'},
+    minimax:{supports:false,transport:'unsupported',note:'Adapter currently text-only. Mark models supportsVision:false until an image-capable adapter ships.'},
+    modelstudio:{supports:true,transport:'qwen_image_url',maxImageMb:10,acceptedMimes:['image/png','image/jpeg'],multiImage:false,note:'Only Qwen-VL family.'},
+    zai:{supports:false,transport:'unsupported',note:'GLM-V image input not currently configured in the adapter.'},
+    ollama:{supports:true,transport:'local_url',maxImageMb:5,acceptedMimes:['image/png','image/jpeg'],multiImage:false,note:"Uses Ollama's `images` array on chat. Only models that load a VL backbone (e.g. qwen3-vl:4b)."}
+  },
   models:[
     // Pre-2026-05-25 release certifications still valid (qwen3.5:9b local).
-    {providerId:'ollama',modelId:'qwen3.5:9b',tier:'RELEASE_CERTIFIED',evidence:'reports/release-gauntlet/real-provider/2026-05-24T00-33-18-590Z-ollama-qwen3.5-9b.json',campaign:'pre-2026-05-25'},
+    {providerId:'ollama',modelId:'qwen3.5:9b',tier:'RELEASE_CERTIFIED',evidence:'reports/release-gauntlet/real-provider/2026-05-24T00-33-18-590Z-ollama-qwen3.5-9b.json',campaign:'pre-2026-05-25',capabilities:{supportsText:true,supportsTools:true,supportsRepo:true,supportsRoleplay:true,supportsVision:false,supportsImageInput:false,multimodalTransport:'unsupported'}},
     // 2026-05-25 OpenRouter certification campaign — see reports/model-certification/.
-    {providerId:'openrouter',modelId:'xiaomi/mimo-v2.5-pro',tier:'RELEASE_CERTIFIED',evidence:'reports/model-certification/openrouter/xiaomi-mimo-v2.5-pro/2026-05-25T20-23-37Z.json',campaign:'2026-05-25'},
-    {providerId:'openrouter',modelId:'deepseek/deepseek-v4-pro',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/deepseek-deepseek-v4-pro/2026-05-25T20-36-28Z.json',campaign:'2026-05-25',note:'Released cleanly 4/5 today; one transient FAIL_PROVIDER on personality. Was RELEASE_CERTIFIED on 2026-05-24; can re-promote when provider stabilizes.'},
-    {providerId:'openrouter',modelId:'deepseek/deepseek-v4-flash',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/deepseek-deepseek-v4-flash/2026-05-25T20-32-42Z.json',campaign:'2026-05-25'},
-    {providerId:'openrouter',modelId:'xiaomi/mimo-v2.5',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/xiaomi-mimo-v2.5/2026-05-25T20-09-27Z.json',campaign:'2026-05-25'},
-    {providerId:'openrouter',modelId:'xiaomi/mimo-v2-flash',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/xiaomi-mimo-v2-flash/2026-05-25T20-07-23Z.json',campaign:'2026-05-25'},
-    {providerId:'openrouter',modelId:'xiaomi/mimo-v2-omni',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/xiaomi-mimo-v2-omni/2026-05-25T20-10-57Z.json',campaign:'2026-05-25'}
+    {providerId:'openrouter',modelId:'xiaomi/mimo-v2.5-pro',tier:'RELEASE_CERTIFIED',evidence:'reports/model-certification/openrouter/xiaomi-mimo-v2.5-pro/2026-05-25T20-23-37Z.json',campaign:'2026-05-25',capabilities:{supportsText:true,supportsTools:true,supportsRepo:true,supportsRoleplay:true,supportsVision:false,supportsImageInput:false,multimodalTransport:'unsupported'}},
+    {providerId:'openrouter',modelId:'deepseek/deepseek-v4-pro',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/deepseek-deepseek-v4-pro/2026-05-25T20-36-28Z.json',campaign:'2026-05-25',note:'Released cleanly 4/5 today; one transient FAIL_PROVIDER on personality. Was RELEASE_CERTIFIED on 2026-05-24; can re-promote when provider stabilizes.',capabilities:{supportsText:true,supportsTools:true,supportsRepo:true,supportsRoleplay:true,supportsVision:false,supportsImageInput:false,multimodalTransport:'unsupported'}},
+    {providerId:'openrouter',modelId:'deepseek/deepseek-v4-flash',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/deepseek-deepseek-v4-flash/2026-05-25T20-32-42Z.json',campaign:'2026-05-25',capabilities:{supportsText:true,supportsTools:true,supportsRepo:true,supportsRoleplay:true,supportsVision:false,supportsImageInput:false,multimodalTransport:'unsupported'}},
+    {providerId:'openrouter',modelId:'xiaomi/mimo-v2.5',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/xiaomi-mimo-v2.5/2026-05-25T20-09-27Z.json',campaign:'2026-05-25',capabilities:{supportsText:true,supportsTools:true,supportsRepo:true,supportsRoleplay:true,supportsVision:false,supportsImageInput:false,multimodalTransport:'unsupported'}},
+    {providerId:'openrouter',modelId:'xiaomi/mimo-v2-flash',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/xiaomi-mimo-v2-flash/2026-05-25T20-07-23Z.json',campaign:'2026-05-25',capabilities:{supportsText:true,supportsTools:true,supportsRepo:true,supportsRoleplay:true,supportsVision:false,supportsImageInput:false,multimodalTransport:'unsupported'}},
+    // MiMo v2 Omni is the multimodal variant on OpenRouter — declare vision capability.
+    {providerId:'openrouter',modelId:'xiaomi/mimo-v2-omni',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/xiaomi-mimo-v2-omni/2026-05-25T20-10-57Z.json',campaign:'2026-05-25',capabilities:{supportsText:true,supportsTools:true,supportsRepo:true,supportsRoleplay:true,supportsVision:true,supportsImageInput:true,supportsMultipleImages:true,multimodalTransport:'openai_image_url'}}
   ]
 };
+
+function modelCapability(providerId,modelId,key){
+  const hit=(MODEL_CERTIFICATION.models||[]).find((m)=>m.providerId===providerId&&m.modelId===modelId);
+  const caps=(hit&&hit.capabilities)||{};
+  if(key in caps)return caps[key];
+  const defs=MODEL_CERTIFICATION.capabilityDefaults||{};
+  return defs[key];
+}
+function modelSupportsVision(providerId,modelId){
+  return modelCapability(providerId,modelId,'supportsVision')===true
+      && modelCapability(providerId,modelId,'supportsImageInput')===true;
+}
+function modelSupportsRoleplay(providerId,modelId){
+  return modelCapability(providerId,modelId,'supportsRoleplay')!==false;
+}
 
 function modelCertificationTier(providerId,modelId){
   if(!providerId||!modelId)return'UNKNOWN';
@@ -4838,21 +4894,31 @@ function renderEvaluationRoomsDeck(){
     const meta=roomStatusForTab(tab.key);
     const isActive=state.activeTab===tab.key;
     const isSettings=meta.kind==='settings';
+    const isExperimental=tab.experimental===true;
     const pillCls=meta.state==='pass'?'pass':meta.state==='fail'?'fail':meta.state==='warn'?'warn':'';
     const pill=isSettings
       ? `<span class="room-pill">Settings</span>`
-      : (meta.runCount>0
-          ? `<span class="room-pill ${pillCls}">${meta.passRate}%</span>`
-          : `<span class="room-pill">Idle</span>`);
+      : isExperimental
+        ? `<span class="room-pill exp" title="Experimental scaffold — not release-certified. See docs/${tab.key==='roleplay'?'ROLEPLAY':'MULTIMODAL_VISION'}_TEST_SUITE.md">EXP</span>`
+        : (meta.runCount>0
+            ? `<span class="room-pill ${pillCls}">${meta.passRate}%</span>`
+            : `<span class="room-pill">Idle</span>`);
     const passCount=meta.passRate!=null?Math.round((meta.passRate/100)*meta.runCount):0;
     const failCount=Math.max(0,meta.runCount-passCount);
+    const capabilityNote=tab.requiresCapability==='supportsVision'
+      ? ' · requires image-capable model'
+      : tab.requiresCapability==='supportsRoleplay'
+        ? ' · text-capable'
+        : '';
     const metaLine=isSettings
       ? 'Provider registry'
-      : (meta.runCount>0
-          ? `<span class="pass-num">${passCount}</span>/<span class="fail-num">${failCount}</span> · ${meta.runCount} trial${meta.runCount===1?'':'s'}`
-          : 'No trials yet');
-    const cls=['room-card',isActive?'active':'',isSettings?'settings':meta.state].filter(Boolean).join(' ');
-    return`<button type="button" class="${cls}" onclick="setActiveTab('${esc(tab.key)}')" aria-pressed="${isActive?'true':'false'}" aria-label="Open ${esc(tab.label)} room">
+      : isExperimental
+        ? `Experimental${capabilityNote}`
+        : (meta.runCount>0
+            ? `<span class="pass-num">${passCount}</span>/<span class="fail-num">${failCount}</span> · ${meta.runCount} trial${meta.runCount===1?'':'s'}`
+            : 'No trials yet');
+    const cls=['room-card',isActive?'active':'',isSettings?'settings':isExperimental?'experimental':meta.state].filter(Boolean).join(' ');
+    return`<button type="button" class="${cls}" onclick="setActiveTab('${esc(tab.key)}')" aria-pressed="${isActive?'true':'false'}" aria-label="Open ${esc(tab.label)} room${isExperimental?' (experimental)':''}">
       <span class="room-dot" aria-hidden="true"></span>
       <span class="room-body">
         <span class="room-name">${esc(tab.label)}</span>

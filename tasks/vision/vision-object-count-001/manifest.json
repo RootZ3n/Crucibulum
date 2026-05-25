@@ -1,0 +1,51 @@
+{
+  "id": "vision-object-count-001",
+  "version": "1.0.0",
+  "family": "vision",
+  "execution_mode": "conversational",
+  "difficulty": "easy",
+  "experimental": true,
+  "description": "POC: count discrete objects (dots) in a synthetic scene.",
+  "requires_capability": ["supportsVision", "supportsImageInput"],
+  "image_fixture": {
+    "path": "fixtures/vision/objects/dots-7-001.png",
+    "sha256": "TBD-fixture-not-yet-committed",
+    "mime": "image/png",
+    "width": 400,
+    "height": 400,
+    "license": "Crucible-owned synthetic dot image",
+    "notes": "Seven equally-sized red dots on a white background, randomly placed but non-overlapping."
+  },
+  "questions": [
+    {
+      "id": "V4-Q1",
+      "question": "How many red dots are in this image? Reply with ONLY the number.",
+      "scoring_type": "regex_match",
+      "pattern": "^\\s*7\\s*$",
+      "maxLength": 12,
+      "weight": 1,
+      "tags": ["vision", "count", "experimental"],
+      "image_ref": "fixtures/vision/objects/dots-7-001.png"
+    }
+  ],
+  "scoring": {
+    "pass_threshold": 1.0
+  },
+  "quarantine": null,
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-05-25",
+    "tags": ["vision", "count", "experimental"],
+    "diagnostic_purpose": "POC for vision_object_count scorer. Seven-dot fixture; exact-match scoring.",
+    "benchmark_provenance": {
+      "source": "Crucible synthetic dot image",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "low",
+      "known_scoring_limitations": [
+        "Exact-match; off-by-one (6 or 8) is FAIL_PRODUCT."
+      ]
+    }
+  }
+}

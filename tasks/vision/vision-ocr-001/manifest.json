@@ -1,0 +1,51 @@
+{
+  "id": "vision-ocr-001",
+  "version": "1.0.0",
+  "family": "vision",
+  "execution_mode": "conversational",
+  "difficulty": "easy",
+  "experimental": true,
+  "description": "POC: exact-OCR a small synthetic receipt. Pass requires the literal dollar amount.",
+  "requires_capability": ["supportsVision", "supportsImageInput"],
+  "image_fixture": {
+    "path": "fixtures/vision/ocr/receipt-small-001.png",
+    "sha256": "TBD-fixture-not-yet-committed",
+    "mime": "image/png",
+    "width": 600,
+    "height": 800,
+    "license": "Crucible-owned synthetic; no real PII; generated for this test",
+    "notes": "Hand-typed mock receipt for total = $42.50. Fixture file lands in a follow-up commit after license review."
+  },
+  "questions": [
+    {
+      "id": "V1-Q1",
+      "question": "Read the total amount on this receipt. Reply with ONLY the dollar amount (e.g. $12.34).",
+      "scoring_type": "regex_match",
+      "pattern": "^\\s*\\$?42\\.50\\s*$",
+      "maxLength": 12,
+      "weight": 1,
+      "tags": ["vision", "ocr", "experimental"],
+      "image_ref": "fixtures/vision/ocr/receipt-small-001.png"
+    }
+  ],
+  "scoring": {
+    "pass_threshold": 1.0
+  },
+  "quarantine": null,
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-05-25",
+    "tags": ["vision", "ocr", "experimental"],
+    "diagnostic_purpose": "POC for vision_ocr_exact scorer. Until the PNG fixture lands, runner produces SKIPPED_FIXTURE_MISSING; thereafter, exact-match pass on $42.50.",
+    "benchmark_provenance": {
+      "source": "Crucible synthetic receipt fixture",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "low",
+      "known_scoring_limitations": [
+        "Exact-match regex; a vision model that answers '$42.5' (no trailing 0) or '42.50' (no $) will fail. Acceptable for token-precision OCR."
+      ]
+    }
+  }
+}

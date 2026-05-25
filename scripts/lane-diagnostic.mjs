@@ -45,6 +45,11 @@ const LANES = {
   personality: ["personality", "identity"],
   tools: ["tool_calling"],
   trust: ["operational_trust"],
+  // Experimental scaffolds (2026-05-25) — Roleplay + Vision.
+  // Listed so diagnostic tooling can drill into them; lane is not
+  // ranked on the leaderboard until promoted out of Experimental.
+  roleplay: ["roleplay"],
+  vision: ["vision"],
 };
 
 function usage() {

@@ -1971,7 +1971,21 @@ tr:hover td{background:rgba(139,92,246,.04)}
 .room-pill.fail{color:var(--red);border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.08)}
 .room-pill.warn{color:var(--orange);border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.08)}
 .room-pill.cert{color:var(--cyan);border-color:rgba(34,211,238,.4);background:rgba(34,211,238,.08)}
-.room-pill.exp{color:var(--orange);border-style:dashed}
+.room-pill.exp{
+  color:var(--orange);
+  border-color:rgba(245,158,11,.5);
+  background:rgba(245,158,11,.12);
+  border-style:dashed;
+  font-weight:700;
+  text-shadow:0 0 6px rgba(245,158,11,.35);
+}
+.room-card.experimental{border-left:3px solid rgba(245,158,11,.55)}
+.room-card.experimental .room-dot{background:var(--orange);box-shadow:0 0 6px rgba(245,158,11,.45)}
+.room-card.experimental .room-name::after{
+  content:" · EXP";
+  font-family:var(--mono);font-size:9px;letter-spacing:.16em;
+  color:var(--orange);font-weight:600;opacity:.85;
+}
 
 .rooms-deck-foot{
   padding:10px 12px;border-top:1px solid var(--border-subtle);

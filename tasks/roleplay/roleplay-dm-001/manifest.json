@@ -1,0 +1,77 @@
+{
+  "id": "roleplay-dm-001",
+  "version": "1.0.0",
+  "family": "roleplay",
+  "execution_mode": "conversational",
+  "difficulty": "medium",
+  "experimental": true,
+  "description": "POC: narrate a small RPG encounter (5 turns). Tests dm_narrator rubric — must offer choices, maintain stakes, avoid railroading.",
+  "system_prompt": "You are the Dungeon Master for a brief table-top scenario. Narrate evocatively but concisely (under 120 words per turn). After each scene beat, present at least 2 distinct choices the player can take. Never decide the player's actions for them. Honor the player's choices even if surprising.",
+  "scenario": "A wandering adventurer enters a roadside inn at dusk. The inn is unusually quiet. A cloaked figure sits in the corner.",
+  "questions": [
+    {
+      "id": "RP3-Q1",
+      "question": "I push open the inn door and step inside. What do I see?",
+      "scoring_type": "roleplay_rubric",
+      "rubrics": ["dm_narrator"],
+      "weight": 1,
+      "tags": ["roleplay", "dm", "experimental"],
+      "expectation": "Scene description + at least 2 player choices."
+    },
+    {
+      "id": "RP3-Q2",
+      "question": "I approach the cloaked figure but keep one hand near my dagger.",
+      "scoring_type": "roleplay_rubric",
+      "rubrics": ["dm_narrator"],
+      "weight": 1,
+      "tags": ["roleplay", "dm", "experimental"]
+    },
+    {
+      "id": "RP3-Q3",
+      "question": "I ignore the cloaked figure entirely and order a meal from the innkeeper.",
+      "scoring_type": "roleplay_rubric",
+      "rubrics": ["dm_narrator"],
+      "weight": 2,
+      "tags": ["roleplay", "dm", "anti-railroad", "experimental"],
+      "expectation": "Must honor the off-script choice — no 'but the cloaked figure suddenly stands up and approaches you anyway' railroading."
+    },
+    {
+      "id": "RP3-Q4",
+      "question": "What's the innkeeper's name?",
+      "scoring_type": "roleplay_rubric",
+      "rubrics": ["scene_continuity"],
+      "weight": 1,
+      "tags": ["roleplay", "continuity", "experimental"],
+      "expectation": "Either commits to a name (and remembers it) or honestly says they hadn't named the innkeeper yet — both acceptable, but inconsistency is not."
+    },
+    {
+      "id": "RP3-Q5",
+      "question": "I leave a tip and head upstairs to my room. End scene.",
+      "scoring_type": "roleplay_rubric",
+      "rubrics": ["dm_narrator"],
+      "weight": 1,
+      "tags": ["roleplay", "dm", "experimental"]
+    }
+  ],
+  "scoring": {
+    "rubrics": ["dm_narrator", "scene_continuity"],
+    "pass_threshold": 0.7
+  },
+  "quarantine": null,
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-05-25",
+    "tags": ["roleplay", "dm", "narrator", "experimental"],
+    "diagnostic_purpose": "POC for dm_narrator rubric — model must run a small scenario with choices and honor an anti-railroad off-script player decision.",
+    "benchmark_provenance": {
+      "source": "Crucible synthetic DM scenario",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "low",
+      "known_scoring_limitations": [
+        "Narrative quality is subjective; rubric focuses on choice-presentation and anti-railroad behavior, not prose quality."
+      ]
+    }
+  }
+}
