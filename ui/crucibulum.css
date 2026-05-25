@@ -1314,6 +1314,62 @@ tr:hover td{background:rgba(139,92,246,.04)}
 }
 
 /* ============================================================================
+ * SKIPPED-RUN CARDS (focused-run inspector)
+ *
+ * A skipped run is "no signal" — visually distinct from both
+ * pass (green) and fail (red). Dashed grey border + italic copy
+ * + explicit "Skipped, not failed" header so the operator never
+ * misreads it as a model failure.
+ * ========================================================================== */
+.skip-section{padding-top:6px}
+.skip-card{
+  display:grid;gap:12px;
+  padding:14px 16px;
+  border-radius:var(--radius-md);
+  border:1px dashed var(--border-medium);
+  background:linear-gradient(180deg,rgba(139,92,246,.05),rgba(12,10,28,.45));
+  margin-top:8px;
+  font-style:normal;
+}
+.skip-head{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding-bottom:8px;
+  border-bottom:1px dashed var(--border-subtle);
+}
+.skip-code-pill{
+  font-family:var(--mono);font-size:11px;letter-spacing:.06em;
+  padding:3px 10px;border-radius:var(--radius-sm);
+  border:1px solid var(--border-subtle);
+  background:rgba(139,92,246,.08);color:var(--ink-soft);
+  font-weight:700;
+}
+.skip-family{
+  font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink-dim);
+  margin-left:auto;
+}
+.skip-reason{
+  margin:0;color:var(--ink-soft);font-size:var(--text-sm);line-height:1.5;
+  overflow-wrap:anywhere;
+}
+.skip-reason strong{color:var(--ink);font-style:italic}
+.skip-grid{
+  display:grid;
+  grid-template-columns:max-content minmax(0,1fr);
+  gap:6px 14px;margin:0;
+}
+.skip-grid dt{
+  font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-dim);font-weight:700;align-self:start;padding-top:4px;
+}
+.skip-grid dd{margin:0;min-width:0;color:var(--ink-soft);font-size:var(--text-sm);overflow-wrap:anywhere}
+@media (max-width:599px){
+  .skip-grid{grid-template-columns:1fr;gap:2px 0}
+  .skip-grid dt{padding-top:6px}
+  .skip-family{margin-left:0}
+}
+
+/* ============================================================================
  * SUB-QUESTION FAILURE CARDS — strong visual boundaries
  *
  * The 2026-05-25 "425 vs 6" confusion happened because two separate

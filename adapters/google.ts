@@ -57,15 +57,17 @@ export class GoogleAdapter implements CrucibulumAdapter {
     const start = Date.now();
     // Gemini keeps system prompts out of the contents array (similar to Anthropic)
     // and uses "model" instead of "assistant" for the model's turn.
+    // Gemini text-only path; vision routes are gated by preflightSkipCheck.
+    const asText = (c: unknown): string => typeof c === "string" ? c : JSON.stringify(c);
     const systemParts: string[] = [];
     const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
     for (const m of messages) {
       if (m.role === "system") {
-        systemParts.push(m.content);
+        systemParts.push(asText(m.content));
       } else {
         contents.push({
           role: m.role === "assistant" ? "model" : "user",
-          parts: [{ text: m.content }],
+          parts: [{ text: asText(m.content) }],
         });
       }
     }

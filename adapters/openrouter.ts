@@ -252,7 +252,7 @@ export class OpenRouterAdapter implements CrucibulumAdapter {
     };
   }
 
-  private async callAPI(messages: Array<{ role: string; content: string }>, options?: ChatOptions): Promise<{ text: string; tokensIn: number; tokensOut: number; costUsd?: number; attempts: NonNullable<ChatResult["provider_attempts"]> }> {
+  private async callAPI(messages: Array<{ role: string; content: unknown }>, options?: ChatOptions): Promise<{ text: string; tokensIn: number; tokensOut: number; costUsd?: number; attempts: NonNullable<ChatResult["provider_attempts"]> }> {
     const body = buildOpenRouterChatBody(this.id, this.baseUrl, this.model, messages, options);
     const attempts: NonNullable<ChatResult["provider_attempts"]> = [];
     const timeoutMs = options?.timeoutMs ?? this.timeoutMs;
@@ -315,7 +315,11 @@ export function buildOpenRouterChatBody(
   adapterId: string,
   baseUrl: string,
   model: string,
-  messages: Array<{ role: string; content: string }>,
+  // OpenRouter accepts content as a string OR an array of content
+  // parts (text + image_url) per the OpenAI chat schema. We forward
+  // whatever the caller passes verbatim — vision tasks supply an
+  // array; text tasks supply a string.
+  messages: Array<{ role: string; content: unknown }>,
   options?: ChatOptions,
 ): Record<string, unknown> {
   const body: Record<string, unknown> = {

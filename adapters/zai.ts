@@ -181,7 +181,12 @@ const ZAI_MAX_RETRIES = 2;
 async function callZAI(
   apiKey: string,
   model: string,
-  messages: Array<{ role: string; content: string }>,
+  // ZAI uses text-only chat today. Accept content as unknown so the
+  // type aligns with the widened ChatMessage interface; a non-string
+  // content (multimodal part array) would be rejected by the upstream
+  // API and surface as FAIL_PROVIDER. ZAI adapters that need image
+  // input must opt-in via a future imageTransport implementation.
+  messages: Array<{ role: string; content: unknown }>,
 ): Promise<{ text: string; tokensIn: number; tokensOut: number }> {
   let lastError: Error | null = null;
   for (let attempt = 0; attempt <= ZAI_MAX_RETRIES; attempt++) {

@@ -189,7 +189,9 @@ export class OpenAIAdapter implements CrucibulumAdapter {
 async function callOpenAI(
   apiKey: string,
   model: string,
-  messages: Array<{ role: string; content: string }>,
+  // content widened to align with the multimodal-capable ChatMessage
+  // type. OpenAI accepts both string and content-part arrays.
+  messages: Array<{ role: string; content: unknown }>,
   options?: ChatOptions,
 ): Promise<{ text: string; tokensIn: number; tokensOut: number }> {
   const body = buildOpenAIChatBody(model, messages, options);
@@ -232,7 +234,7 @@ async function callOpenAI(
 
 export function buildOpenAIChatBody(
   model: string,
-  messages: Array<{ role: string; content: string }>,
+  messages: Array<{ role: string; content: unknown }>,
   options?: ChatOptions,
 ): Record<string, unknown> {
   const body: Record<string, unknown> = { model, messages };

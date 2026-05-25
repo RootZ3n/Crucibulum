@@ -107,6 +107,10 @@ export function loadConversationalManifest(taskId: string): ConversationalManife
     "classification", "code", "workflow", "instruction-obedience", "prompt-sensitivity",
     "role-stress", "context-degradation", "reasoning", "summarization", "token-efficiency", "thinking-mode",
     "operational-trust",
+    // Experimental scaffolds (gated via preflight + leaderboard
+    // exclusion); the loader still needs to find them so the runner
+    // and vision-smoke can dispatch by task id.
+    "roleplay", "vision",
   ];
   for (const family of families) {
     try {
@@ -605,8 +609,26 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
       if (terminalChatError) break;
     }
 
-    // 3. Send the actual question
-    messages.push({ role: "user", content: question.question });
+    // 3. Send the actual question. For vision-family tasks past
+    // preflight (fixture validated, capability OK, transport ready),
+    // attach the image as an image_url content part alongside the
+    // prompt text so the upstream provider receives a multimodal
+    // user turn. Hash was already verified by preflightSkipCheck
+    // before we got here — re-read the bytes for transport.
+    if (manifest.family === "vision" && (manifest as unknown as { image_fixture?: { path: string; mime?: string } }).image_fixture) {
+      const fx = (manifest as unknown as { image_fixture: { path: string; mime?: string } }).image_fixture;
+      const bytes = readFileSync(resolve(process.cwd(), fx.path));
+      const dataUrl = `data:${fx.mime || "image/png"};base64,${bytes.toString("base64")}`;
+      messages.push({
+        role: "user",
+        content: [
+          { type: "text", text: question.question },
+          { type: "image_url", image_url: { url: dataUrl, detail: "auto" } },
+        ],
+      });
+    } else {
+      messages.push({ role: "user", content: question.question });
+    }
 
     let response: string;
     let rawResponse: string = "";

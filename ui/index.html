@@ -4008,6 +4008,57 @@ function evidenceValue(label,value){
   if(value===undefined||value===null||value==='')return'';
   return`<div class="evidence-block"><div class="evidence-label">${esc(label)}</div><pre class="evidence-value">${esc(typeof value==='string'?value:JSON.stringify(value,null,2))}</pre></div>`;
 }
+function renderSkipCards(result){
+  // Detect SKIPPED_* outcomes from the focused result. A skipped run
+  // means the runner did NOT exercise the model — it bailed during
+  // preflight (missing fixture, hash drift, model lacks capability,
+  // adapter has no transport, etc.). Render these as their own
+  // clearly-distinct cards so the operator sees "Skipped, not
+  // failed" up front, never confused with a model fail.
+  const v = result?.verdict || {};
+  const reason = String(v.failureReasonCode || '').toUpperCase();
+  const skipCodes = new Set([
+    'SKIPPED_FIXTURE_MISSING',
+    'SKIPPED_FIXTURE_HASH_MISMATCH',
+    'SKIPPED_UNSUPPORTED_MULTIMODAL',
+    'SKIPPED_IMAGE_TRANSPORT_UNSUPPORTED',
+    'SKIPPED_UNSUPPORTED_ROLEPLAY_PROFILE',
+    'SKIPPED_EXPERIMENTAL_FAMILY'
+  ]);
+  const isSkip = v.completionState === 'SKIPPED' || skipCodes.has(reason);
+  if(!isSkip)return'';
+  const ev=v.evidence||{};
+  const skipCode=ev.skip_classification||reason||'SKIPPED';
+  const skipReason=ev.skip_reason||v.failureReasonSummary||'Run was skipped by preflight; no provider was called.';
+  const family=ev.family||result.family||'unknown';
+  const fixturePath=ev.fixture_path||result.fixturePath||null;
+  const capability=ev.capability_required||null;
+  return`<div class="subpanel skip-section">
+    <div class="section-head"><div><div class="mini-label">SKIPPED · NOT FAILED</div><h3>Run did not exercise the model</h3></div><span class="chip dim">${esc(skipCode)}</span></div>
+    <article class="skip-card" role="group" aria-label="Skipped run details">
+      <header class="skip-head">
+        <span class="badge skip">SKIPPED</span>
+        <span class="skip-code-pill">${esc(skipCode)}</span>
+        <span class="skip-family">family · ${esc(family)}</span>
+      </header>
+      <p class="skip-reason"><strong>Skipped, not failed.</strong> ${esc(skipReason)}</p>
+      <dl class="skip-grid">
+        <dt>Provider called</dt><dd><span class="badge skip">NO</span></dd>
+        <dt>Tokens spent</dt><dd>0 in · 0 out</dd>
+        <dt>Cost</dt><dd>$0.0000</dd>
+        <dt>Affects leaderboard</dt><dd><span class="badge skip">NO</span></dd>
+        <dt>Affects certification</dt><dd><span class="badge skip">NO</span></dd>
+        <dt>Provider</dt><dd>${esc(result.provider||ev.provider||'—')}</dd>
+        <dt>Model</dt><dd>${esc(result.model||'—')}</dd>
+        ${fixturePath?`<dt>Fixture path</dt><dd><code class="subq-code">${esc(fixturePath)}</code></dd>`:''}
+        ${ev.expected_sha256||ev.expectedSha256?`<dt>Expected sha256</dt><dd><code class="subq-code">${esc(ev.expected_sha256||ev.expectedSha256)}</code></dd>`:''}
+        ${ev.actual_sha256||ev.actualSha256?`<dt>Actual sha256</dt><dd><code class="subq-code subq-got">${esc(ev.actual_sha256||ev.actualSha256)}</code></dd>`:''}
+        ${capability?`<dt>Required capability</dt><dd>${esc(Array.isArray(capability)?capability.join(', '):String(capability))}</dd>`:''}
+      </dl>
+    </article>
+  </div>`;
+}
+
 function renderSubQuestionFailures(result){
   // Per-sub-question failure cards. Built from the structured
   // .subQuestion field populated by normalizeRunForDisplay when the
@@ -4191,6 +4242,7 @@ function renderFocusedRun(tabKey){
       </div>`:''}
     </div>
 
+    ${renderSkipCards(result)}
     ${renderSubQuestionFailures(result)}
 
     <div class="subpanel">

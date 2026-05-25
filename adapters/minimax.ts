@@ -253,7 +253,10 @@ async function callMiniMax(
   baseUrl: string,
   apiKey: string,
   model: string,
-  messages: Array<{ role: string; content: string }>,
+  // content widened to align with the multimodal-capable ChatMessage
+  // type. MiniMax adapter is text-only today; multimodal models would
+  // be skipped by preflightSkipCheck via SKIPPED_IMAGE_TRANSPORT_UNSUPPORTED.
+  messages: Array<{ role: string; content: unknown }>,
   options?: ChatOptions,
   retryOptions?: { timeoutMs: number; retries: number },
 ): Promise<{ text: string; tokensIn: number; tokensOut: number; attempts: NonNullable<ChatResult["provider_attempts"]> }> {

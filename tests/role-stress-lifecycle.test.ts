@@ -87,7 +87,8 @@ function buildSlowAdapter(): CrucibulumAdapter {
       // pick a generic "bug" that satisfies several questions; the regex
       // for others will fail. That's fine — this test isn't about scoring,
       // it's about lifecycle/heartbeat.
-      const last = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+      const lastRaw = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+      const last = typeof lastRaw === "string" ? lastRaw : JSON.stringify(lastRaw);
       let reply = "bug";
       if (/feature/i.test(last) && /multi-language|integrate|PDF|export|Slack/i.test(last)) reply = "feature";
       else if (/question|formats|public API|settings page/i.test(last)) reply = "question";

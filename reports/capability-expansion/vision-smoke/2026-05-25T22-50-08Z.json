@@ -1,0 +1,35 @@
+{
+  "schema": "crucible.vision-smoke.v1",
+  "timestamp": "2026-05-25T22-50-08Z",
+  "commit": "6435ac71d3676961d508f5cf494539eb6af4a172",
+  "dirtyTree": true,
+  "provider": "openrouter",
+  "model": "xiaomi/mimo-v2-omni",
+  "maxCostUsd": 0.25,
+  "tests": [
+    "vision-ocr-001",
+    "vision-object-count-001"
+  ],
+  "includeUncertainty": false,
+  "totalCostUsd": 0,
+  "classifications": {
+    "FAIL_HARNESS": 1
+  },
+  "stopped": true,
+  "stopReason": "harness_error",
+  "affectsLeaderboard": false,
+  "affectsCertification": false,
+  "experimental": true,
+  "results": [
+    {
+      "taskId": "vision-ocr-001",
+      "classification": "FAIL_HARNESS",
+      "errorMessage": "Conversational task not found: vision-ocr-001. Searched in: /mnt/ai/crucible/tasks/identity/vision-ocr-001, /mnt/ai/crucible/tasks/truthfulness/vision-ocr-001, /mnt/ai/crucible/tasks/safety/vision-ocr-001, /mnt/ai/crucible/tasks/memory/vision-ocr-001, /mnt/ai/crucible/tasks/proactive/vision-ocr-001, /mnt/ai/crucible/tasks/personality/vision-ocr-001, /mnt/ai/crucible/tasks/adversarial_chat/vision-o",
+      "costUsd": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "imageSent": false,
+      "pass": false
+    }
+  ]
+}

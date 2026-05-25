@@ -1,0 +1,29 @@
+# Vision smoke report
+
+- **Timestamp (UTC):** 2026-05-25T22-58-21Z
+- **Commit:** 6435ac71d3676961d508f5cf494539eb6af4a172 (dirty tree)
+- **Provider/Model:** openrouter/xiaomi/mimo-v2-omni
+- **Cost cap:** $0.25 · **actual:** $0.0004
+- **Tests:** vision-ocr-001, vision-object-count-001
+- **Stopped early:** no
+- **Affects leaderboard:** false
+- **Affects certification:** false
+- **Experimental:** true
+
+## Per-test results
+
+| Task | Class | Cost | Tokens in/out | Image sent | Run id | Bundle id |
+|---|---|---:|---|:--:|---|---|
+| vision-ocr-001 | PASS | $0.0000 | 230/4 | ✓ | — | run_2026-05-25_vision-ocr-001_xiaomi-mimo-v2-omni_2910a871 |
+| vision-object-count-001 | LOW_SCORE | $0.0003 | 222/157 | ✓ | — | run_2026-05-25_vision-object-count-001_xiaomi-mimo-v2-omni_a476e89f |
+
+
+## Skip details
+
+- **vision-ocr-001** — Run completed and passed evaluation
+- **vision-object-count-001** — Model completed the run but did not meet the pass threshold
+
+## Classification counts
+
+- PASS: 1
+- LOW_SCORE: 1

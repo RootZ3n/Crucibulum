@@ -1,0 +1,52 @@
+{
+  "schema": "crucible.vision-smoke.v1",
+  "timestamp": "2026-05-25T22-58-21Z",
+  "commit": "6435ac71d3676961d508f5cf494539eb6af4a172",
+  "dirtyTree": true,
+  "provider": "openrouter",
+  "model": "xiaomi/mimo-v2-omni",
+  "maxCostUsd": 0.25,
+  "tests": [
+    "vision-ocr-001",
+    "vision-object-count-001"
+  ],
+  "includeUncertainty": false,
+  "totalCostUsd": 0.00038,
+  "classifications": {
+    "PASS": 1,
+    "LOW_SCORE": 1
+  },
+  "stopped": false,
+  "stopReason": null,
+  "affectsLeaderboard": false,
+  "affectsCertification": false,
+  "experimental": true,
+  "results": [
+    {
+      "taskId": "vision-ocr-001",
+      "classification": "PASS",
+      "costUsd": 0.000039,
+      "tokensIn": 230,
+      "tokensOut": 4,
+      "runId": null,
+      "bundleId": "run_2026-05-25_vision-ocr-001_xiaomi-mimo-v2-omni_2910a871",
+      "imageSent": true,
+      "skipReason": "Run completed and passed evaluation",
+      "fixturePath": null,
+      "pass": true
+    },
+    {
+      "taskId": "vision-object-count-001",
+      "classification": "LOW_SCORE",
+      "costUsd": 0.000341,
+      "tokensIn": 222,
+      "tokensOut": 157,
+      "runId": null,
+      "bundleId": "run_2026-05-25_vision-object-count-001_xiaomi-mimo-v2-omni_a476e89f",
+      "imageSent": true,
+      "skipReason": "Model completed the run but did not meet the pass threshold",
+      "fixturePath": null,
+      "pass": false
+    }
+  ]
+}

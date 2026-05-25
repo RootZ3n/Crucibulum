@@ -124,7 +124,10 @@ export class HarnessMockAdapter implements CrucibulumAdapter {
    * back to a generic-but-broad reply.
    */
   async chat(messages: ChatMessage[], options?: ChatOptions): Promise<ChatResult> {
-    const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+    // Harness-mock is text-only; vision tasks never reach it (preflight
+    // gates them). Coerce defensively to keep the type system happy.
+    const _lastUserContent = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+    const lastUser = typeof _lastUserContent === "string" ? _lastUserContent : JSON.stringify(_lastUserContent);
     let text = "";
     switch (this.intent) {
       case "empty":

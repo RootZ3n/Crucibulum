@@ -260,7 +260,10 @@ async function callSquidley(
   url: string,
   model: string,
   provider: string | undefined,
-  messages: Array<{ role: string; content: string }>,
+  // content widened to align with the multimodal-capable ChatMessage
+  // type. Squidley currently forwards verbatim; multimodal support
+  // depends on the upstream adapter the user has configured.
+  messages: Array<{ role: string; content: unknown }>,
 ): Promise<{ text: string; tokensIn: number; tokensOut: number; costUsd: number }> {
   const body: Record<string, unknown> = {
     messages,

@@ -244,9 +244,32 @@ export interface ExecutionResult {
 
 // ── Chat types (conversational tasks) ─────────────────────────────────────
 
+/**
+ * Multimodal content parts (OpenAI/OpenRouter-compatible shape).
+ *
+ * Only OpenRouter currently supports image_url forwarding. Other
+ * adapters that don't know how to handle parts will throw a
+ * structured error from chat() — the conversational runner gates
+ * vision tasks behind preflightSkipCheck's
+ * `imageTransportImplemented` flag so the unsupported branch is
+ * never reached in practice.
+ */
+export interface ChatContentTextPart {
+  type: "text";
+  text: string;
+}
+export interface ChatContentImagePart {
+  type: "image_url";
+  image_url: { url: string; detail?: "auto" | "low" | "high" };
+}
+export type ChatContentPart = ChatContentTextPart | ChatContentImagePart;
+
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
-  content: string;
+  /** String for normal text turns. Array of parts for multimodal
+   *  turns (text + image_url). The runner only constructs parts for
+   *  vision-family tasks where preflight cleared the route. */
+  content: string | ChatContentPart[];
 }
 
 export interface ChatResult {
@@ -315,7 +338,12 @@ export type ConversationalFamily =
   | "summarization"
   | "token-efficiency"
   | "thinking-mode"
-  | "operational_trust";
+  | "operational_trust"
+  // Experimental scaffolds — see docs/ROLEPLAY_TEST_SUITE.md +
+  // docs/MULTIMODAL_VISION_SUITE.md. Excluded from leaderboard
+  // composite by default; runner gates vision behind preflight.
+  | "roleplay"
+  | "vision";
 
 export type ConversationalScoringType =
   | "text_match"

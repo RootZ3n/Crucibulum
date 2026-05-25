@@ -54,11 +54,17 @@ export class AnthropicAdapter implements CrucibulumAdapter {
     if (!this.apiKey) throw new Error("Anthropic: ANTHROPIC_API_KEY not set");
     const start = Date.now();
     // Anthropic's Messages API keeps the system prompt out of the message array.
+    // Anthropic's vision input uses a different shape ({type:"image",source:...})
+    // than the OpenAI-style image_url part array on ChatMessage.content. This
+    // adapter is text-only today; the conversational runner gates vision
+    // routes via preflightSkipCheck.imageTransportImplemented, so we only see
+    // string content here in practice. Stringify defensively just in case.
+    const asText = (c: unknown): string => typeof c === "string" ? c : JSON.stringify(c);
     const systemParts: string[] = [];
     const convo: Array<{ role: string; content: string }> = [];
     for (const m of messages) {
-      if (m.role === "system") systemParts.push(m.content);
-      else convo.push({ role: m.role, content: m.content });
+      if (m.role === "system") systemParts.push(asText(m.content));
+      else convo.push({ role: m.role, content: asText(m.content) });
     }
     const result = await callAnthropic(this.apiKey, this.model, systemParts.join("\n\n"), convo);
     return {

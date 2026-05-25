@@ -21,9 +21,12 @@ class MemoryMockAdapter implements CrucibulumAdapter {
   }
 
   async chat(messages: ChatMessage[]): Promise<ChatResult> {
+    // Memory tests use only text content; coerce defensively because
+    // the public ChatMessage.content type widened to support multimodal.
+    const stringifyContent = (c: unknown): string => typeof c === "string" ? c : JSON.stringify(c);
     const lastUser = [...messages].reverse().find((message) => message.role === "user")?.content ?? "";
-    const lastUserNorm = lastUser.toLowerCase();
-    const transcript = messages.map((message) => message.content.toLowerCase()).join("\n");
+    const lastUserNorm = stringifyContent(lastUser).toLowerCase();
+    const transcript = messages.map((message) => stringifyContent(message.content).toLowerCase()).join("\n");
     let text = "I don't know.";
 
     if (lastUserNorm.includes("what was it")) {

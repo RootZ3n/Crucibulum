@@ -255,7 +255,13 @@ Issue one of these commands now.`;
 async function callOllama(
   url: string,
   model: string,
-  messages: Array<{ role: string; content: string }>,
+  // content widened to align with the multimodal-capable ChatMessage
+  // type. Ollama vision (qwen3-vl etc.) uses an `images` array on the
+  // request, NOT inline content parts — a future image-transport
+  // implementation will translate ChatContentImagePart into that
+  // format. Current behaviour: forward verbatim and let the upstream
+  // reject non-string content for non-vision models.
+  messages: Array<{ role: string; content: unknown }>,
 ): Promise<{ text: string; tokensIn: number; tokensOut: number }> {
   const res = await fetch(`${url}/api/chat`, {
     method: "POST",
