@@ -236,22 +236,42 @@ function findLatestGauntletReport(provider, model) {
   return files.length ? join(dir, files[0]) : null;
 }
 
+// Skip classifications NEVER count toward promotion or demotion. They
+// are precondition outcomes (no fixture, no capability, experimental
+// family) — the model wasn't exercised, so the run carries no signal
+// about model quality. Mirrored from core/skip-classifiers.ts.
+const SKIP_CODES = new Set([
+  "SKIPPED_FIXTURE_MISSING",
+  "SKIPPED_UNSUPPORTED_MULTIMODAL",
+  "SKIPPED_UNSUPPORTED_ROLEPLAY_PROFILE",
+  "SKIPPED_EXPERIMENTAL_FAMILY",
+  "SKIPPED_EXPLAINED",
+  "BLOCKED_COST_CAP",
+]);
+
 function classifyTier({ profile, results, hadConfigBlock }) {
   // Tier rules (per certification spec):
   //   FAIL_PRODUCT (model gave wrong answer) → EXPERIMENTAL (blocks any promotion)
   //   FAIL_MODEL_CAPABILITY               → UNSUPPORTED_CAPABILITY
   //   FAIL_CONFIG (missing creds, etc.)   → BLOCKED_CONFIG
   //   FAIL_PROVIDER (transient infra)     → cap at PROVIDER_TESTED (not RELEASE_CERTIFIED)
-  //   all PASS                            → grant the requested profile's tier
+  //   SKIPPED_* / BLOCKED_COST_CAP        → IGNORED for tier (filtered out below)
+  //   all PASS (after skips filtered)     → grant the requested profile's tier
   if (hadConfigBlock) return "BLOCKED_CONFIG";
   const classifications = results.map((r) => String(r.classification || "").toUpperCase());
-  if (classifications.some((c) => c === "FAIL_PRODUCT")) return "EXPERIMENTAL";
-  if (classifications.some((c) => c === "FAIL_MODEL_CAPABILITY")) return "UNSUPPORTED_CAPABILITY";
-  if (classifications.some((c) => c === "FAIL_CONFIG")) return "BLOCKED_CONFIG";
+  // Filter out skip codes so they neither block nor reward promotion.
+  const scoring = classifications.filter((c) => !SKIP_CODES.has(c));
+  if (scoring.some((c) => c === "FAIL_PRODUCT")) return "EXPERIMENTAL";
+  if (scoring.some((c) => c === "FAIL_MODEL_CAPABILITY")) return "UNSUPPORTED_CAPABILITY";
+  if (scoring.some((c) => c === "FAIL_CONFIG")) return "BLOCKED_CONFIG";
   // FAIL_PROVIDER is transient — caps tier at PROVIDER_TESTED.
-  if (classifications.some((c) => c === "FAIL_PROVIDER")) return "PROVIDER_TESTED";
-  // Any other non-PASS (BLOCKED_COST_CAP, SKIPPED_EXPLAINED, UNKNOWN) keeps the model EXPERIMENTAL.
-  if (classifications.some((c) => c !== "PASS")) return "EXPERIMENTAL";
+  if (scoring.some((c) => c === "FAIL_PROVIDER")) return "PROVIDER_TESTED";
+  // Any other non-PASS keeps the model EXPERIMENTAL.
+  if (scoring.some((c) => c !== "PASS")) return "EXPERIMENTAL";
+  // All-skip campaigns produce no signal — caller should treat as a no-op
+  // rather than promotion. We return EXPERIMENTAL so a campaign that
+  // somehow produced only SKIPPED_* doesn't accidentally upgrade tier.
+  if (scoring.length === 0) return "EXPERIMENTAL";
   return profile === "release-certified" ? "RELEASE_CERTIFIED" : "PROVIDER_TESTED";
 }
 

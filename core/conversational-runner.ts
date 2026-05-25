@@ -38,6 +38,7 @@ import { assertBenchmarkProvenance } from "./manifest.js";
 import { canonicalPercent } from "../types/scores.js";
 import { runWithProtection } from "./circuit-breaker.js";
 import { normalizeVerdict, reconcileVerdictWithLaneEvaluations } from "./verdict.js";
+import { preflightSkipCheck, type PreflightCapabilities, type PreflightSkipResult } from "./skip-classifiers.js";
 import { interpretBundleResult } from "./interpretation.js";
 import type { StructuredProviderError } from "../types/provider-error.js";
 import { normalizeProviderError } from "./provider-errors.js";
@@ -147,6 +148,15 @@ export interface ConversationalRunOptions {
    * the operator saw as "Run stream interrupted" on role-stress-001.
    */
   onProgress?: ((event: ConversationalProgressEvent) => void) | undefined;
+  /**
+   * Optional capability snapshot for the selected model. When the
+   * manifest's family requires a capability the model lacks (vision
+   * without supportsImageInput, roleplay opt-out, etc.), the runner
+   * skips the model dispatch entirely and returns a SKIPPED_* bundle
+   * via preflightSkipCheck. Capabilities are sourced from
+   * MODEL_CERTIFICATION in the UI/back-end registry.
+   */
+  capabilities?: PreflightCapabilities | undefined;
 }
 
 export interface ConversationalProgressEvent {
@@ -358,6 +368,81 @@ export function computeConversationalEfficiency(
   };
 }
 
+/**
+ * Build a deterministic, no-provider-call bundle for a SKIPPED_*
+ * outcome. The bundle is auditable (records family, fixture, skip
+ * reason, capability snapshot) but carries no model blame: no
+ * FAIL_PRODUCT, no FAIL_PROVIDER, no token spend, no cost.
+ */
+function buildSkipResult(args: {
+  skip: PreflightSkipResult;
+  taskId: string;
+  adapter: { id: string; name: string };
+  model: string;
+  manifest: ConversationalManifest;
+  startTime: string;
+  runId?: string | undefined;
+}): ConversationalRunResult {
+  const { skip, taskId, adapter, model, manifest, startTime, runId } = args;
+  const completedAt = new Date().toISOString();
+  const bundle = {
+    schema: "crucibulum.v1",
+    bundle_id: generateBundleId(taskId, model, { isoDate: startTime }),
+    bundle_version: "1.0.0",
+    run_id: runId ?? `skip-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    task: { id: taskId, family: manifest.family ?? skip.family },
+    agent: { id: model, provider: adapter.id, model },
+    environment: {
+      run_started_at: startTime,
+      run_completed_at: completedAt,
+      platform: platform(),
+      arch: arch(),
+    },
+    timeline: [
+      { t: 0, type: "task_start", detail: `skip preflight: ${skip.classification}` },
+      { t: 0, type: "skip", detail: `${skip.classification} — ${skip.reason}` },
+    ],
+    verification_results: {},
+    score: {
+      scale: "fraction_0_1",
+      total: 0,
+      total_percent: 0,
+      breakdown: {},
+      breakdown_percent: {},
+      pass: false,
+      pass_threshold: manifest.scoring?.pass_threshold ?? 0.7,
+      pass_threshold_percent: Math.round(((manifest.scoring?.pass_threshold ?? 0.7) * 100)),
+      integrity_violations: 0,
+      // SKIP-marker — leaderboard aggregator must NOT count this row.
+      skipped: true,
+      skip_classification: skip.classification,
+    },
+    usage: { tokens_in: 0, tokens_out: 0, cost_usd: 0 },
+    judge: DETERMINISTIC_JUDGE_METADATA,
+    trust: { bundle_hash_verified: true, bundle_authenticated: false, bundle_signature_status: "skipped" },
+    verdict: {
+      label: "SKIPPED",
+      completionState: "SKIPPED",
+      failureOrigin: null,
+      failureReasonCode: skip.classification,
+      failureReasonSummary: skip.reason,
+      countsTowardModelScore: false,
+      countsTowardFailureRate: false,
+      evidence: {
+        provider: adapter.id,
+        adapter: adapter.id,
+        skip_classification: skip.classification,
+        skip_reason: skip.reason,
+        family: skip.family,
+        fixture_path: skip.fixturePath ?? null,
+        capability_required: (manifest as unknown as { requires_capability?: readonly string[] }).requires_capability ?? null,
+      },
+    },
+    diagnosis: { failure_mode: skip.classification },
+  } as unknown as EvidenceBundle;
+  return { bundle, passed: false, score: 0, exitCode: 0 };
+}
+
 export async function runConversationalTask(options: ConversationalRunOptions): Promise<ConversationalRunResult> {
   const { taskId, adapter, model } = options;
   const startTime = new Date().toISOString();
@@ -369,6 +454,24 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
   }
 
   const manifest = loadConversationalManifest(taskId);
+
+  // ── Preflight skip gate ─────────────────────────────────────────────
+  // Vision/roleplay (and future capability-gated families) must check
+  // whether the run can even be attempted BEFORE calling the provider.
+  // A SKIPPED_* outcome must:
+  //   - never call adapter.chat
+  //   - never spend tokens
+  //   - never be classified as model/product/provider/config failure
+  //   - still produce an auditable bundle so the UI can show the skip
+  const skip = preflightSkipCheck(
+    manifest as unknown as Parameters<typeof preflightSkipCheck>[0],
+    options.capabilities,
+  );
+  if (skip) {
+    log("info", "conv-runner", `Skip ${skip.classification} ${taskId} ${adapter.id}/${model}: ${skip.reason}`);
+    return buildSkipResult({ skip, taskId, adapter, model, manifest, startTime, runId: options.runId });
+  }
+
   const chatOptions = benchmarkChatOptions(manifest);
   const gapFillers = manifest.gap_fillers ?? DEFAULT_GAP_FILLERS;
   const timeline: TimelineEvent[] = [];

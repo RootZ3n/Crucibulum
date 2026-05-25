@@ -7,7 +7,16 @@ import { readdirSync, statSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { log } from "../utils/logger.js";
 
-const RUNS_DIR = process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs");
+// Evaluate per call so tests can inject CRUCIBULUM_RUNS_DIR via env or
+// pass `runsDir` directly. The previous module-load constant captured
+// process.cwd()/runs once, which made the test against the real
+// production runs/ directory non-deterministic (parallel writes from
+// other tests would change the file count between two consecutive
+// scans — that was the "respects maxAgeMs" flake's root cause).
+function resolveRunsDir(override?: string): string {
+  if (override) return override;
+  return process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs");
+}
 
 export interface CleanupOptions {
   /** Maximum age in milliseconds before a workspace/artifact is considered stale. Default: 7 days */
@@ -16,6 +25,8 @@ export interface CleanupOptions {
   dryRun?: boolean | undefined;
   /** If true, keep workspaces with 'ws_' prefix (they may be in use) */
   keepWorkspaces?: boolean | undefined;
+  /** Override the runs directory (test fixtures, alternate workspaces). Defaults to env CRUCIBULUM_RUNS_DIR or ./runs. */
+  runsDir?: string | undefined;
 }
 
 export interface CleanupResult {
@@ -49,6 +60,7 @@ export function cleanupStaleArtifacts(options: CleanupOptions = {}): CleanupResu
   const maxAgeMs = options.maxAgeMs ?? DEFAULT_MAX_AGE_MS;
   const dryRun = options.dryRun ?? false;
   const keepWorkspaces = options.keepWorkspaces ?? true;
+  const runsDir = resolveRunsDir(options.runsDir);
   const now = Date.now();
 
   const result: CleanupResult = {
@@ -60,21 +72,21 @@ export function cleanupStaleArtifacts(options: CleanupOptions = {}): CleanupResu
     errors: [],
   };
 
-  if (!existsSync(RUNS_DIR)) {
-    log("info", "cleanup", `Runs directory does not exist: ${RUNS_DIR}`);
+  if (!existsSync(runsDir)) {
+    log("info", "cleanup", `Runs directory does not exist: ${runsDir}`);
     return result;
   }
 
   let entries: string[];
   try {
-    entries = readdirSync(RUNS_DIR);
+    entries = readdirSync(runsDir);
   } catch (err) {
     result.errors.push(`Failed to read runs directory: ${String(err)}`);
     return result;
   }
 
   for (const entry of entries) {
-    const fullPath = join(RUNS_DIR, entry);
+    const fullPath = join(runsDir, entry);
     result.scanned++;
 
     try {
@@ -143,6 +155,6 @@ export function cleanupStaleArtifacts(options: CleanupOptions = {}): CleanupResu
 /**
  * Get cleanup stats without deleting anything.
  */
-export function getCleanupStats(options: { maxAgeMs?: number } = {}): CleanupResult {
+export function getCleanupStats(options: { maxAgeMs?: number; runsDir?: string } = {}): CleanupResult {
   return cleanupStaleArtifacts({ ...options, dryRun: true });
 }
