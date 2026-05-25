@@ -220,24 +220,8 @@ body::after{display:none}
 }
 .abyss-banner::after{display:none}
 
-/* Squidley — reduce to subtle watermark */
-.ab-squid{
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  pointer-events:none;
-  z-index:0;
-}
-.ab-squid img{
-  width:clamp(160px,20vw,280px);
-  height:auto;
-  opacity:.08;
-  filter:grayscale(.5) brightness(.8);
-  user-select:none;
-  -webkit-user-drag:none;
-}
+/* Squidley removed from hero — lives in footer only */
+.ab-squid{display:none}
 .ab-squid-halo{display:none}
 .ab-callsign,.ab-telemetry{position:relative;z-index:2}
 
@@ -2058,3 +2042,26 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .lane-health-row.red{border-color:rgba(248,113,113,.2);background:rgba(248,113,113,.03)}
 .lane-health-row.dim{border-color:var(--border-subtle);background:rgba(255,255,255,.01);color:var(--ink-dim)}
 .lane-health-row strong{color:var(--ink);font-weight:600;margin-right:6px}
+
+/* --- App footer — subtle Squidley brand mark ---------------------- */
+.app-footer{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  padding:24px 16px 32px;
+  opacity:.35;
+  user-select:none;
+  pointer-events:none;
+}
+.footer-squid{
+  width:28px;
+  height:auto;
+  filter:grayscale(.6) brightness(.7);
+}
+.footer-label{
+  font-family:var(--body);
+  font-size:var(--text-xs);
+  color:var(--ink-dim);
+  letter-spacing:.04em;
+}
