@@ -1299,6 +1299,156 @@ tr:hover td{background:rgba(139,92,246,.04)}
 @media (prefers-reduced-motion:reduce){
   .cmd-rail-mascot{filter:none}
 }
+
+/* ============================================================================
+ * READABLE LEADERBOARD — stop clipping model names
+ *
+ * The previous leaderboard rows used `minmax(0, ...)` model columns +
+ * single-line ellipsis. With long ids like `deepseek/deepseek-v4-pro`
+ * or `google/gemini-3.1-flash-lite` the column collapses to ~60-180 px
+ * and operators see "deepseek/de..." with no way to disambiguate.
+ *
+ * These rules give the model name column a 260 px hard floor and let
+ * long ids wrap to 2 lines instead of clipping. The score / bar / tags
+ * still align. Mobile keeps the same wrap behavior. All operator-
+ * visible model ids stay legible at any width.
+ * ========================================================================== */
+
+/* Comparison rows (the main leaderboard inside renderComparisonBars) */
+.comparison-row{
+  grid-template-columns:minmax(260px,1.6fr) minmax(140px,2fr) 60px minmax(80px,1fr);
+  gap:14px;
+  padding:14px 16px;
+}
+.comparison-head{min-width:0;display:grid;gap:4px}
+.comparison-model{
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  line-height:1.3;
+  font-size:var(--text-sm);
+}
+.comparison-meta{
+  font-family:var(--mono);font-size:10px;letter-spacing:.06em;
+  color:var(--ink-dim);text-transform:uppercase;
+  white-space:normal;line-height:1.3;
+}
+.comparison-tags{display:flex;flex-wrap:wrap;gap:4px;min-width:0;justify-content:flex-end}
+
+/* Leader strips (compact leaderboard variant) */
+.leader-strip{
+  grid-template-columns:28px minmax(220px,1.6fr) minmax(60px,auto) 60px;
+  gap:12px;
+  align-items:center;
+}
+.ls-model{
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  line-height:1.3;
+}
+
+/* Ranked rows (the Ranked Model Comparison) */
+.ranked-row{
+  grid-template-columns:36px minmax(280px,1.6fr) minmax(140px,2fr) 56px minmax(60px,auto);
+  gap:14px;
+  padding:14px 16px;
+  align-items:center;
+}
+.ranked-model{
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  line-height:1.3;
+  font-size:var(--text-sm);
+}
+
+/* Quick Picks / winner rows — let model name wrap when it would clip */
+.winner-row{
+  grid-template-columns:auto minmax(0,1fr) auto;
+  gap:10px;
+  align-items:center;
+}
+.winner-row .winner-model{
+  font-family:var(--body);font-weight:600;color:var(--ink);
+  white-space:normal;overflow-wrap:anywhere;word-break:break-word;
+  line-height:1.3;min-width:0;
+}
+
+/* Top model rank cards (the top-of-page Ranking Deck) — wrap when names
+ * are long instead of crushing 3-up at every width. */
+.rank-cards{
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+}
+.rank-card{
+  grid-template-columns:auto minmax(0,1fr) auto;
+  gap:10px 16px;
+}
+.rank-model{
+  font-size:var(--text-base);  /* slightly bigger so id reads at a glance */
+  line-height:1.25;
+}
+
+/* Stage grid — the dashboard's 2-col layout was 1.4fr / .5fr with a
+ * 280px side floor. The side column used to steal ~300px even when
+ * leaderboard names needed it. Bias the leaderboard center wider. */
+.stage-grid{
+  grid-template-columns:minmax(0,2fr) minmax(260px,.6fr);
+  gap:16px;
+  align-items:start;
+}
+@media (max-width:1199px){
+  .stage-grid{grid-template-columns:1fr;align-items:stretch}
+}
+
+/* Category matrix — first column must hold a model id; wrap allowed. */
+.ranked-table th:first-child,
+.ranked-table td:first-child{
+  min-width:240px;
+  max-width:360px;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  line-height:1.3;
+}
+
+/* Mobile (≤ 599 px) — stack leaderboard rows so model name gets a
+ * full row, then bar+score below. Prevents the 3-col grid from
+ * crushing names on small phones. */
+@media (max-width:599px){
+  .comparison-row{
+    grid-template-columns:1fr;
+    gap:10px;
+    padding:12px;
+  }
+  .comparison-tags{justify-content:flex-start}
+  .leader-strip{
+    grid-template-columns:28px 1fr auto;
+    gap:8px;
+    padding:10px 12px;
+  }
+  .leader-strip > :nth-child(3){grid-column:2/-1}  /* score wraps under model */
+  .ranked-row{
+    grid-template-columns:32px 1fr;
+    grid-template-areas:
+      "pos model"
+      "bar bar"
+      "score tags";
+    gap:8px;
+    padding:10px 12px;
+  }
+  .ranked-row > :nth-child(1){grid-area:pos}
+  .ranked-row > :nth-child(2){grid-area:model}
+  .ranked-row > :nth-child(3){grid-area:bar}
+  .ranked-row > :nth-child(4){grid-area:score;justify-self:start}
+  .ranked-row > :nth-child(5){grid-area:tags;justify-self:end}
+}
 .cmd-rail-title-stack{display:grid;gap:2px;min-width:0}
 .cmd-rail-title{
   font-family:var(--body);font-weight:800;

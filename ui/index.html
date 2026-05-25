@@ -2904,7 +2904,7 @@ function renderLeaderboard(tabKey){
   }));
   if(!entries.length)return renderLeaderboardEmpty(tabKey);
   const top=Math.max(...entries.map((entry)=>entry.avgOverall),1);
-  return `<div class="comparison-chart leaderboard-shell">${entries.map((entry,index)=>{const score=entry.avgOverall;const width=Math.max(6,Math.round((score/top)*100));const cls=score>=80?'pass':score>=55?'warn':'fail';const tag=index===0&&entry.eligible?'<span class="tag teal">BEST</span>':(index===0?'<span class="tag dim">TOP · NOT VERIFIED</span>':'');return`<div class="comparison-row ${cls}"><div class="comparison-head"><div class="comparison-model">${esc(entry.model)}</div><div class="comparison-meta">${entry.runs}R ${index===0?'· leader':''}</div></div><div class="comparison-bar"><div class="comparison-fill" style="width:${width}%"></div></div><div class="comparison-score">${score}%</div><div class="comparison-tags">${tag}</div></div>`}).join('')}</div>`;
+  return `<div class="comparison-chart leaderboard-shell">${entries.map((entry,index)=>{const score=entry.avgOverall;const width=Math.max(6,Math.round((score/top)*100));const cls=score>=80?'pass':score>=55?'warn':'fail';const tag=index===0&&entry.eligible?'<span class="tag teal">BEST</span>':(index===0?'<span class="tag dim">TOP · NOT VERIFIED</span>':'');return`<div class="comparison-row ${cls}"><div class="comparison-head"><div class="comparison-model" title="${esc(entry.model)}">${esc(entry.model)}</div><div class="comparison-meta">${entry.runs}R ${index===0?'· leader':''}</div></div><div class="comparison-bar"><div class="comparison-fill" style="width:${width}%"></div></div><div class="comparison-score">${score}%</div><div class="comparison-tags">${tag}</div></div>`}).join('')}</div>`;
 }
 function currentRunState(){
   return state.runState[state.activeTab]||state.runState.dashboard||null;
@@ -3491,7 +3491,7 @@ function renderOverviewCards(tabKey){
   return`<section class="panel" style="padding:14px">
     <div class="section-head"><div><div class="mini-label">BEST MODEL RECOMMENDATIONS</div><h3>Results Overview</h3></div><span class="chip dim">${summary.rollups.length} MODEL${summary.rollups.length===1?'':'S'}</span></div>
     <div class="overview-grid">${cards.map((card)=>`<article class="overview-card ${card.accent}"><div class="overview-top"><span class="chip ${card.accent} hot">${esc(card.label)}</span></div><div class="overview-title">${esc(card.title)}</div><div class="overview-value">${esc(card.value)}</div><div class="overview-meta">${esc(card.meta)}</div></article>`).join('')}</div>
-    ${summary.winners.length?`<div class="winner-strip">${summary.winners.slice(0,8).map((winner)=>`<div class="winner-chip"><span class="winner-label">${esc(winner.label)}</span><span class="winner-model">${esc(winner.model)}</span><span class="winner-score">${winner.score}%</span></div>`).join('')}</div>`:''}
+    ${summary.winners.length?`<div class="winner-strip">${summary.winners.slice(0,8).map((winner)=>`<div class="winner-chip"><span class="winner-label">${esc(winner.label)}</span><span class="winner-model" title="${esc(winner.model)}">${esc(winner.model)}</span><span class="winner-score">${winner.score}%</span></div>`).join('')}</div>`:''}
   </section>`;
 }
 function renderRankedResults(tabKey){
@@ -3520,7 +3520,7 @@ function renderRankedResults(tabKey){
       const failTag=failRate>10?`<span class="tag red">${failRate}% CRIT</span>`:'';
       const focused=focusedModel&&normalizeId(entry.model)===normalizeId(focusedModel)?'focused':'';
       const clickFn=`focusModelDrilldown('${esc(tabKey)}','${esc(safeStr(entry.model))}')`;
-      return`<div class="ranked-row clickable ${focused}" onclick="${clickFn}"${kbClick(clickFn)} aria-label="Inspect ${esc(safeStr(entry.model))}"><div class="ranked-pos">#${i+1}</div><div class="ranked-model">${esc(safeStr(entry.model))}</div><div class="ranked-bar"><div class="ranked-fill" style="width:${width}%"></div></div><div class="ranked-score">${score}%</div><div class="ranked-meta">${safeNum(entry.runs)}R${provTag}${failTag}</div></div>`;
+      return`<div class="ranked-row clickable ${focused}" onclick="${clickFn}"${kbClick(clickFn)} aria-label="Inspect ${esc(safeStr(entry.model))}"><div class="ranked-pos">#${i+1}</div><div class="ranked-model" title="${esc(safeStr(entry.model))}">${esc(safeStr(entry.model))}</div><div class="ranked-bar"><div class="ranked-fill" style="width:${width}%"></div></div><div class="ranked-score">${score}%</div><div class="ranked-meta">${safeNum(entry.runs)}R${provTag}${failTag}</div></div>`;
     }).join('')}</div>`;
   } else if(mode==='table'){
     body=`<div class="ranked-table-wrap"><table class="ranked-table"><thead><tr><th>#</th><th>Model</th><th>Score</th><th>Pass</th><th>Crit Fail</th><th>Runs</th><th>Status</th></tr></thead><tbody>${entries.map((entry,i)=>{
@@ -3646,7 +3646,7 @@ function renderComparisonBars(tabKey,title,entries,metricKey='avgOverall'){
     <div class="section-head"><div><div class="mini-label">GRAPH FIRST</div><h3>${esc(title)}</h3></div><span class="chip ${scope.kind==='lane'?'teal':'dim'} scope-chip" data-scope-kind="${scope.kind}" title="${esc(scope.familiesLabel)}">SCOPE · ${esc(scope.scopeLabel)}</span></div>
     ${errorBanner}
     ${provisionalBanner}
-    <div class="comparison-chart">${entries.map((entry,index)=>{const score=Math.round(Number(entry[metricKey]||0));const width=Math.max(6,Math.round((score/top)*100));const cls=score>=80?'pass':score>=55?'warn':'fail';const tooFewRuns=Number(entry.runs||0)<LEADERBOARD_MIN_N_UI;const bestTag=index===0&&canCrownBest?'<span class="tag teal">BEST</span>':(index===0?'<span class="tag dim" title="Leading, but sample is under the provisional threshold">TOP · n='+Number(entry.runs||0)+'</span>':'');const nTag=tooFewRuns?'<span class="tag dim" title="Under '+LEADERBOARD_MIN_N_UI+' runs — provisional">n='+Number(entry.runs||0)+'</span>':'';return`<div class="comparison-row ${cls}"><div class="comparison-head"><div class="comparison-model">${esc(entry.model)}</div><div class="comparison-meta">${entry.runs||0}R · ${entry.passRate||0}% pass</div></div><div class="comparison-bar"><div class="comparison-fill" style="width:${width}%"></div></div><div class="comparison-score">${score}%</div><div class="comparison-tags">${bestTag}${nTag}${entry.costAvg>0?`<span class="tag dim">${esc(fmtMoney(entry.costAvg))}</span>`:''}${entry.durationAvg>0?`<span class="tag dim">${esc(fmtMs(entry.durationAvg))}</span>`:''}</div></div>`}).join('')}</div>
+    <div class="comparison-chart">${entries.map((entry,index)=>{const score=Math.round(Number(entry[metricKey]||0));const width=Math.max(6,Math.round((score/top)*100));const cls=score>=80?'pass':score>=55?'warn':'fail';const tooFewRuns=Number(entry.runs||0)<LEADERBOARD_MIN_N_UI;const bestTag=index===0&&canCrownBest?'<span class="tag teal">BEST</span>':(index===0?'<span class="tag dim" title="Leading, but sample is under the provisional threshold">TOP · n='+Number(entry.runs||0)+'</span>':'');const nTag=tooFewRuns?'<span class="tag dim" title="Under '+LEADERBOARD_MIN_N_UI+' runs — provisional">n='+Number(entry.runs||0)+'</span>':'';return`<div class="comparison-row ${cls}"><div class="comparison-head"><div class="comparison-model" title="${esc(entry.model)}">${esc(entry.model)}</div><div class="comparison-meta">${entry.runs||0}R · ${entry.passRate||0}% pass</div></div><div class="comparison-bar"><div class="comparison-fill" style="width:${width}%"></div></div><div class="comparison-score">${score}%</div><div class="comparison-tags">${bestTag}${nTag}${entry.costAvg>0?`<span class="tag dim">${esc(fmtMoney(entry.costAvg))}</span>`:''}${entry.durationAvg>0?`<span class="tag dim">${esc(fmtMs(entry.durationAvg))}</span>`:''}</div></div>`}).join('')}</div>
   </section>`;
 }
 
@@ -4143,7 +4143,7 @@ function renderLaneLeaderboardGraph(tabKey){
     <section class="panel" style="padding:14px">
       <div class="section-head"><div><div class="mini-label">GRAPH FIRST</div><h3>Score Distribution</h3></div><span class="chip dim">${runs.length} RUN${runs.length===1?'':'S'}</span></div>
       ${histogram||'<div class="empty">NO DISTRIBUTION YET</div>'}
-      ${winners.length?`<div class="winner-strip">${winners.slice(0,6).map((winner)=>`<div class="winner-chip"><span class="winner-label">${esc(winner.label)}</span><span class="winner-model">${esc(winner.model)}</span><span class="winner-score">${winner.score}%</span></div>`).join('')}</div>`:''}
+      ${winners.length?`<div class="winner-strip">${winners.slice(0,6).map((winner)=>`<div class="winner-chip"><span class="winner-label">${esc(winner.label)}</span><span class="winner-model" title="${esc(winner.model)}">${esc(winner.model)}</span><span class="winner-score">${winner.score}%</span></div>`).join('')}</div>`:''}
     </section>
   </div>`;
 }
@@ -4304,7 +4304,7 @@ function renderDashboard(){
     <aside class="side-column">
       <section class="panel" style="padding:14px">
         <div class="section-head"><div><div class="mini-label">BEST MODEL RECOMMENDATIONS</div><h3>Quick Picks</h3></div></div>
-        ${overview.winners.length?`<div class="winner-stack">${overview.winners.map((winner)=>`<div class="winner-row"><div class="winner-label">${esc(winner.label)}</div><div class="winner-model">${esc(winner.model)}</div><div class="winner-score">${winner.score}%</div></div>`).join('')}</div>`:'<div class="empty">NO WINNERS YET</div>'}
+        ${overview.winners.length?`<div class="winner-stack">${overview.winners.map((winner)=>`<div class="winner-row" title="${esc(winner.model)}"><div class="winner-label">${esc(winner.label)}</div><div class="winner-model">${esc(winner.model)}</div><div class="winner-score">${winner.score}%</div></div>`).join('')}</div>`:'<div class="empty">NO WINNERS YET</div>'}
       </section>
       <section class="panel" style="padding:14px">
         <div class="section-head"><div><div class="mini-label">HOW TO USE CRUCIBLE</div><h3>How To Read Results</h3></div></div>
