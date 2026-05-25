@@ -1798,3 +1798,193 @@ tr:hover td{background:rgba(139,92,246,.04)}
 @media (prefers-reduced-motion:reduce){
   .room-card:hover{transform:none}
 }
+
+/* ============================================================================
+ * LEADERBOARD-FIRST LAYOUT — Ranking Deck at top + restacked command card
+ *
+ * Crucible's product purpose is "which model is winning right now". The
+ * Ranking Deck (top of page) surfaces the champion + top-3 cards so the
+ * operator sees the answer immediately instead of scrolling through run
+ * controls to reach the leaderboard. The Active Arena's command card is
+ * restacked vertically so long model names / run buttons never clip.
+ * ========================================================================== */
+
+/* ─── Ranking deck (top of page) ──────────────────────────────────── */
+.deck-ranking-zone{width:100%;min-width:0}
+
+.ranking-deck{margin-bottom:0}
+.ranking-deck .deck-header{flex-wrap:wrap;gap:8px 12px}
+.rank-crown{
+  margin-left:auto;
+  font-family:var(--mono);font-size:var(--text-xs);
+  letter-spacing:.08em;text-transform:uppercase;
+  padding:5px 12px;border-radius:var(--radius-pill);
+  border:1px solid rgba(34,211,238,.45);
+  background:rgba(34,211,238,.08);
+  color:var(--cyan);
+  text-shadow:0 0 8px rgba(34,211,238,.4);
+  max-width:100%;overflow-wrap:anywhere;
+}
+.ranking-strip{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(180px,220px);
+  gap:14px;
+  padding:14px 16px;
+  align-items:stretch;
+}
+.rank-cards{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  min-width:0;
+}
+.rank-card{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;gap:10px 14px;
+  padding:12px 14px;border-radius:var(--radius-md);
+  border:1px solid var(--border-subtle);
+  background:linear-gradient(135deg,rgba(22,18,52,.85),rgba(12,10,28,.92));
+  color:var(--ink);text-align:left;cursor:pointer;
+  font-family:var(--body);
+  transition:all 160ms ease;min-width:0;
+  position:relative;overflow:hidden;
+}
+.rank-card::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+  opacity:0;transition:opacity 160ms ease;
+}
+.rank-card:hover{
+  transform:translateY(-2px);
+  border-color:rgba(34,211,238,.45);
+  box-shadow:0 0 18px rgba(34,211,238,.18);
+}
+.rank-card:hover::before{opacity:.7}
+.rank-card.champion{
+  border-color:rgba(34,211,238,.5);
+  background:
+    linear-gradient(135deg,rgba(34,211,238,.12),rgba(139,92,246,.08)),
+    linear-gradient(180deg,rgba(22,18,52,.92),rgba(12,10,28,.95));
+  box-shadow:0 0 18px rgba(34,211,238,.18);
+}
+.rank-card.champion::before{opacity:1;background:linear-gradient(90deg,transparent,var(--cyan),var(--magenta),var(--cyan),transparent)}
+.rank-card.pass{border-left:3px solid var(--teal)}
+.rank-card.warn{border-left:3px solid var(--orange)}
+.rank-card.fail{border-left:3px solid var(--red)}
+.rank-card:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+.rank-num{
+  font-family:var(--mono);font-weight:700;font-size:18px;
+  color:var(--cyan);min-width:34px;text-align:center;
+  letter-spacing:.02em;
+  text-shadow:0 0 8px rgba(34,211,238,.35);
+}
+.rank-card.champion .rank-num{color:var(--cyan);font-size:22px}
+.rank-body{display:grid;gap:3px;min-width:0}
+.rank-model{
+  font-size:var(--text-sm);font-weight:700;color:var(--ink);
+  letter-spacing:.01em;min-width:0;
+  overflow-wrap:anywhere;word-break:break-word;white-space:normal;
+  line-height:1.25;
+}
+.rank-sub{
+  font-family:var(--mono);font-size:10px;letter-spacing:.06em;
+  color:var(--ink-dim);text-transform:uppercase;
+  overflow-wrap:anywhere;white-space:normal;line-height:1.3;
+}
+.rank-score{
+  font-family:var(--mono);font-size:26px;font-weight:700;
+  color:var(--cyan);line-height:1;
+  text-shadow:0 0 8px rgba(34,211,238,.3);
+  min-width:48px;text-align:right;
+}
+.rank-card.warn .rank-score{color:var(--orange)}
+.rank-card.fail .rank-score{color:var(--red)}
+.rank-unit{font-size:.5em;opacity:.7;margin-left:1px}
+
+.rank-side{display:grid;gap:8px;align-content:start}
+.rank-side .evidence-btn{width:100%}
+.rank-empty{
+  padding:18px;color:var(--ink-dim);
+  font-family:var(--mono);font-size:var(--text-xs);
+  letter-spacing:.06em;text-align:center;
+  border:1px dashed var(--border-subtle);
+  border-radius:var(--radius-md);background:rgba(12,10,28,.5);
+  grid-column:1/-1;
+}
+
+/* ─── Restacked Active Arena command card ─────────────────────────── */
+.command-card{overflow:visible}  /* never clip the model select or actions */
+.command-card-stack{display:grid;gap:14px;min-width:0}
+.cc-section{display:grid;gap:10px;min-width:0}
+.cc-route-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:10px;
+  min-width:0;
+}
+.cc-route-grid .field{min-width:0}
+.cc-route-grid .field .select{width:100%}
+.cc-model-field .select.cc-model-select{
+  min-height:200px;
+  max-height:340px;
+  font-family:var(--mono);
+  font-size:var(--text-sm);
+  width:100%;
+}
+.cc-model-field .select.cc-model-select option{
+  padding:6px 10px;
+  white-space:normal;  /* allow long ids to wrap in the dropdown view */
+  line-height:1.35;
+}
+.cc-active-test{margin-top:6px}
+
+/* ─── Centered, wrap-friendly action grid ─────────────────────────── */
+.action-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:10px;
+  justify-items:stretch;
+  align-items:stretch;
+  min-width:0;
+}
+.action-grid .button{
+  white-space:normal;
+  overflow-wrap:anywhere;
+  line-height:1.2;
+  padding:14px 16px;
+  min-height:48px;
+}
+.action-grid .button.action-primary{
+  font-weight:700;letter-spacing:.06em;
+}
+.action-grid .button.primary{
+  /* The two RUN actions should pop visually so the operator never
+   * mistakes them for a secondary toggle. Spans 2 cells on wider
+   * grids; falls back to full width when only one column fits. */
+  grid-column:span 2;
+}
+@media (max-width:899px){
+  .action-grid .button.primary{grid-column:auto}
+}
+
+/* ─── Ranking deck responsive ─────────────────────────────────────── */
+@media (max-width:1199px){
+  .ranking-strip{grid-template-columns:1fr}
+  .rank-side{flex-direction:row;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .rank-side .evidence-btn{width:auto;flex:1 1 200px}
+}
+@media (max-width:899px){
+  .rank-cards{grid-template-columns:1fr}
+  .ranking-deck .deck-header{padding:9px 12px}
+  .rank-crown{font-size:10px;padding:4px 10px}
+}
+@media (max-width:599px){
+  .ranking-strip{padding:12px 10px}
+  .rank-card{padding:10px 12px;gap:8px}
+  .rank-score{font-size:22px}
+  .cc-route-grid{grid-template-columns:1fr}
+  .action-grid{grid-template-columns:1fr 1fr}
+  .action-grid .button{font-size:var(--text-xs)}
+}

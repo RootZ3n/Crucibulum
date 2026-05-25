@@ -4154,27 +4154,47 @@ function renderLaneCommandTop(tabKey){
   const selectedCount=(tabState.selectedTasks||[]).length;
   const modelCount=(tabState.selectedModels||[]).length;
   const task=currentTask(tab.key);
-  return `<section class="panel" style="padding:14px">
-    <div class="section-head"><div><div class="mini-label">TOP CONTROLS</div><h3>${esc(tab.label)} Command Deck</h3></div><span class="chip orange hot">${selectedCount} TEST${selectedCount===1?'':'S'} · ${modelCount} MODEL${modelCount===1?'':'S'}</span></div>
-    <div class="dual-grid">
-      <div class="stack-grid" style="display:grid;gap:12px">
+  // Vertical stack — tests, then full-width routing/model picker, then
+  // cert banner, then run count, then centered action grid. This
+  // replaces the old 2-column dual-grid that crushed long model names
+  // and clipped the action buttons on the right.
+  return `<section class="panel command-card" style="padding:14px">
+    <div class="section-head"><div><div class="mini-label">RUN CONTROLS</div><h3>${esc(tab.label)} Active Arena</h3></div><span class="chip orange hot">${selectedCount} TEST${selectedCount===1?'':'S'} · ${modelCount} MODEL${modelCount===1?'':'S'}</span></div>
+
+    <div class="command-card-stack">
+      <div class="cc-section cc-tests">
         ${renderTaskPicker(tab.key)}
         ${renderTaskBrief(tab.key)}
       </div>
-      <div class="stack-grid" style="display:grid;gap:12px">
-        <div class="field"><label>ADAPTER</label><select class="select" onchange="setRoutingFilter('${tab.key}','adapter',this.value)">${renderAdapterOptions(tab.key)}</select></div>
-        <div class="field"><label>PROVIDER</label><select class="select" onchange="setRoutingFilter('${tab.key}','provider',this.value)">${renderProviderOptions(tab.key)}</select></div>
+
+      <div class="cc-section cc-routing">
+        <div class="cc-route-grid">
+          <div class="field"><label>ADAPTER</label><select class="select" onchange="setRoutingFilter('${tab.key}','adapter',this.value)">${renderAdapterOptions(tab.key)}</select></div>
+          <div class="field"><label>PROVIDER</label><select class="select" onchange="setRoutingFilter('${tab.key}','provider',this.value)">${renderProviderOptions(tab.key)}</select></div>
+        </div>
+      </div>
+
+      <div class="cc-section cc-cert">
         ${renderReleaseCertificationBanner(tab.key)}
-        <div class="field"><label>MODELS · ${modelCount} ARMED</label><select class="select" multiple size="8" onchange="updateSelectedModels('${tab.key}',this)">${renderModelOptions(tab.key)}</select><div class="field-note">${esc(modelSelectionNote(tab.key))}</div></div>
+      </div>
+
+      <div class="cc-section cc-models">
+        <div class="field cc-model-field"><label>MODELS · ${modelCount} ARMED</label><select class="select cc-model-select" multiple size="10" onchange="updateSelectedModels('${tab.key}',this)">${renderModelOptions(tab.key)}</select><div class="field-note">${esc(modelSelectionNote(tab.key))}</div></div>
+      </div>
+
+      <div class="cc-section cc-runcount">
         ${renderRunCount(tab.key)}
-        <div class="button-grid">
-          <button class="button primary full" onclick="handleRun('${tab.key}')" title="Run the selected tests against armed models">▶ RUN BENCHMARK</button>
-          <button class="button secondary full" onclick="handleRunAll('${tab.key}')" title="Run every test in this lane, regardless of selection" aria-label="Run All tests in this lane">▶▶ RUN ALL</button>
+      </div>
+
+      <div class="cc-section cc-actions">
+        <div class="action-grid">
+          <button class="button primary action-primary" onclick="handleRun('${tab.key}')" title="Run the selected tests against armed models">▶ RUN BENCHMARK</button>
+          <button class="button secondary action-primary" onclick="handleRunAll('${tab.key}')" title="Run every test in this lane, regardless of selection" aria-label="Run All tests in this lane">▶▶ RUN ALL</button>
           <button class="button secondary" onclick="selectModelBatch('${tab.key}','local')" title="Arm only local (Ollama) models — then hit RUN">LOCAL</button>
           <button class="button secondary" onclick="selectModelBatch('${tab.key}','cloud')" title="Arm only cloud models — then hit RUN">CLOUD</button>
-          <button class="button secondary full" onclick="reloadLane('${tab.key}')">↻ REFRESH</button>
+          <button class="button secondary" onclick="reloadLane('${tab.key}')" title="Refresh lane data">↻ REFRESH</button>
         </div>
-        ${task?`<div class="fact-list"><div class="fact-strip"><div class="fs-label">ACTIVE TEST</div><div class="fs-value teal">${esc(humanizeToken(task.id))}</div></div><div class="fact-strip"><div class="fs-label">MODE</div><div class="fs-value">${esc(taskExecLabel(task)||'Auto')}</div></div><div class="fact-strip"><div class="fs-label">SCORING</div><div class="fs-value dim">${esc(taskScoringNote(task)||'Automatic')}</div></div></div>`:''}
+        ${task?`<div class="fact-list cc-active-test"><div class="fact-strip"><div class="fs-label">ACTIVE TEST</div><div class="fs-value teal">${esc(humanizeToken(task.id))}</div></div><div class="fact-strip"><div class="fs-label">MODE</div><div class="fs-value">${esc(taskExecLabel(task)||'Auto')}</div></div><div class="fact-strip"><div class="fs-label">SCORING</div><div class="fs-value dim">${esc(taskScoringNote(task)||'Automatic')}</div></div></div>`:''}
       </div>
     </div>
   </section>`;
@@ -4988,6 +5008,59 @@ function activeArenaTitlePlate(){
   return{label:`${tab.label} Arena`,sub:tab.laneTitle||'evaluation room'};
 }
 
+function renderRankingDeck(){
+  // Top-of-page Ranking Deck — Crucible's product purpose is "which
+  // model is winning right now", so the leaderboard sits ABOVE the
+  // arena (not buried halfway down the page). Full-width strip with
+  // #1/#2/#3 champion cards on the left and a "view full leaderboard"
+  // affordance on the right.
+  //
+  // Always shows the current lane's leaderboard scope so the operator
+  // never has to wonder which lane the ranks belong to.
+  const tabKey=state.activeTab;
+  const scope=laneScopeDescriptor(tabKey);
+  const top=aggregateLeaderboard(tabKey,3);
+  const sampleSize=scope.sampleSize||0;
+  const provisional=scope.provisional;
+  const settingsView=tabKey==='providers';
+  const champion=top[0]||null;
+  const provisionalChip=provisional
+    ? `<span class="chip amber hot" title="Fewer than ${LEADERBOARD_MIN_N_UI} runs in scope — rankings are provisional.">PROVISIONAL · n=${sampleSize}</span>`
+    : '';
+  const cards=top.length
+    ? top.map((entry,index)=>{
+        const score=Math.round(Number(entry.score||0));
+        const cls=score>=80?'pass':score>=55?'warn':'fail';
+        const rank=index+1;
+        const tooFew=Number(entry.runs||0)<LEADERBOARD_MIN_N_UI;
+        return`<button type="button" class="rank-card ${cls} ${rank===1?'champion':''}" onclick="focusModelDrilldown('${esc(tabKey)}','${esc(entry.model)}')" aria-label="Open ${esc(entry.model)} drilldown">
+          <span class="rank-num">#${rank}</span>
+          <span class="rank-body">
+            <span class="rank-model" title="${esc(entry.model)}">${esc(entry.model)}</span>
+            <span class="rank-sub">${esc(entry.runs||0)} trial${(entry.runs||0)===1?'':'s'}${entry.provider?' · '+esc(String(entry.provider).slice(0,16)):''}${tooFew?' · n='+entry.runs:''}</span>
+          </span>
+          <span class="rank-score">${score}<span class="rank-unit">%</span></span>
+        </button>`;
+      }).join('')
+    : `<div class="rank-empty">${settingsView?'Provider registry · no rankings on this tab':sampleSize===0?'No trials recorded yet · arm a model and start a trial to populate the leaderboard':'No ranked models yet for this lane'}</div>`;
+  return`<section class="deck-window ranking-deck" aria-label="Model Leaderboard">
+    <header class="deck-header">
+      <span class="deck-socket cyan" aria-hidden="true"></span>
+      <h2 class="deck-title-plate">Model Leaderboard</h2>
+      <span class="deck-subtitle">${esc(scope.scopeLabel)}</span>
+      <span class="deck-subtitle">${sampleSize} trial${sampleSize===1?'':'s'} in scope</span>
+      ${champion?`<span class="rank-crown" title="Current champion in ${esc(scope.scopeLabel)}">★ ${esc(String(champion.model).slice(0,28))} · ${Math.round(Number(champion.score||0))}%</span>`:''}
+    </header>
+    <div class="ranking-strip">
+      <div class="rank-cards">${cards}</div>
+      <div class="rank-side">
+        ${provisionalChip}
+        <button type="button" class="evidence-btn" onclick="document.querySelector('.comparison-chart,.leader-list')?.scrollIntoView({behavior:'smooth',block:'start'})">Open Full Leaderboard</button>
+      </div>
+    </div>
+  </section>`;
+}
+
 function renderArenaHeaderStrip(){
   // Compact per-tab header strip — lane / trust score / pass / scope /
   // selected model + certification. Replaces the giant in-arena
@@ -5054,7 +5127,12 @@ function render(){
   const verdict=renderVerdictBanner();
   const mission=renderMissionBanner();
   const globalBanners=(verdict||mission)?`<div class="deck-banners">${verdict}${mission}</div>`:'';
-  document.getElementById('app').innerHTML=`<div class="app-shell deck-shell">${renderSystemStatusBar()}${renderOfflineBanner()}${renderCommandRail()}${globalBanners}<main class="deck-grid">
+  // Ranking Deck sits ABOVE the main grid. Crucible's product purpose
+  // is "which model is winning right now" — the operator should see
+  // the leaderboard before any controls or analytics. On mobile the
+  // same deck remains the first content block after the cmd-rail.
+  const rankingDeck=`<section class="deck-ranking-zone" aria-label="Model Ranking zone">${renderRankingDeck()}</section>`;
+  document.getElementById('app').innerHTML=`<div class="app-shell deck-shell">${renderSystemStatusBar()}${renderOfflineBanner()}${renderCommandRail()}${globalBanners}${rankingDeck}<main class="deck-grid">
     <aside class="deck-rail-left" aria-label="Evaluation Rooms rail">${renderEvaluationRoomsDeck()}</aside>
     <section class="deck-rail-center">${renderActiveArenaShell()}</section>
     <aside class="deck-rail-right" aria-label="Evidence and telemetry rail">${renderEvidenceDeck()}</aside>
