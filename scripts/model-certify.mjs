@@ -242,7 +242,9 @@ function findLatestGauntletReport(provider, model) {
 // about model quality. Mirrored from core/skip-classifiers.ts.
 const SKIP_CODES = new Set([
   "SKIPPED_FIXTURE_MISSING",
+  "SKIPPED_FIXTURE_HASH_MISMATCH",
   "SKIPPED_UNSUPPORTED_MULTIMODAL",
+  "SKIPPED_IMAGE_TRANSPORT_UNSUPPORTED",
   "SKIPPED_UNSUPPORTED_ROLEPLAY_PROFILE",
   "SKIPPED_EXPERIMENTAL_FAMILY",
   "SKIPPED_EXPLAINED",

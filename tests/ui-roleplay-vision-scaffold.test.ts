@@ -135,14 +135,15 @@ describe('Crucible roleplay + vision capability scaffold', () => {
   });
 
   describe('tactical guards', () => {
-    it('vision manifests use SKIPPED_FIXTURE_MISSING convention while fixtures are TBD', () => {
-      // The runner contract: if image_fixture.sha256 starts with "TBD",
-      // the runner should produce SKIPPED_FIXTURE_MISSING. This test
-      // pins the manifest convention; the runner change lands in a
-      // follow-up commit.
+    it('vision manifests now carry real sha256 hashes (Phase 3 landed fixtures)', () => {
+      // Phase 3 (commit after 7ccd77c) added synthetic PNG fixtures
+      // under fixtures/vision/ and replaced TBD pins with the real
+      // sha256 of each generated file. Pin: no TBD remains.
       for (const id of VISION_TASKS) {
         const m = loadManifest('vision', id);
-        assert.ok(String(m.image_fixture.sha256).startsWith('TBD'), `${id}: fixture sha256 should be TBD until the PNG lands`);
+        const s = String(m.image_fixture.sha256 || '');
+        assert.ok(!s.startsWith('TBD'), `${id}: fixture sha256 should be a real hash post-Phase-3 (got ${s.slice(0, 10)})`);
+        assert.match(s, /^[a-f0-9]{64}$/, `${id}: fixture sha256 should be 64 hex chars`);
       }
     });
 

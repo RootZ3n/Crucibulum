@@ -8,13 +8,13 @@
   "description": "POC: UI screenshot diagnosis — identify a clipped button in a Crucible-like dashboard mock.",
   "requires_capability": ["supportsVision", "supportsImageInput"],
   "image_fixture": {
-    "path": "fixtures/vision/ui/clipped-button-001.png",
-    "sha256": "TBD-fixture-not-yet-committed",
+    "path": "fixtures/vision/vision-ui-001.png",
+    "sha256": "b7e842d8acf1ddbb35c7bf34ba267053d9ad37bfa9083936b144e9b35a4d753a",
     "mime": "image/png",
     "width": 800,
-    "height": 600,
-    "license": "Crucible-owned synthetic UI mock",
-    "notes": "Mock dashboard with a RUN BENCHMARK button whose right edge is clipped by a side panel. Fixture lands after review."
+    "height": 400,
+    "license": "Crucible-owned synthetic UI mock; rendered by scripts/generate-vision-fixtures.py",
+    "notes": "Mock dashboard with a RUN BENCHMARK button whose right edge is clipped by a side panel. Generator version 2026-05-25.v1."
   },
   "questions": [
     {
@@ -24,7 +24,7 @@
       "expected_facts": ["RUN BENCHMARK"],
       "weight": 1,
       "tags": ["vision", "ui", "diagnosis", "experimental"],
-      "image_ref": "fixtures/vision/ui/clipped-button-001.png"
+      "image_ref": "fixtures/vision/vision-ui-001.png"
     }
   ],
   "scoring": {

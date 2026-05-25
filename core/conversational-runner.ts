@@ -38,7 +38,20 @@ import { assertBenchmarkProvenance } from "./manifest.js";
 import { canonicalPercent } from "../types/scores.js";
 import { runWithProtection } from "./circuit-breaker.js";
 import { normalizeVerdict, reconcileVerdictWithLaneEvaluations } from "./verdict.js";
-import { preflightSkipCheck, type PreflightCapabilities, type PreflightSkipResult } from "./skip-classifiers.js";
+import { preflightSkipCheck, type PreflightCapabilities, type PreflightSkipResult, type FixtureFsHandle } from "./skip-classifiers.js";
+import { createHash } from "node:crypto";
+
+// FS handle bridging fixture paths (relative to the repo root) to the
+// runner's disk view. preflightSkipCheck uses this to do
+// hash-of-bytes verification before any provider call.
+const REPO_FS: FixtureFsHandle = {
+  exists: (p: string) => existsSync(resolve(process.cwd(), p)),
+  read: (p: string) => nodeReadFileSyncBytes(resolve(process.cwd(), p)),
+  sha256Hex: (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex"),
+};
+function nodeReadFileSyncBytes(p: string): Uint8Array {
+  return readFileSync(p);
+}
 import { interpretBundleResult } from "./interpretation.js";
 import type { StructuredProviderError } from "../types/provider-error.js";
 import { normalizeProviderError } from "./provider-errors.js";
@@ -466,6 +479,7 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
   const skip = preflightSkipCheck(
     manifest as unknown as Parameters<typeof preflightSkipCheck>[0],
     options.capabilities,
+    { fs: REPO_FS },
   );
   if (skip) {
     log("info", "conv-runner", `Skip ${skip.classification} ${taskId} ${adapter.id}/${model}: ${skip.reason}`);

@@ -31,11 +31,36 @@ export const SKIP_CLASSIFICATIONS = {
     affectsLeaderboard: false,
     affectsCertification: false,
   },
+  /** Vision fixture file exists but its sha256 doesn't match the manifest pin.
+   * Distinct from FAIL_PRODUCT because no model was exercised — this is a
+   * fixture-integrity problem (someone edited the PNG or the manifest hash
+   * is stale). Operator should regenerate via scripts/generate-vision-fixtures.py. */
+  SKIPPED_FIXTURE_HASH_MISMATCH: {
+    code: "SKIPPED_FIXTURE_HASH_MISMATCH",
+    label: "Skipped · fixture hash mismatch",
+    reason: "Image fixture exists but its sha256 does not match the manifest pin. Regenerate fixtures or update the manifest after intentional change.",
+    countsAsFail: false,
+    countsAsPromotion: false,
+    affectsLeaderboard: false,
+    affectsCertification: false,
+  },
   /** Vision test run against a model that does not declare supportsVision/supportsImageInput. */
   SKIPPED_UNSUPPORTED_MULTIMODAL: {
     code: "SKIPPED_UNSUPPORTED_MULTIMODAL",
     label: "Skipped · model has no image input",
     reason: "Selected model does not declare supportsVision + supportsImageInput in MODEL_CERTIFICATION.",
+    countsAsFail: false,
+    countsAsPromotion: false,
+    affectsLeaderboard: false,
+    affectsCertification: false,
+  },
+  /** Model claims vision but no adapter knows how to encode the image for this provider yet.
+   * Distinct from SKIPPED_UNSUPPORTED_MULTIMODAL (which is a model-side gap)
+   * because the model COULD answer if the wire format existed. */
+  SKIPPED_IMAGE_TRANSPORT_UNSUPPORTED: {
+    code: "SKIPPED_IMAGE_TRANSPORT_UNSUPPORTED",
+    label: "Skipped · adapter cannot ship image",
+    reason: "Adapter has no image transport implementation for this provider yet, even though the model declares vision capability.",
     countsAsFail: false,
     countsAsPromotion: false,
     affectsLeaderboard: false,
@@ -101,6 +126,60 @@ export function visionFixtureMissing(manifestImageFixture: { sha256?: string; pa
   return false;
 }
 
+/** Result of a fixture-disk verification call. */
+export type FixtureCheck =
+  | { state: "OK"; sha256: string; bytes: number }
+  | { state: "MISSING_FILE"; path: string }
+  | { state: "HASH_MISMATCH"; path: string; expected: string; actual: string; bytes: number }
+  | { state: "READ_ERROR"; path: string; error: string };
+
+/**
+ * Verify a vision fixture on disk: file exists, sha256 matches manifest.
+ * Returns a structured FixtureCheck the runner translates into either
+ * SKIPPED_FIXTURE_MISSING (no file) or SKIPPED_FIXTURE_HASH_MISMATCH
+ * (file exists but content drifted from manifest pin).
+ *
+ * The runtime fs API is injected so callers can stub for unit tests
+ * without touching disk.
+ */
+export interface FixtureFsHandle {
+  exists(path: string): boolean;
+  read(path: string): Uint8Array;
+  sha256Hex(bytes: Uint8Array): string;
+}
+
+export function verifyFixtureOnDisk(
+  fs: FixtureFsHandle,
+  manifestImageFixture: { sha256?: string; path?: string } | null | undefined,
+): FixtureCheck {
+  if (!manifestImageFixture || !manifestImageFixture.path) {
+    return { state: "MISSING_FILE", path: manifestImageFixture?.path || "(unset)" };
+  }
+  const path = manifestImageFixture.path;
+  if (!fs.exists(path)) {
+    return { state: "MISSING_FILE", path };
+  }
+  let bytes: Uint8Array;
+  try {
+    bytes = fs.read(path);
+  } catch (err) {
+    return { state: "READ_ERROR", path, error: String((err as Error).message ?? err) };
+  }
+  const actual = fs.sha256Hex(bytes);
+  const expected = String(manifestImageFixture.sha256 || "");
+  if (!expected || expected.startsWith("TBD")) {
+    // No expected hash to compare against — treat as missing so the
+    // runner explicitly waits for the manifest to be pinned. This
+    // preserves the "fixture missing" contract even when the file
+    // exists but the manifest hasn't been updated.
+    return { state: "MISSING_FILE", path };
+  }
+  if (actual !== expected) {
+    return { state: "HASH_MISMATCH", path, expected, actual, bytes: bytes.length };
+  }
+  return { state: "OK", sha256: actual, bytes: bytes.length };
+}
+
 /**
  * Decide whether the given model can attempt a vision task.
  * Caller passes the capability snapshot from MODEL_CERTIFICATION.
@@ -138,6 +217,9 @@ export interface PreflightCapabilities {
   supportsVision?: boolean;
   supportsImageInput?: boolean;
   supportsRoleplay?: boolean;
+  /** Has the adapter implemented an image transport for this provider/model?
+   * If false (or undefined) on a vision task, we skip before provider call. */
+  imageTransportImplemented?: boolean;
 }
 
 export interface PreflightSkipResult {
@@ -145,6 +227,16 @@ export interface PreflightSkipResult {
   reason: string;
   family: string;
   fixturePath?: string | undefined;
+  /** Populated for SKIPPED_FIXTURE_HASH_MISMATCH — operator needs both. */
+  expectedSha256?: string | undefined;
+  actualSha256?: string | undefined;
+}
+
+export interface PreflightOptions {
+  /** Optional FS handle for fixture verification. If omitted, fixture
+   *  presence/integrity isn't checked on disk — the runner only sees
+   *  the manifest-sha256-startsWith-TBD case (same as Phase 2 behavior). */
+  fs?: FixtureFsHandle;
 }
 
 /**
@@ -155,9 +247,11 @@ export interface PreflightSkipResult {
  * spending tokens.
  *
  * Precedence (so the first applicable reason wins):
- *   1. Vision family + missing fixture     → SKIPPED_FIXTURE_MISSING
- *   2. Vision family + no image capability → SKIPPED_UNSUPPORTED_MULTIMODAL
- *   3. Roleplay family + opt-out flag     → SKIPPED_UNSUPPORTED_ROLEPLAY_PROFILE
+ *   1. Vision family + missing fixture (manifest TBD or fs check fail) → SKIPPED_FIXTURE_MISSING
+ *   2. Vision family + fixture hash mismatch on disk → SKIPPED_FIXTURE_HASH_MISMATCH
+ *   3. Vision family + no image capability on model  → SKIPPED_UNSUPPORTED_MULTIMODAL
+ *   4. Vision family + capability OK but no adapter transport → SKIPPED_IMAGE_TRANSPORT_UNSUPPORTED
+ *   5. Roleplay family + opt-out flag → SKIPPED_UNSUPPORTED_ROLEPLAY_PROFILE
  *
  * Note: SKIPPED_EXPERIMENTAL_FAMILY is NOT applied here — the runner
  * itself still has to execute experimental families when the operator
@@ -167,9 +261,11 @@ export interface PreflightSkipResult {
 export function preflightSkipCheck(
   manifest: PreflightManifest,
   capabilities: PreflightCapabilities | null | undefined,
+  options: PreflightOptions = {},
 ): PreflightSkipResult | null {
   const family = String(manifest.family || "");
   if (family === "vision") {
+    // Step 1: manifest-level TBD detection (no fs lookup needed).
     if (visionFixtureMissing(manifest.image_fixture)) {
       return {
         classification: "SKIPPED_FIXTURE_MISSING",
@@ -178,10 +274,54 @@ export function preflightSkipCheck(
         fixturePath: manifest.image_fixture?.path,
       };
     }
+    // Step 2: optional disk verification — distinguishes "fixture file
+    // missing" from "fixture file exists but bytes don't match pin".
+    if (options.fs) {
+      const check = verifyFixtureOnDisk(options.fs, manifest.image_fixture ?? null);
+      if (check.state === "MISSING_FILE") {
+        return {
+          classification: "SKIPPED_FIXTURE_MISSING",
+          reason: SKIP_CLASSIFICATIONS.SKIPPED_FIXTURE_MISSING.reason,
+          family,
+          fixturePath: check.path,
+        };
+      }
+      if (check.state === "HASH_MISMATCH") {
+        return {
+          classification: "SKIPPED_FIXTURE_HASH_MISMATCH",
+          reason: SKIP_CLASSIFICATIONS.SKIPPED_FIXTURE_HASH_MISMATCH.reason,
+          family,
+          fixturePath: check.path,
+          expectedSha256: check.expected,
+          actualSha256: check.actual,
+        };
+      }
+      if (check.state === "READ_ERROR") {
+        return {
+          classification: "SKIPPED_FIXTURE_MISSING",
+          reason: `${SKIP_CLASSIFICATIONS.SKIPPED_FIXTURE_MISSING.reason} (read error: ${check.error})`,
+          family,
+          fixturePath: check.path,
+        };
+      }
+    }
+    // Step 3: model capability gate.
     if (!modelCanRunVision(capabilities)) {
       return {
         classification: "SKIPPED_UNSUPPORTED_MULTIMODAL",
         reason: SKIP_CLASSIFICATIONS.SKIPPED_UNSUPPORTED_MULTIMODAL.reason,
+        family,
+        fixturePath: manifest.image_fixture?.path,
+      };
+    }
+    // Step 4: adapter transport gate. Default false unless caller
+    // explicitly says the adapter implements image transport — keeps
+    // us from accidentally calling .chat() with image bytes the adapter
+    // has no idea how to forward.
+    if (capabilities && capabilities.imageTransportImplemented !== true) {
+      return {
+        classification: "SKIPPED_IMAGE_TRANSPORT_UNSUPPORTED",
+        reason: SKIP_CLASSIFICATIONS.SKIPPED_IMAGE_TRANSPORT_UNSUPPORTED.reason,
         family,
         fixturePath: manifest.image_fixture?.path,
       };

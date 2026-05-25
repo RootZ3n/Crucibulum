@@ -8,13 +8,13 @@
   "description": "POC: count discrete objects (dots) in a synthetic scene.",
   "requires_capability": ["supportsVision", "supportsImageInput"],
   "image_fixture": {
-    "path": "fixtures/vision/objects/dots-7-001.png",
-    "sha256": "TBD-fixture-not-yet-committed",
+    "path": "fixtures/vision/vision-object-count-001.png",
+    "sha256": "88d142f1f1d852b924adee1fef3209f39f6de4a5dd40ef9b0d77b70bf876aed0",
     "mime": "image/png",
     "width": 400,
     "height": 400,
-    "license": "Crucible-owned synthetic dot image",
-    "notes": "Seven equally-sized red dots on a white background, randomly placed but non-overlapping."
+    "license": "Crucible-owned synthetic dot image; rendered by scripts/generate-vision-fixtures.py",
+    "notes": "Seven equally-sized red dots on a white background, non-overlapping. Generator version 2026-05-25.v1."
   },
   "questions": [
     {
@@ -25,7 +25,7 @@
       "maxLength": 12,
       "weight": 1,
       "tags": ["vision", "count", "experimental"],
-      "image_ref": "fixtures/vision/objects/dots-7-001.png"
+      "image_ref": "fixtures/vision/vision-object-count-001.png"
     }
   ],
   "scoring": {

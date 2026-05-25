@@ -68,13 +68,19 @@ describe('Phase 2 · skip classifiers + cleanup flake fix', () => {
     assert.equal(visionFixtureMissing({ sha256: 'a3f5...', path: 'x.png' }), false);
   });
 
-  it('PH3 · preflightSkipCheck returns SKIPPED_FIXTURE_MISSING for vision tasks with TBD fixtures', () => {
-    const m = JSON.parse(readFileSync(join(ROOT, 'tasks', 'vision', 'vision-ocr-001', 'manifest.json'), 'utf-8'));
-    const result = preflightSkipCheck(m, { supportsVision: true, supportsImageInput: true });
-    assert.ok(result, 'preflightSkipCheck must return a skip result for a vision task whose fixture is TBD');
+  it('PH3 · preflightSkipCheck returns SKIPPED_FIXTURE_MISSING for vision tasks whose fixture is TBD (synthetic manifest)', () => {
+    // Phase 3 lands real fixtures, so vision-ocr-001's manifest is no
+    // longer TBD. Pin the contract using a synthetic in-memory
+    // manifest that still has TBD so PH3 keeps proving the rule.
+    const m = {
+      family: 'vision' as const,
+      image_fixture: { sha256: 'TBD-still-pending', path: 'fixtures/vision/never-existed.png' },
+    };
+    const result = preflightSkipCheck(m, { supportsVision: true, supportsImageInput: true, imageTransportImplemented: true });
+    assert.ok(result, 'preflightSkipCheck must return a skip result for a TBD-pinned manifest');
     assert.equal(result!.classification, 'SKIPPED_FIXTURE_MISSING');
     assert.equal(result!.family, 'vision');
-    assert.match(result!.fixturePath || '', /vision.*\.png$/);
+    assert.match(result!.fixturePath || '', /\.png$/);
   });
 
   it('PH4 · no skip code is mistaken for a failure code', () => {
@@ -168,13 +174,20 @@ describe('Phase 2 · skip classifiers + cleanup flake fix', () => {
   });
 
   describe('Phase 2 tactical guards', () => {
-    it('all 5 vision POC manifests are currently in fixture-missing state (TBD sha256)', () => {
+    it('all 5 vision POC manifests now point at committed fixtures (Phase 3)', () => {
+      // Phase 3 landed real synthetic PNGs and replaced TBD pins. The
+      // preflight should now PROCEED on capability+transport-OK calls
+      // (not skip on fixture). Adapter transport still unimplemented,
+      // so without imageTransportImplemented=true we expect
+      // SKIPPED_IMAGE_TRANSPORT_UNSUPPORTED — but never
+      // SKIPPED_FIXTURE_MISSING for these manifests anymore.
       const ids = ['vision-ocr-001', 'vision-ui-001', 'vision-chart-001', 'vision-object-count-001', 'vision-uncertainty-001'];
       for (const id of ids) {
         const m = JSON.parse(readFileSync(join(ROOT, 'tasks', 'vision', id, 'manifest.json'), 'utf-8'));
         const skip = preflightSkipCheck(m, { supportsVision: true, supportsImageInput: true });
-        assert.ok(skip, `${id}: must currently preflight-skip until fixture lands`);
-        assert.equal(skip!.classification, 'SKIPPED_FIXTURE_MISSING', `${id}: SKIPPED_FIXTURE_MISSING expected pre-fixture-commit`);
+        if (skip) {
+          assert.notEqual(skip.classification, 'SKIPPED_FIXTURE_MISSING', `${id}: must no longer preflight-skip on TBD fixture (sha256 is real now)`);
+        }
       }
     });
 
