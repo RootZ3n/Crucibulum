@@ -105,21 +105,43 @@ describe('Symposium UI redesign', () => {
   });
 
   describe('Symposium design token alignment', () => {
-    it('CSS uses warm background palette', () => {
-      assert.ok(CSS.includes('--bg-0:#0f1117'), 'missing warm background token');
+    it('CSS uses indigo/violet background palette', () => {
+      assert.ok(CSS.includes('--bg-0:#0c0a1a'), 'missing indigo background token');
     });
-    it('CSS has readable text color', () => {
-      assert.ok(CSS.includes('--ink:#e2e8f0'), 'missing readable ink token');
+    it('CSS has readable text color on violet surface', () => {
+      assert.ok(CSS.includes('--ink:#f0eaff'), 'missing readable ink token for violet palette');
     });
     it('CSS removed heavy underwater effects', () => {
       assert.ok(!CSS.includes('bioluminescent particulate'), 'still has underwater effects description');
     });
-    it('CSS uses border-subtle token', () => {
-      assert.ok(CSS.includes('--border-subtle'), 'missing border-subtle token');
+    it('CSS uses violet-based border-subtle token', () => {
+      assert.ok(CSS.includes('--border-subtle:rgba(139,92,246'), 'border-subtle should use violet');
     });
     it('CSS has type scale variables', () => {
       assert.ok(CSS.includes('--text-base:14px'), 'missing text-base token');
       assert.ok(CSS.includes('--text-lg:16px'), 'missing text-lg token');
+    });
+    it('CSS uses cyan as primary signal color', () => {
+      assert.ok(CSS.includes('--cyan:#22d3ee'), 'missing cyan signal');
+    });
+    it('CSS uses violet accent', () => {
+      assert.ok(CSS.includes('--violet:#8b5cf6'), 'missing violet accent');
+    });
+    it('CSS uses magenta/pink highlight', () => {
+      assert.ok(CSS.includes('--magenta:#ec4899'), 'missing magenta highlight');
+    });
+    it('hero has violet glow', () => {
+      assert.ok(CSS.includes('glow-violet'), 'missing violet glow on hero');
+    });
+    it('no hero Squidley (ab-squid display:none)', () => {
+      assert.ok(CSS.includes('.ab-squid{display:none}'), 'hero squid should be hidden');
+    });
+    it('footer Squidley exists', () => {
+      assert.ok(CSS.includes('.footer-squid'), 'missing footer squid class');
+      assert.ok(HTML.includes('footer-squid'), 'missing footer squid in HTML');
+    });
+    it('tab active state uses violet gradient', () => {
+      assert.ok(CSS.includes('.tab.active') && CSS.includes('139,92,246'), 'tab active should use violet');
     });
   });
 });
