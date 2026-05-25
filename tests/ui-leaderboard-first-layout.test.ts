@@ -27,15 +27,16 @@ function locate(needle: string): number {
 
 describe('Crucible leaderboard-first layout', () => {
   it('I1 · Ranking Deck appears before Active Arena in DOM order', () => {
-    // Both markers only appear inside render()'s composed innerHTML —
-    // substring index ordering proves the DOM order without having to
-    // extract the exact template literal (template-literal extraction
-    // is fragile across reformat).
-    const rankingIdx = HTML.indexOf('deck-ranking-zone');
-    const arenaIdx = HTML.indexOf('deck-rail-center');
-    assert.ok(rankingIdx > 0, 'HTML does not include deck-ranking-zone');
-    assert.ok(arenaIdx > 0, 'HTML does not include deck-rail-center');
-    assert.ok(rankingIdx < arenaIdx, `ranking zone (${rankingIdx}) must precede arena (${arenaIdx}) in render output`);
+    // Anchor to the render() function template (arena-shell class
+    // also appears in renderActiveArenaShell's definition earlier in
+    // the source).
+    const renderStart = HTML.indexOf('function render()');
+    assert.ok(renderStart > 0, 'function render() not found');
+    const tmpl = HTML.slice(renderStart, renderStart + 6000);
+    const zoneIdx = tmpl.indexOf('leaderboardZone');
+    const arenaIdx = tmpl.indexOf('renderActiveArenaShell()');
+    assert.ok(zoneIdx > 0 && arenaIdx > 0, 'render() must compose leaderboardZone and renderActiveArenaShell()');
+    assert.ok(zoneIdx < arenaIdx, `leaderboardZone (${zoneIdx}) must precede renderActiveArenaShell (${arenaIdx})`);
   });
 
   it('I2 · model selector lives inside the Active Arena command card, not in the right rail', () => {
@@ -89,14 +90,14 @@ describe('Crucible leaderboard-first layout', () => {
   });
 
   it('I7 · mobile keeps Model Leaderboard before deep analytics', () => {
-    // The grid is single-column on mobile; the ranking zone is rendered
-    // BEFORE the <main class="deck-grid"> block, so it stays above the
-    // arena / right rail / evidence feed in mobile flow.
-    const rankIdx = HTML.indexOf('deck-ranking-zone');
-    const mainIdx = HTML.indexOf('class="deck-grid"');
-    const floorIdx = HTML.indexOf('deck-floor');
-    assert.ok(rankIdx > -1 && mainIdx > -1 && floorIdx > -1, 'render() missing one of: ranking, main grid, floor');
-    assert.ok(rankIdx < mainIdx && rankIdx < floorIdx, 'ranking zone must precede main grid and evidence feed on every viewport');
+    // Anchor to the render() template — same hazard as I1.
+    const renderStart = HTML.indexOf('function render()');
+    const tmpl = HTML.slice(renderStart, renderStart + 6000);
+    const zoneIdx = tmpl.indexOf('leaderboardZone');
+    const arenaIdx = tmpl.indexOf('renderActiveArenaShell()');
+    const floorIdx = tmpl.indexOf('deck-floor');
+    assert.ok(zoneIdx > -1 && arenaIdx > -1 && floorIdx > -1, 'render() template missing one of: leaderboardZone, renderActiveArenaShell, deck-floor');
+    assert.ok(zoneIdx < arenaIdx && zoneIdx < floorIdx, 'leaderboardZone must be composed before arena shell and floor on every viewport');
   });
 
   it('I8 · the command card does not hide overflow on the model selector or actions', () => {

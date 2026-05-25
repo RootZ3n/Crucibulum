@@ -4296,14 +4296,11 @@ function renderDashboard(){
         ${recent.length?`<div class="run-strips">${recent.map((run,index)=>{const raw=rawRecent[index];const cls=run.overall>=80?'pass':run.overall>=55?'warn':'fail';const word=cls==='pass'?'PASS':cls==='warn'?'REVIEW':'FAIL';const rid=raw.bundle_id||raw.run_id||raw.id||run.id;return`<button class="run-strip ${cls}" onclick="focusDashboardRun('${esc(rid)}')"><div class="rs-dot"></div><div class="rs-model">${esc(run.model)}</div><div class="rs-task">${esc(humanizeToken(run.task))}</div><div class="rs-bar"><div class="rs-fill" style="width:${run.overall}%"></div></div><div class="rs-score">${run.overall}%</div><div class="rs-badge badge ${cls}">${word}</div></button>`}).join('')}</div>`:'<div class="empty">NO SIGNAL</div>'}
       </section>
 
-      ${focus?renderFocusedRun('dashboard'):'<section class="panel inspection-shell"><div class="empty">SELECT A RUN</div></section>'}
+      <!-- Focused Run hoisted to right-rail deck (renderFocusedRunRailDeck). -->
     </div>
 
     <aside class="side-column">
-      <section class="panel" style="padding:14px">
-        <div class="section-head"><div><div class="mini-label">BEST MODEL RECOMMENDATIONS</div><h3>Quick Picks</h3></div></div>
-        ${overview.winners.length?`<div class="winner-stack">${overview.winners.map((winner)=>`<div class="winner-row" title="${esc(winner.model)}"><div class="winner-label">${esc(winner.label)}</div><div class="winner-model">${esc(winner.model)}</div><div class="winner-score">${winner.score}%</div></div>`).join('')}</div>`:'<div class="empty">NO WINNERS YET</div>'}
-      </section>
+      <!-- Best Model Recommendations (Quick Picks) hoisted to left-rail deck (renderQuickPicksRailDeck). -->
       <section class="panel" style="padding:14px">
         <div class="section-head"><div><div class="mini-label">HOW TO USE CRUCIBLE</div><h3>How To Read Results</h3></div></div>
         <div class="review-flow">
@@ -4415,7 +4412,7 @@ function renderLane(tabKey){
         ${renderRuns(tab.key)}
       </section>
 
-      ${renderFocusedRun(tab.key)}
+      <!-- Focused Run hoisted to right-rail deck (renderFocusedRunRailDeck). -->
     </div>
   </section>`;
 }
@@ -4913,9 +4910,50 @@ function renderReleaseGateDeck(){
   </section>`;
 }
 
+function renderQuickPicksRailDeck(tabKey){
+  // Left-rail companion deck — best model recommendations for the
+  // active lane. Pulls from reviewSummary so it matches whatever the
+  // hoisted leaderboard is showing.
+  const summary=reviewSummary(tabKey);
+  const winners=Array.isArray(summary.winners)?summary.winners:[];
+  if(tabKey==='providers')return'';
+  const body=winners.length
+    ? `<div class="winner-stack">${winners.slice(0,5).map((winner)=>`<div class="winner-row" title="${esc(winner.model)}"><div class="winner-label">${esc(winner.label)}</div><div class="winner-model">${esc(winner.model)}</div><div class="winner-score">${winner.score}%</div></div>`).join('')}</div>`
+    : '<div class="rank-empty" style="margin:0 12px 12px">No winners yet · arm a model and start a trial to populate the picks</div>';
+  return`<section class="deck-window quick-picks-rail-deck" aria-label="Best Model Recommendations">
+    <header class="deck-header">
+      <span class="deck-socket green" aria-hidden="true"></span>
+      <h2 class="deck-title-plate green">Best Models</h2>
+      <span class="deck-subtitle">recommendations</span>
+    </header>
+    <div class="deck-body tight">${body}</div>
+  </section>`;
+}
+
+function renderFocusedRunRailDeck(tabKey){
+  // Right-rail companion deck — wraps the existing renderFocusedRun
+  // output (which includes the model callout, signal cards, glyph
+  // grid, PROVENANCE facts, METHODOLOGY facts, and the test review
+  // explorer) in a sticky-scroll deck-window. Moving it out of the
+  // arena keeps the operator from scrolling past run controls to
+  // see evidence for the focused trial.
+  if(tabKey==='providers')return'';
+  return`<section class="deck-window focused-run-rail-deck" aria-label="Focused Run details">
+    <header class="deck-header">
+      <span class="deck-socket violet" aria-hidden="true"></span>
+      <h2 class="deck-title-plate violet">Focused Run</h2>
+      <span class="deck-subtitle">click a leaderboard row to inspect</span>
+    </header>
+    <div class="deck-body tight focused-run-rail-body">${renderFocusedRun(tabKey)}</div>
+  </section>`;
+}
+
 function renderEvidenceDeck(){
-  // The right rail composition.
-  return`${renderFailureBoardDeck()}${renderProviderBayDeck()}${renderEvidenceVaultDeck()}${renderReleaseGateDeck()}`;
+  // The right rail composition. Triage decks first (Failure Board,
+  // Provider Bay, Evidence Vault, Release Gate), then the Focused Run
+  // detail deck so it stays in the sticky sidebar — the operator
+  // never scrolls past run controls to see focused-run evidence.
+  return`${renderFailureBoardDeck()}${renderProviderBayDeck()}${renderEvidenceVaultDeck()}${renderReleaseGateDeck()}${renderFocusedRunRailDeck(state.activeTab)}`;
 }
 
 function renderEvidenceFeed(){
@@ -5133,17 +5171,17 @@ function render(){
   const verdict=renderVerdictBanner();
   const mission=renderMissionBanner();
   const globalBanners=(verdict||mission)?`<div class="deck-banners">${verdict}${mission}</div>`:'';
-  // REAL leaderboard sits ABOVE the main grid. Crucible's product
-  // purpose is "which model is winning right now" — the operator
-  // sees the full ranked-results table (with toggle / export /
-  // drilldown) before any controls or analytics. The previous
-  // teaser-only 3-up strip is gone; the champion strip is now a
-  // header inside this same deck-window. On mobile the same zone
-  // remains the first content block after the cmd-rail.
-  const rankingDeck=`<section class="deck-ranking-zone real-leaderboard-zone" aria-label="Model Leaderboard zone">${renderRealLeaderboardZone()}</section>`;
-  document.getElementById('app').innerHTML=`<div class="app-shell deck-shell">${renderSystemStatusBar()}${renderOfflineBanner()}${renderCommandRail()}${globalBanners}${rankingDeck}<main class="deck-grid">
-    <aside class="deck-rail-left" aria-label="Evaluation Rooms rail">${renderEvaluationRoomsDeck()}</aside>
-    <section class="deck-rail-center">${renderActiveArenaShell()}</section>
+  // REAL leaderboard sits in the CENTER column of the deck grid,
+  // ABOVE the arena. This keeps the leaderboard prominent but lets
+  // the LEFT rail (rooms + best models) and RIGHT rail (triage +
+  // focused run) render ALONGSIDE the leaderboard at desktop widths —
+  // the operator sees the side cards without scrolling past a wide
+  // banner. On mobile the grid collapses to one column and the
+  // leaderboard is still the first content block after the cmd-rail.
+  const leaderboardZone=`<section class="real-leaderboard-zone" aria-label="Model Leaderboard zone">${renderRealLeaderboardZone()}</section>`;
+  document.getElementById('app').innerHTML=`<div class="app-shell deck-shell">${renderSystemStatusBar()}${renderOfflineBanner()}${renderCommandRail()}${globalBanners}<main class="deck-grid">
+    <aside class="deck-rail-left" aria-label="Evaluation Rooms rail">${renderEvaluationRoomsDeck()}${renderQuickPicksRailDeck(state.activeTab)}</aside>
+    <section class="deck-rail-center">${leaderboardZone}${renderActiveArenaShell()}</section>
     <aside class="deck-rail-right" aria-label="Evidence and telemetry rail">${renderEvidenceDeck()}</aside>
     <section class="deck-floor">${renderEvidenceFeed()}</section>
   </main><nav class="nav-band" hidden aria-hidden="true"><div class="tabbar">${renderTabs()}</div></nav><footer class="deck-footer app-footer" role="contentinfo"><span class="deck-footer-seal"><span class="footer-label">Crucible Evaluation Lattice</span></span><span class="deck-footer-meta">Judge Deck · Luna shell · ${esc(String(state.activeTab).toUpperCase())}</span></footer></div>`;

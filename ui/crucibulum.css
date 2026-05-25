@@ -1301,6 +1301,83 @@ tr:hover td{background:rgba(139,92,246,.04)}
 }
 
 /* ============================================================================
+ * SIDE-RAIL DETAIL DECKS — Focused Run + Quick Picks moved out of arena
+ *
+ * The operator wants to stop scrolling past run controls to reach the
+ * focused-run inspection panel and best-model recommendations. Both are
+ * now mounted in the sticky rails (left = Quick Picks, right = Focused
+ * Run) so the arena stays focused on operational controls and
+ * scrolling history.
+ *
+ * Focused Run is a large composite (model callout + signal cards +
+ * glyph grid + provenance + methodology + drilldown). In the narrower
+ * right rail we collapse multi-column grids to single column and let
+ * the rail's own overflow-y:auto handle the height.
+ * ========================================================================== */
+.focused-run-rail-deck{min-width:0}
+.focused-run-rail-body{padding:8px 12px 12px;display:block}
+.focused-run-rail-body .inspection-shell{
+  background:transparent;
+  border:none;
+  box-shadow:none;
+  padding:0;
+}
+.focused-run-rail-body .inspection-top{
+  grid-template-columns:1fr;
+  gap:8px;
+}
+.focused-run-rail-body .inspection-grid{
+  grid-template-columns:1fr;
+  gap:10px;
+}
+.focused-run-rail-body .stack-grid{display:grid;gap:10px}
+.focused-run-rail-body .sig-grid,
+.focused-run-rail-body .glyph-grid{
+  grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:6px;
+}
+.focused-run-rail-body .fact-strip{
+  grid-template-columns:max-content minmax(0,1fr);
+  gap:8px;
+  padding:6px 10px;
+  font-size:11px;
+}
+.focused-run-rail-body .fs-label{font-size:10px}
+.focused-run-rail-body .fs-value{font-size:11px;text-align:right;overflow-wrap:anywhere;white-space:normal}
+.focused-run-rail-body .model-name{font-size:var(--text-base)}
+.focused-run-rail-body .mc-score-num{font-size:32px}
+.focused-run-rail-body .subpanel{padding:10px}
+.focused-run-rail-body .section-head h3{font-size:13px}
+.focused-run-rail-body .glyph{padding:8px;gap:4px}
+.focused-run-rail-body .g-value{font-size:14px}
+.focused-run-rail-body .drilldown-list{gap:6px}
+
+/* Quick Picks rail deck — compact column under Evaluation Rooms */
+.quick-picks-rail-deck{min-width:0}
+.quick-picks-rail-deck .winner-stack{display:grid;gap:6px}
+.quick-picks-rail-deck .winner-row{
+  grid-template-columns:1fr;
+  gap:2px;
+  padding:8px 10px;
+  border:1px solid var(--border-subtle);
+  border-radius:var(--radius-md);
+  background:rgba(12,10,28,.5);
+}
+.quick-picks-rail-deck .winner-label{
+  font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-dim);font-weight:600;
+}
+.quick-picks-rail-deck .winner-model{
+  font-size:var(--text-sm);font-weight:700;color:var(--ink);
+  white-space:normal;overflow-wrap:anywhere;word-break:break-word;
+  line-height:1.3;
+}
+.quick-picks-rail-deck .winner-score{
+  font-family:var(--mono);font-size:var(--text-sm);font-weight:700;
+  color:var(--cyan);text-shadow:0 0 6px rgba(34,211,238,.3);
+}
+
+/* ============================================================================
  * READABLE LEADERBOARD — stop clipping model names
  *
  * The previous leaderboard rows used `minmax(0, ...)` model columns +
@@ -1651,27 +1728,21 @@ tr:hover td{background:rgba(139,92,246,.04)}
 }
 .deck-floor{grid-area:floor;min-width:0}
 
-/* Sticky rails — at ≥1200 px the side rails stay anchored as the operator
- * scrolls the arena, so Failure Board / Provider Bay / Evidence Vault /
- * Release Gate are always visible without scrolling the whole page.
- * Each rail is capped to viewport-minus-header height so its OWN internal
- * scroll picks up the slack when its panels are tall. Below 1200 px the
- * rails un-stick (handled in @media below). */
+/* Rails extend to their natural content height — no internal scroll.
+ * The operator scrolls the PAGE to reach lower-rail decks (Focused
+ * Run, Provenance, Methodology inside Focused Run, etc.) instead of
+ * scrolling inside a capped sticky rail. The previous sticky +
+ * max-height:calc(100vh-96px) made the 4 triage decks + Focused Run
+ * pile up inside a single viewport-tall container that required
+ * internal scrolling — removed. */
 @media (min-width:1200px){
   .deck-rail-left,
   .deck-rail-right{
-    position:sticky;
-    top:72px;
-    max-height:calc(100vh - 96px);
-    overflow-y:auto;
-    scrollbar-width:thin;
-    scrollbar-color:rgba(139,92,246,.5) transparent;
-    padding-right:4px;
+    position:static;
+    max-height:none;
+    overflow:visible;
+    padding-right:0;
   }
-  .deck-rail-left::-webkit-scrollbar,
-  .deck-rail-right::-webkit-scrollbar{width:6px}
-  .deck-rail-left::-webkit-scrollbar-thumb,
-  .deck-rail-right::-webkit-scrollbar-thumb{background:rgba(139,92,246,.4);border-radius:3px}
 }
 
 .arena-shell{padding:0;display:block}

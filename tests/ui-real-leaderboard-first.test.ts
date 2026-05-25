@@ -26,11 +26,20 @@ const CSS = readFileSync(join(ROOT, 'ui', 'crucibulum.css'), 'utf-8');
 
 describe('Crucible REAL leaderboard above run controls', () => {
   it('R1 · the full leaderboard component is mounted above Active Arena', () => {
-    const zoneIdx = HTML.indexOf('real-leaderboard-zone');
-    const arenaIdx = HTML.indexOf('deck-rail-center');
-    assert.ok(zoneIdx > 0, 'real-leaderboard-zone not present in render output');
-    assert.ok(arenaIdx > 0, 'deck-rail-center (arena) not present');
-    assert.ok(zoneIdx < arenaIdx, `leaderboard zone (${zoneIdx}) must precede arena (${arenaIdx})`);
+    // Anchor the order check to the render() template literal — the
+    // arena-shell class string also appears in the
+    // renderActiveArenaShell function definition earlier in the file,
+    // so a top-level substring scan would mis-order.
+    const renderStart = HTML.indexOf('function render()');
+    assert.ok(renderStart > 0, 'function render() not found');
+    const tmpl = HTML.slice(renderStart, renderStart + 6000);
+    // Inside render() the leaderboard zone is composed before the
+    // arena shell call (renderActiveArenaShell()).
+    const zoneIdx = tmpl.indexOf('leaderboardZone');
+    const arenaIdx = tmpl.indexOf('renderActiveArenaShell()');
+    assert.ok(zoneIdx > 0, 'render() does not reference leaderboardZone');
+    assert.ok(arenaIdx > 0, 'render() does not call renderActiveArenaShell()');
+    assert.ok(zoneIdx < arenaIdx, `leaderboardZone (${zoneIdx}) must be composed before renderActiveArenaShell (${arenaIdx}) in render()`);
   });
 
   it('R2 · the leaderboard zone embeds the FULL renderRankedResults (not just a 3-up teaser)', () => {
@@ -62,15 +71,16 @@ describe('Crucible REAL leaderboard above run controls', () => {
     assert.ok(!laneTpl.includes('renderLaneLeaderboardGraph(tab.key)'), 'renderLane still calls renderLaneLeaderboardGraph — must be hoisted');
   });
 
-  it('R4 · leaderboard zone container is width:100% (no narrow side cap)', () => {
+  it('R4 · leaderboard zone container fills the center column (width:100%)', () => {
     assert.ok(CSS.includes('.full-leaderboard-zone'), 'missing .full-leaderboard-zone CSS');
     const m = CSS.match(/\.full-leaderboard-zone\{[^}]*\}/);
     assert.ok(m, '.full-leaderboard-zone rule not found');
-    assert.ok(/width:\s*100%/.test(m![0]), '.full-leaderboard-zone must be width:100%');
-    // And it sits OUTSIDE the deck-grid (the 3-col rail layout), so
-    // nothing else competes for its row.
-    const ringRe = /<main class="deck-grid">[\s\S]*real-leaderboard-zone/;
-    assert.ok(!ringRe.test(HTML), 'leaderboard zone must NOT be inside the deck-grid');
+    assert.ok(/width:\s*100%/.test(m![0]), '.full-leaderboard-zone must be width:100% so it fills the center column');
+    // Confirm the render() template wires leaderboardZone into the
+    // deck-rail-center column (before renderActiveArenaShell).
+    const renderStart = HTML.indexOf('function render()');
+    const tmpl = HTML.slice(renderStart, renderStart + 6000);
+    assert.ok(/<section class="deck-rail-center">\$\{leaderboardZone\}/.test(tmpl), 'render() must mount leaderboardZone inside <section class="deck-rail-center">');
   });
 
   it('R5 · model-name column has a desktop minmax floor of ≥ 360 px in the top zone', () => {

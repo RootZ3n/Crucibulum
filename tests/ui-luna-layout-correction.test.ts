@@ -95,11 +95,18 @@ describe('Luna deck layout correction', () => {
   });
 
   describe('layout-correction tactical guards', () => {
-    it('rails are sticky at ≥1200 px so right-rail decks stay visible while arena scrolls', () => {
-      const stickyBlock = CSS.split('@media').find((b) => /min-width:\s*1200px/.test(b));
-      assert.ok(stickyBlock, 'no @media (min-width:1200px) block found');
-      assert.ok(/\.deck-rail-(left|right)[\s\S]*position:\s*sticky/.test(stickyBlock!), 'rails are not sticky on wide desktop');
-      assert.ok(/max-height:\s*calc\(100vh/.test(stickyBlock!), 'sticky rails missing max-height cap (would unbound their height)');
+    it('rails extend to natural content height (uncapped, no internal scroll)', () => {
+      // Earlier passes used position:sticky + max-height:calc(100vh-…)
+      // to keep rails visible. With Focused Run added to the right
+      // rail the cap forced internal rail scrolling — operator
+      // complained. Rails now flow with the page; pin that the cap is
+      // GONE rather than that sticky is present.
+      const wideBlock = CSS.split('@media').find((b) => /min-width:\s*1200px/.test(b));
+      assert.ok(wideBlock, 'no @media (min-width:1200px) block found');
+      const railRule = wideBlock!.match(/\.deck-rail-left[\s\S]*?\}/);
+      assert.ok(railRule, 'no rail rule under @media min-width:1200px');
+      assert.ok(!/max-height:\s*calc\(100vh/.test(railRule![0]), 'rails must NOT cap at calc(100vh-…) — caused internal scroll');
+      assert.ok(/max-height:\s*none/.test(railRule![0]) || !/max-height:/.test(railRule![0]), 'rails must declare max-height:none (or omit it) so content flows');
     });
 
     it('arena hides the redundant in-arena hero to stop double-rendering', () => {
