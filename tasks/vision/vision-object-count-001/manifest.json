@@ -1,11 +1,11 @@
 {
   "id": "vision-object-count-001",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "family": "vision",
   "execution_mode": "conversational",
   "difficulty": "easy",
   "experimental": true,
-  "description": "POC: count discrete objects (dots) in a synthetic scene.",
+  "description": "POC: count discrete objects (red dots) in a synthetic scene. Measures VISUAL RECOGNITION + COUNTING accuracy, NOT concision. Accepts natural-language answers up to 600 chars (vision models commonly narrate their counting reasoning) as long as the correct count is present and the colour/object is named.",
   "requires_capability": ["supportsVision", "supportsImageInput"],
   "image_fixture": {
     "path": "fixtures/vision/vision-object-count-001.png",
@@ -19,10 +19,12 @@
   "questions": [
     {
       "id": "V4-Q1",
-      "question": "How many red dots are in this image? Reply with ONLY the number.",
-      "scoring_type": "regex_match",
-      "pattern": "^\\s*7\\s*$",
-      "maxLength": 12,
+      "question": "How many red dots are in this image?",
+      "scoring_type": "numeric_fact_match",
+      "expected_number": 7,
+      "expected_number_variants": ["7", "seven"],
+      "required_object": "red dot",
+      "max_chars": 600,
       "weight": 1,
       "tags": ["vision", "count", "experimental"],
       "image_ref": "fixtures/vision/vision-object-count-001.png"
@@ -36,7 +38,7 @@
     "author": "crucibulum-core",
     "created": "2026-05-25",
     "tags": ["vision", "count", "experimental"],
-    "diagnostic_purpose": "POC for vision_object_count scorer. Seven-dot fixture; exact-match scoring.",
+    "diagnostic_purpose": "POC for vision_object_count scorer using the new numeric_fact_match mode. Accepts '7' / 'seven' / 'There are seven red dots.' and similar within 180 chars; rejects wrong counts, missing colour/object reference, or excessive rambling.",
     "benchmark_provenance": {
       "source": "Crucible synthetic dot image",
       "public_status": "public",
@@ -44,7 +46,9 @@
       "gold_solution_visibility": "not_applicable",
       "contamination_risk": "low",
       "known_scoring_limitations": [
-        "Exact-match; off-by-one (6 or 8) is FAIL_PRODUCT."
+        "Counting accuracy is the only signal — concision is intentionally NOT measured here (see future vision-concise-answer-001 for that).",
+        "Off-by-one (6 or 8) is FAIL_PRODUCT.",
+        "If model says '7 of them' without 'red dot', fails 'missing required object/colour' — this is intentional (the task is RECOGNITION of red dots, not raw counting of unidentified blobs)."
       ]
     }
   }

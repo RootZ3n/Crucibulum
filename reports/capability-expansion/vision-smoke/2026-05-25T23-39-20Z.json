@@ -1,6 +1,6 @@
 {
   "schema": "crucible.vision-smoke.v1",
-  "timestamp": "2026-05-25T23-44-51Z",
+  "timestamp": "2026-05-25T23-39-20Z",
   "commit": "108c308e03ca3220ac3dde0bc7693056e8d83cb3",
   "dirtyTree": true,
   "provider": "openrouter",
@@ -11,9 +11,10 @@
     "vision-object-count-001"
   ],
   "includeUncertainty": false,
-  "totalCostUsd": 0.00038,
+  "totalCostUsd": 0.0005020000000000001,
   "classifications": {
-    "PASS": 2
+    "PASS": 1,
+    "LOW_SCORE": 1
   },
   "stopped": false,
   "stopReason": null,
@@ -24,11 +25,11 @@
     {
       "taskId": "vision-ocr-001",
       "classification": "PASS",
-      "costUsd": 0.000039,
+      "costUsd": 0.0001,
       "tokensIn": 230,
       "tokensOut": 4,
       "runId": null,
-      "bundleId": "run_2026-05-25_vision-ocr-001_xiaomi-mimo-v2-omni_e1f91875",
+      "bundleId": "run_2026-05-25_vision-ocr-001_xiaomi-mimo-v2-omni_e7e5448e",
       "imageSent": true,
       "skipReason": "Run completed and passed evaluation",
       "fixturePath": null,
@@ -36,16 +37,16 @@
     },
     {
       "taskId": "vision-object-count-001",
-      "classification": "PASS",
-      "costUsd": 0.000341,
+      "classification": "LOW_SCORE",
+      "costUsd": 0.000402,
       "tokensIn": 216,
       "tokensOut": 158,
       "runId": null,
-      "bundleId": "run_2026-05-25_vision-object-count-001_xiaomi-mimo-v2-omni_df0fd7c1",
+      "bundleId": "run_2026-05-25_vision-object-count-001_xiaomi-mimo-v2-omni_43d110e5",
       "imageSent": true,
-      "skipReason": "Run completed and passed evaluation",
+      "skipReason": "Model completed the run but did not meet the pass threshold",
       "fixturePath": null,
-      "pass": true
+      "pass": false
     }
   ]
 }

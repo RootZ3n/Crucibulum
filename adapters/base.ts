@@ -357,6 +357,7 @@ export type ConversationalScoringType =
   | "hedge_count"
   | "corporate_check"
   | "regex_match"
+  | "numeric_fact_match"
   | "custom";
 
 export interface ConversationalQuestion {
@@ -376,6 +377,25 @@ export interface ConversationalQuestion {
   pattern?: string | undefined;
   /** Max response length for scoring_type: "regex_match" */
   maxLength?: number | undefined;
+  // ── numeric_fact_match (vision-recognition scoring) ───────────────
+  /** Expected numeric value (e.g. 7) — accepted as digit or spelled-out
+   *  variants (see expected_number_variants). The answer must contain
+   *  this number anywhere within `max_chars`, AND must not contain a
+   *  contradicting number that appears LIKE the answer (e.g. answering
+   *  "6 red dots" when the truth is 7 is a fail). */
+  expected_number?: number | undefined;
+  /** Optional explicit accepted variants: ["7","seven","Seven"]. If
+   *  omitted, the scorer auto-builds digit + lowercased English word. */
+  expected_number_variants?: string[] | undefined;
+  /** Optional object/colour phrase the answer MUST mention (e.g.
+   *  "red dots"). Match is case-insensitive substring. Use empty/null
+   *  to skip the object check. */
+  required_object?: string | undefined;
+  /** Soft length cap for verbose answers. Default 180 chars. Verbose
+   *  answers beyond this are fail with "answer too long" reason —
+   *  but the cap is much higher than regex_match's maxLength so
+   *  natural-language recognition answers pass. */
+  max_chars?: number | undefined;
 }
 
 export interface ConversationalManifest {

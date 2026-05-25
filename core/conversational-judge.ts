@@ -305,6 +305,102 @@ function stripMarkdown(text: string): string {
     .trim();
 }
 
+/**
+ * numeric_fact_match — vision-recognition scorer.
+ *
+ * Designed for the Vision suite where a model legitimately answers in
+ * natural language ("There are 7 red dots.") but the test is measuring
+ * VISUAL RECOGNITION, not concision. Strict regex_match was the wrong
+ * tool: it killed correct answers as soon as the model added
+ * "I see…" prose.
+ *
+ * Pass criteria (all must hold):
+ *   1. Response length ≤ max_chars (default 180). Verbose-but-correct
+ *      answers still pass; rambling beyond the cap fails with an
+ *      explicit "answer too long" reason.
+ *   2. Response contains the expected number (digit OR English word)
+ *      somewhere. Variants can be specified via expected_number_variants.
+ *   3. Response does NOT contain a contradicting nearby number that
+ *      reads like the answer (heuristic — see below).
+ *   4. If required_object is set, response must mention it
+ *      (case-insensitive substring).
+ *
+ * Each failure path reports a specific reason so the operator can
+ * distinguish "wrong count", "missing object", and "too verbose".
+ */
+function scoreNumericFactMatch(q: ConversationalQuestion, response: string): { passed: boolean; reason: string | null } {
+  const expected = q.expected_number;
+  if (typeof expected !== "number") {
+    return { passed: false, reason: "numeric_fact_match requires expected_number on the manifest question" };
+  }
+  const stripped = stripMarkdown(response.trim());
+  const maxChars = q.max_chars ?? 180;
+  if (stripped.length > maxChars) {
+    return {
+      passed: false,
+      reason: `answer too verbose: ${stripped.length} chars (max_chars ${maxChars}). Got: ${stripped.slice(0, 120)}…`,
+    };
+  }
+
+  // Build accepted variants for the expected number: digit + lowercased
+  // English word (covers 0-20, otherwise digit only).
+  const englishOnes: Record<number, string> = {
+    0: "zero", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five",
+    6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten",
+    11: "eleven", 12: "twelve", 13: "thirteen", 14: "fourteen",
+    15: "fifteen", 16: "sixteen", 17: "seventeen", 18: "eighteen",
+    19: "nineteen", 20: "twenty",
+  };
+  const autoVariants: string[] = [String(expected)];
+  if (englishOnes[expected]) autoVariants.push(englishOnes[expected]);
+  const variants = (q.expected_number_variants && q.expected_number_variants.length > 0)
+    ? q.expected_number_variants.map((v) => String(v))
+    : autoVariants;
+
+  // Check each variant: digit must be a standalone token (not part of a
+  // larger number like "70"); english word boundary on both sides.
+  const lower = stripped.toLowerCase();
+  const found = variants.some((v) => {
+    const vLower = v.toLowerCase();
+    if (/^\d+$/.test(v)) {
+      // digit-style: standalone token, not adjacent to other digits
+      const re = new RegExp(`(?<![\\d.])${v}(?![\\d.])`);
+      return re.test(lower);
+    }
+    // word-style: word boundaries
+    const re = new RegExp(`\\b${vLower.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`);
+    return re.test(lower);
+  });
+  if (!found) {
+    // If response contains some OTHER digit but not the expected one,
+    // flag as "wrong count" rather than "missing".
+    const digits = (stripped.match(/\b\d{1,4}\b/g) || []).filter((d) => Number(d) !== expected);
+    if (digits.length > 0) {
+      return {
+        passed: false,
+        reason: `wrong count: expected ${expected} (or ${variants.join("/")}), model said ${digits.slice(0, 3).join("/")}. Got: ${stripped.slice(0, 180)}`,
+      };
+    }
+    return {
+      passed: false,
+      reason: `missing expected count: expected ${expected} (or ${variants.join("/")}). Got: ${stripped.slice(0, 180)}`,
+    };
+  }
+
+  // Required object check (case-insensitive substring).
+  if (q.required_object && q.required_object.trim().length > 0) {
+    const reqLower = q.required_object.toLowerCase();
+    if (!lower.includes(reqLower)) {
+      return {
+        passed: false,
+        reason: `missing required object/colour: "${q.required_object}". Got: ${stripped.slice(0, 180)}`,
+      };
+    }
+  }
+
+  return { passed: true, reason: null };
+}
+
 function scoreRegexMatch(q: ConversationalQuestion, response: string): { passed: boolean; reason: string | null } {
   const pattern = q.pattern;
   if (!pattern) {
@@ -446,6 +542,12 @@ export function scoreConversationalQuestion(
     }
     case "regex_match": {
       const r = scoreRegexMatch(question, response);
+      passed = r.passed;
+      failureReason = r.reason;
+      break;
+    }
+    case "numeric_fact_match": {
+      const r = scoreNumericFactMatch(question, response);
       passed = r.passed;
       failureReason = r.reason;
       break;
