@@ -77,10 +77,15 @@ describe('Crucible leaderboard-first layout', () => {
   });
 
   it('I6 · desktop layout puts a Model Leaderboard section at the top', () => {
-    assert.ok(HTML.includes('function renderRankingDeck'), 'missing renderRankingDeck function');
+    // The renderRankingDeck teaser was replaced by renderRealLeaderboardZone
+    // (the FULL leaderboard at the top); the champion strip is now a
+    // header inside that zone. Both helpers must exist.
+    assert.ok(HTML.includes('function renderRealLeaderboardZone') || HTML.includes('function renderRankingDeck'), 'missing top leaderboard zone function (renderRealLeaderboardZone or renderRankingDeck)');
+    assert.ok(HTML.includes('function renderChampionStrip') || HTML.includes('function renderRankingDeck'), 'missing champion strip / ranking deck function');
     assert.ok(HTML.includes('Model Leaderboard'), 'missing "Model Leaderboard" label');
-    assert.ok(CSS.includes('.ranking-deck'), 'missing .ranking-deck CSS');
     assert.ok(CSS.includes('.rank-cards'), 'missing .rank-cards CSS');
+    // The full-leaderboard-zone CSS exists once the hoist lands.
+    assert.ok(CSS.includes('.full-leaderboard-zone') || CSS.includes('.ranking-deck'), 'missing leaderboard zone CSS');
   });
 
   it('I7 · mobile keeps Model Leaderboard before deep analytics', () => {
@@ -114,7 +119,13 @@ describe('Crucible leaderboard-first layout', () => {
 
   describe('tactical guards', () => {
     it('ranking deck shows top 3 cards from aggregateLeaderboard', () => {
-      assert.ok(/renderRankingDeck[\s\S]{0,1500}aggregateLeaderboard\(tabKey,\s*3\)/.test(HTML), 'ranking deck must request top 3 from aggregateLeaderboard');
+      // The champion-strip header (inside renderRealLeaderboardZone)
+      // pulls top 3 via renderChampionStrip → aggregateLeaderboard(_, 3).
+      assert.ok(
+        /renderChampionStrip[\s\S]{0,1500}aggregateLeaderboard\(tabKey,\s*3\)/.test(HTML)
+        || /renderRankingDeck[\s\S]{0,1500}aggregateLeaderboard\(tabKey,\s*3\)/.test(HTML),
+        'top zone must request top 3 from aggregateLeaderboard (via renderChampionStrip or renderRankingDeck)'
+      );
     });
 
     it('champion card is visually distinct', () => {

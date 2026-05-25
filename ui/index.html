@@ -4283,9 +4283,7 @@ function renderDashboard(){
 
       ${renderOverviewCards('dashboard')}
 
-      ${renderComparisonBars('dashboard','Overall Model Ranking',overview.rollups.slice(0,6),'avgOverall')}
-
-      ${renderRankedResults('dashboard')}
+      <!-- Leaderboard hoisted to the top-of-page full-leaderboard-zone. -->
 
       ${isAdvancedView()?renderCategoryReview('dashboard'):''}
 
@@ -4408,9 +4406,7 @@ function renderLane(tabKey){
 
       ${renderOverviewCards(tab.key)}
 
-      ${renderLaneLeaderboardGraph(tab.key)}
-
-      ${renderRankedResults(tab.key)}
+      <!-- Lane leaderboard + ranked results hoisted to top-of-page full-leaderboard-zone. -->
 
       ${isAdvancedView()?renderCategoryReview(tab.key):''}
 
@@ -5008,56 +5004,66 @@ function activeArenaTitlePlate(){
   return{label:`${tab.label} Arena`,sub:tab.laneTitle||'evaluation room'};
 }
 
-function renderRankingDeck(){
-  // Top-of-page Ranking Deck — Crucible's product purpose is "which
-  // model is winning right now", so the leaderboard sits ABOVE the
-  // arena (not buried halfway down the page). Full-width strip with
-  // #1/#2/#3 champion cards on the left and a "view full leaderboard"
-  // affordance on the right.
-  //
-  // Always shows the current lane's leaderboard scope so the operator
-  // never has to wonder which lane the ranks belong to.
-  const tabKey=state.activeTab;
+function renderChampionStrip(tabKey){
+  // Compact 3-up champion strip used as the HEADER of the real
+  // leaderboard zone (NOT as a separate teaser). Top 3 models from
+  // aggregateLeaderboard with crown styling on #1. The full leaderboard
+  // rows render immediately below this strip in the same deck-window.
   const scope=laneScopeDescriptor(tabKey);
   const top=aggregateLeaderboard(tabKey,3);
   const sampleSize=scope.sampleSize||0;
-  const provisional=scope.provisional;
   const settingsView=tabKey==='providers';
-  const champion=top[0]||null;
+  if(!top.length){
+    return`<div class="rank-empty">${settingsView?'Provider registry · no rankings on this tab':sampleSize===0?'No trials recorded yet · arm a model and start a trial to populate the leaderboard':'No ranked models yet for this lane'}</div>`;
+  }
+  return top.map((entry,index)=>{
+    const score=Math.round(Number(entry.score||0));
+    const cls=score>=80?'pass':score>=55?'warn':'fail';
+    const rank=index+1;
+    const tooFew=Number(entry.runs||0)<LEADERBOARD_MIN_N_UI;
+    return`<button type="button" class="rank-card ${cls} ${rank===1?'champion':''}" onclick="focusModelDrilldown('${esc(tabKey)}','${esc(entry.model)}')" aria-label="Open ${esc(entry.model)} drilldown">
+      <span class="rank-num">#${rank}</span>
+      <span class="rank-body">
+        <span class="rank-model" title="${esc(entry.model)}">${esc(entry.model)}</span>
+        <span class="rank-sub">${esc(entry.runs||0)} trial${(entry.runs||0)===1?'':'s'}${entry.provider?' · '+esc(String(entry.provider).slice(0,16)):''}${tooFew?' · n='+entry.runs:''}</span>
+      </span>
+      <span class="rank-score">${score}<span class="rank-unit">%</span></span>
+    </button>`;
+  }).join('');
+}
+
+function renderRealLeaderboardZone(){
+  // TOP-OF-PAGE FULL LEADERBOARD. This is not a teaser — the full
+  // ranked-results table (with Simple/Table/Chart toggle, scope chip,
+  // JSON/CSV export, and click-through model drilldown) lives here at
+  // the top of the page, above the run controls. The compact 3-up
+  // champion strip sits as a header above the ranked rows inside the
+  // same deck-window — there is no duplicate teaser elsewhere.
+  const tabKey=state.activeTab;
+  const scope=laneScopeDescriptor(tabKey);
+  const sampleSize=scope.sampleSize||0;
+  const provisional=scope.provisional;
+  const champion=aggregateLeaderboard(tabKey,1)[0]||null;
+  const settingsView=tabKey==='providers';
   const provisionalChip=provisional
     ? `<span class="chip amber hot" title="Fewer than ${LEADERBOARD_MIN_N_UI} runs in scope — rankings are provisional.">PROVISIONAL · n=${sampleSize}</span>`
     : '';
-  const cards=top.length
-    ? top.map((entry,index)=>{
-        const score=Math.round(Number(entry.score||0));
-        const cls=score>=80?'pass':score>=55?'warn':'fail';
-        const rank=index+1;
-        const tooFew=Number(entry.runs||0)<LEADERBOARD_MIN_N_UI;
-        return`<button type="button" class="rank-card ${cls} ${rank===1?'champion':''}" onclick="focusModelDrilldown('${esc(tabKey)}','${esc(entry.model)}')" aria-label="Open ${esc(entry.model)} drilldown">
-          <span class="rank-num">#${rank}</span>
-          <span class="rank-body">
-            <span class="rank-model" title="${esc(entry.model)}">${esc(entry.model)}</span>
-            <span class="rank-sub">${esc(entry.runs||0)} trial${(entry.runs||0)===1?'':'s'}${entry.provider?' · '+esc(String(entry.provider).slice(0,16)):''}${tooFew?' · n='+entry.runs:''}</span>
-          </span>
-          <span class="rank-score">${score}<span class="rank-unit">%</span></span>
-        </button>`;
-      }).join('')
-    : `<div class="rank-empty">${settingsView?'Provider registry · no rankings on this tab':sampleSize===0?'No trials recorded yet · arm a model and start a trial to populate the leaderboard':'No ranked models yet for this lane'}</div>`;
-  return`<section class="deck-window ranking-deck" aria-label="Model Leaderboard">
+  // The full ranked-results component (toggles + table/chart/simple +
+  // export + drilldown). For providers tab we skip — no leaderboard.
+  const body=settingsView?'':renderRankedResults(tabKey);
+  return`<section class="deck-window full-leaderboard-zone" aria-label="Model Leaderboard">
     <header class="deck-header">
       <span class="deck-socket cyan" aria-hidden="true"></span>
       <h2 class="deck-title-plate">Model Leaderboard</h2>
       <span class="deck-subtitle">${esc(scope.scopeLabel)}</span>
       <span class="deck-subtitle">${sampleSize} trial${sampleSize===1?'':'s'} in scope</span>
       ${champion?`<span class="rank-crown" title="Current champion in ${esc(scope.scopeLabel)}">★ ${esc(String(champion.model).slice(0,28))} · ${Math.round(Number(champion.score||0))}%</span>`:''}
+      ${provisionalChip}
     </header>
-    <div class="ranking-strip">
-      <div class="rank-cards">${cards}</div>
-      <div class="rank-side">
-        ${provisionalChip}
-        <button type="button" class="evidence-btn" onclick="document.querySelector('.comparison-chart,.leader-list')?.scrollIntoView({behavior:'smooth',block:'start'})">Open Full Leaderboard</button>
-      </div>
+    <div class="champion-strip">
+      <div class="rank-cards">${renderChampionStrip(tabKey)}</div>
     </div>
+    ${body?`<div class="full-leaderboard-body">${body}</div>`:''}
   </section>`;
 }
 
@@ -5127,11 +5133,14 @@ function render(){
   const verdict=renderVerdictBanner();
   const mission=renderMissionBanner();
   const globalBanners=(verdict||mission)?`<div class="deck-banners">${verdict}${mission}</div>`:'';
-  // Ranking Deck sits ABOVE the main grid. Crucible's product purpose
-  // is "which model is winning right now" — the operator should see
-  // the leaderboard before any controls or analytics. On mobile the
-  // same deck remains the first content block after the cmd-rail.
-  const rankingDeck=`<section class="deck-ranking-zone" aria-label="Model Ranking zone">${renderRankingDeck()}</section>`;
+  // REAL leaderboard sits ABOVE the main grid. Crucible's product
+  // purpose is "which model is winning right now" — the operator
+  // sees the full ranked-results table (with toggle / export /
+  // drilldown) before any controls or analytics. The previous
+  // teaser-only 3-up strip is gone; the champion strip is now a
+  // header inside this same deck-window. On mobile the same zone
+  // remains the first content block after the cmd-rail.
+  const rankingDeck=`<section class="deck-ranking-zone real-leaderboard-zone" aria-label="Model Leaderboard zone">${renderRealLeaderboardZone()}</section>`;
   document.getElementById('app').innerHTML=`<div class="app-shell deck-shell">${renderSystemStatusBar()}${renderOfflineBanner()}${renderCommandRail()}${globalBanners}${rankingDeck}<main class="deck-grid">
     <aside class="deck-rail-left" aria-label="Evaluation Rooms rail">${renderEvaluationRoomsDeck()}</aside>
     <section class="deck-rail-center">${renderActiveArenaShell()}</section>

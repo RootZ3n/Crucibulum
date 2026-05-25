@@ -115,24 +115,22 @@ describe("ui-layout-regression: benchmark lane — visible test picker replaces 
   it("renders a Live Status panel at the top of the content column, above the leaderboard", () => {
     assert.match(ui, /\.live-status\s*\{/, ".live-status CSS rule must exist");
     assert.match(ui, /function renderLiveStatus/, "renderLiveStatus must be defined");
-    // Live Status must appear in renderLane BEFORE the lane leaderboard
-    // panel, so the active run is visible without scrolling past it. The
-    // panel previously rendered a literal `Rankings</h3>` header; today the
-    // leaderboard insert point is `renderLaneLeaderboardGraph(tab.key)`.
-    // This assertion targets the call site so it tracks UI refactors of
-    // the panel title ("Rankings" → "Leaderboard") without regressing the
-    // *spatial* contract — which is the actual thing operators care about.
+    // SPATIAL CONTRACT: the leaderboard must NOT push the active run
+    // below the fold. The leaderboard was hoisted out of renderLane
+    // into the top-of-page renderRealLeaderboardZone — so it sits ABOVE
+    // the entire arena (which contains Live Status). renderLane only
+    // needs to ensure renderLiveStatus is still called near the top of
+    // its content column.
     const renderLaneFn = ui.match(/function renderLane\([\s\S]*?\n\}\n/);
     assert.ok(renderLaneFn, "renderLane function must exist");
     const body = renderLaneFn![0]!;
     const liveIdx = body.indexOf("renderLiveStatus(tab.key)");
-    const leaderboardIdx = body.indexOf("renderLaneLeaderboardGraph(tab.key)");
     assert.ok(liveIdx >= 0, "renderLane must call renderLiveStatus(tab.key)");
-    assert.ok(leaderboardIdx >= 0, "renderLane must still render the lane leaderboard panel via renderLaneLeaderboardGraph(tab.key)");
-    assert.ok(
-      liveIdx < leaderboardIdx,
-      "Live Status must appear ABOVE the leaderboard panel in the content column (no scrolling to see the active run)",
-    );
+    // Confirm the leaderboard moved out of renderLane and into the
+    // top-of-page zone (the previous test expected the in-arena leaderboard).
+    assert.ok(!body.includes("renderLaneLeaderboardGraph(tab.key)"), "renderLane must NOT re-render the lane leaderboard panel — it lives in renderRealLeaderboardZone now");
+    assert.ok(!body.includes("renderRankedResults(tab.key)"), "renderLane must NOT re-render the ranked results — they live in renderRealLeaderboardZone now");
+    assert.ok(/function renderRealLeaderboardZone/.test(ui), "renderRealLeaderboardZone must exist and host the leaderboard");
     // And it must NOT be inside the control-rail aside anymore — previous placement required users
     // to look away from the leaderboard area to find live status.
     const aside = body.match(/<aside class="control-rail">[\s\S]*?<\/aside>/);
