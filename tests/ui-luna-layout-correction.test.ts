@@ -53,12 +53,15 @@ describe('Luna deck layout correction', () => {
   });
 
   it('L5 · single-column mobile breakpoint exists', () => {
-    // Below 900 px the grid MUST collapse to one column. We check for
-    // both the breakpoint and the explicit grid-template-columns:1fr.
+    // Below 900 px the grid MUST collapse to one column. There are
+    // multiple @media (max-width:899px) blocks in the cascade
+    // (different concerns); scan ALL of them for a 1fr rule so this
+    // test does not break when a new 899px block is added.
     assert.ok(CSS.includes('@media (max-width:899px)') || CSS.includes('@media(max-width:899px)'), 'missing 899px mobile breakpoint');
-    const mobileBlock = CSS.split('@media').find((b) => /max-width:\s*899px/.test(b));
-    assert.ok(mobileBlock, 'no @media block matching 899px');
-    assert.ok(/grid-template-columns:\s*1fr/.test(mobileBlock!), 'mobile breakpoint does not force single column');
+    const blocks = CSS.split('@media').filter((b) => /max-width:\s*899px/.test(b));
+    assert.ok(blocks.length > 0, 'no @media block matching 899px');
+    const hasSingleCol = blocks.some((b) => /grid-template-columns:\s*1fr/.test(b));
+    assert.ok(hasSingleCol, 'no 899px breakpoint forces single column');
   });
 
   it('L6 · wide desktop max width uses ≥1500 px or 96vw/1760px formula', () => {

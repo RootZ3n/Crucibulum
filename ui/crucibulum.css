@@ -1271,6 +1271,34 @@ tr:hover td{background:rgba(139,92,246,.04)}
     inset 0 0 12px rgba(34,211,238,.3);
   flex-shrink:0;
 }
+
+/* Header mascot — small Squidley emblem that sits in the brand column
+ * of the cmd-rail. Reuses the existing 48 px brand cell so the header
+ * card height does not grow. Tasteful: low halo, decorative-only,
+ * pointer-events disabled, aria-hidden via markup. Replaces the
+ * buried footer mascot per operator request. */
+.cmd-rail-mascot{
+  width:52px;
+  height:52px;
+  max-height:64px;
+  object-fit:contain;
+  opacity:.88;
+  pointer-events:none;
+  flex-shrink:0;
+  /* Soft cyan rim so it reads on the deep indigo without a heavy glow */
+  filter:drop-shadow(0 0 6px rgba(34,211,238,.35)) drop-shadow(0 2px 4px rgba(0,0,0,.45));
+  user-select:none;
+  display:block;
+}
+@media (max-width:899px){
+  .cmd-rail-mascot{width:44px;height:44px}
+}
+@media (max-width:599px){
+  .cmd-rail-mascot{width:40px;height:40px}
+}
+@media (prefers-reduced-motion:reduce){
+  .cmd-rail-mascot{filter:none}
+}
 .cmd-rail-title-stack{display:grid;gap:2px;min-width:0}
 .cmd-rail-title{
   font-family:var(--body);font-weight:800;

@@ -136,9 +136,14 @@ describe('Symposium UI redesign', () => {
     it('no hero Squidley (ab-squid display:none)', () => {
       assert.ok(CSS.includes('.ab-squid{display:none}'), 'hero squid should be hidden');
     });
-    it('footer Squidley exists', () => {
-      assert.ok(CSS.includes('.footer-squid'), 'missing footer squid class');
-      assert.ok(HTML.includes('footer-squid'), 'missing footer squid in HTML');
+    it('Squidley exists somewhere visible (header or footer mascot)', () => {
+      // The footer-squid CSS hook remains for legacy compatibility, but
+      // operator moved the visible mascot to the cmd-rail header so it
+      // is actually seen. Either placement satisfies the contract.
+      assert.ok(CSS.includes('.footer-squid'), 'missing footer-squid CSS hook');
+      const headerMascot = HTML.includes('cmd-rail-mascot') && CSS.includes('.cmd-rail-mascot');
+      const footerMascot = HTML.includes('footer-squid');
+      assert.ok(headerMascot || footerMascot, 'no Squidley mascot found in either header or footer');
     });
     it('tab active state uses violet gradient', () => {
       assert.ok(CSS.includes('.tab.active') && CSS.includes('139,92,246'), 'tab active should use violet');

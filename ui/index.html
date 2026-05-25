@@ -4971,7 +4971,7 @@ function renderCommandRail(){
   // hidden below for that contract.
   return`<header class="cmd-rail" role="banner">
     <div class="cmd-rail-brand">
-      <span class="cmd-glyph" aria-hidden="true">⌬</span>
+      <img class="cmd-rail-mascot" src="squidley.png" alt="" aria-hidden="true">
       <div class="cmd-rail-title-stack">
         <span class="cmd-rail-mark">${esc(scope.tabLabel)} · Judge Deck</span>
         <span class="cmd-rail-title">Crucible</span>
@@ -5137,7 +5137,7 @@ function render(){
     <section class="deck-rail-center">${renderActiveArenaShell()}</section>
     <aside class="deck-rail-right" aria-label="Evidence and telemetry rail">${renderEvidenceDeck()}</aside>
     <section class="deck-floor">${renderEvidenceFeed()}</section>
-  </main><nav class="nav-band" hidden aria-hidden="true"><div class="tabbar">${renderTabs()}</div></nav><footer class="deck-footer app-footer" role="contentinfo"><span class="deck-footer-seal"><img src="squidley.png" alt="" class="footer-squid" aria-hidden="true"><span class="footer-label">Crucible Evaluation Lattice</span></span><span class="deck-footer-meta">Judge Deck · Luna shell · ${esc(String(state.activeTab).toUpperCase())}</span></footer></div>`;
+  </main><nav class="nav-band" hidden aria-hidden="true"><div class="tabbar">${renderTabs()}</div></nav><footer class="deck-footer app-footer" role="contentinfo"><span class="deck-footer-seal"><span class="footer-label">Crucible Evaluation Lattice</span></span><span class="deck-footer-meta">Judge Deck · Luna shell · ${esc(String(state.activeTab).toUpperCase())}</span></footer></div>`;
 }
 
 // Lightweight elapsed-time ticker — only touches text nodes marked with

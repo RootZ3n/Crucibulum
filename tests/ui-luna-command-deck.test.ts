@@ -88,16 +88,24 @@ describe('Luna command-deck UI structure', () => {
     assert.ok(!/class="[^"]*\babyss-squid-block\b/.test(HTML), 'large squid block present');
   });
 
-  it('J9 · Small footer mascot/seal is present', () => {
-    assert.ok(HTML.includes('class="footer-squid"') || HTML.includes('footer-squid'), 'missing footer-squid image');
-    assert.ok(HTML.includes('Crucible Evaluation Lattice'), 'missing footer lattice seal');
-    assert.ok(CSS.includes('.footer-squid'), 'missing footer-squid CSS');
-    // Must be small: width <= 40px
-    const m = CSS.match(/\.footer-squid\{[^}]*width:\s*(\d+)px/);
-    if (m) {
-      const px = Number(m[1]);
-      assert.ok(px <= 40, `footer squid width ${px}px should be <= 40px`);
-    }
+  it('J9 · Small mascot is present near brand (header preferred) or footer; lattice seal stays', () => {
+    // Mascot may live in the header (cmd-rail) as the primary brand
+    // emblem, or in the footer as a small seal — at least one must
+    // exist and the footer text seal must remain.
+    const hasHeaderMascot = HTML.includes('cmd-rail-mascot') && CSS.includes('.cmd-rail-mascot');
+    const hasFooterMascot = HTML.includes('footer-squid') && CSS.includes('.footer-squid');
+    assert.ok(hasHeaderMascot || hasFooterMascot, 'no small mascot found in header OR footer');
+    assert.ok(HTML.includes('Crucible Evaluation Lattice'), 'missing footer lattice seal text');
+    // Whichever mascot is present must be small (<= 64 px).
+    const mCheck = (selector: string) => {
+      const m = CSS.match(new RegExp(`${selector}\\{[^}]*width:\\s*(\\d+)px`));
+      if (m) {
+        const px = Number(m[1]);
+        assert.ok(px <= 64, `${selector} width ${px}px should be <= 64px`);
+      }
+    };
+    if (hasHeaderMascot) mCheck('\\.cmd-rail-mascot');
+    if (hasFooterMascot) mCheck('\\.footer-squid');
   });
 
   it('J10 · Mobile viewport has no horizontal overflow', () => {
