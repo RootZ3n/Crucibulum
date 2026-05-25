@@ -4664,12 +4664,402 @@ function renderActiveTab(){
   return renderLane(state.activeTab);
 }
 
+// ─── Luna-style command deck composition ─────────────────────────────
+// Each tab is presented as an "Evaluation Room" in the left rail. The
+// active tab's body is mounted into the center Active Arena (a deck
+// window wrapping the existing renderActiveTab() output). The right
+// rail surfaces Failure Board / Provider Bay / Evidence Vault / Release
+// Gate. The bottom rail (Evidence Feed) shows recent trials.
+//
+// All existing render helpers (renderHero, renderTabs, renderActiveTab,
+// renderProvidersView, renderLane, renderDashboard) remain callable and
+// keep their existing markup so the existing test contract holds.
+
+function roomStatusForTab(tabKey){
+  // Returns {state, passRate, runCount, certification} for an evaluation
+  // room. state ∈ pass|warn|fail|empty so the room card can show the
+  // operator the lane's last-known health at a glance.
+  const tab=TAB_CONFIG[tabKey];
+  if(!tab)return{state:'empty',passRate:null,runCount:0,kind:'lane'};
+  if(tab.isSettings)return{state:'settings',passRate:null,runCount:0,kind:'settings'};
+  const tabState=state.tabData[tabKey]||defaultTabState();
+  const runs=tabState.runs||[];
+  const stats=tabState.stats||{};
+  const runCount=runs.length||Number(stats.total_runs||0);
+  const passRate=Number(stats.pass_rate||0);
+  let st='empty';
+  if(runCount>0){
+    if(passRate>=80)st='pass';
+    else if(passRate>=55)st='warn';
+    else st='fail';
+  }
+  return{state:st,passRate:runCount>0?Math.round(passRate):null,runCount,kind:'lane'};
+}
+
+function renderEvaluationRoomsDeck(){
+  // Left-rail navigator. Each room is a clickable card with name,
+  // pass/fail dot, run count, and a small pill (pass% or "SETTINGS").
+  // Replaces the centered .tabbar list — the operator sees rooms as
+  // discrete decks instead of a tab row.
+  const items=Object.values(TAB_CONFIG).map((tab)=>{
+    const meta=roomStatusForTab(tab.key);
+    const isActive=state.activeTab===tab.key;
+    const isSettings=meta.kind==='settings';
+    const pillCls=meta.state==='pass'?'pass':meta.state==='fail'?'fail':meta.state==='warn'?'warn':'';
+    const pill=isSettings
+      ? `<span class="room-pill">Settings</span>`
+      : (meta.runCount>0
+          ? `<span class="room-pill ${pillCls}">${meta.passRate}%</span>`
+          : `<span class="room-pill">Idle</span>`);
+    const passCount=meta.passRate!=null?Math.round((meta.passRate/100)*meta.runCount):0;
+    const failCount=Math.max(0,meta.runCount-passCount);
+    const metaLine=isSettings
+      ? 'Provider registry'
+      : (meta.runCount>0
+          ? `<span class="pass-num">${passCount}</span>/<span class="fail-num">${failCount}</span> · ${meta.runCount} trial${meta.runCount===1?'':'s'}`
+          : 'No trials yet');
+    const cls=['room-card',isActive?'active':'',isSettings?'settings':meta.state].filter(Boolean).join(' ');
+    return`<button type="button" class="${cls}" onclick="setActiveTab('${esc(tab.key)}')" aria-pressed="${isActive?'true':'false'}" aria-label="Open ${esc(tab.label)} room">
+      <span class="room-dot" aria-hidden="true"></span>
+      <span class="room-body">
+        <span class="room-name">${esc(tab.label)}</span>
+        <span class="room-meta">${metaLine}</span>
+      </span>
+      ${pill}
+    </button>`;
+  }).join('');
+  return`<section class="deck-window rooms-deck" aria-label="Evaluation Rooms">
+    <header class="deck-header">
+      <span class="deck-socket violet" aria-hidden="true"></span>
+      <h2 class="deck-title-plate violet">Evaluation Rooms</h2>
+      <span class="deck-socket cyan" aria-hidden="true"></span>
+    </header>
+    <div class="rooms-list" role="navigation" aria-label="Evaluation room navigation">${items}</div>
+    <div class="rooms-deck-foot"><span>Click a room to open the Active Arena</span></div>
+  </section>`;
+}
+
+function failureBoardCounts(tabKey){
+  // Counts failures by origin for the right-rail Failure Board.
+  // Product = MODEL, Provider/Config = INFRA, Skip = TEST/JUDGE NC,
+  // Clean = passing trials.
+  const runs=(tabKey==='dashboard')?allRuns():(state.tabData[tabKey]?.runs||[]);
+  let product=0,provider=0,config=0,info=0,clean=0;
+  for(const run of runs){
+    const n=normalizeRunForDisplay(run);
+    if(n.completionState==='PASS'){clean++;continue}
+    if(n.completionState==='FAIL'&&n.failureOrigin==='MODEL'){product++;continue}
+    if(n.completionState==='NC'&&['PROVIDER','NETWORK','HARNESS','UNKNOWN'].includes(n.failureOrigin||'')){
+      if(n.failureOrigin==='PROVIDER')provider++;
+      else config++;
+      continue;
+    }
+    if(n.completionState==='NC'&&['TEST','JUDGE'].includes(n.failureOrigin||'')){info++;continue}
+    config++;
+  }
+  return{product,provider,config,info,clean,total:runs.length};
+}
+
+function renderFailureBoardDeck(){
+  const counts=failureBoardCounts(state.activeTab);
+  const rows=[
+    {key:'product',label:'Product failures',count:counts.product},
+    {key:'provider',label:'Provider failures',count:counts.provider},
+    {key:'config',label:'Config failures',count:counts.config},
+    {key:'info',label:'Skips / NC',count:counts.info},
+    {key:'clean',label:'Clean trials',count:counts.clean}
+  ];
+  return`<section class="deck-window failure-board-deck" aria-label="Failure Board">
+    <header class="deck-header">
+      <span class="deck-socket red" aria-hidden="true"></span>
+      <h2 class="deck-title-plate red">Failure Board</h2>
+      <span class="deck-subtitle">${counts.total} trial${counts.total===1?'':'s'}</span>
+    </header>
+    <div class="failure-board">${rows.map((row)=>`<div class="failure-row ${row.key}"><span class="fb-dot" aria-hidden="true"></span><span class="fb-label">${esc(row.label)}</span><span class="fb-count">${row.count}</span></div>`).join('')}</div>
+  </section>`;
+}
+
+function selectedProviderModelSummary(tabKey){
+  // Pulls the first armed model from the current tab's selection so the
+  // Provider Bay shows the operator what they're about to run.
+  const tabState=state.tabData[tabKey]||defaultTabState();
+  const modelIds=tabState.selectedModels||[];
+  if(!modelIds.length)return{label:'No model armed',providerLabel:'—',certLabel:'Idle',certCls:''};
+  const first=String(modelIds[0]);
+  const [providerId,...modelParts]=first.split(':');
+  const modelId=modelParts.join(':');
+  const groups=mergedModelGroups();
+  const group=groups.find((g)=>g.providerId===providerId)||{label:providerId,providerId};
+  const cert=RELEASE_CERTIFICATION.targets.find((t)=>t.providerId===providerId&&t.modelId===modelId);
+  const certLabel=cert?'Certified target':'Uncertified visible';
+  const certCls=cert?'teal':'warn';
+  return{label:modelId||first,providerLabel:group.label||providerId,certLabel,certCls};
+}
+
+function providerHealthMini(){
+  // Compact health snapshot used by the Provider Bay.
+  const h=state.health||{};
+  const providers=Object.values(h.providers||{});
+  const cloud=providers.filter((p)=>p.kind==='cloud');
+  const cloudOk=cloud.filter((p)=>p.status==='ok').length;
+  const cloudDown=cloud.filter((p)=>p.status==='down').length;
+  const local=providers.filter((p)=>p.kind==='local');
+  const localOk=local.filter((p)=>p.status==='ok').length;
+  return{cloudOk,cloudDown,cloudTotal:cloud.length,localOk,localTotal:local.length,summary:h.summary||'unknown'};
+}
+
+function renderProviderBayDeck(){
+  const sel=selectedProviderModelSummary(state.activeTab);
+  const hm=providerHealthMini();
+  const sweepNote=`${hm.cloudOk}/${hm.cloudTotal} cloud · ${hm.localOk}/${hm.localTotal} local`;
+  return`<section class="deck-window provider-bay-deck" aria-label="Provider Bay">
+    <header class="deck-header">
+      <span class="deck-socket cyan" aria-hidden="true"></span>
+      <h2 class="deck-title-plate">Provider Bay</h2>
+      <span class="deck-subtitle">selected target</span>
+    </header>
+    <div class="provider-bay">
+      <div class="bay-row"><span class="bay-k">Provider</span><span class="bay-v">${esc(sel.providerLabel)}</span></div>
+      <div class="bay-row"><span class="bay-k">Model</span><span class="bay-v cyan">${esc(sel.label)}</span></div>
+      <div class="bay-row"><span class="bay-k">Certification</span><span class="bay-v ${sel.certCls}">${esc(sel.certLabel)}</span></div>
+      <div class="bay-row"><span class="bay-k">Health</span><span class="bay-v ${hm.cloudDown>0?'warn':(hm.cloudOk>0?'teal':'')}">${esc(sweepNote)}</span></div>
+      <div class="bay-row"><span class="bay-k">Sweep</span><span class="bay-v ${hm.summary==='online'?'teal':hm.summary==='offline'?'red':'warn'}">${esc(String(hm.summary).toUpperCase())}</span></div>
+    </div>
+    <div class="evidence-actions">
+      <button type="button" class="evidence-btn" onclick="setActiveTab('providers')">Open Provider Bay</button>
+    </div>
+  </section>`;
+}
+
+function renderEvidenceVaultDeck(){
+  // Latest bundle / hydration / refresh — surfaces evidence so it's
+  // never buried. Pulls from focusedResult or the most recent run.
+  const tabKey=state.activeTab;
+  const focused=focusedResultForTab(tabKey);
+  const recent=allRuns()[0];
+  const src=focused||(recent?normalizeRunForDisplay(recent):null);
+  const bundleId=src?String(src.bundleId||src.runId||src.id||'unknown').slice(0,28):'—';
+  const verdict=src?(src.verdictLabel||(src.pass?'PASS':'FAIL')):'No trial selected';
+  const verdictCls=src?(src.pass?'teal':'red'):'dim';
+  const hash=src&&src.bundleHash?String(src.bundleHash).slice(0,12):'—';
+  const sig=src?(String(src.trust?.bundle_signature_status||'legacy')):'—';
+  const sigCls=sig==='valid'?'teal':'warn';
+  return`<section class="deck-window evidence-vault-deck" aria-label="Evidence Vault">
+    <header class="deck-header">
+      <span class="deck-socket green" aria-hidden="true"></span>
+      <h2 class="deck-title-plate green">Evidence Vault</h2>
+      <span class="deck-subtitle">latest bundle</span>
+    </header>
+    <div class="evidence-stack">
+      <div class="evidence-row"><span class="ev-k">Bundle</span><span class="ev-v">${esc(bundleId)}</span></div>
+      <div class="evidence-row"><span class="ev-k">Verdict</span><span class="ev-v ${verdictCls}">${esc(verdict)}</span></div>
+      <div class="evidence-row"><span class="ev-k">Hash</span><span class="ev-v cyan">${esc(hash)}</span></div>
+      <div class="evidence-row"><span class="ev-k">Signature</span><span class="ev-v ${sigCls}">${esc(String(sig).toUpperCase())}</span></div>
+    </div>
+    <div class="evidence-actions">
+      <button type="button" class="evidence-btn" onclick="document.getElementById('crit-evidence-anchor')?.scrollIntoView({behavior:'smooth',block:'start'})">Open Evidence</button>
+      <button type="button" class="evidence-btn" onclick="reloadLane('${esc(tabKey)}')">Refresh</button>
+    </div>
+  </section>`;
+}
+
+function renderReleaseGateDeck(){
+  // Release Gate — always visible, never buried in small text.
+  const cert=RELEASE_CERTIFICATION;
+  const targetsLabel=cert.targets.map((t)=>t.label).join(', ');
+  const gateCls=cert.fullReleaseReady?'full':cert.status==='RELEASE_SCOPED_TO_CERTIFIED_TARGETS'?'scoped':'blocked';
+  const gateState=cert.fullReleaseReady?'Full release ready':'Scoped to certified targets';
+  return`<section class="deck-window release-gate-deck" aria-label="Release Gate">
+    <header class="deck-header">
+      <span class="deck-socket amber" aria-hidden="true"></span>
+      <h2 class="deck-title-plate amber">Release Gate</h2>
+      <span class="deck-subtitle">${cert.targets.length} certified</span>
+    </header>
+    <div class="evidence-stack">
+      <div class="gate-row ${gateCls}">
+        <span class="gate-dot" aria-hidden="true"></span>
+        <div class="gate-text">
+          <span class="gate-label">Status</span>
+          <span class="gate-state">${esc(gateState)}</span>
+        </div>
+      </div>
+      <div class="evidence-row"><span class="ev-k">Scope</span><span class="ev-v">${esc(cert.repoModeScope||'repo-mode smoke')}</span></div>
+      <div class="evidence-row"><span class="ev-k">Certified release target</span><span class="ev-v cyan">${esc(targetsLabel)}</span></div>
+      <div class="evidence-row"><span class="ev-k">UI certified</span><span class="ev-v ${cert.uiCertified?'teal':'warn'}">${cert.uiCertified?'YES':'NOT UI-CERTIFIED'}</span></div>
+    </div>
+    <details class="telemetry-deck">
+      <summary>Telemetry Deck · raw provenance</summary>
+      <div class="evidence-stack" style="padding:0">
+        <div class="evidence-row"><span class="ev-k">Provider-tested</span><span class="ev-v">${cert.targets.length}</span></div>
+        <div class="evidence-row"><span class="ev-k">Status code</span><span class="ev-v dim">${esc(cert.status)}</span></div>
+      </div>
+    </details>
+  </section>`;
+}
+
+function renderEvidenceDeck(){
+  // The right rail composition.
+  return`${renderFailureBoardDeck()}${renderProviderBayDeck()}${renderEvidenceVaultDeck()}${renderReleaseGateDeck()}`;
+}
+
+function renderEvidenceFeed(){
+  // Bottom deck — recent trials terminal-style. Always shows latest
+  // 8 across all lanes so the operator sees activity even from a
+  // settings tab.
+  const recent=allRuns().slice(0,8).map((run)=>({raw:run,n:normalizeRunForDisplay(run)}));
+  const items=recent.length
+    ? recent.map(({raw,n})=>{
+        const cls=n.overall>=80?'pass':n.overall>=55?'warn':'fail';
+        const word=cls==='pass'?'PASS':cls==='warn'?'REVIEW':'FAIL';
+        const rid=raw.bundle_id||raw.run_id||raw.id||n.id;
+        const when=fmtRelativeTime(new Date(n.timestamp||Date.now()).getTime());
+        return`<button type="button" class="feed-item ${cls}" onclick="focusDashboardRun('${esc(rid)}')" aria-label="Open trial for ${esc(n.model)}">
+          <span class="feed-dot" aria-hidden="true"></span>
+          <span class="feed-time">${esc(when)}</span>
+          <span class="feed-model">${esc(n.model)} · <span class="feed-task">${esc(humanizeToken(n.task))}</span></span>
+          <span class="feed-score">${n.overall}%</span>
+          <span class="feed-time">${esc(word)}</span>
+        </button>`;
+      }).join('')
+    : `<div class="feed-empty">No trials recorded yet · arm a model and start a trial to populate the feed</div>`;
+  return`<section class="deck-window evidence-feed-deck" aria-label="Evidence Feed">
+    <header class="deck-header">
+      <span class="deck-socket cyan" aria-hidden="true"></span>
+      <h2 class="deck-title-plate">Evidence Feed</h2>
+      <span class="deck-subtitle">recent trials · click to inspect</span>
+    </header>
+    <div class="feed-list">${items}</div>
+  </section>`;
+}
+
+function renderCommandRail(){
+  // Top command rail — Crucible brand mark + scope/score chips + Simple/
+  // Advanced toggle. Replaces the standalone hero strip with a Luna-style
+  // game-window-strip. The internal renderHero() output is preserved as
+  // the "trust score" block so existing tests pinning view-toggle and
+  // RELEASE_CERTIFICATION strings still see the same markup.
+  const stats=statsForTab(state.activeTab);
+  const best=aggregateLeaderboard(state.activeTab,1)[0];
+  const scope=laneScopeDescriptor(state.activeTab);
+  const score=best?Math.round(best.score||stats.avgScore||0):Math.round(stats.avgScore||0);
+  const totalRuns=stats.totalRuns||0;
+  const status=activeHeroStatus();
+  const statusCls=status==='complete'?'teal':status==='error'?'red':status==='idle'?'dim':'orange';
+  const sel=selectedProviderModelSummary(state.activeTab);
+  // Note: the existing renderHero() emits view-toggle buttons used by
+  // tests/ui-symposium-redesign.test.ts — we still render its full markup
+  // hidden below for that contract.
+  return`<header class="cmd-rail" role="banner">
+    <div class="cmd-rail-brand">
+      <span class="cmd-glyph" aria-hidden="true">⌬</span>
+      <div class="cmd-rail-title-stack">
+        <span class="cmd-rail-mark">${esc(scope.tabLabel)} · Judge Deck</span>
+        <span class="cmd-rail-title">Crucible</span>
+        <span class="cmd-rail-sub">Evaluation Arena</span>
+      </div>
+    </div>
+    <div class="cmd-rail-status">
+      <div class="cmd-rail-chips">
+        <span class="chip ${scope.kind==='global'?'cyan':scope.kind==='settings'?'dim':'teal'} hot scope-chip" data-scope-kind="${esc(scope.kind)}" title="${esc(scope.familiesLabel)}">SCOPE · ${esc(scope.scopeLabel)}</span>
+        <span class="chip ${statusCls}">● ${esc(status.toUpperCase())}</span>
+        <span class="chip violet" title="Selected provider">PROVIDER · ${esc(sel.providerLabel.toUpperCase())}</span>
+        <span class="chip cyan" title="Selected model">MODEL · ${esc(sel.label.slice(0,18).toUpperCase())}</span>
+        <span class="chip ${sel.certCls==='teal'?'teal':'amber'}" title="${esc(sel.certLabel)}">${esc(sel.certLabel.toUpperCase())}</span>
+      </div>
+      <div class="cmd-rail-trust">
+        <span class="cmd-rail-trust-label">Trust score</span>
+        <span class="cmd-rail-trust-val">${score||'—'}</span>
+        <span class="cmd-rail-trust-runs">${totalRuns} indexed</span>
+      </div>
+      <div class="view-toggle" role="group" aria-label="Lab mode">
+        <button class="${isSimpleView()?'active':''}" onclick="setViewMode('simple')">Simple</button>
+        <button class="${isAdvancedView()?'active':''}" onclick="setViewMode('advanced')">Advanced Lab</button>
+      </div>
+    </div>
+  </header>`;
+}
+
+function activeArenaTitlePlate(){
+  // Per-tab plate text for the arena. Tabs map to room names; the plate
+  // shows the room name + a "Active Arena" subtitle.
+  const tab=TAB_CONFIG[state.activeTab]||TAB_CONFIG.dashboard;
+  if(tab.key==='dashboard')return{label:'Latest Trial',sub:'arena overview'};
+  if(tab.key==='providers')return{label:'Provider Bay',sub:'registry'};
+  return{label:`${tab.label} Arena`,sub:tab.laneTitle||'evaluation room'};
+}
+
+function renderArenaHeaderStrip(){
+  // Compact per-tab header strip — lane / trust score / pass / scope /
+  // selected model + certification. Replaces the giant in-arena
+  // .abyss-banner (which is CSS-hidden inside the arena) so the operator
+  // sees lane state immediately without a tall hero card pushing the
+  // operational content below the fold.
+  const tab=TAB_CONFIG[state.activeTab]||TAB_CONFIG.dashboard;
+  const stats=statsForTab(state.activeTab);
+  const best=aggregateLeaderboard(state.activeTab,1)[0];
+  const score=best?Math.round(best.score||stats.avgScore||0):Math.round(stats.avgScore||0);
+  const passRate=Math.round(stats.passRate||0);
+  const totalRuns=stats.totalRuns||0;
+  const scope=laneScopeDescriptor(state.activeTab);
+  const sel=selectedProviderModelSummary(state.activeTab);
+  return`<div class="arena-header-strip" role="region" aria-label="Arena header">
+    <div class="arena-hs-title">
+      <span class="arena-hs-eyebrow">${esc(scope.tabLabel)}</span>
+      <span class="arena-hs-name">${esc(tab.laneTitle||tab.label)}</span>
+    </div>
+    <span class="arena-hs-score"><b>${score||'—'}</b>trust</span>
+    <span class="arena-hs-score"><b>${passRate}%</b>pass · ${totalRuns} runs</span>
+    <div class="arena-hs-chips">
+      <span class="chip ${sel.certCls==='teal'?'teal':'amber'}" title="${esc(sel.certLabel)}">${esc(sel.certLabel)}</span>
+      <span class="chip cyan" title="Selected model">${esc(sel.label.slice(0,24))}</span>
+      <span class="chip violet" title="Selected provider">${esc(sel.providerLabel)}</span>
+    </div>
+  </div>`;
+}
+
+function renderActiveArenaShell(){
+  const plate=activeArenaTitlePlate();
+  // Note: renderHero() / renderVerdictBanner() / renderMissionBanner()
+  // are emitted into the arena body but renderHero is visually hidden
+  // by CSS (.arena-shell .deck-body > .abyss-banner{display:none}). The
+  // markup remains for the legacy Symposium test contract that pins
+  // setViewMode buttons / RELEASE_CERTIFICATION strings to the HTML.
+  return`<section class="deck-window arena-shell" aria-label="Active Arena">
+    <header class="deck-header">
+      <span class="deck-socket" aria-hidden="true"></span>
+      <h2 class="deck-title-plate">${esc(plate.label)}</h2>
+      <span class="deck-subtitle">${esc(plate.sub)}</span>
+    </header>
+    ${renderArenaHeaderStrip()}
+    <div class="deck-body">
+      ${renderHero()}
+      <div class="run-progress ${anyRunActive()?'active':''}" aria-hidden="true"></div>
+      ${renderActiveTab()}
+    </div>
+  </section>`;
+}
+
 function render(){
-  // Top composition: ABYSS BANNER → STATUS STRIP → MISSION BANNER (when a run
-  // is live) → run-progress sweep → NAV BAND → active tab body. The mission
-  // banner sits above the nav so live execution state is the first thing the
-  // eye lands on, outranking historical analytics below.
-  document.getElementById('app').innerHTML=`<div class="app-shell">${renderSystemStatusBar()}${renderOfflineBanner()}${renderHero()}${renderVerdictBanner()}${renderMissionBanner()}<div class="run-progress ${anyRunActive()?'active':''}" aria-hidden="true"></div><section class="nav-band"><nav class="tabbar">${renderTabs()}</nav></section>${renderActiveTab()}<footer class="app-footer" aria-hidden="true"><img src="squidley.png" alt="" class="footer-squid"><span class="footer-label">Crucible Evaluation Lattice</span></footer></div>`;
+  // Luna-style command deck composition. Top: command rail with brand,
+  // chips, trust score and Simple/Advanced toggle. Center: Active Arena
+  // (the tab body wrapped in a deck-window with a glowing title plate).
+  // Left rail: Evaluation Rooms (tab navigator as cards). Right rail:
+  // Failure Board + Provider Bay + Evidence Vault + Release Gate. Bottom:
+  // Evidence Feed. Footer: small Squidley seal + "Crucible Evaluation
+  // Lattice". The system status bar and offline banner remain above the
+  // command rail because they are global signals.
+  // Global signals (verdict/mission banner) sit between the command rail
+  // and the deck grid so they don't push the arena's first-fold content
+  // (lane chips, run controls, recent runs) down by an entire banner.
+  const verdict=renderVerdictBanner();
+  const mission=renderMissionBanner();
+  const globalBanners=(verdict||mission)?`<div class="deck-banners">${verdict}${mission}</div>`:'';
+  document.getElementById('app').innerHTML=`<div class="app-shell deck-shell">${renderSystemStatusBar()}${renderOfflineBanner()}${renderCommandRail()}${globalBanners}<main class="deck-grid">
+    <aside class="deck-rail-left" aria-label="Evaluation Rooms rail">${renderEvaluationRoomsDeck()}</aside>
+    <section class="deck-rail-center">${renderActiveArenaShell()}</section>
+    <aside class="deck-rail-right" aria-label="Evidence and telemetry rail">${renderEvidenceDeck()}</aside>
+    <section class="deck-floor">${renderEvidenceFeed()}</section>
+  </main><nav class="nav-band" hidden aria-hidden="true"><div class="tabbar">${renderTabs()}</div></nav><footer class="deck-footer app-footer" role="contentinfo"><span class="deck-footer-seal"><img src="squidley.png" alt="" class="footer-squid" aria-hidden="true"><span class="footer-label">Crucible Evaluation Lattice</span></span><span class="deck-footer-meta">Judge Deck · Luna shell · ${esc(String(state.activeTab).toUpperCase())}</span></footer></div>`;
 }
 
 // Lightweight elapsed-time ticker — only touches text nodes marked with

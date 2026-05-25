@@ -1179,5 +1179,622 @@ tr:hover td{background:rgba(139,92,246,.04)}
   gap:10px;padding:24px 16px 32px;
   opacity:.3;user-select:none;pointer-events:none;
 }
-.footer-squid{width:24px;height:auto;filter:grayscale(.6) brightness(.6)}
+.footer-squid{width:28px;height:auto;filter:grayscale(.6) brightness(.6);max-height:40px}
 .footer-label{font-size:var(--text-xs);color:var(--ink-dim);letter-spacing:.04em}
+
+/* ============================================================================
+ * LUNA-STYLE COMMAND DECK — chunky game-window shell adapted for Crucible
+ *
+ * Sits alongside the Symposium chrome. Adopted from Luna's game-window
+ * design language (bevels, title plates, socket lights, neon rooms),
+ * minus the cosmic background (no aurora, no planets, no nebulae). The
+ * Crucible body still uses the calm indigo/violet gradient defined above.
+ *
+ * Names mapped:
+ *   "Test Families"        → "Evaluation Rooms"
+ *   "Latest Run"           → "Latest Trial"
+ *   "Run Benchmark"        → "Start Trial"
+ *   "Failures"             → "Failure Board"
+ *   "Provider picker"      → "Provider Bay"
+ *   "Evidence inspector"   → "Evidence Vault"
+ *   "Release readiness"    → "Release Gate"
+ *   "Advanced metadata"    → "Telemetry Deck"
+ *
+ * The class names below are NEW and additive — they do not override the
+ * Symposium classes, they wrap them. Existing renderHero / renderTabs /
+ * renderActiveTab / renderProvidersView output is mounted inside these
+ * decks unchanged.
+ * ========================================================================== */
+
+/* Shell — wide command-deck wrapper. Use `width` (not max-width alone) so
+ * the deck actually spans the viewport on big desktops instead of leaving
+ * 200+ px of dead gutter on each side. min(96vw, 1760px) keeps a small
+ * breathing margin on 1080p while letting 1440p+ go full bleed. */
+.app-shell.deck-shell{
+  width:min(96vw,1760px);
+  max-width:none;
+  gap:14px;
+  padding:0;
+  /* Stop legacy .app-shell narrow constraints from re-applying. */
+  margin-inline:auto;
+}
+
+/* ─── Top command rail ─────────────────────────────────────────────── */
+.cmd-rail{
+  display:grid;
+  grid-template-columns:minmax(260px,1fr) minmax(280px,1fr);
+  gap:18px;
+  align-items:center;
+  padding:14px clamp(14px,3vw,22px);
+  border-radius:var(--radius-lg);
+  border:2px solid rgba(8,4,24,.85);
+  background:linear-gradient(180deg,rgba(22,18,52,.92),rgba(12,10,28,.95));
+  box-shadow:
+    0 18px 40px rgba(0,0,0,.5),
+    inset 0 1px 0 rgba(255,255,255,.05),
+    inset 0 0 0 1px rgba(139,92,246,.18);
+  position:relative;
+  overflow:hidden;
+}
+.cmd-rail::before{
+  content:"";
+  position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,
+    transparent 0%,
+    rgba(245,158,11,.45) 18%,
+    var(--violet) 36%,
+    var(--cyan) 50%,
+    var(--magenta) 64%,
+    rgba(245,158,11,.45) 82%,
+    transparent 100%);
+  pointer-events:none;
+}
+.cmd-rail-brand{
+  display:grid;
+  grid-template-columns:48px 1fr;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+}
+.cmd-glyph{
+  width:48px;height:48px;border-radius:50%;
+  background:
+    radial-gradient(circle at 30% 30%,rgba(34,211,238,.5),transparent 60%),
+    radial-gradient(circle at 70% 70%,rgba(236,72,153,.4),transparent 60%),
+    #0c0a1a;
+  border:2px solid var(--cyan);
+  display:inline-flex;align-items:center;justify-content:center;
+  color:var(--cyan);font-size:22px;font-weight:700;
+  font-family:var(--mono);
+  box-shadow:
+    0 0 16px rgba(34,211,238,.45),
+    inset 0 0 12px rgba(34,211,238,.3);
+  flex-shrink:0;
+}
+.cmd-rail-title-stack{display:grid;gap:2px;min-width:0}
+.cmd-rail-title{
+  font-family:var(--body);font-weight:800;
+  font-size:clamp(20px,2.4vw,26px);line-height:1;
+  letter-spacing:.02em;color:var(--ink);
+  background:linear-gradient(95deg,var(--cyan) 0%,var(--violet-hot) 50%,var(--magenta) 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 8px rgba(139,92,246,.35));
+  text-transform:uppercase;
+}
+.cmd-rail-mark{font-size:var(--text-xs);letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);font-weight:600}
+.cmd-rail-sub{font-size:var(--text-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim)}
+.cmd-rail-status{
+  display:grid;gap:8px;justify-items:end;min-width:0;
+}
+.cmd-rail-chips{
+  display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;
+  min-width:0;
+}
+.cmd-rail-trust{
+  display:inline-flex;align-items:baseline;gap:8px;
+  padding:6px 14px;border-radius:var(--radius-pill);
+  border:1px solid rgba(34,211,238,.35);
+  background:rgba(34,211,238,.06);
+}
+.cmd-rail-trust-label{font-size:var(--text-xs);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-dim);font-weight:600}
+.cmd-rail-trust-val{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--cyan);text-shadow:0 0 10px rgba(34,211,238,.35)}
+.cmd-rail-trust-runs{font-size:var(--text-xs);color:var(--ink-dim);letter-spacing:.04em;text-transform:uppercase}
+.cmd-rail-toggle{display:inline-flex}
+
+/* ─── Deck-window chrome (Luna's game-window adapted) ──────────────── */
+.deck-window{
+  position:relative;
+  border-radius:var(--radius-lg);
+  background:linear-gradient(180deg,rgba(22,18,52,.85),rgba(16,12,40,.92));
+  border:2px solid rgba(8,4,24,.92);
+  box-shadow:
+    0 18px 36px rgba(0,0,0,.5),
+    inset 0 0 0 1px rgba(255,255,255,.03),
+    inset 0 0 0 2px rgba(35,28,72,.5),
+    inset 0 0 0 3px rgba(139,92,246,.14);
+  overflow:hidden;
+}
+.deck-window::before{
+  content:"";position:absolute;inset:0;pointer-events:none;border-radius:var(--radius-lg);
+  background:
+    radial-gradient(120% 60% at 50% -10%,rgba(139,92,246,.08),transparent 60%),
+    radial-gradient(80% 60% at 50% 110%,rgba(0,0,0,.35),transparent 70%);
+}
+.deck-window > *{position:relative;z-index:1}
+
+.deck-header{
+  display:flex;align-items:center;gap:12px;
+  padding:11px 16px;
+  background:linear-gradient(180deg,#2a2658 0%,#161237 50%,#0a0820 100%);
+  border-bottom:2px solid rgba(8,4,24,.95);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.12),
+    inset 0 -2px 0 rgba(0,0,0,.55);
+  position:relative;
+}
+.deck-header::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,
+    rgba(76,52,14,.6) 0%,
+    rgba(240,198,108,.85) 22%,
+    rgba(164,120,31,.85) 50%,
+    rgba(240,198,108,.85) 78%,
+    rgba(76,52,14,.6) 100%);
+}
+.deck-header::after{
+  content:"";position:absolute;bottom:-2px;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,rgba(76,52,14,.45),rgba(164,120,31,.7),rgba(76,52,14,.45));
+}
+.deck-socket{
+  width:14px;height:14px;border-radius:50%;flex:0 0 auto;
+  background:radial-gradient(circle at 35% 35%,#ffffff 0%,#5ce1ff 40%,#103d52 85%);
+  border:1px solid rgba(0,0,0,.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.5),
+    inset 0 -1px 0 rgba(0,0,0,.5),
+    0 0 8px rgba(34,211,238,.7);
+}
+.deck-socket.red{background:radial-gradient(circle at 35% 35%,#ffffff 0%,#ff5a6a 40%,#501214 85%);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -1px 0 rgba(0,0,0,.55),0 0 8px rgba(255,90,106,.8)}
+.deck-socket.amber{background:radial-gradient(circle at 35% 35%,#ffffff 0%,#ffb347 40%,#553708 85%);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -1px 0 rgba(0,0,0,.55),0 0 8px rgba(255,179,71,.8)}
+.deck-socket.violet{background:radial-gradient(circle at 35% 35%,#ffffff 0%,#a285ff 40%,#271858 85%);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -1px 0 rgba(0,0,0,.5),0 0 8px rgba(162,133,255,.75)}
+.deck-socket.green{background:radial-gradient(circle at 35% 35%,#ffffff 0%,#34d399 40%,#0f3a26 85%);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -1px 0 rgba(0,0,0,.55),0 0 8px rgba(52,211,153,.7)}
+.deck-socket.magenta{background:radial-gradient(circle at 35% 35%,#ffffff 0%,#ec4899 40%,#52144a 85%);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -1px 0 rgba(0,0,0,.55),0 0 8px rgba(236,72,153,.7)}
+
+.deck-title-plate{
+  flex:1 1 auto;text-align:center;
+  font-family:var(--body);font-weight:700;
+  font-size:var(--text-sm);letter-spacing:.22em;text-transform:uppercase;
+  padding:5px 16px;margin:0;color:#d7eaff;
+  background:linear-gradient(180deg,rgba(11,30,70,.92),rgba(5,16,50,.95));
+  border:1px solid rgba(34,211,238,.5);
+  border-radius:8px;
+  text-shadow:0 0 10px rgba(34,211,238,.55),0 1px 0 rgba(0,0,0,.6);
+  box-shadow:
+    inset 0 0 14px rgba(34,211,238,.22),
+    inset 0 1px 0 rgba(255,255,255,.18),
+    inset 0 -1px 0 rgba(0,0,0,.45);
+}
+.deck-title-plate.amber{color:#fff0d0;border-color:rgba(245,158,11,.55);box-shadow:inset 0 0 14px rgba(245,158,11,.3),inset 0 1px 0 rgba(255,255,255,.18);text-shadow:0 0 10px rgba(245,158,11,.6)}
+.deck-title-plate.red{color:#ffe0e3;border-color:rgba(239,68,68,.55);box-shadow:inset 0 0 14px rgba(239,68,68,.3),inset 0 1px 0 rgba(255,255,255,.18);text-shadow:0 0 10px rgba(239,68,68,.6)}
+.deck-title-plate.violet{color:#ece0ff;border-color:rgba(139,92,246,.55);box-shadow:inset 0 0 14px rgba(139,92,246,.3),inset 0 1px 0 rgba(255,255,255,.18);text-shadow:0 0 10px rgba(139,92,246,.55)}
+.deck-title-plate.green{color:#d6ffe6;border-color:rgba(52,211,153,.55);box-shadow:inset 0 0 14px rgba(52,211,153,.3),inset 0 1px 0 rgba(255,255,255,.18);text-shadow:0 0 10px rgba(52,211,153,.55)}
+
+.deck-subtitle{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 10px;border-radius:var(--radius-pill);
+  border:1px dashed var(--border-subtle);background:transparent;
+  font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink-dim);
+}
+
+.deck-body{padding:14px 16px 16px}
+.deck-body.tight{padding:10px 12px 12px}
+
+/* ─── Main grid: rails + arena + floor ─────────────────────────────── */
+.deck-grid{
+  display:grid;
+  grid-template-columns:300px minmax(0,1fr) 320px;
+  grid-template-areas:
+    "left center right"
+    "floor floor floor";
+  gap:14px;
+  align-items:start;
+  width:100%;
+}
+.deck-rail-left{
+  grid-area:left;display:grid;gap:14px;align-content:start;
+  min-width:0;
+}
+.deck-rail-center{grid-area:center;min-width:0;display:grid;gap:14px;align-content:start}
+.deck-rail-right{
+  grid-area:right;display:grid;gap:14px;align-content:start;
+  min-width:0;
+}
+.deck-floor{grid-area:floor;min-width:0}
+
+/* Sticky rails — at ≥1200 px the side rails stay anchored as the operator
+ * scrolls the arena, so Failure Board / Provider Bay / Evidence Vault /
+ * Release Gate are always visible without scrolling the whole page.
+ * Each rail is capped to viewport-minus-header height so its OWN internal
+ * scroll picks up the slack when its panels are tall. Below 1200 px the
+ * rails un-stick (handled in @media below). */
+@media (min-width:1200px){
+  .deck-rail-left,
+  .deck-rail-right{
+    position:sticky;
+    top:72px;
+    max-height:calc(100vh - 96px);
+    overflow-y:auto;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(139,92,246,.5) transparent;
+    padding-right:4px;
+  }
+  .deck-rail-left::-webkit-scrollbar,
+  .deck-rail-right::-webkit-scrollbar{width:6px}
+  .deck-rail-left::-webkit-scrollbar-thumb,
+  .deck-rail-right::-webkit-scrollbar-thumb{background:rgba(139,92,246,.4);border-radius:3px}
+}
+
+.arena-shell{padding:0;display:block}
+.arena-shell .deck-body{padding:16px}
+.arena-shell .deck-body > section:first-child,
+.arena-shell .deck-body > .stage-grid,
+.arena-shell .deck-body > .control-grid{margin-top:0}
+
+/* Compact arena header strip — sits directly below the deck-window
+ * header, surfaces lane title + trust + key chips so the operator does
+ * not have to wait for the giant hero card below to load. Width-safe:
+ * uses flex-wrap and min-width:0 to keep long model ids from clipping. */
+.arena-header-strip{
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;
+  padding:10px 16px;
+  border-bottom:1px solid var(--border-subtle);
+  background:linear-gradient(180deg,rgba(139,92,246,.04),transparent);
+  min-width:0;
+}
+.arena-hs-title{
+  display:flex;align-items:baseline;gap:10px;min-width:0;flex:0 1 auto;
+}
+.arena-hs-eyebrow{
+  font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--cyan);font-weight:700;white-space:nowrap;
+}
+.arena-hs-name{
+  font-family:var(--body);font-weight:700;font-size:var(--text-base);
+  color:var(--ink);letter-spacing:.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;
+}
+.arena-hs-score{
+  display:inline-flex;align-items:baseline;gap:6px;
+  padding:4px 12px;border-radius:var(--radius-pill);
+  border:1px solid rgba(34,211,238,.35);
+  background:rgba(34,211,238,.06);
+  font-family:var(--mono);font-size:var(--text-xs);letter-spacing:.04em;
+  text-transform:uppercase;color:var(--ink-dim);font-weight:600;
+  white-space:nowrap;
+}
+.arena-hs-score b{font-size:var(--text-base);color:var(--cyan);font-weight:700;text-shadow:0 0 8px rgba(34,211,238,.3)}
+.arena-hs-chips{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto;min-width:0}
+
+/* Suppress the redundant in-arena hero. The existing renderHero()
+ * markup remains in the DOM (test contract pins setViewMode etc.) but
+ * is visually replaced by the cmd-rail (top) + arena-header-strip
+ * (per-tab). Without this rule the operator sees the giant "Crucible"
+ * card twice and the right rail gets pushed below the fold. */
+.arena-shell .deck-body > .abyss-banner,
+.arena-shell .deck-body > .scope-note{display:none}
+
+/* Compact the welcome card so it doesn't dominate. */
+.arena-shell .simple-welcome{padding:12px 14px}
+.arena-shell .simple-welcome h2{font-size:14px;margin:0 0 4px}
+.arena-shell .simple-welcome p{margin:0 0 8px}
+
+/* Live status panel shrinks slightly inside arena so it's not a giant
+ * empty card on tabs without an active run. */
+.arena-shell .live-status-panel{padding:10px 14px}
+
+/* ─── Evaluation Rooms deck (left rail) ────────────────────────────── */
+.rooms-list{display:grid;gap:8px;padding:10px 12px 12px}
+.room-card{
+  position:relative;display:grid;
+  grid-template-columns:8px 1fr auto;
+  align-items:center;gap:10px;
+  padding:10px 12px;border-radius:var(--radius-md);
+  border:1px solid var(--border-subtle);
+  background:rgba(22,18,52,.7);
+  color:var(--ink);cursor:pointer;text-align:left;
+  font-family:var(--body);
+  transition:all 140ms ease;width:100%;
+  min-height:54px;
+}
+.room-card:hover{
+  border-color:rgba(34,211,238,.45);
+  background:rgba(34,211,238,.06);
+  transform:translateX(2px);
+}
+.room-card:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.room-card.active{
+  border-color:var(--cyan);
+  background:linear-gradient(135deg,rgba(34,211,238,.15),rgba(139,92,246,.1));
+  box-shadow:
+    0 0 14px rgba(34,211,238,.25),
+    inset 0 1px 0 rgba(255,255,255,.05);
+}
+.room-card.active .room-name{color:var(--ink)}
+.room-card.active .room-dot{background:var(--cyan);box-shadow:0 0 8px rgba(34,211,238,.7)}
+.room-card.settings{border-style:dashed}
+.room-card.experimental{border-color:rgba(245,158,11,.45)}
+
+.room-dot{
+  width:8px;height:8px;border-radius:50%;background:var(--ink-dim);
+  justify-self:center;
+}
+.room-card.pass .room-dot{background:var(--teal);box-shadow:0 0 6px rgba(52,211,153,.6)}
+.room-card.warn .room-dot{background:var(--orange);box-shadow:0 0 6px rgba(245,158,11,.5)}
+.room-card.fail .room-dot{background:var(--red);box-shadow:0 0 6px rgba(239,68,68,.5)}
+.room-card.empty .room-dot{background:var(--ink-ghost)}
+
+.room-body{display:grid;gap:2px;min-width:0}
+.room-name{
+  font-size:var(--text-sm);font-weight:600;color:var(--ink-soft);
+  letter-spacing:.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.room-meta{
+  font-family:var(--mono);font-size:10px;letter-spacing:.06em;
+  color:var(--ink-dim);text-transform:uppercase;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.room-meta .pass-num{color:var(--teal)}
+.room-meta .fail-num{color:var(--red)}
+.room-card.empty .room-meta{color:var(--ink-ghost)}
+
+.room-pill{
+  font-family:var(--mono);font-size:10px;letter-spacing:.06em;
+  padding:3px 8px;border-radius:var(--radius-pill);
+  border:1px solid var(--border-subtle);background:rgba(139,92,246,.08);
+  color:var(--ink-dim);text-transform:uppercase;white-space:nowrap;
+}
+.room-pill.pass{color:var(--teal);border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.08)}
+.room-pill.fail{color:var(--red);border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.08)}
+.room-pill.warn{color:var(--orange);border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.08)}
+.room-pill.cert{color:var(--cyan);border-color:rgba(34,211,238,.4);background:rgba(34,211,238,.08)}
+.room-pill.exp{color:var(--orange);border-style:dashed}
+
+.rooms-deck-foot{
+  padding:10px 12px;border-top:1px solid var(--border-subtle);
+  background:rgba(12,10,28,.5);
+  display:flex;flex-wrap:wrap;gap:6px;
+  font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);
+}
+
+/* ─── Evidence / Telemetry deck (right rail) ───────────────────────── */
+.evidence-stack{display:grid;gap:8px;padding:10px 12px 12px}
+.evidence-row{
+  display:grid;grid-template-columns:max-content 1fr;gap:6px 10px;
+  align-items:center;
+  padding:8px 10px;border-radius:var(--radius-md);
+  border:1px solid var(--border-subtle);background:rgba(12,10,28,.5);
+}
+.evidence-row .ev-k{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);font-weight:600}
+.evidence-row .ev-v{font-family:var(--mono);font-size:var(--text-xs);color:var(--ink);overflow-wrap:anywhere;text-align:right}
+.evidence-row .ev-v.teal{color:var(--teal)}.evidence-row .ev-v.cyan{color:var(--cyan)}.evidence-row .ev-v.red{color:var(--red)}.evidence-row .ev-v.warn{color:var(--orange)}.evidence-row .ev-v.dim{color:var(--ink-dim)}
+
+.failure-board{display:grid;gap:6px;padding:0 12px 12px}
+.failure-row{
+  display:grid;grid-template-columns:8px 1fr auto;
+  align-items:center;gap:10px;
+  padding:8px 10px;border-radius:var(--radius-md);
+  border:1px solid var(--border-subtle);background:rgba(12,10,28,.5);
+}
+.failure-row .fb-dot{width:8px;height:8px;border-radius:50%;background:var(--ink-dim);justify-self:center}
+.failure-row.product .fb-dot{background:var(--red);box-shadow:0 0 6px rgba(239,68,68,.55)}
+.failure-row.provider .fb-dot{background:var(--orange);box-shadow:0 0 6px rgba(245,158,11,.5)}
+.failure-row.config .fb-dot{background:var(--orange);box-shadow:0 0 6px rgba(245,158,11,.5)}
+.failure-row.info .fb-dot{background:var(--cyan);box-shadow:0 0 6px rgba(34,211,238,.5)}
+.failure-row.clean .fb-dot{background:var(--teal);box-shadow:0 0 6px rgba(52,211,153,.5)}
+.failure-row .fb-label{font-size:var(--text-xs);color:var(--ink-soft);letter-spacing:.04em;text-transform:uppercase}
+.failure-row .fb-count{font-family:var(--mono);font-size:var(--text-sm);font-weight:700;color:var(--ink)}
+.failure-row.product .fb-count{color:var(--red)}
+.failure-row.provider .fb-count,.failure-row.config .fb-count{color:var(--orange)}
+.failure-row.info .fb-count{color:var(--cyan)}
+.failure-row.clean .fb-count{color:var(--teal)}
+
+.provider-bay{display:grid;gap:8px;padding:0 12px 12px}
+.bay-row{
+  display:flex;flex-wrap:wrap;gap:6px;
+  padding:8px 10px;border-radius:var(--radius-md);
+  border:1px solid var(--border-subtle);background:rgba(12,10,28,.5);
+}
+.bay-row .bay-k{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);margin-right:auto}
+.bay-row .bay-v{font-family:var(--mono);font-size:var(--text-xs);color:var(--ink-soft)}
+.bay-row .bay-v.teal{color:var(--teal)}.bay-row .bay-v.warn{color:var(--orange)}.bay-row .bay-v.red{color:var(--red)}.bay-row .bay-v.cyan{color:var(--cyan)}
+
+.gate-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;border-radius:var(--radius-md);
+  border:1px solid var(--border-subtle);
+  background:linear-gradient(135deg,rgba(34,211,238,.06),rgba(139,92,246,.05));
+}
+.gate-row .gate-dot{width:10px;height:10px;border-radius:50%}
+.gate-row.scoped{border-color:rgba(245,158,11,.4);background:linear-gradient(135deg,rgba(245,158,11,.08),rgba(22,18,52,.6))}
+.gate-row.scoped .gate-dot{background:var(--orange);box-shadow:0 0 8px rgba(245,158,11,.5)}
+.gate-row.full .gate-dot{background:var(--teal);box-shadow:0 0 8px rgba(52,211,153,.5)}
+.gate-row.blocked{border-color:rgba(239,68,68,.4)}
+.gate-row.blocked .gate-dot{background:var(--red);box-shadow:0 0 8px rgba(239,68,68,.6)}
+.gate-text{display:grid;gap:2px;min-width:0}
+.gate-label{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);font-weight:600}
+.gate-state{font-size:var(--text-sm);font-weight:700;color:var(--ink)}
+
+.evidence-actions{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 12px}
+.evidence-btn{
+  flex:1 1 auto;
+  border:1px solid rgba(34,211,238,.3);
+  background:rgba(34,211,238,.06);
+  color:var(--cyan);
+  border-radius:var(--radius-md);
+  padding:8px 12px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  font-family:var(--body);font-weight:700;
+  cursor:pointer;transition:all 140ms ease;
+  text-decoration:none;text-align:center;
+}
+.evidence-btn:hover{background:rgba(34,211,238,.14);border-color:rgba(34,211,238,.55);box-shadow:0 0 10px rgba(34,211,238,.25)}
+
+/* ─── Evidence Feed (bottom deck) ──────────────────────────────────── */
+.feed-list{display:grid;gap:6px;padding:0 14px 14px}
+.feed-item{
+  display:grid;grid-template-columns:10px max-content 1fr max-content max-content;
+  align-items:center;gap:10px;
+  padding:8px 12px;border-radius:var(--radius-md);
+  border:1px solid var(--border-subtle);background:rgba(12,10,28,.5);
+  font-family:var(--mono);font-size:var(--text-xs);
+  cursor:pointer;
+  transition:all 140ms ease;
+}
+.feed-item:hover{border-color:rgba(34,211,238,.35);background:rgba(34,211,238,.04)}
+.feed-item .feed-dot{width:8px;height:8px;border-radius:50%;background:var(--ink-dim);justify-self:center}
+.feed-item.pass .feed-dot{background:var(--teal);box-shadow:0 0 6px rgba(52,211,153,.5)}
+.feed-item.warn .feed-dot{background:var(--orange)}
+.feed-item.fail .feed-dot{background:var(--red);box-shadow:0 0 6px rgba(239,68,68,.5)}
+.feed-time{color:var(--ink-dim);font-size:10px;letter-spacing:.04em}
+.feed-model{color:var(--ink);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.feed-task{color:var(--ink-dim);font-size:10px;letter-spacing:.04em;text-transform:uppercase;text-align:right}
+.feed-score{color:var(--cyan);font-weight:700;text-align:right;min-width:40px}
+.feed-item.fail .feed-score{color:var(--red)}
+.feed-item.warn .feed-score{color:var(--orange)}
+.feed-empty{padding:14px;color:var(--ink-dim);text-align:center;font-family:var(--mono);font-size:var(--text-xs);letter-spacing:.06em}
+
+/* ─── Deck footer (Crucible seal + tiny Squidley) ──────────────────── */
+.deck-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:10px;
+  padding:14px clamp(14px,3vw,22px) 22px;
+  border-top:1px solid var(--border-subtle);
+  margin-top:6px;
+}
+.deck-footer-seal{
+  display:flex;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink-dim);
+}
+.deck-footer-seal .footer-squid{
+  width:32px;height:auto;max-height:40px;
+  opacity:.5;filter:grayscale(.4) brightness(.85);
+}
+.deck-footer-meta{
+  font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-dim);
+}
+
+/* ─── Telemetry Deck (collapsible advanced metadata) ──────────────── */
+.telemetry-deck{
+  border-radius:var(--radius-md);
+  border:1px solid var(--border-subtle);
+  background:rgba(12,10,28,.55);
+  margin-top:8px;
+  overflow:hidden;
+}
+.telemetry-deck > summary{
+  cursor:pointer;padding:10px 14px;list-style:none;
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-dim);font-weight:600;
+}
+.telemetry-deck > summary::before{content:"▸ ";color:var(--cyan);margin-right:4px}
+.telemetry-deck[open] > summary::before{content:"▾ "}
+.telemetry-deck[open] > summary{color:var(--cyan)}
+.telemetry-deck > *:not(summary){padding:0 14px 14px}
+
+/* ─── Text-clipping safety (operator complaint: right-side clipping) ───
+ * Long provider/model ids, certified-target labels, bundle ids, hash
+ * fragments — any of these can blow out a fixed-width column. These
+ * rules apply min-width:0 to grid children so they can shrink, and
+ * overflow-wrap:anywhere on the value fields so long ids wrap inside
+ * the card instead of pushing the layout wider. The CHIP rule lets
+ * the cmd-rail chip stack wrap to a second row instead of clipping. */
+.deck-grid > *,
+.deck-rail-left > *,
+.deck-rail-right > *,
+.deck-rail-center > *,
+.deck-floor > *{min-width:0}
+
+.evidence-row .ev-v,
+.bay-row .bay-v,
+.gate-row .gate-text .gate-state{
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  white-space:normal;
+  text-align:right;
+}
+.bay-row{flex-wrap:wrap;align-items:baseline}
+.bay-row .bay-v{min-width:0;flex:1 1 auto;text-align:right}
+
+.room-meta{overflow-wrap:anywhere;white-space:normal;line-height:1.35}
+.room-name{min-width:0;overflow-wrap:anywhere;white-space:normal;line-height:1.25}
+.room-card{align-items:start;padding-top:9px;padding-bottom:9px}
+.room-card .room-dot{margin-top:4px}
+
+.cmd-rail-chips .chip{max-width:100%;white-space:normal;line-height:1.3}
+.cmd-rail-status{min-width:0}
+.cmd-rail-trust{flex-wrap:wrap}
+
+.feed-model{overflow-wrap:anywhere;white-space:normal}
+.deck-subtitle{max-width:100%;white-space:normal;line-height:1.3}
+
+/* ─── Responsive: 3-col ≥1200, 2-col 900-1199, 1-col <900, compact <600
+ * Replaces the older single-cascade breakpoints so the layout never
+ * sits in the in-between 1100-1199 px region as a forced 2-col tablet. */
+@media (max-width:1499px){
+  .deck-grid{grid-template-columns:minmax(240px,280px) minmax(560px,1fr) minmax(300px,380px)}
+}
+@media (max-width:1199px){
+  .deck-grid{
+    grid-template-columns:minmax(0,1fr) minmax(280px,360px);
+    grid-template-areas:
+      "center right"
+      "left   right"
+      "floor  floor";
+    gap:14px;
+  }
+  /* Rails un-stick — they share width with the arena. */
+  .deck-rail-left,.deck-rail-right{position:static;max-height:none;overflow:visible}
+}
+@media (max-width:899px){
+  .deck-grid{
+    grid-template-columns:1fr;
+    grid-template-areas:
+      "center"
+      "right"
+      "left"
+      "floor";
+    gap:12px;
+  }
+  .app-shell.deck-shell{width:min(98vw,1100px)}
+  .cmd-rail{grid-template-columns:1fr;gap:10px;padding:12px}
+  .cmd-rail-status{justify-items:start}
+  .cmd-rail-chips{justify-content:flex-start}
+  .cmd-rail-title{font-size:22px}
+  /* Rooms become chunky horizontal pills */
+  .rooms-list{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px}
+  .room-card{
+    min-height:44px;
+    grid-template-columns:8px 1fr;
+    flex:1 1 calc(50% - 8px);
+    min-width:140px;
+  }
+  .room-card .room-pill{display:none}
+}
+@media (max-width:599px){
+  .deck-header{padding:9px 12px;gap:8px}
+  .deck-title-plate{padding:4px 10px;font-size:11px;letter-spacing:.16em}
+  .deck-body{padding:12px 10px}
+  .feed-item{grid-template-columns:10px 1fr max-content;gap:8px}
+  .feed-time,.feed-task{display:none}
+  .room-card{flex-basis:100%}
+  .cmd-rail-title{font-size:18px}
+  .deck-footer{flex-direction:column;align-items:flex-start}
+  .arena-header-strip{padding:10px 12px}
+  .arena-hs-chips{margin-left:0}
+}
+@media (prefers-reduced-motion:reduce){
+  .room-card:hover{transform:none}
+}
