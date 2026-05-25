@@ -1301,6 +1301,108 @@ tr:hover td{background:rgba(139,92,246,.04)}
 }
 
 /* ============================================================================
+ * SUB-QUESTION FAILURE CARDS — strong visual boundaries
+ *
+ * The 2026-05-25 "425 vs 6" confusion happened because two separate
+ * sub-question failures (Q1: expected 16 got 6; Q4: expected 425 got
+ * 351) appeared visually adjacent enough that the operator
+ * cross-read field labels between them. These cards make that
+ * cross-read impossible:
+ *
+ *   - Each Q is its own bordered card with a thick red left rail.
+ *   - The QID badge is large, monospace, top-left — no other QID can
+ *     plausibly be read as belonging to this card.
+ *   - Expected and Got are on separate <dt>/<dd> rows, each with the
+ *     label on the left and the value monospaced/boxed on the right.
+ *   - Cards are separated by a generous gap and visible background
+ *     contrast.
+ * ========================================================================== */
+.subq-section{padding-top:6px}
+.subq-list{display:grid;gap:14px;margin-top:8px}
+.subq-card{
+  display:grid;gap:10px;
+  padding:14px 16px;
+  border-radius:var(--radius-md);
+  border:1px solid var(--border-subtle);
+  border-left:5px solid var(--red);
+  background:linear-gradient(180deg,rgba(239,68,68,.05),rgba(12,10,28,.55));
+  box-shadow:var(--shadow-panel);
+  position:relative;
+  isolation:isolate;
+}
+.subq-card.fail{border-left-color:var(--red)}
+.subq-card::after{
+  /* extra bottom divider — guarantees no Q's content can visually
+   * touch the next Q's content even if the gap is overridden */
+  content:"";position:absolute;left:0;right:0;bottom:-7px;height:1px;
+  background:rgba(239,68,68,.18);
+  pointer-events:none;
+}
+.subq-list .subq-card:last-child::after{display:none}
+
+.subq-head{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding-bottom:8px;
+  border-bottom:1px dashed var(--border-subtle);
+}
+.subq-badge{
+  font-family:var(--mono);font-weight:700;font-size:var(--text-base);
+  letter-spacing:.04em;color:var(--ink);
+  padding:4px 12px;border-radius:var(--radius-sm);
+  background:rgba(239,68,68,.18);
+  border:1px solid rgba(239,68,68,.45);
+  color:#ffb4b8;
+  text-shadow:0 0 6px rgba(239,68,68,.35);
+  min-width:90px;text-align:center;
+  flex:0 0 auto;
+}
+.subq-title{
+  font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink-dim);font-weight:700;flex:1 1 auto;
+}
+
+.subq-grid{
+  display:grid;
+  grid-template-columns:max-content minmax(0,1fr);
+  gap:8px 14px;
+  margin:0;
+}
+.subq-grid dt{
+  font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-dim);font-weight:700;
+  align-self:start;padding-top:6px;
+}
+.subq-grid dd{
+  margin:0;min-width:0;
+}
+.subq-code{
+  display:inline-block;
+  font-family:var(--mono);font-size:var(--text-sm);
+  padding:6px 10px;border-radius:var(--radius-sm);
+  border:1px solid var(--border-subtle);
+  background:rgba(8,4,24,.6);
+  color:var(--cyan);
+  overflow-wrap:anywhere;word-break:break-word;white-space:normal;
+  max-width:100%;
+}
+.subq-code.subq-got{
+  color:#ffb4b8;
+  border-color:rgba(239,68,68,.4);
+  background:rgba(239,68,68,.1);
+}
+.subq-reason{
+  font-size:var(--text-sm);color:var(--ink-soft);line-height:1.4;
+  overflow-wrap:anywhere;word-break:break-word;
+}
+
+/* Mobile: one column for Expected/Got values stacks below their dt */
+@media (max-width:599px){
+  .subq-grid{grid-template-columns:1fr;gap:4px 0}
+  .subq-grid dt{padding-top:0;margin-top:6px}
+  .subq-badge{min-width:auto}
+}
+
+/* ============================================================================
  * SIDE-RAIL DETAIL DECKS — Focused Run + Quick Picks moved out of arena
  *
  * The operator wants to stop scrolling past run controls to reach the

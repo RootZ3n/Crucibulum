@@ -2125,13 +2125,20 @@ function normalizeRunForDisplay(run){
           const detail=String(event.detail||'');
           // Conversational error lines are usually "QID: VERDICT — reason … Got: answer"
           // Split on em-dash first, then on " Got: " to separate the judge's reason
-          // from what the model actually said.
+          // from what the model actually said. Also extract the QID
+          // and any pattern /.../ so the focused-run sub-question card
+          // can show them as separately-labeled fields (prevents the
+          // 425-vs-6 cross-read failure mode the operator hit).
           const labelSplit=detail.split(/\s[—-]\s/);
           const label=labelSplit[0]||`Step ${idx+1}`;
           const rest=labelSplit.slice(1).join(' — ');
           const gotSplit=rest.split(/\bGot:\s*/);
           const reason=gotSplit[0]?.trim()||rest||detail;
           const answer=gotSplit.slice(1).join('Got: ').trim();
+          const qidMatch=label.match(/^([A-Z]+\d+-Q\d+|[A-Za-z0-9_-]+)/);
+          const qid=qidMatch?qidMatch[1]:'';
+          const patternMatch=detail.match(/pattern\s+(\/[^/]+\/[a-z]*)/i);
+          const expected=patternMatch?patternMatch[1]:'';
           return{
             id:`tl-${idx}`,
             name:label.replace(/:\s*FAIL\s*$/i,''),
@@ -2142,12 +2149,20 @@ function normalizeRunForDisplay(run){
             reason,
             answer,
             prompt:'',
-            expected:'',
+            expected,
             errorText:'',
             evidence:'',
             timeMs:Number(event.t||0),
             latencyMs:0,
-            cost:0
+            cost:0,
+            // Sub-question metadata for the focused-run inspector.
+            subQuestion:{
+              qid,
+              expectedPattern:expected,
+              modelAnswer:answer,
+              reason,
+              rawDetail:detail
+            }
           };
         })
         :[{name:humanizeToken(pick(run,'task_id','task')||'Run'),score:overall,status:statusWord(overall,pick(run,'pass')===false?'fail':'pass'),statusClass:outcomeClass(overall,pick(run,'pass')===false?'fail':'pass'),message:buildFailureText(run,overall,pick(run,'summary','message')||description),timeMs:Number(pick(run,'duration_ms','elapsed_ms')||0)}],
@@ -3937,6 +3952,46 @@ function evidenceValue(label,value){
   if(value===undefined||value===null||value==='')return'';
   return`<div class="evidence-block"><div class="evidence-label">${esc(label)}</div><pre class="evidence-value">${esc(typeof value==='string'?value:JSON.stringify(value,null,2))}</pre></div>`;
 }
+function renderSubQuestionFailures(result){
+  // Per-sub-question failure cards. Built from the structured
+  // .subQuestion field populated by normalizeRunForDisplay when the
+  // bundle's timeline carries one error event per failed Q.
+  //
+  // The visual contract: each Q is a separately bordered card with a
+  // prominent QID badge so a reader can NEVER cross-read field names
+  // between adjacent failures (the 425-vs-6 confusion the operator
+  // hit on 2026-05-25).
+  const rows=(result.details||[])
+    .filter((d)=>d&&d.subQuestion&&(d.subQuestion.qid||d.subQuestion.expectedPattern||d.subQuestion.modelAnswer));
+  if(!rows.length)return'';
+  const cards=rows.map((d,i)=>{
+    const sq=d.subQuestion;
+    const qid=sq.qid||`Q${i+1}`;
+    const expected=sq.expectedPattern||'(not in bundle)';
+    const got=sq.modelAnswer||'(empty)';
+    const reason=sq.reason||'(none)';
+    return`<article class="subq-card fail" role="group" aria-labelledby="subq-${esc(qid)}-title">
+      <header class="subq-head">
+        <span class="subq-badge">${esc(qid)}</span>
+        <span class="subq-title" id="subq-${esc(qid)}-title">SUB-QUESTION FAIL</span>
+        <span class="badge fail">${esc(d.status||'FAIL')}</span>
+      </header>
+      <dl class="subq-grid">
+        <dt>Expected pattern</dt>
+        <dd><code class="subq-code">${esc(expected)}</code></dd>
+        <dt>Model answered</dt>
+        <dd><code class="subq-code subq-got">${esc(got)}</code></dd>
+        <dt>Pass/fail reason</dt>
+        <dd class="subq-reason">${esc(reason)}</dd>
+      </dl>
+    </article>`;
+  }).join('');
+  return`<div class="subpanel subq-section">
+    <div class="section-head"><div><div class="mini-label">SUB-QUESTION FAILURES</div><h3>${rows.length} failed question${rows.length===1?'':'s'} in this trial</h3></div><span class="chip dim">each card is one Q · clearly bounded</span></div>
+    <div class="subq-list">${cards}</div>
+  </div>`;
+}
+
 function renderDrilldownExplorer(tabKey,result){
   const rows=result.details||[];
   if(!rows.length)return'<div class="empty">NO TEST DETAIL AVAILABLE</div>';
@@ -4079,6 +4134,8 @@ function renderFocusedRun(tabKey){
         </div>
       </div>`:''}
     </div>
+
+    ${renderSubQuestionFailures(result)}
 
     <div class="subpanel">
       <div class="section-head"><div><div class="mini-label">LAYER C</div><h3>Test Review Explorer</h3></div><span class="chip dim">${(result.details||[]).length} TEST${(result.details||[]).length===1?'':'S'}</span></div>
