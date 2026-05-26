@@ -1,7 +1,96 @@
 # Roleplay test suite — design
 
-**Status:** Experimental — operational on 1 model, 1 provider (2026-05-26).
+**Status:** Experimental v1 baseline (2026-05-26).
 **Not release-certified. Not in leaderboard composite. Not in model certification.**
+
+## Experimental v1 baseline (Phase 9)
+
+The Roleplay suite has reached its first published baseline.
+Machine-readable + markdown reports at:
+
+- `reports/capability-expansion/roleplay-experimental-v1/latest.md`
+- `reports/capability-expansion/roleplay-experimental-v1/latest.json`
+
+### What is in v1
+
+- **2 tested routes** (both OpenRouter, both PROVIDER_TESTED,
+  both `supportsRoleplay:true`):
+  - `xiaomi/mimo-v2-flash` — 6/7 STABLE_PASS at $0.0023 per
+    3-repeat profile. Remaining failure: 1 INTERMITTENT_FAIL on
+    `roleplay-drift-001` Q04 bare-math distractor.
+  - `deepseek/deepseek-v4-flash` — 4/7 STABLE_PASS at $0.0043 per
+    3-repeat profile. Remaining: 2 INTERMITTENT_FAIL + 1
+    MODEL_VARIANCE; refusal-001 STABLE_PASS validated across 6
+    independent runs.
+- **5 calibrated scorers** (all deterministic, no judge model):
+  - `HARD_BANNED_IDENTITY` + `classifyForbiddenPhraseContext` (Phase 3)
+  - `classifyRoleplayRefusalIntent` — 7-label intent classifier (Phase 6)
+  - `classifyPersonaVoice` — 6-label voice classifier (Phase 8)
+  - `scoreRoleplayContinuityFactMatch` (Phase 1)
+  - `classifyTestStability` + `classifyTurnStability` (Phase 7, refined Phase 8)
+- **Repeat-run stability profiling** via
+  `scripts/roleplay-stability.mjs --runs N` for variance
+  characterisation; default 3-repeat profile classifies each
+  (test, run-set) into 8 stability labels.
+- **8 phase reports + 3 audit cards + 4 stability reports**
+  preserved on disk as historical evidence — none have been
+  rewritten by later phases.
+
+### What is NOT in v1
+
+- No third independent text-capable route (Anthropic / OpenAI /
+  Ollama still untested for Roleplay).
+- No judge-assisted rubric — all scoring is deterministic
+  pattern + substring matching.
+- No human-review queue UI for NEEDS_REVIEW turns.
+- No leaderboard or certification impact (intentional;
+  Roleplay stays excluded).
+- No subjective-quality measurement (prose beauty, emotional
+  richness, DM pacing, scene craft are out of scope).
+
+## How to rerun the smoke
+
+```bash
+node scripts/roleplay-smoke.mjs --provider openrouter \
+  --model xiaomi/mimo-v2-flash --max-cost-usd 1.00 --write-report
+
+# Phase-1 baseline only (2-test profile)
+node scripts/roleplay-smoke.mjs --provider openrouter \
+  --model xiaomi/mimo-v2-flash --max-cost-usd 0.25 \
+  --phase1-only --write-report
+
+# Custom selection
+node scripts/roleplay-smoke.mjs --provider openrouter \
+  --model xiaomi/mimo-v2-flash --max-cost-usd 0.10 \
+  --tests roleplay-refusal-001 --write-report
+```
+
+Reports rotate `reports/capability-expansion/roleplay-smoke/latest.{json,md}`.
+
+## How to rerun the stability profile
+
+```bash
+node scripts/roleplay-stability.mjs --provider openrouter \
+  --model xiaomi/mimo-v2-flash --runs 3 --max-cost-usd 1.50 --write-report
+
+node scripts/roleplay-stability.mjs --provider openrouter \
+  --model deepseek/deepseek-v4-flash --runs 3 --max-cost-usd 1.50 --write-report
+```
+
+`--runs N` is clamped 2–10; cost cap is a single accumulator
+across all repeats. Reports rotate
+`reports/capability-expansion/roleplay-stability/latest.{json,md}`.
+
+## What is still not measured
+
+- Subjective prose quality, emotional richness, dialogue craft.
+- DM-narrator pacing, scene-blocking, encounter design.
+- Long-form continuity beyond ~10 turns.
+- Cross-session memory (a separate suite owns persistent memory).
+- Aesthetic / taste judgments.
+
+These are deliberately out of scope for v1 — the deterministic
+pattern-based pipeline cannot evaluate them without a judge model.
 
 ## Current state (Phase 4)
 
