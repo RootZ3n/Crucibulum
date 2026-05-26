@@ -1,6 +1,6 @@
 {
   "schema": "crucible.vision-smoke.v1",
-  "timestamp": "2026-05-26T02-21-08Z",
+  "timestamp": "2026-05-26T02-18-11Z",
   "commit": "c4c152b9ea6a99f5aeefe5f055979dccb90c87b5",
   "dirtyTree": true,
   "provider": "openai",
@@ -16,10 +16,10 @@
   "smokeMinimal": false,
   "includeUncertainty": false,
   "explicitTests": null,
-  "totalCostUsd": 0.00027015,
+  "totalCostUsd": 0.00027075,
   "classifications": {
-    "PASS": 4,
-    "LOW_SCORE": 1
+    "PASS": 2,
+    "LOW_SCORE": 3
   },
   "stopped": false,
   "stopReason": null,
@@ -34,7 +34,7 @@
       "tokensIn": 257,
       "tokensOut": 4,
       "runId": null,
-      "bundleId": "run_2026-05-26_vision-ocr-001_gpt-5.4-mini_24d8a67d",
+      "bundleId": "run_2026-05-26_vision-ocr-001_gpt-5.4-mini_f33ff2cb",
       "imageSent": true,
       "skipReason": "Run completed and passed evaluation",
       "fixturePath": null,
@@ -43,11 +43,11 @@
     {
       "taskId": "vision-ui-001",
       "classification": "PASS",
-      "costUsd": 0.0000846,
+      "costUsd": 0.0000744,
       "tokensIn": 472,
-      "tokensOut": 23,
+      "tokensOut": 6,
       "runId": null,
-      "bundleId": "run_2026-05-26_vision-ui-001_gpt-5.4-mini_c623c847",
+      "bundleId": "run_2026-05-26_vision-ui-001_gpt-5.4-mini_de8678b5",
       "imageSent": true,
       "skipReason": "Run completed and passed evaluation",
       "fixturePath": null,
@@ -55,16 +55,16 @@
     },
     {
       "taskId": "vision-chart-001",
-      "classification": "PASS",
+      "classification": "LOW_SCORE",
       "costUsd": 0.0000642,
       "tokensIn": 364,
       "tokensOut": 16,
       "runId": null,
-      "bundleId": "run_2026-05-26_vision-chart-001_gpt-5.4-mini_47a2f749",
+      "bundleId": "run_2026-05-26_vision-chart-001_gpt-5.4-mini_ddb77f20",
       "imageSent": true,
-      "skipReason": "Run completed and passed evaluation",
+      "skipReason": "Model completed the run but did not meet the pass threshold",
       "fixturePath": null,
-      "pass": true
+      "pass": false
     },
     {
       "taskId": "vision-object-count-001",
@@ -73,7 +73,7 @@
       "tokensIn": 271,
       "tokensOut": 4,
       "runId": null,
-      "bundleId": "run_2026-05-26_vision-object-count-001_gpt-5.4-mini_5902529d",
+      "bundleId": "run_2026-05-26_vision-object-count-001_gpt-5.4-mini_27c57d28",
       "imageSent": true,
       "skipReason": "Model completed the run but did not meet the pass threshold",
       "fixturePath": null,
@@ -81,16 +81,16 @@
     },
     {
       "taskId": "vision-uncertainty-001",
-      "classification": "PASS",
-      "costUsd": 0.00003735,
+      "classification": "LOW_SCORE",
+      "costUsd": 0.00004815,
       "tokensIn": 225,
-      "tokensOut": 6,
+      "tokensOut": 24,
       "runId": null,
-      "bundleId": "run_2026-05-26_vision-uncertainty-001_gpt-5.4-mini_15fe9418",
+      "bundleId": "run_2026-05-26_vision-uncertainty-001_gpt-5.4-mini_3f8f8b9b",
       "imageSent": true,
-      "skipReason": "Run completed and passed evaluation",
+      "skipReason": "Model completed the run but did not meet the pass threshold",
       "fixturePath": null,
-      "pass": true
+      "pass": false
     }
   ]
 }

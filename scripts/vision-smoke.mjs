@@ -36,6 +36,26 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { runConversationalTask } from "../dist/core/conversational-runner.js";
 import { OpenRouterAdapter } from "../dist/adapters/openrouter.js";
+import { OpenAIAdapter } from "../dist/adapters/openai.js";
+
+// Provider registry for vision-smoke. Each entry knows how to construct
+// + init its adapter and which env var its API key lives in. Adding a
+// new vision-capable provider here is the smallest change required to
+// extend the smoke; the runner + skip-classifier handle the rest.
+const PROVIDERS = {
+  openrouter: {
+    label: "OpenRouter",
+    envKey: "OPENROUTER_API_KEY",
+    build: () => new OpenRouterAdapter(),
+    initArgs: (model) => ({ model, api_key: process.env.OPENROUTER_API_KEY }),
+  },
+  openai: {
+    label: "OpenAI",
+    envKey: "OPENAI_API_KEY",
+    build: () => new OpenAIAdapter(),
+    initArgs: (model) => ({ model }),
+  },
+};
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_DIR = join(ROOT, "reports", "capability-expansion", "vision-smoke");
@@ -68,7 +88,7 @@ if (flag("-h") || flag("--help")) {
   console.log(`
 vision-smoke — Crucible Phase 6 vision POC (all 5 by default)
 
-  --provider <id>          (default: openrouter — only supported transport today)
+  --provider <id>          openrouter | openai (default: openrouter)
   --model <id>             (default: xiaomi/mimo-v2-omni)
   --max-cost-usd <n>       Hard cap (default 0.25). Required.
   --smoke-minimal          Phase-4 backcompat: run only the 2-test set
@@ -95,9 +115,13 @@ if (maxCostUsd <= 0) {
   console.error("error: --max-cost-usd is required (>0)");
   process.exit(2);
 }
-if (provider !== "openrouter") {
-  console.error(`error: only --provider openrouter is supported in Phase 4+ (got: ${provider})`);
-  console.error("Other providers will hit SKIPPED_IMAGE_TRANSPORT_UNSUPPORTED.");
+const providerDef = PROVIDERS[provider];
+if (!providerDef) {
+  console.error(`error: --provider must be one of ${Object.keys(PROVIDERS).join(", ")} (got: ${provider})`);
+  process.exit(2);
+}
+if (!process.env[providerDef.envKey]) {
+  console.error(`error: ${providerDef.envKey} not set in env or .env — required for --provider ${provider}`);
   process.exit(2);
 }
 
@@ -141,12 +165,13 @@ function dirtyTree() {
 }
 
 async function runOneTest(taskId) {
-  // Build a fresh OpenRouter adapter for the call. Capabilities flag
+  // Build a fresh adapter for the call. Capabilities flag
   // imageTransportImplemented:true tells preflightSkipCheck to NOT
   // emit SKIPPED_IMAGE_TRANSPORT_UNSUPPORTED — we're explicitly
-  // proving the OpenRouter path here.
-  const adapter = new OpenRouterAdapter();
-  await adapter.init({ model, api_key: process.env.OPENROUTER_API_KEY });
+  // proving the provider's image path here. The adapter id is
+  // resolved from PROVIDERS at script top.
+  const adapter = providerDef.build();
+  await adapter.init(providerDef.initArgs(model));
   try {
     const result = await runConversationalTask({
       taskId,

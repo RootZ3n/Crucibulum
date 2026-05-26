@@ -363,8 +363,13 @@ function scoreNumericFactMatch(q: ConversationalQuestion, response: string): { p
   const found = variants.some((v) => {
     const vLower = v.toLowerCase();
     if (/^\d+$/.test(v)) {
-      // digit-style: standalone token, not adjacent to other digits
-      const re = new RegExp(`(?<![\\d.])${v}(?![\\d.])`);
+      // Digit-style match: the expected number must be a standalone
+      // token. Reject only digit-adjacency on either side (so "87"
+      // doesn't match "187", "870", "12.87", or "87.5") — but DO
+      // allow sentence-ending punctuation right after the digit
+      // ("value of 87." is a valid PASS for expected=87).
+      // Caught live during Phase 9 Vision smoke on gpt-5.4-mini.
+      const re = new RegExp(`(?<!\\d)${v}(?!\\d)(?!\\.\\d)`);
       return re.test(lower);
     }
     // word-style: word boundaries

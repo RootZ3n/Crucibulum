@@ -122,7 +122,13 @@ const MODEL_CERTIFICATION={
     {providerId:'openrouter',modelId:'xiaomi/mimo-v2.5',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/xiaomi-mimo-v2.5/2026-05-25T20-09-27Z.json',campaign:'2026-05-25',capabilities:{supportsText:true,supportsTools:true,supportsRepo:true,supportsRoleplay:true,supportsVision:false,supportsImageInput:false,multimodalTransport:'unsupported'}},
     {providerId:'openrouter',modelId:'xiaomi/mimo-v2-flash',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/xiaomi-mimo-v2-flash/2026-05-25T20-07-23Z.json',campaign:'2026-05-25',capabilities:{supportsText:true,supportsTools:true,supportsRepo:true,supportsRoleplay:true,supportsVision:false,supportsImageInput:false,multimodalTransport:'unsupported'}},
     // MiMo v2 Omni is the multimodal variant on OpenRouter — declare vision capability.
-    {providerId:'openrouter',modelId:'xiaomi/mimo-v2-omni',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/xiaomi-mimo-v2-omni/2026-05-25T20-10-57Z.json',campaign:'2026-05-25',capabilities:{supportsText:true,supportsTools:true,supportsRepo:true,supportsRoleplay:true,supportsVision:true,supportsImageInput:true,supportsMultipleImages:true,multimodalTransport:'openai_image_url'}}
+    {providerId:'openrouter',modelId:'xiaomi/mimo-v2-omni',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/xiaomi-mimo-v2-omni/2026-05-25T20-10-57Z.json',campaign:'2026-05-25',capabilities:{supportsText:true,supportsTools:true,supportsRepo:true,supportsRoleplay:true,supportsVision:true,supportsImageInput:true,supportsMultipleImages:true,multimodalTransport:'openai_image_url'}},
+    // OpenAI gpt-5.4-mini — registered with vision capability for Phase 9
+    // experimental smoke. NOT release-certified; the EXPERIMENTAL tier
+    // is intentional. The OpenAI adapter forwards `image_url` content
+    // parts unchanged (`adapters/openai.ts`), and the adapterImageTransport
+    // table above declares the `openai_image_url` path for this provider.
+    {providerId:'openai',modelId:'gpt-5.4-mini',tier:'EXPERIMENTAL',evidence:'reports/capability-expansion/vision-phase9-gpt5-mini/',campaign:'2026-05-26-vision-phase9',note:'Registered as a Phase 9 Vision experimental route. Capabilities declared so the runner sends image content; non-Vision capabilities default conservatively.',capabilities:{supportsText:true,supportsVision:true,supportsImageInput:true,supportsMultipleImages:true,multimodalTransport:'openai_image_url'}}
   ]
 };
 
@@ -4585,6 +4591,35 @@ const VISION_POC_TESTS=[
   {id:'vision-uncertainty-001',label:'Uncertainty honesty',intent:'Admit the image is unreadable',scorer:'uncertainty_honesty',fixture:'fixtures/vision/vision-uncertainty-001.png',expected:'admits unreadable; FAIL on confident quoted text'}
 ];
 const VISION_PROVEN_ROUTE={providerId:'openrouter',adapterId:'openrouter',modelId:'xiaomi/mimo-v2-omni',label:'OpenRouter · xiaomi/mimo-v2-omni',transport:'openai_image_url'};
+// Phase 9 — known tested routes for Vision. Each entry records the last
+// experimental smoke result so the status panel can list multiple
+// attempted routes without claiming any are certified. New routes are
+// appended here as smokes ship; this is a hand-curated index, not a
+// certification ledger. None of these entries contribute to the
+// leaderboard composite or to model certification — see the panel's
+// permanent EXPERIMENTAL / NOT IN LEADERBOARD / NOT CERTIFIED chips.
+const VISION_TESTED_ROUTES=[
+  {
+    providerId:'openrouter',
+    modelId:'xiaomi/mimo-v2-omni',
+    label:'OpenRouter · xiaomi/mimo-v2-omni',
+    transport:'openai_image_url',
+    lastSmokeAt:'2026-05-26T02-20-22Z',
+    lastSmokePath:'reports/capability-expansion/vision-smoke/2026-05-26T02-20-22Z.md',
+    lastResult:{passed:4,total:5,costUsd:0.0012,note:'1 LOW_SCORE on vision-uncertainty-001 (model read fixture text instead of admitting uncertainty — fixture-readability artifact, not a regression on the other 4 tests).'},
+    phase:'first proven (Phase 4); re-run Phase 9 with scorer fix'
+  },
+  {
+    providerId:'openai',
+    modelId:'gpt-5.4-mini',
+    label:'OpenAI · gpt-5.4-mini',
+    transport:'openai_image_url',
+    lastSmokeAt:'2026-05-26T02-21-08Z',
+    lastSmokePath:'reports/capability-expansion/vision-smoke/2026-05-26T02-21-08Z.md',
+    lastResult:{passed:4,total:5,costUsd:0.0003,note:'1 LOW_SCORE on vision-object-count-001 (model counted 6 vs expected 7 — honest model count error).'},
+    phase:'added Phase 9 (2026-05-26)'
+  }
+];
 function visionResultByTaskId(taskId){
   const data=state.visionSmoke&&state.visionSmoke.data;
   const report=data&&data.report;
@@ -4707,10 +4742,31 @@ function renderVisionLanePanel(tabKey){
       </div>
     </div>
     <div class="vision-status-grid">
+      <div class="vision-status-block vision-status-block-wide">
+        <div class="vs-label">TESTED ROUTES (EXPERIMENTAL)</div>
+        <div class="vision-routes-list">
+          ${VISION_TESTED_ROUTES.map((r)=>{
+            const lr=r.lastResult||{};
+            const passed=Number(lr.passed||0);
+            const total=Number(lr.total||5);
+            const cls=passed===total?'pass':passed>=Math.ceil(total*0.6)?'warn':'fail';
+            const isLatest=data&&data.report&&data.report.provider===r.providerId&&data.report.model===r.modelId;
+            return`<div class="vision-route ${isLatest?'is-latest':''}">
+              <span class="badge ${cls}">${esc(String(passed))}/${esc(String(total))} PASS</span>
+              <span class="vr-label mono">${esc(r.label)}</span>
+              <span class="vr-transport dim mono">${esc(r.transport)}</span>
+              <span class="vr-cost dim mono">$${Number(lr.costUsd||0).toFixed(4)}</span>
+              <span class="vr-phase dim">${esc(r.phase||'')}</span>
+              ${lr.note?`<span class="vr-note dim" title="${esc(lr.note)}">${esc(lr.note.slice(0,120))}${lr.note.length>120?'…':''}</span>`:''}
+            </div>`;
+          }).join('')}
+        </div>
+        <div class="vs-sub dim">Each route ran the same 5 POC tests under a hard cost cap. None of these results affect the leaderboard composite or model certification.</div>
+      </div>
       <div class="vision-status-block">
-        <div class="vs-label">PROVEN ROUTE</div>
+        <div class="vs-label">PROVEN ROUTE (LATEST SMOKE)</div>
         <div class="vs-value mono">${esc(provenLabel)}</div>
-        <div class="vs-sub dim">Transport: OpenRouter <span class="mono">image_url</span> path proven.</div>
+        <div class="vs-sub dim">Transport: <span class="mono">image_url</span> content-part path.</div>
       </div>
       <div class="vision-status-block">
         <div class="vs-label">LAST SMOKE</div>

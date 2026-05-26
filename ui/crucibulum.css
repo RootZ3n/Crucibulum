@@ -2514,8 +2514,19 @@ tr:hover td{background:rgba(139,92,246,.04)}
 .vision-card-skip{border-color:rgba(168,162,158,.28)}
 .vision-card-warn{border-color:rgba(245,158,11,.28)}
 .vision-card-idle{border-color:var(--border-subtle)}
+/* Phase-9 multi-route list inside the vision status panel. */
+.vision-routes-list{display:flex;flex-direction:column;gap:6px;margin:6px 0}
+.vision-route{display:grid;grid-template-columns:auto minmax(0,1.4fr) minmax(0,1fr) auto minmax(0,1.2fr);column-gap:10px;row-gap:2px;align-items:center;padding:6px 8px;border:1px solid var(--border-subtle);border-radius:var(--radius-md);background:rgba(22,18,52,.45);font-size:var(--text-xs);min-width:0}
+.vision-route.is-latest{border-color:rgba(34,211,238,.28);background:rgba(22,40,68,.55)}
+.vr-label{color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vr-transport{font-size:10px}
+.vr-cost{font-size:10px;text-align:right}
+.vr-phase{font-size:10px;color:var(--ink-soft)}
+.vr-note{grid-column:1/-1;color:var(--ink-soft);line-height:1.4;border-top:1px dashed var(--border-subtle);padding-top:4px;margin-top:2px}
 @media (max-width:719px){
   .vision-status-grid{grid-template-columns:1fr}
+  .vision-route{grid-template-columns:auto minmax(0,1fr);grid-auto-rows:auto}
+  .vr-transport,.vr-cost,.vr-phase{grid-column:1/-1;text-align:left}
 }
 
 /* ============================================================

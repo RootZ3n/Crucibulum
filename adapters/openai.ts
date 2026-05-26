@@ -36,6 +36,15 @@ function isReasoningModel(model: string): boolean {
   return /^o[13]/.test(model);
 }
 
+// OpenAI models that reject the legacy `max_tokens` parameter and require
+// `max_completion_tokens` instead. As of 2026-05-26 the GPT-5 family
+// (gpt-5, gpt-5-mini, gpt-5-nano, gpt-5.4, gpt-5.4-mini, gpt-5.4-nano)
+// all reject `max_tokens` with HTTP 400 "Unsupported parameter". Caught
+// live during the Phase 9 Vision smoke on gpt-5.4-mini.
+function requiresMaxCompletionTokens(model: string): boolean {
+  return isReasoningModel(model) || /^gpt-5/i.test(model);
+}
+
 export class OpenAIAdapter implements CrucibulumAdapter {
   id = "openai";
   name = "OpenAI Direct";
@@ -242,8 +251,11 @@ export function buildOpenAIChatBody(
   const suppressVisibleReasoning = options?.suppressVisibleReasoning === true;
   const wantsReasoningOff = requestedReasoning === "off" || (requestedReasoning == null && suppressVisibleReasoning);
 
-  if (isReasoningModel(model)) {
+  if (requiresMaxCompletionTokens(model)) {
     body.max_completion_tokens = 8192;
+    // GPT-5 / o-family don't accept temperature on chat completions
+    // either (silently dropped or 400 depending on subroute); skip it
+    // unless this is a legacy non-reasoning model.
   } else {
     body.max_tokens = 8192;
     body.temperature = 0.1;
