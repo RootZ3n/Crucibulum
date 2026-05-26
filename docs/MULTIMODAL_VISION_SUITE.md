@@ -5,7 +5,13 @@
 
 ## Current state (Phase 7)
 
-- **Proven route:** OpenRouter / `xiaomi/mimo-v2-omni` (transport `openai_image_url`).
+- **Preferred daily-driver candidate (Phase 13-B):** OpenRouter /
+  `xiaomi/mimo-v2.5` (transport `openai_image_url`). Verdict
+  `DAILY_DRIVER_CANDIDATE_VALIDATED` from Phase 13-A evidence.
+  Not certified, not promoted, not in leaderboard.
+- **Legacy / proven fallback:** OpenRouter / `xiaomi/mimo-v2-omni`
+  (transport `openai_image_url`). Kept until a future explicit
+  migration phase.
 - **Last live smoke:** 5/5 PASS at $0.0009 total spend (see
   `reports/capability-expansion/vision-smoke/latest.{json,md}` and the
   Phase-7 report at
@@ -26,19 +32,28 @@
 ## How to rerun the smoke
 
 ```bash
-# All 5 POC tests (default; $0.25 cap is honoured)
+# All 5 POC tests against the preferred candidate (Phase 13-B default;
+# $0.25 cap is honoured)
+node scripts/vision-smoke.mjs --provider openrouter \
+  --model xiaomi/mimo-v2.5 --max-cost-usd 0.25 --write-report
+
+# Legacy / proven fallback — still supported
 node scripts/vision-smoke.mjs --provider openrouter \
   --model xiaomi/mimo-v2-omni --max-cost-usd 0.25 --write-report
 
 # Phase-4 minimal 2-test set (backcompat)
 node scripts/vision-smoke.mjs --provider openrouter \
-  --model xiaomi/mimo-v2-omni --max-cost-usd 0.10 --smoke-minimal --write-report
+  --model xiaomi/mimo-v2.5 --max-cost-usd 0.10 --smoke-minimal --write-report
 
 # Custom selection
 node scripts/vision-smoke.mjs --provider openrouter \
-  --model xiaomi/mimo-v2-omni --max-cost-usd 0.10 \
+  --model xiaomi/mimo-v2.5 --max-cost-usd 0.10 \
   --tests vision-ocr-001,vision-ui-001 --write-report
 ```
+
+The `--model` default is `xiaomi/mimo-v2.5` since Phase 13-B; pass
+`--model xiaomi/mimo-v2-omni` explicitly to rerun against the
+legacy/proven fallback.
 
 `--write-report` rotates `reports/capability-expansion/vision-smoke/latest.{json,md}`,
 which the UI reads via `GET /api/vision/latest-smoke`.
@@ -51,9 +66,15 @@ doctrine evaluator can consume. Mirrors `scripts/roleplay-stability.mjs`.
 
 ```bash
 # 3-repeat profile (Vision STABLE gate minimum), per-route $1.50 cap
+# Phase 13-B preferred candidate first.
+node scripts/vision-stability.mjs --provider openrouter \
+  --model xiaomi/mimo-v2.5 --runs 3 --max-cost-usd 1.50 --write-report
+
+# Legacy / proven fallback — still supported.
 node scripts/vision-stability.mjs --provider openrouter \
   --model xiaomi/mimo-v2-omni --runs 3 --max-cost-usd 1.50 --write-report
 
+# Cross-provider reference.
 node scripts/vision-stability.mjs --provider openai \
   --model gpt-5.4-mini --runs 3 --max-cost-usd 1.50 --write-report
 ```

@@ -104,7 +104,14 @@ vision-smoke — Crucible Phase 6 vision POC (all 5 by default)
 }
 
 const provider = arg("--provider", "openrouter");
-const model = arg("--model", "xiaomi/mimo-v2-omni");
+// Phase 13-B: default Vision route switched from xiaomi/mimo-v2-omni
+// to xiaomi/mimo-v2.5 based on Phase 13-A evidence (5/5 stability at
+// ~9× lower observed cost, no scorer caveats). v2-omni remains a
+// supported value — operators can pass --model xiaomi/mimo-v2-omni
+// explicitly to rerun against the legacy/proven fallback. This is an
+// operational/recommendation default only; it does not certify or
+// promote v2.5 and never writes to certified-models.json.
+const model = arg("--model", "xiaomi/mimo-v2.5");
 const maxCostUsd = Number(arg("--max-cost-usd", "0.25")) || 0;
 const writeReport = flag("--write-report") || flag("--write");
 const smokeMinimal = flag("--smoke-minimal");

@@ -17,7 +17,12 @@
  * report is a *read-only* eligibility check via the doctrine
  * evaluator — it never promotes anything.
  *
- * Usage:
+ * Usage (Phase 13-B preferred candidate):
+ *   node scripts/vision-stability.mjs \
+ *     --provider openrouter --model xiaomi/mimo-v2.5 \
+ *     --runs 3 --max-cost-usd 1.50 --write-report
+ *
+ * Legacy/proven fallback:
  *   node scripts/vision-stability.mjs \
  *     --provider openrouter --model xiaomi/mimo-v2-omni \
  *     --runs 3 --max-cost-usd 1.50 --write-report

@@ -52,9 +52,12 @@ function loadPhase13AReport(): string {
 describe("Vision Phase 13-A · MiMo-V2.5 replacement + daily-driver candidate (offline)", () => {
   // -------- registry shape --------
 
-  it("P1 · xiaomi/mimo-v2.5 registry entry exists as a single row", () => {
-    const occurrences = HTML.match(/modelId:'xiaomi\/mimo-v2\.5'(?!-pro)/g) || [];
-    assert.equal(occurrences.length, 1, `expected exactly one MODEL_CERTIFICATION entry for xiaomi/mimo-v2.5; found ${occurrences.length}`);
+  it("P1 · xiaomi/mimo-v2.5 has exactly one MODEL_CERTIFICATION.models[] entry (other references are non-certification metadata)", () => {
+    // Phase 13-B adds VISION_PREFERRED_ROUTE + VISION_ROUTE_RECOMMENDATIONS
+    // + VISION_TESTED_ROUTES rows that reference the model id; the
+    // certification entry is the one with a `tier:` field next to it.
+    const certEntries = HTML.match(/modelId:'xiaomi\/mimo-v2\.5'(?!-pro)[^}]*tier:/g) || [];
+    assert.equal(certEntries.length, 1, `expected exactly one MODEL_CERTIFICATION.models[] entry for xiaomi/mimo-v2.5; found ${certEntries.length}`);
   });
 
   it("P2 · xiaomi/mimo-v2.5 main-suite tier is PROVIDER_TESTED and NOT inherited from Omni", () => {
@@ -180,12 +183,17 @@ describe("Vision Phase 13-A · MiMo-V2.5 replacement + daily-driver candidate (o
 
   // -------- UI block --------
 
-  it("P9 · Vision UI exposes the REPLACEMENT / DAILY-DRIVER CANDIDATE block without removing Omni", () => {
-    assert.match(HTML, /REPLACEMENT \/ DAILY-DRIVER CANDIDATE/);
+  it("P9 · Vision UI exposes v2.5 as the preferred candidate (post-Phase-13-B label) without removing Omni", () => {
+    // Phase 13-B renamed the panel block from "REPLACEMENT / DAILY-DRIVER
+    // CANDIDATE" to "PREFERRED DAILY-DRIVER CANDIDATE" and added a
+    // separate "LEGACY / PROVEN FALLBACK" block for Omni. The
+    // verdicts still surface in the preferred block.
+    assert.match(HTML, /PREFERRED DAILY-DRIVER CANDIDATE/);
+    assert.match(HTML, /LEGACY \/ PROVEN FALLBACK/);
     assert.match(HTML, /xiaomi\/mimo-v2\.5/);
     assert.match(HTML, /REPLACEMENT_CANDIDATE_VALIDATED/);
     assert.match(HTML, /DAILY_DRIVER_CANDIDATE_VALIDATED/);
-    // Omni MUST still be present in the registry (a single row).
+    // Omni MUST still be present in the registry.
     const omniRows = HTML.match(/modelId:'xiaomi\/mimo-v2-omni'/g) || [];
     assert.ok(omniRows.length >= 1, "Omni registry entry must remain");
   });

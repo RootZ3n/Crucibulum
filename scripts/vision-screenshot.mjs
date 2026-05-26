@@ -8,9 +8,10 @@
  * Phase 8 readability check.
  *
  * Optional capability variants:
- *   --variant default          (no seeded selectedModels — "no model selected")
- *   --variant vision-capable   (seeds xiaomi/mimo-v2-omni)
- *   --variant text-only        (seeds a known text-only certified model)
+ *   --variant default               (no seeded selectedModels — "no model selected")
+ *   --variant vision-capable        (seeds preferred candidate xiaomi/mimo-v2.5 — Phase 13-B)
+ *   --variant vision-capable-legacy (seeds legacy/proven fallback xiaomi/mimo-v2-omni)
+ *   --variant text-only             (seeds a known text-only certified model)
  *
  * Output: PNGs under reports/capability-expansion/vision-phase8-browser-validation/screenshots/.
  *
@@ -50,7 +51,12 @@ const VARIANTS = [
   },
   {
     name: "vision-capable",
-    desc: "Vision tab, xiaomi/mimo-v2-omni selected",
+    desc: "Vision tab, preferred daily-driver candidate selected (Phase 13-B: xiaomi/mimo-v2.5)",
+    seed: () => ({ activeTab: "vision", selectedModels: ["xiaomi/mimo-v2.5"] }),
+  },
+  {
+    name: "vision-capable-legacy",
+    desc: "Vision tab, legacy/proven fallback selected (xiaomi/mimo-v2-omni)",
     seed: () => ({ activeTab: "vision", selectedModels: ["xiaomi/mimo-v2-omni"] }),
   },
   {

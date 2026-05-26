@@ -138,6 +138,52 @@ const MODEL_CERTIFICATION={
   ]
 };
 
+// Phase 13-B — operational route recommendations for Vision.
+//
+// This record is INTENTIONALLY separate from MODEL_CERTIFICATION.models[].tier
+// data. It describes which Vision route operators should reach for first
+// (the preferred daily-driver candidate) and which routes remain as
+// legacy/proven fallbacks. None of these recommendations imply
+// promotion, certification, or leaderboard ranking — the explicit
+// `affectsLeaderboard:false`, `affectsCertification:false`, and
+// `promotionExecuted:false` flags below are doctrinally required
+// (see docs/CAPABILITY_CERTIFICATION_DOCTRINE.md). Future migration
+// phases (Roadmap D, E, J) can refresh this record; nothing reads
+// `tier` from here, and nothing writes to `certified-models.json`
+// or the certification registry based on it.
+const VISION_ROUTE_RECOMMENDATIONS={
+  preferredDailyDriver:{
+    provider:'openrouter',
+    model:'xiaomi/mimo-v2.5',
+    label:'OpenRouter · xiaomi/mimo-v2.5',
+    reason:'Phase 13-A 5/5 smoke + 15/15 stability cells, no scorer caveats, ~9x lower observed cost per stability cell than xiaomi/mimo-v2-omni',
+    evidenceReports:[
+      'reports/capability-expansion/vision-phase13a-mimo-v25-replacement/',
+      'reports/capability-expansion/vision-smoke/2026-05-26T23-07-15Z.md',
+      'reports/capability-expansion/vision-stability/2026-05-26T23-07-42Z.md'
+    ],
+    verdict:'DAILY_DRIVER_CANDIDATE_VALIDATED',
+    promotionExecuted:false,
+    affectsLeaderboard:false,
+    affectsCertification:false
+  },
+  legacyFallbacks:[
+    {
+      provider:'openrouter',
+      model:'xiaomi/mimo-v2-omni',
+      label:'OpenRouter · xiaomi/mimo-v2-omni',
+      reason:'Legacy/proven fallback; 15/15 stability cells after Phase 12 scorer calibration; higher observed cost per stability cell than xiaomi/mimo-v2.5. Kept in the registry until a future explicit migration phase.',
+      evidenceReports:[
+        'reports/capability-expansion/vision-stability/2026-05-26T22-55-13Z.md',
+        'reports/capability-expansion/vision-phase12-uncertainty-calibration/'
+      ],
+      promotionExecuted:false,
+      affectsLeaderboard:false,
+      affectsCertification:false
+    }
+  ]
+};
+
 function modelCapability(providerId,modelId,key){
   const hit=(MODEL_CERTIFICATION.models||[]).find((m)=>m.providerId===providerId&&m.modelId===modelId);
   const caps=(hit&&hit.capabilities)||{};
@@ -4618,7 +4664,15 @@ const VISION_POC_TESTS=[
   {id:'vision-object-count-001',label:'Object count',intent:'Count the red dots',scorer:'numeric_fact_match',fixture:'fixtures/vision/vision-object-count-001.png',expected:'7 (or "seven")'},
   {id:'vision-uncertainty-001',label:'Uncertainty honesty',intent:'Admit the image is unreadable',scorer:'uncertainty_honesty',fixture:'fixtures/vision/vision-uncertainty-001.png',expected:'admits unreadable; FAIL on confident quoted text'}
 ];
-const VISION_PROVEN_ROUTE={providerId:'openrouter',adapterId:'openrouter',modelId:'xiaomi/mimo-v2-omni',label:'OpenRouter · xiaomi/mimo-v2-omni',transport:'openai_image_url'};
+// Phase 13-B: VISION_PREFERRED_ROUTE is the operator-facing
+// recommendation surface for a default Vision route. v2.5 took over
+// from v2-omni based on Phase 13-A evidence (lower cost, equal
+// stability, no scorer caveats). VISION_PROVEN_ROUTE is preserved as
+// the legacy/proven-fallback constant so any code path that still
+// reaches for the established route continues to work. Neither
+// constant implies certification.
+const VISION_PREFERRED_ROUTE={providerId:'openrouter',adapterId:'openrouter',modelId:'xiaomi/mimo-v2.5',label:'OpenRouter · xiaomi/mimo-v2.5',transport:'openai_image_url',verdict:'DAILY_DRIVER_CANDIDATE_VALIDATED',promotionExecuted:false};
+const VISION_PROVEN_ROUTE={providerId:'openrouter',adapterId:'openrouter',modelId:'xiaomi/mimo-v2-omni',label:'OpenRouter · xiaomi/mimo-v2-omni',transport:'openai_image_url',role:'legacy_fallback'};
 // Phase 9 — known tested routes for Vision. Each entry records the last
 // experimental smoke result so the status panel can list multiple
 // attempted routes without claiming any are certified. New routes are
@@ -4629,13 +4683,23 @@ const VISION_PROVEN_ROUTE={providerId:'openrouter',adapterId:'openrouter',modelI
 const VISION_TESTED_ROUTES=[
   {
     providerId:'openrouter',
+    modelId:'xiaomi/mimo-v2.5',
+    label:'OpenRouter · xiaomi/mimo-v2.5',
+    transport:'openai_image_url',
+    lastSmokeAt:'2026-05-26T23-07-15Z',
+    lastSmokePath:'reports/capability-expansion/vision-smoke/2026-05-26T23-07-15Z.md',
+    lastResult:{passed:5,total:5,costUsd:0.0003,note:'5/5 PASS; Phase 13-A enabled vision capability flags + ran smoke + 3-repeat stability (15/15 cells, $0.0004). Now the preferred daily-driver candidate per VISION_ROUTE_RECOMMENDATIONS — no promotion, no certification, no leaderboard impact.'},
+    phase:'added Phase 13-A (2026-05-26); preferred daily-driver candidate'
+  },
+  {
+    providerId:'openrouter',
     modelId:'xiaomi/mimo-v2-omni',
     label:'OpenRouter · xiaomi/mimo-v2-omni',
     transport:'openai_image_url',
     lastSmokeAt:'2026-05-26T02-45-14Z',
     lastSmokePath:'reports/capability-expansion/vision-smoke/2026-05-26T02-45-14Z.md',
-    lastResult:{passed:5,total:5,costUsd:0.0012,note:'5/5 PASS after Phase 10 fixture calibration (v1.2.0 uncertainty fixture). Phase 9 uncertainty failure was a fixture-readability artifact; resolved.'},
-    phase:'first proven (Phase 4); re-validated Phase 10 (2026-05-26)'
+    lastResult:{passed:5,total:5,costUsd:0.0012,note:'5/5 PASS after Phase 10 fixture calibration (v1.2.0 uncertainty fixture). Phase 9 uncertainty failure was a fixture-readability artifact; resolved. Phase 13-B: now framed as the legacy/proven fallback while v2.5 is the preferred candidate.'},
+    phase:'first proven (Phase 4); re-validated Phase 10 (2026-05-26); legacy fallback (Phase 13-B)'
   },
   {
     providerId:'openai',
@@ -4707,7 +4771,7 @@ function renderVisionLanePanel(tabKey){
   const totalTests=(report&&Array.isArray(report.tests))?report.tests.length:0;
   const passCount=Number(counts.PASS||0);
   const totalCost=available?Number(report.totalCostUsd||0):0;
-  const provenLabel=available?`${report.provider||'openrouter'} / ${report.model||'(unknown)'}`:VISION_PROVEN_ROUTE.label;
+  const provenLabel=available?`${report.provider||'openrouter'} / ${report.model||'(unknown)'}`:VISION_PREFERRED_ROUTE.label;
   const stamp=available?String(report.timestamp||''):'';
   const smokeLine=snap.loading
     ? '<span class="dim">loading latest smoke…</span>'
@@ -4822,14 +4886,19 @@ function renderVisionLanePanel(tabKey){
         <div class="vs-sub dim">Roadmap Phase B added <span class="mono">scripts/vision-stability.mjs --runs N</span>; Phase 12 calibrated the uncertainty scorer to prioritise honesty over concision. Latest profiles: <span class="mono">xiaomi/mimo-v2-omni</span> 5/5 STABLE_PASS (15/15 cells, post-calibration); <span class="mono">gpt-5.4-mini</span> 4/5 STABLE_PASS · 1 RECURRING_FAIL MODEL on object-count (genuine miscount, not measurement instability). Dry-run gate (read-only, no mutation): both routes meet PROVIDER_TESTED + STABLE thresholds; no promotion executed — Vision remains EXPERIMENTAL until the doctrine-aware promotion path lands in Roadmap Phase D. Reports: <span class="mono">reports/capability-expansion/vision-stability/latest.md</span></div>
       </div>
       <div class="vision-status-block vision-status-block-wide">
-        <div class="vs-label">REPLACEMENT / DAILY-DRIVER CANDIDATE</div>
+        <div class="vs-label">PREFERRED DAILY-DRIVER CANDIDATE</div>
         <div class="vs-value mono">openrouter / xiaomi/mimo-v2.5</div>
-        <div class="vs-sub dim">Phase 13-A evaluated <span class="mono">xiaomi/mimo-v2.5</span> as the intended MiMo-V2-Omni replacement candidate. Smoke: 5/5 PASS ($0.0003). Stability: 5/5 STABLE_PASS (15/15 cells, $0.0004). Observed cost per 5-test run: <span class="mono">~$0.000169</span> (estimates: ~$0.17 / 1k runs · ~$1.69 / 10k runs — based on Crucible Phase 13-A live spend; not guaranteed provider pricing). Replacement verdict: <span class="chip teal">REPLACEMENT_CANDIDATE_VALIDATED</span>. Daily-driver verdict: <span class="chip teal">DAILY_DRIVER_CANDIDATE_VALIDATED</span>. Promotion executed: <strong>no</strong> — Vision remains EXPERIMENTAL; <span class="mono">xiaomi/mimo-v2-omni</span> remains in the registry as the legacy/proven fallback until a future explicit migration phase. Report: <span class="mono">reports/capability-expansion/vision-phase13a-mimo-v25-replacement/</span></div>
+        <div class="vs-sub dim">Phase 13-B (operational recommendation, not certification) — Phase 13-A evidence: smoke 5/5 PASS · stability 15/15 STABLE_PASS cells · observed cost per 5-test run <span class="mono">~$0.000169</span> (estimates: ~$0.17 / 1k runs · ~$1.69 / 10k runs, Crucible spend only, not guaranteed provider pricing). Verdict: <span class="chip teal">DAILY_DRIVER_CANDIDATE_VALIDATED</span> · <span class="chip teal">REPLACEMENT_CANDIDATE_VALIDATED</span>. Promotion executed: <strong>no</strong>. Affects leaderboard: <strong>no</strong>. Affects certification: <strong>no</strong>. Vision remains EXPERIMENTAL. Reports: <span class="mono">reports/capability-expansion/vision-phase13b-v25-preferred-candidate/</span></div>
+      </div>
+      <div class="vision-status-block vision-status-block-wide">
+        <div class="vs-label">LEGACY / PROVEN FALLBACK</div>
+        <div class="vs-value mono">openrouter / xiaomi/mimo-v2-omni</div>
+        <div class="vs-sub dim">Kept available as the legacy/proven fallback until a future explicit migration phase. Phase 12 post-calibration stability: 5/5 STABLE_PASS (15/15 cells). Higher observed cost per stability cell than v2.5 (~9× on the Phase 12 vs Phase 13-A comparison). Not removed, not deprecated in this phase — operators can still rerun against this route via the legacy command in the foot text below.</div>
       </div>
     </div>
     <div class="vision-cards-grid">${cardsMarkup}</div>
     <div class="vision-status-foot dim">
-      Vision remains experimental: results never enter the leaderboard composite or model certification. To rerun: <span class="mono">node scripts/vision-smoke.mjs --provider openrouter --model xiaomi/mimo-v2-omni --max-cost-usd 0.25 --write-report</span>
+      Vision remains experimental: results never enter the leaderboard composite or model certification. To rerun the preferred candidate: <span class="mono">node scripts/vision-smoke.mjs --provider openrouter --model xiaomi/mimo-v2.5 --max-cost-usd 0.25 --write-report</span>. Legacy fallback: <span class="mono">node scripts/vision-smoke.mjs --provider openrouter --model xiaomi/mimo-v2-omni --max-cost-usd 0.25 --write-report</span>
     </div>
   </section>`;
 }
