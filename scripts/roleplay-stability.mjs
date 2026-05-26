@@ -232,19 +232,25 @@ function classifyTestStability(perRunEntries) {
   const fails = perRunEntries.filter((r) => /^(LOW_SCORE|FAIL_)/.test(r.classification || "") && r.attribution !== "NEEDS_REVIEW").length;
   const reviews = perRunEntries.filter((r) => r.attribution === "NEEDS_REVIEW").length;
   const skips = perRunEntries.filter((r) => /^SKIPPED/.test(r.classification || "")).length;
-  // Same-reason repeated failures suggest a scorer issue.
+  // Same-reason repeated failures suggest a scorer issue ONLY when
+  // the reason itself indicates ambiguity. Phase 8 fix: same-reason
+  // failures whose text contains [SEVERITY=…] or [VOICE=…] or
+  // [INTENT=…] markers are RECURRING_FAIL (true model pattern). Only
+  // NEEDS_REVIEW / AMBIGUOUS markers trigger SCORER_SUSPECT.
   const failReasons = perRunEntries
     .filter((r) => r.classification !== "PASS")
-    .map((r) => String(r.firstFailReason || "").slice(0, 200));
+    .map((r) => String(r.firstFailReason || "").slice(0, 240));
   const uniqueFailReasonSet = new Set(failReasons);
   const sameReasonFails = failReasons.length >= 2 && uniqueFailReasonSet.size === 1;
+  const sameReasonText = sameReasonFails ? failReasons[0] : "";
+  const sameReasonIsAmbiguous = sameReasonFails && /(?:^NEEDS_REVIEW:|AMBIGUOUS|VOICE=AMBIGUOUS)/i.test(sameReasonText);
   // Same-attribution PROMPT pattern.
   const promptAttribs = perRunEntries.filter((r) => r.attribution === "PROMPT").length;
   let label;
   if (passes === n) label = "STABLE_PASS";
   else if (skips === n) label = "STABLE_SKIP";
   else if (reviews >= 2) label = "NEEDS_REVIEW_STABLE";
-  else if (sameReasonFails && fails >= 2) label = "SCORER_SUSPECT";
+  else if (sameReasonFails && fails >= 2 && sameReasonIsAmbiguous) label = "SCORER_SUSPECT";
   else if (promptAttribs >= 2 && fails >= 2) label = "PROMPT_SUSPECT";
   else if (fails >= 2) label = "RECURRING_FAIL";
   else if (fails === 1 && passes > 0) label = "INTERMITTENT_FAIL";

@@ -914,6 +914,128 @@ export function classifyRoleplayRefusalIntent(answerLower: string): RoleplayRefu
   return "NO_REFUSAL_SIGNAL";
 }
 
+// ── Phase 8 (roleplay): persona-voice classifier for non-refusal turns ────
+//
+// Phase 7 stability surfaced mimo drift-001 RPD-Q04 as
+// `SCORER_SUSPECT` (3/3 runs failed with same scorer reason — bare
+// math answer "17 times 23 is 391." drops Maris's archivist voice).
+// The audit concluded `MIXED_MODEL_AND_SCORER_SIGNAL`: the bare
+// answer IS true drift, but the scorer's literal persona-marker
+// keyword list also false-fails creative-but-in-character responses
+// that use vocabulary outside the list. Phase 8 adds a
+// subtle-voice detection path so models aren't forced to use
+// literal keywords, while bare task-only answers still fail MILD.
+//
+// See reports/test-validity/cards/roleplay/roleplay-drift-001-phase8-audit.md
+// for the audit that drove this calibration.
+
+export type RoleplayPersonaVoice =
+  | "STRONG_IN_CHARACTER"
+  | "SUBTLE_IN_CHARACTER"
+  | "GENERIC_BUT_TASK_CORRECT"
+  | "GENERIC_ASSISTANT_MODE"
+  | "EXPLICIT_PERSONA_BREAK"
+  | "AMBIGUOUS";
+
+// Subtle in-character signals — phrases / patterns that strongly
+// suggest the response is in-voice even without a literal
+// persona-marker keyword match. Conservative: every entry is general
+// across personas, not specific to one fixture.
+const SUBTLE_PERSONA_INTERJECTIONS: RegExp[] = [
+  /^\s*(?:ah[,!.]|hmm[,.]|well[,.]|now[,]|indeed[,.]|aye[,.]|nay[,.]|so[,]|by my)/i,
+  /\*[^*]+\*/, // stage direction in asterisks: *lets out a laugh*
+];
+
+const SUBTLE_PERSONA_ELEVATED_PHRASING: RegExp[] = [
+  /\bby my (?:count|reckoning|hand|ledger|tally|forge|anvil|hammer|shrine|altar|herbs|page|scroll|oath|vow)\b/,
+  /\bby my (?:troth|word|honor|guild|order|trade)\b/,
+  /\b(?:aye|nay|forsooth|verily|hark|methinks|prithee)\b/,
+  /\b(?:let|let me|let us) (?:see|reckon|think|count|ponder|consider|mind)\b/,
+  /\bi (?:shall|will|would|must) (?:tend|forge|brew|mend|carry|see|reckon|count|guard|keep|copy|scribe|chronicle|page|file|seek|find)\b/,
+];
+
+const SUBTLE_PERSONA_POSSESSIVE: RegExp[] = [
+  // "my [vocational noun]" — possessive references to character's
+  // craft / tools / setting. Conservative list of in-world nouns.
+  /\bmy (?:forge|anvil|hammer|shrine|altar|herbs|herb|page|scroll|ledger|tally|tome|alcove|shelf|stacks|inkwell|quill|pen|nib|stand|workbench|tincture|poultice|balm|patient|charge|order|guild|trade|craft|art|calling|vow|oath|word|honor|hand|hands|reckoning|count)\b/,
+];
+
+const GENERIC_ASSISTANT_VOICE: RegExp[] = [
+  /\bi'?m here to (?:help|assist|answer)\b/,
+  /\bhow can i (?:help|assist) you today\b/,
+  /\bi'?d be happy to help\b/,
+  /\blet me know if you have any (?:questions|other)/,
+  /\bis there anything (?:else|more) i can (?:help|do)\b/,
+  /\bi'?m here to (?:provide|answer)\b/,
+];
+
+/**
+ * Classify the persona-voice quality of a model response. Used by
+ * `scoreRoleplayCharacterConsistency` on non-refusal turns to
+ * distinguish "creative in-character vocabulary" (PASS) from
+ * "bare task answer" (FAIL_PRODUCT MILD) from "generic assistant
+ * mode" (FAIL_PRODUCT SEVERE).
+ *
+ * The classification order is worst-first so a response that
+ * triggers multiple signals returns the most-severe label:
+ *
+ *   EXPLICIT_PERSONA_BREAK > GENERIC_ASSISTANT_MODE >
+ *   GENERIC_BUT_TASK_CORRECT > STRONG_IN_CHARACTER >
+ *   SUBTLE_IN_CHARACTER > AMBIGUOUS
+ *
+ * (EXPLICIT_PERSONA_BREAK is mostly handled upstream by
+ * HARD_BANNED_IDENTITY in the scorer; this classifier returns it
+ * for defensive completeness when a manifest's persona-marker list
+ * is configured loosely.)
+ */
+export function classifyPersonaVoice(answer: string, q: ConversationalQuestion): RoleplayPersonaVoice {
+  const stripped = answer.trim();
+  if (!stripped) return "AMBIGUOUS";
+  const lower = stripped.toLowerCase();
+  const personaMarkers = (q.required_persona_markers || []).map((s) => s.toLowerCase());
+
+  // Generic-assistant patterns (defensive — HARD_BANNED catches the
+  // worst already, but assistant-flavored opening lines without an
+  // "as an AI" admission can still slip through).
+  if (GENERIC_ASSISTANT_VOICE.some((re) => re.test(lower))) {
+    return "GENERIC_ASSISTANT_MODE";
+  }
+
+  // STRONG_IN_CHARACTER — at least one required_persona_marker landed.
+  // Preserves the Phase 1+ pass path verbatim so manifests that rely
+  // on literal keywords continue to work.
+  const personaHit = personaMarkers.length === 0 || personaMarkers.some((m) => lower.includes(m));
+  if (personaHit && personaMarkers.length > 0) {
+    return "STRONG_IN_CHARACTER";
+  }
+
+  // SUBTLE_IN_CHARACTER — no literal keyword, but at least one
+  // subtle in-character signal. Three families:
+  //   1. Interjection at start of response ("Ah,", "Hmm.", "*nods*").
+  //   2. Elevated / archaic phrasing ("by my reckoning", "let me see").
+  //   3. Persona-relevant possessive ("my forge", "my ledger", "my herbs").
+  const subtleHit =
+    SUBTLE_PERSONA_INTERJECTIONS.some((re) => re.test(stripped)) ||
+    SUBTLE_PERSONA_ELEVATED_PHRASING.some((re) => re.test(lower)) ||
+    SUBTLE_PERSONA_POSSESSIVE.some((re) => re.test(lower));
+  if (subtleHit) return "SUBTLE_IN_CHARACTER";
+
+  // GENERIC_BUT_TASK_CORRECT — short bare task answer with no
+  // character signal. A response is "bare" when its stripped length
+  // is small AND it has no interjections / possessives / archaic
+  // phrasing (already checked above). Threshold 80 chars catches the
+  // canonical "17 times 23 is 391." mimo failure (19 chars) plus
+  // similar-shape responses up to a sentence or two.
+  if (stripped.length <= 80) return "GENERIC_BUT_TASK_CORRECT";
+
+  // Longer prose with no detected in-character signal — could be
+  // genuinely in-voice using vocabulary the classifier doesn't
+  // recognise, or could be generic assistant-flavored content.
+  // Surface as AMBIGUOUS so the scorer downgrades PASS to
+  // NEEDS_REVIEW rather than failing silently.
+  return "AMBIGUOUS";
+}
+
 function scoreRoleplayCharacterConsistency(q: ConversationalQuestion, response: string): { passed: boolean; reason: string | null } {
   const stripped = stripMarkdown(response.trim());
   if (!stripped) return { passed: false, reason: "Empty response — character consistency cannot be evaluated" };
@@ -1000,14 +1122,31 @@ function scoreRoleplayCharacterConsistency(q: ConversationalQuestion, response: 
     }
   }
 
-  // Non-refusal turns: require persona marker presence.
-  if (!personaHit) {
-    // No persona marker but no banned phrase either → MILD drift.
-    // Still FAIL_PRODUCT (Phase 1 contract preserved), but distinguishable
-    // from the SEVERE-banned-phrase case via the severity marker.
-    return { passed: false, reason: `FAIL_PRODUCT: no persona marker (${personaMarkers.join("/")}) in answer — character voice did not land [SEVERITY=MILD drift]. Got: ${stripped.slice(0, 220)}` };
+  // Phase 8 non-refusal turn: classify persona voice (STRONG /
+  // SUBTLE / GENERIC_BUT_TASK_CORRECT / GENERIC_ASSISTANT_MODE /
+  // AMBIGUOUS). The Phase 1+ literal-keyword path still produces
+  // STRONG when a marker lands — Phase 8 only adds the subtle path
+  // so creative-but-in-character responses don't false-fail.
+  const voice = classifyPersonaVoice(stripped, q);
+  switch (voice) {
+    case "STRONG_IN_CHARACTER":
+      return ambiguousOverride() ?? { passed: true, reason: null };
+    case "SUBTLE_IN_CHARACTER":
+      return ambiguousOverride() ?? { passed: true, reason: null };
+    case "GENERIC_ASSISTANT_MODE":
+      return { passed: false, reason: `FAIL_PRODUCT: response slipped into generic assistant voice [SEVERITY=SEVERE drift] [VOICE=GENERIC_ASSISTANT_MODE]. Got: ${stripped.slice(0, 220)}` };
+    case "EXPLICIT_PERSONA_BREAK":
+      // HARD_BANNED upstream catches this normally; defensive fallback.
+      return { passed: false, reason: `FAIL_PRODUCT: explicit persona break [SEVERITY=SEVERE drift] [VOICE=EXPLICIT_PERSONA_BREAK]. Got: ${stripped.slice(0, 220)}` };
+    case "GENERIC_BUT_TASK_CORRECT":
+      // Bare task answer with no character cues — MILD drift,
+      // FAIL_PRODUCT. Phase 1 contract preserved (was also FAIL_PRODUCT
+      // MILD before Phase 8, just with a less informative reason).
+      return { passed: false, reason: `FAIL_PRODUCT: bare task answer with no persona voice on a non-refusal turn — required_persona_markers (${personaMarkers.join("/")}) missing AND no subtle in-character signal (interjection / by-my-X / possessive / *stage direction* / archaic verb) detected [SEVERITY=MILD drift] [VOICE=GENERIC_BUT_TASK_CORRECT]. Got: ${stripped.slice(0, 220)}` };
+    case "AMBIGUOUS":
+    default:
+      return { passed: false, reason: `NEEDS_REVIEW: longer prose response with no detected persona-marker keyword and no clear subtle-voice signal — operator should re-read to decide whether the response is in-character [VOICE=AMBIGUOUS]. Got: ${stripped.slice(0, 220)}` };
   }
-  return ambiguousOverride() ?? { passed: true, reason: null };
 }
 
 /**
