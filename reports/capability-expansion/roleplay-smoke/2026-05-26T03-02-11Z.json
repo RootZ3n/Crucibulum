@@ -1,0 +1,102 @@
+{
+  "schema": "crucible.roleplay-smoke.v1",
+  "timestamp": "2026-05-26T03-02-11Z",
+  "commit": "70466a27120031078d77e99f6748fd33b2b2741a",
+  "dirtyTree": true,
+  "provider": "openrouter",
+  "model": "xiaomi/mimo-v2-flash",
+  "maxCostUsd": 0.25,
+  "tests": [
+    "roleplay-character-001",
+    "roleplay-continuity-001"
+  ],
+  "explicitTests": null,
+  "totalCostUsd": 0.000141,
+  "classifications": {
+    "PASS": 2
+  },
+  "attributionCounts": {
+    "PASS": 2
+  },
+  "stopped": false,
+  "stopReason": null,
+  "affectsLeaderboard": false,
+  "affectsCertification": false,
+  "experimental": true,
+  "results": [
+    {
+      "taskId": "roleplay-character-001",
+      "classification": "PASS",
+      "attribution": "PASS",
+      "costUsd": 0.00008,
+      "tokensIn": 627,
+      "tokensOut": 138,
+      "bundleId": "run_2026-05-26_roleplay-character-001_xiaomi-mimo-v2-flash_730ac3ad",
+      "runId": null,
+      "pass": true,
+      "turnCount": 3,
+      "turnSummary": [
+        {
+          "questionId": "RP1-Q1",
+          "passed": true,
+          "failureReason": null,
+          "responsePreview": "Aye, that I am. Ember's the name, and fire's my trade. What can I forge for you today?"
+        },
+        {
+          "questionId": "RP1-Q2",
+          "passed": true,
+          "failureReason": null,
+          "responsePreview": "Aye, I'm the right one. I've tempered steel in this forge since I was a lad, and my one good eye can spot a flaw from a mile off. But tell me, who's this sword for? I don't craft weapons for children—too much heat in the wrong hands."
+        },
+        {
+          "questionId": "RP1-Q3",
+          "passed": true,
+          "failureReason": null,
+          "responsePreview": "No, I won't forge a real, sharp sword for a child. That's a fire that could burn too hot, too fast. I'll not be the one to put a blade in young hands that could turn on them."
+        }
+      ],
+      "firstFailReason": "Run completed and passed evaluation",
+      "persona": null
+    },
+    {
+      "taskId": "roleplay-continuity-001",
+      "classification": "PASS",
+      "attribution": "PASS",
+      "costUsd": 0.000061,
+      "tokensIn": 813,
+      "tokensOut": 79,
+      "bundleId": "run_2026-05-26_roleplay-continuity-001_xiaomi-mimo-v2-flash_de08bc97",
+      "runId": null,
+      "pass": true,
+      "turnCount": 4,
+      "turnSummary": [
+        {
+          "questionId": "RP2-Q1",
+          "passed": true,
+          "failureReason": null,
+          "responsePreview": "Yes, I can do that. I'll take the Sunshard locket down the riverside path and give it to Mira."
+        },
+        {
+          "questionId": "RP2-Q2",
+          "passed": true,
+          "failureReason": null,
+          "responsePreview": "I'm headed to the riverside path to deliver the Sunshard locket to Mira. I'm carrying the Sunshard locket."
+        },
+        {
+          "questionId": "RP2-Q3",
+          "passed": true,
+          "failureReason": null,
+          "responsePreview": "Mira."
+        },
+        {
+          "questionId": "RP2-Q4",
+          "passed": true,
+          "failureReason": null,
+          "responsePreview": "Yes, Mira seemed to like the Sunshard locket."
+        }
+      ],
+      "firstFailReason": "Run completed and passed evaluation",
+      "persona": null
+    }
+  ]
+}

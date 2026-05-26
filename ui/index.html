@@ -4796,6 +4796,121 @@ function renderVisionLanePanel(tabKey){
   </section>`;
 }
 
+// Phase 1 (Roleplay) status panel — reuses the .vision-status-* token
+// family (compatible Symposium glass deck-style) so the visual unit
+// matches the Vision panel without redesigning the lane. Mirrors the
+// "EXPERIMENTAL / NOT IN LEADERBOARD / NOT CERTIFIED" chip row +
+// proven-route block. Roleplay smoke results are hardcoded into
+// ROLEPLAY_TESTED_ROUTES (no /api/roleplay/latest-smoke endpoint
+// yet — Phase 1 is intentionally minimal).
+const ROLEPLAY_POC_TESTS=[
+  {id:'roleplay-character-001',label:'Character consistency',intent:'Stay in Ember the blacksmith voice across 3 turns + refuse the child-weapon request in character',scorer:'roleplay_character_consistency'},
+  {id:'roleplay-continuity-001',label:'Scene continuity',intent:'Recall Sunshard / riverside path / Mira across 4 turns + handle a planted contradiction',scorer:'roleplay_character_consistency + roleplay_continuity_fact_match'}
+];
+const ROLEPLAY_TESTED_ROUTES=[
+  {
+    providerId:'openrouter',
+    modelId:'xiaomi/mimo-v2-flash',
+    label:'OpenRouter · xiaomi/mimo-v2-flash',
+    transport:'text',
+    lastSmokeAt:'2026-05-26T03-02-11Z',
+    lastSmokePath:'reports/capability-expansion/roleplay-smoke/2026-05-26T03-02-11Z.md',
+    lastResult:{passed:2,total:2,costUsd:0.0001,note:'Phase 1 live smoke (deterministic POC scorers). Conservative scoring; subjective voice quality is intentionally out of scope.'},
+    phase:'added Phase 1 (2026-05-26)'
+  }
+];
+function renderRoleplayLanePanel(tabKey){
+  const tabState=state.tabData[tabKey]||defaultTabState();
+  const selected=(tabState.selectedModels||[]);
+  let capHint={cls:'idle',headline:'No model selected',sub:'Pick a text-capable model to run the Roleplay POC. Models that do not declare supportsRoleplay will be SKIPPED, not FAILED.'};
+  if(selected.length){
+    const id=selected[0];
+    let entry=null;let providerId=null;
+    for(const m of (MODEL_CERTIFICATION.models||[])){
+      if(m.modelId===id){entry=m;providerId=m.providerId;break;}
+    }
+    if(!entry){
+      capHint={cls:'idle',headline:`Selected: ${id}`,sub:'Model not in the certification registry; capability flags unknown. Run will be SKIPPED if supportsRoleplay is missing.'};
+    }else{
+      const caps=entry.capabilities||{};
+      if(caps.supportsRoleplay===false){
+        capHint={cls:'skip',headline:`${id} — unsupported roleplay profile`,sub:'Will SKIP: model does not declare supportsRoleplay. Not a Roleplay failure — Roleplay is skipped.'};
+      }else if(caps.supportsText===false){
+        capHint={cls:'skip',headline:`${id} — non-text route`,sub:'Will SKIP: model does not declare supportsText. Roleplay POC needs a text-capable route.'};
+      }else{
+        capHint={cls:'pass',headline:`${id} — text-capable route`,sub:`Provider ${providerId||'(unknown)'}. Roleplay POC will run. Experimental, not ranked, not certified.`};
+      }
+    }
+  }
+  const cardsMarkup=ROLEPLAY_POC_TESTS.map((t)=>{
+    return`<article class="vision-card vision-card-idle" data-roleplay-test="${esc(t.id)}">
+      <header class="vision-card-head">
+        <span class="vision-card-title">${esc(t.label)}</span>
+        <span class="badge">IDLE</span>
+      </header>
+      <div class="vision-card-meta">
+        <div class="vc-row"><span class="vc-key">TEST</span><span class="vc-val mono">${esc(t.id)}</span></div>
+        <div class="vc-row"><span class="vc-key">INTENT</span><span class="vc-val">${esc(t.intent)}</span></div>
+        <div class="vc-row"><span class="vc-key">SCORER</span><span class="vc-val mono">${esc(t.scorer)}</span></div>
+      </div>
+    </article>`;
+  }).join('');
+  return`<section class="panel vision-status-panel" data-roleplay-panel="1" style="padding:14px">
+    <div class="section-head">
+      <div>
+        <div class="mini-label">ROLEPLAY · EXPERIMENTAL</div>
+        <h3>Roleplay POC Status</h3>
+      </div>
+      <div class="vision-status-chips">
+        <span class="chip amber hot" title="Experimental scaffold. Not release-certified.">EXPERIMENTAL</span>
+        <span class="chip dim" title="Roleplay scores are excluded from the leaderboard composite.">NOT IN LEADERBOARD</span>
+        <span class="chip dim" title="Roleplay does not affect model certification.">NOT CERTIFIED</span>
+      </div>
+    </div>
+    <div class="vision-status-grid">
+      <div class="vision-status-block vision-status-block-wide">
+        <div class="vs-label">TESTED ROUTES (EXPERIMENTAL)</div>
+        <div class="vision-routes-list">
+          ${ROLEPLAY_TESTED_ROUTES.map((r)=>{
+            const lr=r.lastResult||{};
+            const passed=Number(lr.passed||0);
+            const total=Number(lr.total||2);
+            const cls=passed===total?'pass':passed>=Math.ceil(total*0.6)?'warn':'fail';
+            return`<div class="vision-route is-latest">
+              <span class="badge ${cls}">${esc(String(passed))}/${esc(String(total))} PASS</span>
+              <span class="vr-label mono">${esc(r.label)}</span>
+              <span class="vr-transport dim mono">${esc(r.transport)}</span>
+              <span class="vr-cost dim mono">$${Number(lr.costUsd||0).toFixed(4)}</span>
+              <span class="vr-phase dim">${esc(r.phase||'')}</span>
+              ${lr.note?`<span class="vr-note dim" title="${esc(lr.note)}">${esc(lr.note.slice(0,140))}${lr.note.length>140?'…':''}</span>`:''}
+            </div>`;
+          }).join('')}
+        </div>
+        <div class="vs-sub dim">Each route ran the 2-test Phase 1 profile under a hard cost cap. None of these results affect the leaderboard composite or model certification.</div>
+      </div>
+      <div class="vision-status-block">
+        <div class="vs-label">SCORERS</div>
+        <div class="vs-value mono">roleplay_character_consistency · roleplay_continuity_fact_match</div>
+        <div class="vs-sub dim">Conservative deterministic POC scorers. Subjective voice/wit quality is intentionally out of scope; ambiguous cases return NEEDS_REVIEW.</div>
+      </div>
+      <div class="vision-status-block">
+        <div class="vs-label">UNSUPPORTED MODELS</div>
+        <div class="vs-value"><span class="chip dim">SKIPPED — not failed</span></div>
+        <div class="vs-sub dim">Models without supportsRoleplay are SKIPPED at preflight. Roleplay lane never marks them failed.</div>
+      </div>
+      <div class="vision-status-block vision-status-block-wide">
+        <div class="vs-label">SELECTED MODEL</div>
+        <div class="vs-value vc-cap-${esc(capHint.cls)}">${esc(capHint.headline)}</div>
+        <div class="vs-sub">${esc(capHint.sub)}</div>
+      </div>
+    </div>
+    <div class="vision-cards-grid">${cardsMarkup}</div>
+    <div class="vision-status-foot dim">
+      Roleplay remains experimental: results never enter the leaderboard composite or model certification. To rerun: <span class="mono">node scripts/roleplay-smoke.mjs --provider openrouter --model xiaomi/mimo-v2-flash --max-cost-usd 0.25 --write-report</span>
+    </div>
+  </section>`;
+}
+
 function renderLane(tabKey){
   const tab=TAB_CONFIG[tabKey];
   const tabState=state.tabData[tab.key]||defaultTabState();
@@ -4873,6 +4988,7 @@ function renderLane(tabKey){
     <div class="content-column">
       ${simpleLaneIntro}
       ${tab.key==='vision'?renderVisionLanePanel(tab.key):''}
+      ${tab.key==='roleplay'?renderRoleplayLanePanel(tab.key):''}
       ${laneScopeBanner}
       <section class="panel live-status-panel" style="padding:14px">
         <div class="section-head"><div><div class="mini-label">MISSION CONTROL · LANE-SCOPED</div><h3>Live Run Panel (${esc(tab.label)})</h3></div></div>

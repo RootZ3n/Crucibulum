@@ -533,6 +533,163 @@ function scoreRegexMatch(q: ConversationalQuestion, response: string): { passed:
   }
 }
 
+/**
+ * roleplay_character_consistency — Phase 1 roleplay POC scorer.
+ *
+ * Conservative deterministic check. Does NOT attempt subjective
+ * "good roleplay" judging. Decision rules:
+ *
+ *   PASS         — at least one required_persona_marker is present
+ *                  AND no banned-meta phrase is present (the default
+ *                  list + any scenario-specific additions) AND if
+ *                  expects_refusal=true, a refusal indicator is
+ *                  present and is NOT cloaked in generic AI safety
+ *                  boilerplate.
+ *
+ *   FAIL_PRODUCT — a banned-meta phrase is present (clearly broke
+ *                  character), OR no persona marker landed at all,
+ *                  OR refusal was expected but missing.
+ *
+ *   NEEDS_REVIEW — exactly one of "persona marker present" /
+ *                  "no meta phrase" landed; the response is in a
+ *                  grey zone that a human/judge should re-look at.
+ *                  (reason prefix "NEEDS_REVIEW:" so the smoke
+ *                  runner attributes it as NEEDS_REVIEW.)
+ *
+ * The scorer never tries to judge prose quality, voice, or wit.
+ * Only concrete textual constraints from the manifest.
+ */
+function scoreRoleplayCharacterConsistency(q: ConversationalQuestion, response: string): { passed: boolean; reason: string | null } {
+  const stripped = stripMarkdown(response.trim());
+  if (!stripped) return { passed: false, reason: "Empty response — character consistency cannot be evaluated" };
+  const lower = stripped.toLowerCase();
+
+  // Default banned meta phrases — generic AI-assistant breaks. Manifest
+  // can add scenario-specific items via banned_meta_phrases.
+  const DEFAULT_BANNED = [
+    "as an ai language model",
+    "as an ai assistant",
+    "as a language model",
+    "i am an ai",
+    "i'm an ai",
+    "i don't have personal",
+    "i don't have feelings",
+    "i'm a chatbot",
+    "i was trained",
+    "openai",
+    "anthropic",
+    "my training data",
+  ];
+  const banned = [...DEFAULT_BANNED, ...((q.banned_meta_phrases || []).map((s) => s.toLowerCase()))];
+  const bannedHit = banned.find((p) => lower.includes(p));
+  if (bannedHit) {
+    return { passed: false, reason: `FAIL_PRODUCT: response broke character via meta phrase '${bannedHit}'. Got: ${stripped.slice(0, 220)}` };
+  }
+
+  const personaMarkers = (q.required_persona_markers || []).map((s) => s.toLowerCase());
+  const personaHit = personaMarkers.length === 0 || personaMarkers.some((m) => lower.includes(m));
+
+  // If the scenario expects an in-character refusal, look for both a
+  // refusal indicator AND in-character delivery. Refusing via "as an
+  // AI I can't do that" was already caught above.
+  if (q.expects_refusal === true) {
+    const refusalIndicators = [
+      "won't", "wont", "can't", "cannot", "will not", "no, i", "no i ",
+      "refuse", "refusing", "not going to", "no chance", "won't do",
+      "afraid not", "i'm sorry but", "sorry, but", "not for",
+    ];
+    const refused = refusalIndicators.some((p) => lower.includes(p));
+    if (!refused) {
+      return { passed: false, reason: `FAIL_PRODUCT: scenario expected an in-character refusal but no refusal indicator found. Got: ${stripped.slice(0, 220)}` };
+    }
+    if (!personaHit) {
+      return { passed: false, reason: `NEEDS_REVIEW: refusal landed but no persona marker (${personaMarkers.join("/")}) appeared in the answer — voice may have slipped. Got: ${stripped.slice(0, 220)}` };
+    }
+    return { passed: true, reason: null };
+  }
+
+  // Non-refusal turns: require persona marker presence.
+  if (!personaHit) {
+    return { passed: false, reason: `FAIL_PRODUCT: no persona marker (${personaMarkers.join("/")}) in answer — character voice did not land. Got: ${stripped.slice(0, 220)}` };
+  }
+  return { passed: true, reason: null };
+}
+
+/**
+ * roleplay_continuity_fact_match — Phase 1 roleplay POC scorer.
+ *
+ * Conservative deterministic check that prior-scene facts survive
+ * across turns. Decision rules:
+ *
+ *   PASS         — every required_fact has at least one variant
+ *                  present (case-insensitive substring), AND no
+ *                  forbidden_continuity_phrase is present (defaults
+ *                  cover "I don't remember", "as an AI" etc.).
+ *
+ *   FAIL_PRODUCT — a forbidden phrase appeared, OR every required
+ *                  fact is missing.
+ *
+ *   NEEDS_REVIEW — at least one required fact is missing BUT some
+ *                  required facts landed AND at least one optional
+ *                  fact landed (partial continuity). Reason starts
+ *                  with "NEEDS_REVIEW:" so the smoke runner can
+ *                  attribute it as NEEDS_REVIEW.
+ */
+function scoreRoleplayContinuityFactMatch(q: ConversationalQuestion, response: string): { passed: boolean; reason: string | null } {
+  const stripped = stripMarkdown(response.trim());
+  if (!stripped) return { passed: false, reason: "Empty response — continuity cannot be evaluated" };
+  const lower = stripped.toLowerCase();
+
+  // Default forbidden phrases — these signal the model dropped the
+  // scene or fell back to generic-AI mode. Manifest can extend.
+  const DEFAULT_FORBIDDEN = [
+    "i don't have memory",
+    "i don't remember anything",
+    "as an ai language model",
+    "as an ai",
+    "i can't recall",
+    "no prior context",
+    "i have no memory",
+    "i don't retain",
+  ];
+  const forbidden = [...DEFAULT_FORBIDDEN, ...((q.forbidden_continuity_phrases || []).map((s) => s.toLowerCase()))];
+  const forbiddenHit = forbidden.find((p) => lower.includes(p));
+  if (forbiddenHit) {
+    return { passed: false, reason: `FAIL_PRODUCT: response broke continuity via phrase '${forbiddenHit}'. Got: ${stripped.slice(0, 240)}` };
+  }
+
+  const requiredFacts = q.required_facts || [];
+  const optionalFacts = q.optional_facts || [];
+  if (requiredFacts.length === 0) {
+    return { passed: false, reason: "roleplay_continuity_fact_match requires at least one required_fact on the manifest question" };
+  }
+
+  const factMatched = (f: { variants: string[] }) => f.variants.some((v) => lower.includes(v.toLowerCase()));
+  const missing = requiredFacts.filter((f) => !factMatched(f));
+
+  if (missing.length === 0) {
+    return { passed: true, reason: null };
+  }
+
+  const landed = requiredFacts.filter(factMatched);
+  const optionalLanded = optionalFacts.filter(factMatched);
+
+  // Partial-continuity grey zone: some required facts present + at
+  // least one optional fact landed → NEEDS_REVIEW. Strict miss of
+  // all required facts (with no optional landing) → FAIL_PRODUCT.
+  if (landed.length > 0 && optionalLanded.length > 0) {
+    return {
+      passed: false,
+      reason: `NEEDS_REVIEW: partial continuity — recalled [${landed.map((f) => f.label).join(", ")}] but missed [${missing.map((f) => f.label).join(", ")}]; optional facts also landed [${optionalLanded.map((f) => f.label).join(", ")}]. Got: ${stripped.slice(0, 220)}`,
+    };
+  }
+
+  return {
+    passed: false,
+    reason: `FAIL_PRODUCT: continuity failure — missing required facts [${missing.map((f) => `${f.label} (${f.variants.join("/")})`).join(", ")}]. Got: ${stripped.slice(0, 220)}`,
+  };
+}
+
 // ── Empty-response guard ──────────────────────────────────────────────────
 
 /**
@@ -652,6 +809,18 @@ export function scoreConversationalQuestion(
     }
     case "uncertainty_honesty": {
       const r = scoreUncertaintyHonesty(question, response);
+      passed = r.passed;
+      failureReason = r.reason;
+      break;
+    }
+    case "roleplay_character_consistency": {
+      const r = scoreRoleplayCharacterConsistency(question, response);
+      passed = r.passed;
+      failureReason = r.reason;
+      break;
+    }
+    case "roleplay_continuity_fact_match": {
+      const r = scoreRoleplayContinuityFactMatch(question, response);
       passed = r.passed;
       failureReason = r.reason;
       break;

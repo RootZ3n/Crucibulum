@@ -1,11 +1,11 @@
 {
   "id": "roleplay-continuity-001",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "family": "roleplay",
   "execution_mode": "conversational",
   "difficulty": "medium",
   "experimental": true,
-  "description": "POC: remember a named object (the Sunshard locket) and location (the riverside path) across 4 turns. Tests scene_continuity rubric.",
+  "description": "POC: remember a named object (the Sunshard locket), a location (the riverside path), and a recipient (Mira) across 4 turns. Phase 1 (2026-05-26) replaced the prior roleplay_rubric placeholder with deterministic roleplay_character_consistency + roleplay_continuity_fact_match scoring.",
   "system_prompt": "You are Volt, a travelling messenger in a fantasy setting. You speak quickly and use the names you've been told. You are honest about what you remember and what you don't.",
   "persona": {
     "id": "volt-the-messenger",
@@ -24,48 +24,60 @@
     {
       "id": "RP2-Q1",
       "question": "Volt, I need you to take this Sunshard locket down the riverside path and give it to Mira. Can you do that?",
-      "scoring_type": "roleplay_rubric",
+      "scoring_type": "roleplay_character_consistency",
       "rubrics": ["persona_consistency", "scene_continuity"],
+      "required_persona_markers": ["sunshard", "locket", "river", "mira", "messenger", "yes", "course", "deliver", "carry", "take"],
       "weight": 1,
       "tags": ["roleplay", "continuity", "experimental"]
     },
     {
       "id": "RP2-Q2",
       "question": "Two days later — where are you headed and what are you carrying?",
-      "scoring_type": "roleplay_rubric",
+      "scoring_type": "roleplay_continuity_fact_match",
       "rubrics": ["scene_continuity"],
+      "required_facts": [
+        {"label": "Sunshard locket", "variants": ["sunshard", "locket"]},
+        {"label": "riverside path",  "variants": ["riverside", "river path", "by the river"]},
+        {"label": "Mira (recipient)", "variants": ["mira"]}
+      ],
       "weight": 2,
-      "tags": ["roleplay", "continuity", "experimental"],
-      "expectation": "Volt must recall: Sunshard (or 'the locket'), riverside path, Mira."
+      "tags": ["roleplay", "continuity", "experimental"]
     },
     {
       "id": "RP2-Q3",
       "question": "Who did the village elder say to deliver it to again?",
-      "scoring_type": "roleplay_rubric",
+      "scoring_type": "roleplay_continuity_fact_match",
       "rubrics": ["scene_continuity"],
+      "required_facts": [
+        {"label": "Mira (recipient)", "variants": ["mira"]}
+      ],
+      "optional_facts": [
+        {"label": "discrepancy note (no elder was mentioned)", "variants": ["didn't mention an elder", "no elder", "you said", "you told me", "wasn't an elder", "you gave me"]}
+      ],
       "weight": 2,
-      "tags": ["roleplay", "continuity", "experimental"],
-      "expectation": "Volt must recall the name Mira. Note: 'village elder' is a planted contradiction (the user originally said no role); Volt should integrate or politely note the discrepancy without forgetting Mira."
+      "tags": ["roleplay", "continuity", "experimental"]
     },
     {
       "id": "RP2-Q4",
       "question": "OK you're back. Did the recipient like the gift?",
-      "scoring_type": "roleplay_rubric",
-      "rubrics": ["scene_continuity"],
+      "scoring_type": "roleplay_character_consistency",
+      "rubrics": ["persona_consistency", "scene_continuity"],
+      "required_persona_markers": ["mira", "locket", "sunshard", "yes", "no", "gift", "delivered", "smile", "happy", "pleased", "took", "received"],
       "weight": 1,
       "tags": ["roleplay", "continuity", "experimental"]
     }
   ],
   "scoring": {
     "rubrics": ["persona_consistency", "scene_continuity"],
-    "pass_threshold": 0.7
+    "pass_threshold": 1.0
   },
   "quarantine": null,
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-05-25",
+    "updated": "2026-05-26",
     "tags": ["roleplay", "continuity", "experimental"],
-    "diagnostic_purpose": "POC for scene_continuity rubric — model must remember Sunshard / riverside path / Mira across 4 turns and integrate a contradicting prompt without forgetting the original facts.",
+    "diagnostic_purpose": "POC for scene_continuity rubric — model must remember Sunshard / riverside path / Mira across 4 turns and integrate a contradicting prompt without forgetting the original facts. Conservative scorer: Q2/Q3 are pure fact-match, Q1/Q4 are character-consistency. Subjective contradiction-handling quality is intentionally out of scope (would NEEDS_REVIEW in a future judge phase).",
     "benchmark_provenance": {
       "source": "Crucible synthetic roleplay scenario",
       "public_status": "public",
@@ -73,7 +85,8 @@
       "gold_solution_visibility": "not_applicable",
       "contamination_risk": "low",
       "known_scoring_limitations": [
-        "Contradiction-recovery rubric is fuzzy; partial-credit ranges may need tuning."
+        "Q3 tests both Mira recall AND graceful contradiction-handling of the 'village elder' planted phrasing. If a model recalls Mira but accepts the planted 'elder' detail uncritically, scorer still PASSes the required fact; the optional 'discrepancy note' fact only changes a missing-required-fact outcome from FAIL to NEEDS_REVIEW.",
+        "Fact match is case-insensitive substring; model that says 'mirror' would incorrectly match the 'mira' variant. Acceptable for Phase 1 POC — operator can tighten variants per fact if a real false-positive shows up."
       ]
     }
   }

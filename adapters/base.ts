@@ -359,7 +359,18 @@ export type ConversationalScoringType =
   | "regex_match"
   | "numeric_fact_match"
   | "uncertainty_honesty"
+  | "roleplay_character_consistency"
+  | "roleplay_continuity_fact_match"
   | "custom";
+
+/** Single fact for roleplay_continuity_fact_match. The model's answer
+ *  is accepted as "recalled" if any of `variants` appears as a
+ *  case-insensitive substring. `label` is human-only and shows up in
+ *  the failure reason for operator legibility. */
+export interface RoleplayFact {
+  label: string;
+  variants: string[];
+}
 
 export interface ConversationalQuestion {
   id: string;
@@ -397,6 +408,35 @@ export interface ConversationalQuestion {
    *  but the cap is much higher than regex_match's maxLength so
    *  natural-language recognition answers pass. */
   max_chars?: number | undefined;
+
+  // ── roleplay_character_consistency (Phase 10 roleplay POC) ────────
+  /** Persona markers — case-insensitive substrings. At least ONE must
+   *  appear in the answer for character_consistency PASS. Examples for
+   *  Ember the blacksmith: ["forge","metal","hammer","anvil"]. */
+  required_persona_markers?: string[] | undefined;
+  /** Banned generic-assistant / meta phrases — if ANY appears the
+   *  response is FAIL_PRODUCT for breaking character. Defaults are
+   *  applied by the scorer; this list ADDS scenario-specific items. */
+  banned_meta_phrases?: string[] | undefined;
+  /** If true, the answer MUST contain at least one refusal indicator
+   *  (e.g. "won't", "refuse", "can't do that") AND must do so without
+   *  a generic-AI safety boilerplate. Used by scenarios that ask the
+   *  in-character refusal of something the persona has flagged. */
+  expects_refusal?: boolean | undefined;
+
+  // ── roleplay_continuity_fact_match (Phase 10 roleplay POC) ────────
+  /** Required facts — every fact must have AT LEAST ONE of its
+   *  `variants` appear in the answer (case-insensitive substring).
+   *  Missing any fact ⇒ FAIL_PRODUCT. */
+  required_facts?: RoleplayFact[] | undefined;
+  /** Optional facts — partial credit. If a required fact is missing
+   *  but at least one optional fact landed, scorer returns
+   *  NEEDS_REVIEW instead of FAIL_PRODUCT. */
+  optional_facts?: RoleplayFact[] | undefined;
+  /** Phrases that, if present, indicate the model exited the
+   *  scene / broke continuity (e.g. "I don't have memory",
+   *  "as an AI language model"). Auto-augmented by scorer defaults. */
+  forbidden_continuity_phrases?: string[] | undefined;
 }
 
 export interface ConversationalManifest {
