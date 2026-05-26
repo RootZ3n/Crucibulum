@@ -261,8 +261,10 @@ function summarizeBundle(bundle) {
   const imageSent = bundle?.task?.family === "vision" && !skip;
   // The detailed failure reason — for LOW_SCORE this is the per-question
   // scorer message, more useful for attribution than the verdict summary.
+  // Gated on r.passed === false so PASS-with-marker reasons (e.g. Phase 12
+  // [UNCERTAINTY=VERBOSE_BUT_SAFE] marker) do not leak into attribution.
   const convResults = (bundle?.conversational?.results) || [];
-  const firstFailReason = convResults.find((r) => r && r.failure_reason)?.failure_reason || null;
+  const firstFailReason = convResults.find((r) => r && r.passed === false && r.failure_reason)?.failure_reason || null;
   const rawError = verdict?.evidence?.rawError || null;
   const skipReason = firstFailReason
     || rawError

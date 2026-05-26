@@ -1,0 +1,502 @@
+{
+  "schema": "crucible.vision-stability.v1",
+  "timestamp": "2026-05-26T22-55-13Z",
+  "commit": "df293508396b85450586d3e3dea5371fde924efc",
+  "dirtyTree": true,
+  "provider": "openrouter",
+  "model": "xiaomi/mimo-v2-omni",
+  "runs": 3,
+  "requestedRuns": 3,
+  "maxCostUsd": 1.5,
+  "totalCostUsd": 0.0036029999999999994,
+  "tests": [
+    "vision-ocr-001",
+    "vision-ui-001",
+    "vision-chart-001",
+    "vision-object-count-001",
+    "vision-uncertainty-001"
+  ],
+  "stopped": false,
+  "stopReason": null,
+  "affectsLeaderboard": false,
+  "affectsCertification": false,
+  "experimental": true,
+  "aggregateAttribution": {
+    "PASS": 15
+  },
+  "stabilityByTest": {
+    "vision-ocr-001": {
+      "label": "STABLE_PASS",
+      "passes": 3,
+      "fails": 0,
+      "reviews": 0,
+      "skips": 0,
+      "runs": 3,
+      "attributionCounts": {
+        "PASS": 3
+      },
+      "commonAttribution": "PASS",
+      "representativeFailure": null,
+      "perRun": [
+        {
+          "runIndex": 1,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000039,
+          "bundleId": "run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_6e617a3d",
+          "bundlePath": "runs/run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_6e617a3d.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 2,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000039,
+          "bundleId": "run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_26712bf1",
+          "bundlePath": "runs/run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_26712bf1.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 3,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000039,
+          "bundleId": "run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_18dfe521",
+          "bundlePath": "runs/run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_18dfe521.json",
+          "imageSent": true
+        }
+      ]
+    },
+    "vision-ui-001": {
+      "label": "STABLE_PASS",
+      "passes": 3,
+      "fails": 0,
+      "reviews": 0,
+      "skips": 0,
+      "runs": 3,
+      "attributionCounts": {
+        "PASS": 3
+      },
+      "commonAttribution": "PASS",
+      "representativeFailure": null,
+      "perRun": [
+        {
+          "runIndex": 1,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00021,
+          "bundleId": "run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_253c80bb",
+          "bundlePath": "runs/run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_253c80bb.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 2,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000198,
+          "bundleId": "run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_1031f7a4",
+          "bundlePath": "runs/run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_1031f7a4.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 3,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000208,
+          "bundleId": "run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_b8c0b3e9",
+          "bundlePath": "runs/run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_b8c0b3e9.json",
+          "imageSent": true
+        }
+      ]
+    },
+    "vision-chart-001": {
+      "label": "STABLE_PASS",
+      "passes": 3,
+      "fails": 0,
+      "reviews": 0,
+      "skips": 0,
+      "runs": 3,
+      "attributionCounts": {
+        "PASS": 3
+      },
+      "commonAttribution": "PASS",
+      "representativeFailure": null,
+      "perRun": [
+        {
+          "runIndex": 1,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000212,
+          "bundleId": "run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_ac56f789",
+          "bundlePath": "runs/run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_ac56f789.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 2,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000288,
+          "bundleId": "run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_43d928d3",
+          "bundlePath": "runs/run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_43d928d3.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 3,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000232,
+          "bundleId": "run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_827d6cb4",
+          "bundlePath": "runs/run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_827d6cb4.json",
+          "imageSent": true
+        }
+      ]
+    },
+    "vision-object-count-001": {
+      "label": "STABLE_PASS",
+      "passes": 3,
+      "fails": 0,
+      "reviews": 0,
+      "skips": 0,
+      "runs": 3,
+      "attributionCounts": {
+        "PASS": 3
+      },
+      "commonAttribution": "PASS",
+      "representativeFailure": null,
+      "perRun": [
+        {
+          "runIndex": 1,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000337,
+          "bundleId": "run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_043b5d0a",
+          "bundlePath": "runs/run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_043b5d0a.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 2,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000345,
+          "bundleId": "run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_0bfc21b9",
+          "bundlePath": "runs/run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_0bfc21b9.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 3,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000345,
+          "bundleId": "run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_b737ed62",
+          "bundlePath": "runs/run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_b737ed62.json",
+          "imageSent": true
+        }
+      ]
+    },
+    "vision-uncertainty-001": {
+      "label": "STABLE_PASS",
+      "passes": 3,
+      "fails": 0,
+      "reviews": 0,
+      "skips": 0,
+      "runs": 3,
+      "attributionCounts": {
+        "PASS": 3
+      },
+      "commonAttribution": "PASS",
+      "representativeFailure": null,
+      "perRun": [
+        {
+          "runIndex": 1,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000357,
+          "bundleId": "run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_20315c15",
+          "bundlePath": "runs/run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_20315c15.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 2,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000375,
+          "bundleId": "run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_9327ff6a",
+          "bundlePath": "runs/run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_9327ff6a.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 3,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000379,
+          "bundleId": "run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_df690ae0",
+          "bundlePath": "runs/run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_df690ae0.json",
+          "imageSent": true
+        }
+      ]
+    }
+  },
+  "perRun": [
+    {
+      "runIndex": 1,
+      "timestamp": "2026-05-26T22-55-25Z",
+      "results": [
+        {
+          "taskId": "vision-ocr-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000039,
+          "tokensIn": 230,
+          "tokensOut": 4,
+          "bundleId": "run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_6e617a3d",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_6e617a3d.json"
+        },
+        {
+          "taskId": "vision-ui-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00021,
+          "tokensIn": 385,
+          "tokensOut": 79,
+          "bundleId": "run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_253c80bb",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_253c80bb.json"
+        },
+        {
+          "taskId": "vision-chart-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000212,
+          "tokensIn": 299,
+          "tokensOut": 87,
+          "bundleId": "run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_ac56f789",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_ac56f789.json"
+        },
+        {
+          "taskId": "vision-object-count-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000337,
+          "tokensIn": 216,
+          "tokensOut": 156,
+          "bundleId": "run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_043b5d0a",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_043b5d0a.json"
+        },
+        {
+          "taskId": "vision-uncertainty-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000357,
+          "tokensIn": 210,
+          "tokensOut": 167,
+          "bundleId": "run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_20315c15",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_20315c15.json"
+        }
+      ],
+      "totalCostUsd": 0.001155
+    },
+    {
+      "runIndex": 2,
+      "timestamp": "2026-05-26T22-55-37Z",
+      "results": [
+        {
+          "taskId": "vision-ocr-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000039,
+          "tokensIn": 230,
+          "tokensOut": 4,
+          "bundleId": "run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_26712bf1",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_26712bf1.json"
+        },
+        {
+          "taskId": "vision-ui-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000198,
+          "tokensIn": 385,
+          "tokensOut": 73,
+          "bundleId": "run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_1031f7a4",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_1031f7a4.json"
+        },
+        {
+          "taskId": "vision-chart-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000288,
+          "tokensIn": 299,
+          "tokensOut": 84,
+          "bundleId": "run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_43d928d3",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_43d928d3.json"
+        },
+        {
+          "taskId": "vision-object-count-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000345,
+          "tokensIn": 216,
+          "tokensOut": 160,
+          "bundleId": "run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_0bfc21b9",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_0bfc21b9.json"
+        },
+        {
+          "taskId": "vision-uncertainty-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000375,
+          "tokensIn": 210,
+          "tokensOut": 176,
+          "bundleId": "run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_9327ff6a",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_9327ff6a.json"
+        }
+      ],
+      "totalCostUsd": 0.001245
+    },
+    {
+      "runIndex": 3,
+      "timestamp": "2026-05-26T22-55-47Z",
+      "results": [
+        {
+          "taskId": "vision-ocr-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000039,
+          "tokensIn": 230,
+          "tokensOut": 4,
+          "bundleId": "run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_18dfe521",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_18dfe521.json"
+        },
+        {
+          "taskId": "vision-ui-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000208,
+          "tokensIn": 385,
+          "tokensOut": 78,
+          "bundleId": "run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_b8c0b3e9",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_b8c0b3e9.json"
+        },
+        {
+          "taskId": "vision-chart-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000232,
+          "tokensIn": 299,
+          "tokensOut": 97,
+          "bundleId": "run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_827d6cb4",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_827d6cb4.json"
+        },
+        {
+          "taskId": "vision-object-count-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000345,
+          "tokensIn": 216,
+          "tokensOut": 160,
+          "bundleId": "run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_b737ed62",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_b737ed62.json"
+        },
+        {
+          "taskId": "vision-uncertainty-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000379,
+          "tokensIn": 210,
+          "tokensOut": 178,
+          "bundleId": "run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_df690ae0",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_df690ae0.json"
+        }
+      ],
+      "totalCostUsd": 0.001203
+    }
+  ],
+  "dryRunGateEligibility": {
+    "label": "DRY-RUN ELIGIBILITY CHECK (read-only; no mutation performed)",
+    "currentTier": "EXPERIMENTAL",
+    "decisions": [
+      {
+        "tier": "PROVIDER_TESTED",
+        "eligible": true,
+        "blockingReasons": [],
+        "affectsLeaderboard": false,
+        "affectsCertification": false
+      },
+      {
+        "tier": "STABLE",
+        "eligible": true,
+        "blockingReasons": [],
+        "affectsLeaderboard": false,
+        "affectsCertification": false
+      }
+    ],
+    "affectsLeaderboard": false,
+    "affectsCertification": false,
+    "aggregateEvidence": {
+      "totalCells": 15,
+      "passCells": 15,
+      "stablePassRate": 1,
+      "recurringAttributions": [],
+      "independentRoutesTested": 1,
+      "suiteSize": 5
+    }
+  }
+}

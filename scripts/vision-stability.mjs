@@ -171,7 +171,10 @@ function summarizeBundle(bundle) {
     || (verdict.completionState === "PASS" ? "PASS" : verdict.failureReasonCode || verdict.completionState || "UNKNOWN");
   const imageSent = bundle?.task?.family === "vision" && !skip;
   const convResults = (bundle?.conversational?.results) || [];
-  const firstFailReason = convResults.find((r) => r && r.failure_reason)?.failure_reason || null;
+  // Gate on r.passed === false so PASS-with-marker reasons (e.g. Phase 12
+  // [UNCERTAINTY=VERBOSE_BUT_SAFE] marker) do not leak into the
+  // attribution path. PASS reasons remain visible inside the bundle.
+  const firstFailReason = convResults.find((r) => r && r.passed === false && r.failure_reason)?.failure_reason || null;
   const rawError = verdict?.evidence?.rawError || null;
   const skipReason = firstFailReason
     || rawError
