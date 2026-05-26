@@ -1,0 +1,230 @@
+[
+  {
+    "variant": "no-model",
+    "variantDesc": "Vision tab, no model selected",
+    "viewport": "desktop-1920x1080",
+    "file": "/mnt/ai/crucible/reports/capability-expansion/vision-phase8-browser-validation/screenshots/desktop-1920x1080__no-model.png",
+    "probe": {
+      "docW": 1920,
+      "docH": 3192,
+      "winW": 1920,
+      "hasVisionPanel": true,
+      "cardCount": 5,
+      "expChip": true,
+      "leaderChip": true,
+      "certChip": true,
+      "capHeadline": "No model selected",
+      "proven": "openrouter / xiaomi/mimo-v2-omni",
+      "overflowX": false
+    }
+  },
+  {
+    "variant": "no-model",
+    "variantDesc": "Vision tab, no model selected",
+    "viewport": "desktop-1440x900",
+    "file": "/mnt/ai/crucible/reports/capability-expansion/vision-phase8-browser-validation/screenshots/desktop-1440x900__no-model.png",
+    "probe": {
+      "docW": 1440,
+      "docH": 3776,
+      "winW": 1440,
+      "hasVisionPanel": true,
+      "cardCount": 5,
+      "expChip": true,
+      "leaderChip": true,
+      "certChip": true,
+      "capHeadline": "No model selected",
+      "proven": "openrouter / xiaomi/mimo-v2-omni",
+      "overflowX": false
+    }
+  },
+  {
+    "variant": "no-model",
+    "variantDesc": "Vision tab, no model selected",
+    "viewport": "tablet-1024x768",
+    "file": "/mnt/ai/crucible/reports/capability-expansion/vision-phase8-browser-validation/screenshots/tablet-1024x768__no-model.png",
+    "probe": {
+      "docW": 1024,
+      "docH": 7489,
+      "winW": 1024,
+      "hasVisionPanel": true,
+      "cardCount": 5,
+      "expChip": true,
+      "leaderChip": true,
+      "certChip": true,
+      "capHeadline": "Selected: google/gemini-3.1-flash-lite",
+      "proven": "openrouter / xiaomi/mimo-v2-omni",
+      "overflowX": false
+    }
+  },
+  {
+    "variant": "no-model",
+    "variantDesc": "Vision tab, no model selected",
+    "viewport": "mobile-390x844",
+    "file": "/mnt/ai/crucible/reports/capability-expansion/vision-phase8-browser-validation/screenshots/mobile-390x844__no-model.png",
+    "probe": {
+      "docW": 390,
+      "docH": 11977,
+      "winW": 390,
+      "hasVisionPanel": true,
+      "cardCount": 5,
+      "expChip": true,
+      "leaderChip": true,
+      "certChip": true,
+      "capHeadline": "Selected: google/gemini-3.1-flash-lite",
+      "proven": "openrouter / xiaomi/mimo-v2-omni",
+      "overflowX": false
+    }
+  },
+  {
+    "variant": "vision-capable",
+    "variantDesc": "Vision tab, xiaomi/mimo-v2-omni selected",
+    "viewport": "desktop-1920x1080",
+    "file": "/mnt/ai/crucible/reports/capability-expansion/vision-phase8-browser-validation/screenshots/desktop-1920x1080__vision-capable.png",
+    "probe": {
+      "docW": 1920,
+      "docH": 3504,
+      "winW": 1920,
+      "hasVisionPanel": true,
+      "cardCount": 5,
+      "expChip": true,
+      "leaderChip": true,
+      "certChip": true,
+      "capHeadline": "Selected: google/gemini-3.1-flash-lite",
+      "proven": "openrouter / xiaomi/mimo-v2-omni",
+      "overflowX": false
+    }
+  },
+  {
+    "variant": "vision-capable",
+    "variantDesc": "Vision tab, xiaomi/mimo-v2-omni selected",
+    "viewport": "desktop-1440x900",
+    "file": "/mnt/ai/crucible/reports/capability-expansion/vision-phase8-browser-validation/screenshots/desktop-1440x900__vision-capable.png",
+    "probe": {
+      "docW": 1440,
+      "docH": 3682,
+      "winW": 1440,
+      "hasVisionPanel": true,
+      "cardCount": 5,
+      "expChip": true,
+      "leaderChip": true,
+      "certChip": true,
+      "capHeadline": "xiaomi/mimo-v2-omni — vision-capable route",
+      "proven": "OpenRouter · xiaomi/mimo-v2-omni",
+      "overflowX": false
+    }
+  },
+  {
+    "variant": "vision-capable",
+    "variantDesc": "Vision tab, xiaomi/mimo-v2-omni selected",
+    "viewport": "tablet-1024x768",
+    "file": "/mnt/ai/crucible/reports/capability-expansion/vision-phase8-browser-validation/screenshots/tablet-1024x768__vision-capable.png",
+    "probe": {
+      "docW": 1024,
+      "docH": 5478,
+      "winW": 1024,
+      "hasVisionPanel": true,
+      "cardCount": 5,
+      "expChip": true,
+      "leaderChip": true,
+      "certChip": true,
+      "capHeadline": "xiaomi/mimo-v2-omni — vision-capable route",
+      "proven": "OpenRouter · xiaomi/mimo-v2-omni",
+      "overflowX": false
+    }
+  },
+  {
+    "variant": "vision-capable",
+    "variantDesc": "Vision tab, xiaomi/mimo-v2-omni selected",
+    "viewport": "mobile-390x844",
+    "file": "/mnt/ai/crucible/reports/capability-expansion/vision-phase8-browser-validation/screenshots/mobile-390x844__vision-capable.png",
+    "probe": {
+      "docW": 390,
+      "docH": 9022,
+      "winW": 390,
+      "hasVisionPanel": true,
+      "cardCount": 5,
+      "expChip": true,
+      "leaderChip": true,
+      "certChip": true,
+      "capHeadline": "xiaomi/mimo-v2-omni — vision-capable route",
+      "proven": "openrouter / xiaomi/mimo-v2-omni",
+      "overflowX": false
+    }
+  },
+  {
+    "variant": "text-only",
+    "variantDesc": "Vision tab, a known text-only model selected (qwen3.5:9b)",
+    "viewport": "desktop-1920x1080",
+    "file": "/mnt/ai/crucible/reports/capability-expansion/vision-phase8-browser-validation/screenshots/desktop-1920x1080__text-only.png",
+    "probe": {
+      "docW": 1920,
+      "docH": 4472,
+      "winW": 1920,
+      "hasVisionPanel": true,
+      "cardCount": 5,
+      "expChip": true,
+      "leaderChip": true,
+      "certChip": true,
+      "capHeadline": "Selected: google/gemini-3.1-flash-lite",
+      "proven": "openrouter / xiaomi/mimo-v2-omni",
+      "overflowX": false
+    }
+  },
+  {
+    "variant": "text-only",
+    "variantDesc": "Vision tab, a known text-only model selected (qwen3.5:9b)",
+    "viewport": "desktop-1440x900",
+    "file": "/mnt/ai/crucible/reports/capability-expansion/vision-phase8-browser-validation/screenshots/desktop-1440x900__text-only.png",
+    "probe": {
+      "docW": 1440,
+      "docH": 5183,
+      "winW": 1440,
+      "hasVisionPanel": true,
+      "cardCount": 5,
+      "expChip": true,
+      "leaderChip": true,
+      "certChip": true,
+      "capHeadline": "Selected: google/gemini-3.1-flash-lite",
+      "proven": "openrouter / xiaomi/mimo-v2-omni",
+      "overflowX": false
+    }
+  },
+  {
+    "variant": "text-only",
+    "variantDesc": "Vision tab, a known text-only model selected (qwen3.5:9b)",
+    "viewport": "tablet-1024x768",
+    "file": "/mnt/ai/crucible/reports/capability-expansion/vision-phase8-browser-validation/screenshots/tablet-1024x768__text-only.png",
+    "probe": {
+      "docW": 1024,
+      "docH": 5825,
+      "winW": 1024,
+      "hasVisionPanel": true,
+      "cardCount": 5,
+      "expChip": true,
+      "leaderChip": true,
+      "certChip": true,
+      "capHeadline": "Selected: google/gemini-3.1-flash-lite",
+      "proven": "openrouter / xiaomi/mimo-v2-omni",
+      "overflowX": false
+    }
+  },
+  {
+    "variant": "text-only",
+    "variantDesc": "Vision tab, a known text-only model selected (qwen3.5:9b)",
+    "viewport": "mobile-390x844",
+    "file": "/mnt/ai/crucible/reports/capability-expansion/vision-phase8-browser-validation/screenshots/mobile-390x844__text-only.png",
+    "probe": {
+      "docW": 390,
+      "docH": 8756,
+      "winW": 390,
+      "hasVisionPanel": true,
+      "cardCount": 5,
+      "expChip": true,
+      "leaderChip": true,
+      "certChip": true,
+      "capHeadline": "qwen3.5:9b — text-only",
+      "proven": "OpenRouter · xiaomi/mimo-v2-omni",
+      "overflowX": false
+    }
+  }
+]
