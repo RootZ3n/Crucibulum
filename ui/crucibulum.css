@@ -2517,3 +2517,89 @@ tr:hover td{background:rgba(139,92,246,.04)}
 @media (max-width:719px){
   .vision-status-grid{grid-template-columns:1fr}
 }
+
+/* ============================================================
+   Crucible Atmosphere Pass — additive depth layers only.
+   No layout changes, no DOM changes, no contrast loss.
+   Layer model (back → front):
+     L1  body bg base (existing violet/pink/cyan radials, untouched)
+     L2  deep chamber vignette + molten forge bloom  → body::before
+     L3  midground haze veil                          → body::after
+     L4  panel rim warmth (additive box-shadow)
+   Pseudo-elements sit at z-index:0; #app is z-index:1, so atmosphere
+   is always behind content and can never affect text contrast.
+   Respects prefers-reduced-motion. See reports/ui-polish/atmosphere-pass/.
+   ============================================================ */
+
+/* Re-enable body pseudo-elements. The earlier rule near line 122
+   (`body::before,body::after{display:none}`) is the historical
+   neutralizer; we override it here so the atmosphere can paint. */
+body::before,
+body::after {
+  display: block;
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* L2 — Deep chamber + molten forge bloom rising from low-center.
+   Three stacked radials: a hot inner core at the very bottom, a
+   broader warm wash beneath it, and a corner-darkening vignette
+   from the top to suggest chamber walls falling away. */
+body::before {
+  background:
+    radial-gradient(ellipse 90% 55% at 50% 108%,
+                    rgba(255, 110, 50, 0.22) 0%,
+                    rgba(220, 70, 30, 0.13) 18%,
+                    rgba(160, 50, 20, 0.06) 40%,
+                    transparent 70%),
+    radial-gradient(ellipse 140% 65% at 50% 115%,
+                    rgba(255, 150, 60, 0.07) 0%,
+                    transparent 60%),
+    radial-gradient(ellipse 130% 90% at 50% 0%,
+                    transparent 35%,
+                    rgba(0, 0, 0, 0.38) 100%);
+  /* Very slow ambient pulse — a distant forge breathing. 14 s,
+     alternate so it never visually resets. Tiny opacity delta
+     (0.88 → 1.00) — perceptible only at the periphery. */
+  animation: crucibleEmberBreathe 14s ease-in-out infinite alternate;
+  will-change: opacity;
+}
+
+/* L3 — Midground haze: very faint warm bottom-up tint that suggests
+   heated air between the chamber and the cards. Low alpha; no blend
+   mode (cannot affect text since it sits below #app's z-index:1). */
+body::after {
+  background:
+    linear-gradient(180deg,
+                    transparent 0%,
+                    transparent 45%,
+                    rgba(120, 50, 25, 0.04) 80%,
+                    rgba(160, 70, 30, 0.06) 100%);
+}
+
+@keyframes crucibleEmberBreathe {
+  0%   { opacity: 0.88; }
+  100% { opacity: 1.00; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before { animation: none; opacity: 0.94; }
+}
+
+/* L4 — Panel rim warmth. Additive box-shadow keeps the existing cool
+   border + neutral shadow and adds a soft warm under-glow so cards
+   read as "floating above a warm chamber". Single shared variable
+   lets all panel-family surfaces tune in lock-step. */
+:root {
+  --shadow-molten: 0 14px 32px -18px rgba(255, 90, 30, 0.20),
+                   inset 0 1px 0 rgba(255, 170, 90, 0.03);
+}
+.panel,
+.subpanel,
+.metric-card,
+.result-card,
+.deck-window {
+  box-shadow: var(--shadow-panel), var(--shadow-molten);
+}
