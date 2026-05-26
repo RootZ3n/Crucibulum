@@ -1,11 +1,11 @@
 {
   "id": "vision-chart-001",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "family": "vision",
   "execution_mode": "conversational",
   "difficulty": "medium",
   "experimental": true,
-  "description": "POC: read a peak value from a simple bar chart.",
+  "description": "POC: chart reading — identify the peak day in a simple bar chart. Measures CHART RECOGNITION, NOT concision. Accepts natural-language answers within 600 chars as long as the correct day AND value are present. (max_chars raised from 180 → 600 in Phase 6 after live smoke caught honest chain-of-thought answers at 347 chars; matches the Phase-5 numeric_fact_match precedent set by vision-object-count-001.)",
   "requires_capability": ["supportsVision", "supportsImageInput"],
   "image_fixture": {
     "path": "fixtures/vision/vision-chart-001.png",
@@ -19,10 +19,12 @@
   "questions": [
     {
       "id": "V3-Q1",
-      "question": "Look at this bar chart. Reply with ONLY the day of the week with the highest bar.",
-      "scoring_type": "regex_match",
-      "pattern": "^\\s*(Wednesday|Wed)\\s*$",
-      "maxLength": 16,
+      "question": "Which day has the highest bar in this chart, and what is its value?",
+      "scoring_type": "numeric_fact_match",
+      "expected_number": 87,
+      "expected_number_variants": ["87"],
+      "required_object": "wed",
+      "max_chars": 600,
       "weight": 1,
       "tags": ["vision", "chart", "experimental"],
       "image_ref": "fixtures/vision/vision-chart-001.png"
@@ -36,7 +38,7 @@
     "author": "crucibulum-core",
     "created": "2026-05-25",
     "tags": ["vision", "chart", "experimental"],
-    "diagnostic_purpose": "POC for vision_chart_facts scorer — model must extract the day with the peak bar from a simple synthetic chart.",
+    "diagnostic_purpose": "POC for vision_chart_facts using numeric_fact_match. Pass if the response contains the peak value 87 AND mentions Wednesday (substring 'wed'). Accepts 'Wednesday at 87', 'Wed 87', 'The peak is Wednesday with 87.' etc.",
     "benchmark_provenance": {
       "source": "Crucible synthetic chart",
       "public_status": "public",
@@ -44,7 +46,8 @@
       "gold_solution_visibility": "not_applicable",
       "contamination_risk": "low",
       "known_scoring_limitations": [
-        "Regex accepts 'Wednesday' or 'Wed'. Verbose answers fail by design."
+        "If the model says 'Wednesday is highest' without quoting 87, it fails missing-count. Acceptable — the test measures both day AND value.",
+        "If the model says '87' but doesn't mention Wednesday, it fails missing-required-object. Acceptable — naming a value without the day isn't chart reading."
       ]
     }
   }

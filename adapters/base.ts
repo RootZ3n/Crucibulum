@@ -358,6 +358,7 @@ export type ConversationalScoringType =
   | "corporate_check"
   | "regex_match"
   | "numeric_fact_match"
+  | "uncertainty_honesty"
   | "custom";
 
 export interface ConversationalQuestion {

@@ -135,9 +135,11 @@ describe('Phase 4 · skip-card rendering + image transport', () => {
     assert.notEqual(skip!.classification, 'FAIL_PROVIDER');
   });
 
-  it('P11 · scripts/vision-smoke.mjs runs only the intended 2-test set by default', () => {
-    assert.match(SMOKE_SCRIPT, /const TESTS\s*=\s*\["vision-ocr-001",\s*"vision-object-count-001"\]/, 'vision-smoke default test list must be exactly the 2 POC ids');
-    assert.match(SMOKE_SCRIPT, /if \(includeUncertainty\) TESTS\.push\("vision-uncertainty-001"\)/, '3rd test is opt-in via --include-uncertainty');
+  it('P11 · scripts/vision-smoke.mjs preserves Phase-4 2-test set under --smoke-minimal', () => {
+    // Phase 6: default expanded to all 5 POC tests. The Phase-4 minimal set
+    // is preserved verbatim under --smoke-minimal for backcompat.
+    assert.match(SMOKE_SCRIPT, /const MINIMAL_TESTS\s*=\s*\["vision-ocr-001",\s*"vision-object-count-001"\]/, '--smoke-minimal must still resolve to the original 2-test POC set');
+    assert.match(SMOKE_SCRIPT, /TESTS\s*=\s*\[\.\.\.MINIMAL_TESTS\]/, '--smoke-minimal branch must spread MINIMAL_TESTS into TESTS');
   });
 
   it('P12 · vision-smoke report declares experimental + non-affecting status', () => {

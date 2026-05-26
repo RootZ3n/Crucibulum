@@ -1,17 +1,28 @@
 #!/usr/bin/env node
 /**
- * Crucible — Vision smoke runner (Phase 4)
+ * Crucible — Vision smoke runner (Phase 6: all 5 POC tests by default)
  *
- * Runs the 2-test Vision POC against one image-capable route
+ * Runs the Vision POC tests against one image-capable route
  * (default OpenRouter + xiaomi/mimo-v2-omni) under a hard cost cap.
  * Vision stays Experimental and is excluded from leaderboard +
  * certification regardless of outcome.
+ *
+ * Default test set (Phase 6, all 5 POC):
+ *   vision-ocr-001, vision-ui-001, vision-chart-001,
+ *   vision-object-count-001, vision-uncertainty-001
  *
  * Usage
  *   node scripts/vision-smoke.mjs \
  *     --provider openrouter --model xiaomi/mimo-v2-omni \
  *     --max-cost-usd 0.25 --write-report
  *
+ *   # Phase-4 backcompat: run only OCR + object-count
+ *   node scripts/vision-smoke.mjs ... --smoke-minimal
+ *
+ *   # Custom selection
+ *   node scripts/vision-smoke.mjs ... --tests vision-ocr-001,vision-ui-001
+ *
+ *   # Phase-4 backcompat: opt-in addition (silently no-op in Phase 6 default)
  *   node scripts/vision-smoke.mjs ... --include-uncertainty
  *
  * Reports
@@ -55,12 +66,17 @@ const arg = (n, def = null) => {
 
 if (flag("-h") || flag("--help")) {
   console.log(`
-vision-smoke — Crucible Phase 4 vision POC
+vision-smoke — Crucible Phase 6 vision POC (all 5 by default)
 
   --provider <id>          (default: openrouter — only supported transport today)
   --model <id>             (default: xiaomi/mimo-v2-omni)
   --max-cost-usd <n>       Hard cap (default 0.25). Required.
-  --include-uncertainty    Add the uncertainty test (3rd POC).
+  --smoke-minimal          Phase-4 backcompat: run only the 2-test set
+                           (vision-ocr-001, vision-object-count-001).
+  --tests <csv>            Explicit task-id list, overrides defaults.
+                           Example: --tests vision-ocr-001,vision-ui-001
+  --include-uncertainty    Phase-4 backcompat. In Phase 6 default already
+                           includes uncertainty; ignored unless --smoke-minimal.
   --write-report           Persist JSON + Markdown reports.
   -h, --help               Show this help.
 `);
@@ -71,20 +87,45 @@ const provider = arg("--provider", "openrouter");
 const model = arg("--model", "xiaomi/mimo-v2-omni");
 const maxCostUsd = Number(arg("--max-cost-usd", "0.25")) || 0;
 const writeReport = flag("--write-report") || flag("--write");
+const smokeMinimal = flag("--smoke-minimal");
 const includeUncertainty = flag("--include-uncertainty");
+const explicitTestsArg = arg("--tests", null);
 
 if (maxCostUsd <= 0) {
   console.error("error: --max-cost-usd is required (>0)");
   process.exit(2);
 }
 if (provider !== "openrouter") {
-  console.error(`error: only --provider openrouter is supported in Phase 4 (got: ${provider})`);
+  console.error(`error: only --provider openrouter is supported in Phase 4+ (got: ${provider})`);
   console.error("Other providers will hit SKIPPED_IMAGE_TRANSPORT_UNSUPPORTED.");
   process.exit(2);
 }
 
-const TESTS = ["vision-ocr-001", "vision-object-count-001"];
-if (includeUncertainty) TESTS.push("vision-uncertainty-001");
+const ALL_TESTS = [
+  "vision-ocr-001",
+  "vision-ui-001",
+  "vision-chart-001",
+  "vision-object-count-001",
+  "vision-uncertainty-001",
+];
+const MINIMAL_TESTS = ["vision-ocr-001", "vision-object-count-001"];
+
+let TESTS;
+if (explicitTestsArg) {
+  TESTS = explicitTestsArg.split(",").map((s) => s.trim()).filter(Boolean);
+  for (const t of TESTS) {
+    if (!ALL_TESTS.includes(t)) {
+      console.error(`error: unknown test id '${t}' (known: ${ALL_TESTS.join(", ")})`);
+      process.exit(2);
+    }
+  }
+} else if (smokeMinimal) {
+  TESTS = [...MINIMAL_TESTS];
+  if (includeUncertainty) TESTS.push("vision-uncertainty-001");
+} else {
+  // Phase 6 default: all 5 POC tests.
+  TESTS = [...ALL_TESTS];
+}
 
 function nowStamp() {
   return new Date().toISOString().replace(/\.\d+Z$/, "Z").replace(/[:.]/g, "-");
@@ -218,7 +259,9 @@ async function main() {
       model,
       maxCostUsd,
       tests: TESTS,
+      smokeMinimal,
       includeUncertainty,
+      explicitTests: explicitTestsArg || null,
       totalCostUsd: total,
       classifications: counts,
       stopped,

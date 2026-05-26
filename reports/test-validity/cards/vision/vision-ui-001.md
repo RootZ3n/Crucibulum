@@ -4,9 +4,9 @@
 |---|---|
 | Test id | `vision-ui-001` |
 | Family | `vision` (`tasks/vision/vision-ui-001/`) |
-| Scorer | `text_match_all` (requires `"RUN BENCHMARK"` literal in answer) |
-| Status | **EXPERIMENTAL** — pending live smoke |
-| Concision is part of the test | **No** — answer can be free text as long as the required phrase appears. |
+| Scorer | `text_match` (Phase 6: ANY of `RUN BENCHMARK` / `Run Benchmark` / `run benchmark`) |
+| Status | **EXPERIMENTAL** — Phase 6 live smoke pending |
+| Concision is part of the test | **No** — answer can be free text as long as the element is named. |
 
 ## What this test claims to measure
 
@@ -21,15 +21,17 @@ UI element by name from a synthetic dashboard mock?
 
 ## Exact prompt
 
-> Look at this UI screenshot. Name the single most-clipped or overlapped UI element. Reply with the element name only.
+> Look at this UI screenshot. Which UI element is most-clipped or overflowing its container? Name the element.
+
+(Phase 6 update: prompt softened — no longer "Reply with element name only"; element identification is the test, not concision.)
 
 ## Expected facts
 
-Literal phrase `RUN BENCHMARK` must appear in the response.
+ANY of `RUN BENCHMARK` / `Run Benchmark` / `run benchmark` / `RUNBENCHMARK` must appear in the response. (Case-insensitive via the underlying `contains` helper.)
 
 ## Scorer
 
-`text_match_all` with `expected_facts: ["RUN BENCHMARK"]`.
+`text_match` (ANY-of) with `pass_phrases: ["RUN BENCHMARK", "Run Benchmark", "run benchmark", "RUNBENCHMARK"]`.
 
 ## What counts as pass
 
