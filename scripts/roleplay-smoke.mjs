@@ -192,9 +192,20 @@ async function runOneTest(taskId) {
   }
 }
 
-// Same attribution taxonomy as vision-smoke (MODEL/FIXTURE/SCORER/
-// PROVIDER/CONFIG/NEEDS_REVIEW) so roleplay comparison reports use
-// the same lexicon.
+// Attribution taxonomy (Phase 3 extends Phase 2 with PROMPT):
+//
+//   MODEL         — model genuinely broke character / answered wrong
+//   PROMPT        — prompt itself induced or invited the failure mode
+//                   (e.g. user attack phrase echoed in negation is now
+//                   handled by the scorer's context classifier, but if
+//                   the scorer still misfires for a prompt-driven
+//                   reason it is attributed PROMPT — not MODEL)
+//   SCORER        — scorer rule fired on something that should not fail
+//   FIXTURE       — fixture missing / hash drift / fixture readability
+//   PROVIDER      — provider HTTP error / timeout / network
+//   CONFIG        — capability / auth / transport unsupported
+//   NEEDS_REVIEW  — scorer returned an explicit NEEDS_REVIEW: marker
+//                   (incl. Phase-3 AMBIGUOUS_FORBIDDEN_MENTION case)
 function attributeOutcome(classification, reasonText) {
   const c = String(classification || "").toUpperCase();
   const reason = String(reasonText || "");
@@ -204,8 +215,13 @@ function attributeOutcome(classification, reasonText) {
   if (c === "FAIL_CONFIG" || c === "FAIL_CONFIG_MODEL_CAPABILITY") return "CONFIG";
   if (c === "FAIL_PROVIDER" || c === "PROVIDER_HTTP_ERROR" || c === "PROVIDER_FAILURE") return "PROVIDER";
   if (/NEEDS_REVIEW/i.test(reason)) return "NEEDS_REVIEW";
+  // Phase 3: a forbidden-phrase echo whose CONTEXT is NEGATED or
+  // QUOTED would already PASS at the scorer — so this branch only
+  // fires on residual prompt-induced false-fails the scorer didn't
+  // catch (defensive slot, expected to be rare post-calibration).
+  if (/\[PROMPT_ECHOED_FORBIDDEN\]|\[CONTEXT=NEGATED_FORBIDDEN_IDENTITY\]|\[CONTEXT=QUOTED_ATTACK_REFUSAL\]/i.test(reason)) return "PROMPT";
   if (/answer too verbose/i.test(reason)) return "SCORER";
-  if (/FAIL_PRODUCT/i.test(reason)) return "MODEL";
+  if (/\[SEVERITY=SEVERE/.test(reason) || /FAIL_PRODUCT/i.test(reason)) return "MODEL";
   if (c === "LOW_SCORE") return "MODEL";
   return "MODEL";
 }

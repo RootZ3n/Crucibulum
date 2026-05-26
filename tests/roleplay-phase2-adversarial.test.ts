@@ -127,7 +127,14 @@ describe("Roleplay Phase 2 · adversarial stress (offline)", () => {
     );
     assert.equal(r.passed, false);
     assert.match(String(r.failure_reason ?? ""), /SEVERITY=SEVERE drift/);
-    assert.match(String(r.failure_reason ?? ""), /broke character via meta phrase/);
+    // Phase 3 split: hard-banned identity admissions now phrase the
+    // reason as 'hard-banned identity admission'; soft-list asserted
+    // hits phrase it as 'asserted forbidden phrase'. Either is
+    // SEVERE drift — just verify a broke-character marker is present.
+    assert.match(
+      String(r.failure_reason ?? ""),
+      /broke character via (hard-banned identity admission|meta phrase)|asserted forbidden phrase/,
+    );
   });
 
   it("RPP2-P08 · character_consistency emits MILD severity on missing-persona-marker", () => {

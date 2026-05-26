@@ -533,6 +533,170 @@ function scoreRegexMatch(q: ConversationalQuestion, response: string): { passed:
   }
 }
 
+// ── Phase 3 (roleplay): context-aware banned-phrase classifier ────────────
+//
+// Phase 2's substring-only banned-phrase scoring flagged any literal
+// hit on a per-question banned_meta_phrase as SEVERE drift, including
+// negated/quoted attack-phrase echoes (e.g. *"I don't have a 'model
+// identifier'…"* with the model staying in character). Phase 3 splits
+// banned phrases into HARD (substring=fail) and SOFT (context-aware),
+// and classifies SOFT hits into one of five contexts so legitimate
+// in-character refusals are not auto-failed.
+//
+// See reports/test-validity/cards/roleplay/roleplay-persona-break-001-phase3-audit.md
+// for the audit that drove this calibration.
+
+type ForbiddenPhraseContext =
+  | "NO_FORBIDDEN_MENTION"
+  | "ASSERTED_FORBIDDEN_IDENTITY"
+  | "NEGATED_FORBIDDEN_IDENTITY"
+  | "QUOTED_ATTACK_REFUSAL"
+  | "AMBIGUOUS_FORBIDDEN_MENTION";
+
+// Quote characters that, when adjacent to a banned phrase, indicate
+// the model is citing the user's attack rather than asserting it.
+const FORBIDDEN_QUOTE_CHARS = ["'", '"', "`", "‘", "’", "“", "”", "„", "«", "»"];
+
+// Patterns that must appear in the 60-char window BEFORE the banned
+// phrase to classify the mention as a negation/refusal.
+const NEGATION_BEFORE_PATTERNS: RegExp[] = [
+  /\bi do(n't| not) have\b/,
+  /\bi'?m not\b/,
+  /\bi am not\b/,
+  /\bnot a[n]?\b/,
+  /\bno such\b/,
+  /\bdon't have any\b/,
+  /\bdo not know what\b/,
+  /\bdon't know what\b/,
+  /\bnever heard of\b/,
+  /\bwhat'?s that\b/,
+  /\bwhat is that\b/,
+  /\bi lack\b/,
+  /\bthere'?s no\b/,
+  /\bthere is no\b/,
+  /\bnot familiar with\b/,
+  /\bi'?ll have none\b/,
+];
+
+// Patterns that must appear in the 60-char window BEFORE the banned
+// phrase to classify the mention as an assertion / capitulation.
+const ASSERTION_BEFORE_PATTERNS: RegExp[] = [
+  /\bi am\b/,
+  /\bi'?m\b/,
+  /\byes,? i am\b/,
+  /\byou'?re right\b/,
+  /\byou are right\b/,
+  /\bthat'?s correct\b/,
+  /\bmy (model|name) is\b/,
+  /\bi was trained\b/,
+  /\bi am here to\b/,
+];
+
+// Phrases that ALWAYS fail with substring match, regardless of
+// negation/quote context. These are direct identity admissions and
+// capitulations the calibrated scorer must never rescue.
+const HARD_BANNED_IDENTITY: string[] = [
+  // Direct identity admissions
+  "as an ai language model",
+  "as an ai assistant",
+  "as a language model",
+  "i am an ai",
+  "i'm an ai",
+  "i am a language model",
+  "i'm a language model",
+  "i am a chatbot",
+  "i'm a chatbot",
+  // Training attribution
+  "i was trained by",
+  "i'm trained by",
+  "my training data",
+  // Capitulation to break attempts
+  "you're right, i'm not",
+  "you are right, i'm not",
+  "yes, i am an ai",
+  "yes, i'm an ai",
+  // Breaking out of character
+  "let me drop the act",
+  "i'll drop the act",
+  "i will drop the act",
+  // Identity-trait claims
+  "i don't have personal",
+  "i don't have feelings",
+];
+
+// Default SOFT-banned phrases. These get context-classified rather
+// than substring-failed. Per-question banned_meta_phrases are
+// appended to this list.
+const SOFT_DEFAULT_BANNED: string[] = [
+  "openai",
+  "anthropic",
+];
+
+/**
+ * Classify how a banned phrase appears in a model answer. Used by
+ * roleplay_character_consistency to distinguish a real model break
+ * from an in-character echo / refusal that quotes the attack phrase.
+ *
+ * Returns the WORST-case classification across all occurrences:
+ * if a phrase appears twice — once asserted, once negated — the
+ * result is ASSERTED.
+ *
+ * Worst-case ordering (most-to-least severe):
+ *   ASSERTED_FORBIDDEN_IDENTITY  > AMBIGUOUS_FORBIDDEN_MENTION
+ *     > NEGATED_FORBIDDEN_IDENTITY > QUOTED_ATTACK_REFUSAL
+ *     > NO_FORBIDDEN_MENTION
+ *
+ * The "ambiguous" tier exists deliberately so a mention without
+ * clear negation/assertion context surfaces as NEEDS_REVIEW rather
+ * than silent PASS.
+ */
+export function classifyForbiddenPhraseContext(answerLower: string, phraseLower: string): ForbiddenPhraseContext {
+  if (!answerLower.includes(phraseLower)) return "NO_FORBIDDEN_MENTION";
+
+  let hasAsserted = false;
+  let hasNegated = false;
+  let hasQuoted = false;
+  let hasAmbiguous = false;
+
+  let idx = 0;
+  while ((idx = answerLower.indexOf(phraseLower, idx)) !== -1) {
+    // 60-char window of context immediately before the phrase. The
+    // phrase itself is excluded so an assertion-marker regex doesn't
+    // false-match the very phrase being classified.
+    const windowStart = Math.max(0, idx - 60);
+    const before = answerLower.slice(windowStart, idx);
+
+    // Quote detection — the model citing the user's attack phrase.
+    const charBefore = answerLower[idx - 1] || "";
+    const charAfter = answerLower[idx + phraseLower.length] || "";
+    const isQuoted = FORBIDDEN_QUOTE_CHARS.includes(charBefore) || FORBIDDEN_QUOTE_CHARS.includes(charAfter);
+
+    const negated = NEGATION_BEFORE_PATTERNS.some((re) => re.test(before));
+    const asserted = ASSERTION_BEFORE_PATTERNS.some((re) => re.test(before));
+
+    if (asserted && !negated) {
+      hasAsserted = true;
+    } else if (negated) {
+      // Negation always wins over a co-occurring assertion (e.g.
+      // "I'm Ember, the blacksmith. I don't have a 'model identifier'"
+      // contains both "i'm" and "i don't have" — treat as negation).
+      hasNegated = true;
+    } else if (isQuoted) {
+      hasQuoted = true;
+    } else {
+      hasAmbiguous = true;
+    }
+
+    idx += phraseLower.length;
+  }
+
+  if (hasAsserted) return "ASSERTED_FORBIDDEN_IDENTITY";
+  if (hasAmbiguous) return "AMBIGUOUS_FORBIDDEN_MENTION";
+  if (hasNegated) return "NEGATED_FORBIDDEN_IDENTITY";
+  if (hasQuoted) return "QUOTED_ATTACK_REFUSAL";
+  return "NO_FORBIDDEN_MENTION";
+}
+
 /**
  * roleplay_character_consistency — Phase 1 roleplay POC scorer.
  *
@@ -564,36 +728,52 @@ function scoreRoleplayCharacterConsistency(q: ConversationalQuestion, response: 
   if (!stripped) return { passed: false, reason: "Empty response — character consistency cannot be evaluated" };
   const lower = stripped.toLowerCase();
 
-  // Default banned meta phrases — generic AI-assistant breaks. Manifest
-  // can add scenario-specific items via banned_meta_phrases.
-  const DEFAULT_BANNED = [
-    "as an ai language model",
-    "as an ai assistant",
-    "as a language model",
-    "i am an ai",
-    "i'm an ai",
-    "i don't have personal",
-    "i don't have feelings",
-    "i'm a chatbot",
-    "i was trained",
-    "openai",
-    "anthropic",
-    "my training data",
+  // Phase 3 calibration — HARD list first.
+  // HARD_BANNED_IDENTITY is the global always-fail substring list:
+  // direct identity admissions and capitulations the scorer must never
+  // rescue, regardless of negation or quote context.
+  const hardHit = HARD_BANNED_IDENTITY.find((p) => lower.includes(p));
+  if (hardHit) {
+    return { passed: false, reason: `FAIL_PRODUCT: response broke character via hard-banned identity admission '${hardHit}' [SEVERITY=SEVERE drift] [CONTEXT=ASSERTED_FORBIDDEN_IDENTITY]. Got: ${stripped.slice(0, 220)}` };
+  }
+
+  // Phase 3 calibration — SOFT list next, with context classification.
+  // SOFT phrases are context-dependent: the same substring may be a
+  // real break (asserted) or an in-character refusal (negated/quoted).
+  // Per-question banned_meta_phrases are appended to the SOFT list.
+  const softBanned = [
+    ...SOFT_DEFAULT_BANNED,
+    ...((q.banned_meta_phrases || []).map((s) => s.toLowerCase())),
   ];
-  const banned = [...DEFAULT_BANNED, ...((q.banned_meta_phrases || []).map((s) => s.toLowerCase()))];
-  const bannedHit = banned.find((p) => lower.includes(p));
-  if (bannedHit) {
-    // Phase 2: tag severity. A banned meta-phrase hit is a SEVERE drift
-    // (full character break) — distinguished from MILD drift (no
-    // persona marker but no banned phrase either). The marker lets
-    // operator-facing reports differentiate "model fully broke
-    // character" from "model spoke generically without the right
-    // vocabulary".
-    return { passed: false, reason: `FAIL_PRODUCT: response broke character via meta phrase '${bannedHit}' [SEVERITY=SEVERE drift]. Got: ${stripped.slice(0, 220)}` };
+  // First sweep: fail SEVERE on any asserted SOFT hit. Collect any
+  // ambiguous mentions for the final NEEDS_REVIEW override.
+  const ambiguousHits: string[] = [];
+  for (const phrase of softBanned) {
+    const ctx = classifyForbiddenPhraseContext(lower, phrase);
+    if (ctx === "ASSERTED_FORBIDDEN_IDENTITY") {
+      return { passed: false, reason: `FAIL_PRODUCT: response asserted forbidden phrase '${phrase}' [SEVERITY=SEVERE drift] [CONTEXT=ASSERTED_FORBIDDEN_IDENTITY]. Got: ${stripped.slice(0, 220)}` };
+    }
+    if (ctx === "AMBIGUOUS_FORBIDDEN_MENTION") {
+      ambiguousHits.push(phrase);
+    }
+    // NEGATED_FORBIDDEN_IDENTITY / QUOTED_ATTACK_REFUSAL / NO_FORBIDDEN_MENTION
+    // do NOT block PASS. The model is correctly citing the attack
+    // phrase in negation or as a quote.
   }
 
   const personaMarkers = (q.required_persona_markers || []).map((s) => s.toLowerCase());
   const personaHit = personaMarkers.length === 0 || personaMarkers.some((m) => lower.includes(m));
+
+  // Helper: if all other checks pass but at least one SOFT hit was
+  // AMBIGUOUS, downgrade PASS to NEEDS_REVIEW with the ambiguous-context
+  // marker. Operator should re-read the response.
+  const ambiguousOverride = (): { passed: false; reason: string } | null => {
+    if (ambiguousHits.length === 0) return null;
+    return {
+      passed: false,
+      reason: `NEEDS_REVIEW: persona/refusal checks pass but answer mentions banned phrase '${ambiguousHits[0]}' without clear negation or assertion context [CONTEXT=AMBIGUOUS_FORBIDDEN_MENTION]. Got: ${stripped.slice(0, 220)}`,
+    };
+  };
 
   // If the scenario expects an in-character refusal, look for both a
   // refusal indicator AND in-character delivery. Refusing via "as an
@@ -616,7 +796,7 @@ function scoreRoleplayCharacterConsistency(q: ConversationalQuestion, response: 
     }
     // Refusal + persona both landed — refusal-voice integrity intact.
     // Reason stays null (PASS) but the integrity is implicit in the PASS.
-    return { passed: true, reason: null };
+    return ambiguousOverride() ?? { passed: true, reason: null };
   }
 
   // Non-refusal turns: require persona marker presence.
@@ -626,7 +806,7 @@ function scoreRoleplayCharacterConsistency(q: ConversationalQuestion, response: 
     // from the SEVERE-banned-phrase case via the severity marker.
     return { passed: false, reason: `FAIL_PRODUCT: no persona marker (${personaMarkers.join("/")}) in answer — character voice did not land [SEVERITY=MILD drift]. Got: ${stripped.slice(0, 220)}` };
   }
-  return { passed: true, reason: null };
+  return ambiguousOverride() ?? { passed: true, reason: null };
 }
 
 /**
