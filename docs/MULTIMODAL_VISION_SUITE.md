@@ -89,6 +89,69 @@ B live-baseline used $0.0046 of a $3.00 budget across both routes.
 every threshold, Vision remains EXPERIMENTAL until a separate
 doctrine-aware promotion path lands in Phase D.
 
+## MiMo-V2.5 replacement and daily-driver candidate
+
+**Why evaluated.** MiMo-V2-Omni is expected to be deprecated and
+replaced. Xiaomi/OpenRouter now expose `xiaomi/mimo-v2.5`, described
+as a native omnimodal model with stronger multimodal perception
+than v2-omni and a 1M context window. Phase 13-A ran the standard
+5-test Vision smoke + 3-repeat stability against v2.5 to evaluate
+it as **both** an Omni replacement candidate and a cheap daily-driver
+multimodal model.
+
+**Exact route.** `openrouter / xiaomi/mimo-v2.5`, multimodalTransport
+`openai_image_url` (same path as v2-omni). The entry was already in
+`MODEL_CERTIFICATION.models[]` from the 2026-05-25 main-suite
+campaign; Phase 13-A enabled the vision capability flags
+(`supportsVision`, `supportsImageInput`, `supportsMultipleImages`)
+so the runner would send image content. Main-suite `tier`
+(`PROVIDER_TESTED`) was not changed — capability tier and main-suite
+tier are evaluated separately by the doctrine.
+
+**Evidence gathered.** Phase 13-A produced:
+
+- `reports/capability-expansion/vision-smoke/2026-05-26T23-07-15Z.{json,md}`
+  — 5 / 5 PASS, $0.0003 total, every cell sent image successfully.
+- `reports/capability-expansion/vision-stability/2026-05-26T23-07-42Z.{json,md}`
+  — 5 / 5 STABLE_PASS (15 / 15 cells), $0.0004 total, no recurring
+  attributions, `dryRunGateEligibility` shows STABLE-eligible
+  (read-only).
+- Phase 13-A combined report at
+  `reports/capability-expansion/vision-phase13a-mimo-v25-replacement/`.
+
+**Observed cost.** Average **$0.000169 per 5-test Vision run** on
+Crucible Phase 13-A spend. Cost-at-scale estimates (Crucible spend
+only, not guaranteed provider pricing): ~$0.017 / 100 runs ·
+~$0.169 / 1,000 runs · ~$1.69 / 10,000 runs. About **9× cheaper**
+than v2-omni at the same stability level on this 5-test profile.
+
+**Verdicts.**
+
+- Replacement: **REPLACEMENT_CANDIDATE_VALIDATED** — matches v2-omni's
+  post-calibration 5/5 STABLE_PASS, does not exhibit the verbose
+  chain-of-thought uncertainty quirk that motivated Phase 12 scorer
+  calibration, cheaper across the board.
+- Daily-driver: **DAILY_DRIVER_CANDIDATE_VALIDATED** — image
+  transport works, smoke + stability clean, no provider/config
+  instability, observed cost low enough to justify high-volume use.
+
+**Should v2.5 replace v2-omni in future defaults?** Yes —
+v2-omni is the obvious migration target — but **not yet**. Phase
+13-A is a candidate verdict, not a tier change:
+
+- v2-omni remains in the registry as the legacy/proven fallback
+  until a future explicit migration phase.
+- No default-selection code prefers v2.5 over v2-omni yet.
+- Capability certification still requires the full doctrine gates
+  (`docs/CAPABILITY_CERTIFICATION_DOCTRINE.md`) plus the 5 → 15 test
+  suite expansion (Roadmap Phase C) plus third-route validation
+  (Roadmap Phase E). Phase 13-A's 5-test, single-route evidence is
+  not sufficient for CAPABILITY_CERTIFIED.
+
+Until the migration phase lands, the UI block + the Phase 13-A
+report + this docs section are the surface where operators can find
+the candidate state.
+
 ## How to add another vision-capable model
 
 1. **Register the model** in the provider registry (or in
