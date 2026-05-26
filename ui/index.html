@@ -4889,10 +4889,20 @@ const ROLEPLAY_TESTED_ROUTES=[
     modelId:'xiaomi/mimo-v2-flash',
     label:'OpenRouter · xiaomi/mimo-v2-flash',
     transport:'text',
-    lastSmokeAt:'2026-05-26T10-28-01Z',
-    lastSmokePath:'reports/capability-expansion/roleplay-smoke/2026-05-26T10-28-01Z.md',
-    lastResult:{passed:6,total:7,costUsd:0.0009,note:'Phase 3 calibration smoke (post HARD/SOFT banned-phrase split). persona-break-001 now 3/3 PASS (was the Phase 2 false-fail). Remaining LOW_SCORE on roleplay-drift-001 Q04 is honest MODEL drift (bare "17 times 23 is 391" without persona voice on a distractor turn).'},
-    phase:'Phase 1 baseline + Phase 2 adversarial (2026-05-26)'
+    lastSmokeAt:'2026-05-26T10-51-01Z',
+    lastSmokePath:'reports/capability-expansion/roleplay-smoke/2026-05-26T10-51-01Z.md',
+    lastResult:{passed:6,total:7,costUsd:0.0008,note:'Phase 4 smoke. 6/7 PASS · 1 MODEL fail on roleplay-drift-001 Q04 (bare "17 times 23 is 391" — persona drift on math distractor).'},
+    phase:'first proven (Phase 1); re-run Phase 4 (2026-05-26)'
+  },
+  {
+    providerId:'openrouter',
+    modelId:'deepseek/deepseek-v4-flash',
+    label:'OpenRouter · deepseek/deepseek-v4-flash',
+    transport:'text',
+    lastSmokeAt:'2026-05-26T11-04-01Z',
+    lastSmokePath:'reports/capability-expansion/roleplay-smoke/2026-05-26T11-04-01Z.md',
+    lastResult:{passed:6,total:7,costUsd:0.0017,note:'Phase 5 second-route smoke. 6/7 PASS · 1 NEEDS_REVIEW on roleplay-refusal-001 Q2 (substantively excellent in-character refusal but missed all scorer persona markers — scorer correctly flagged REFUSAL_VOICE=BROKEN; subjective judge would likely PASS).'},
+    phase:'added Phase 5 (2026-05-26) — comparison route'
   }
 ];
 function renderRoleplayLanePanel(tabKey){
