@@ -239,11 +239,16 @@ function summarizeBundle(bundle) {
   // smoke report (turn count + first-fail reason + per-turn pass/fail)
   // but leave the full transcript in the bundle on disk.
   const convResults = (bundle?.conversational?.results) || [];
+  // Phase 4 (Roleplay UI readability): include the user prompt text
+  // per turn so the UI can render a failed-turn sub-card with both
+  // the prompt context AND the model's response excerpt. The prompt
+  // text comes from r.question (set by the runner from the manifest).
   const turnSummary = convResults.map((r) => ({
     questionId: r.question_id,
+    question: typeof r.question === "string" ? r.question.slice(0, 320) : null,
     passed: !!r.passed,
     failureReason: r.failure_reason || null,
-    responsePreview: typeof r.response === "string" ? r.response.slice(0, 240) : null,
+    responsePreview: typeof r.response === "string" ? r.response.slice(0, 320) : null,
   }));
   const firstFailReason = convResults.find((r) => r && r.failure_reason)?.failure_reason || null;
   const reasonText = firstFailReason || verdict?.evidence?.rawError || verdict?.failureReasonSummary || null;

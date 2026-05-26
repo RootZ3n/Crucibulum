@@ -2529,6 +2529,23 @@ tr:hover td{background:rgba(139,92,246,.04)}
   .vr-transport,.vr-cost,.vr-phase{grid-column:1/-1;text-align:left}
 }
 
+/* Phase-4 Roleplay failed-turn sub-cards. Sit inside .vision-card under
+   the meta block to surface per-turn failure detail compactly without
+   dumping the full transcript. */
+.rp-fail-turns{display:flex;flex-direction:column;gap:6px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border-subtle)}
+.rp-fail-turn{display:flex;flex-direction:column;gap:4px;padding:6px 8px;border:1px solid rgba(239,68,68,.25);border-radius:var(--radius-md);background:rgba(40,15,20,.45)}
+.rp-ft-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rp-ft-id{color:var(--ink);font-size:var(--text-xs)}
+.rp-ft-sev{font-size:10px}
+.rp-ft-row{display:grid;grid-template-columns:minmax(64px,.22fr) minmax(0,1fr);column-gap:8px;font-size:var(--text-xs);align-items:start;min-width:0}
+.rp-ft-row .vc-key{color:var(--ink-dim);font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;font-size:10px}
+.rp-ft-row .vc-val{color:var(--ink);min-width:0;word-break:break-word;line-height:1.4}
+.rp-ft-row .vc-val.dim{color:var(--ink-soft)}
+@media (max-width:599px){
+  .rp-ft-row{grid-template-columns:1fr}
+  .rp-ft-row .vc-key{margin-bottom:2px}
+}
+
 /* ============================================================
    Crucible Atmosphere Pass — additive depth layers only.
    No layout changes, no DOM changes, no contrast loss.

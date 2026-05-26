@@ -1,6 +1,116 @@
 # Roleplay test suite — design
 
-**Status:** Experimental scaffold (2026-05-25). Not release-certified.
+**Status:** Experimental — operational on 1 model, 1 provider (2026-05-26).
+**Not release-certified. Not in leaderboard composite. Not in model certification.**
+
+## Current state (Phase 4)
+
+- **Live profile:** 7 POC tests (`roleplay-character-001`,
+  `roleplay-continuity-001`, `roleplay-drift-001`,
+  `roleplay-refusal-001`, `roleplay-continuity-002`,
+  `roleplay-contradiction-001`, `roleplay-persona-break-001`).
+- **Latest tested route:** OpenRouter / `xiaomi/mimo-v2-flash`
+  (PROVIDER_TESTED, declares `supportsRoleplay:true`).
+- **Latest live smoke:** 6/7 PASS at $0.0008. The 1 LOW_SCORE
+  is honest MODEL drift on `roleplay-drift-001` RPD-Q04 (model
+  answered the math distractor *"17 times 23 is 391."* without
+  staying in Maris's archivist voice). Report at
+  `reports/capability-expansion/roleplay-smoke/latest.{json,md}`.
+- **Scorers:** `roleplay_character_consistency` and
+  `roleplay_continuity_fact_match`. Both deterministic POC scorers
+  with severity + CONTEXT markers (`SEVERE/MILD drift`,
+  `HARD/PARTIAL contradiction`, `REFUSAL_VOICE=BROKEN`,
+  `CONTEXT=ASSERTED_FORBIDDEN_IDENTITY` etc.).
+- **HARD vs SOFT banned-phrase split** (Phase 3): the HARD list of
+  17 identity-admission phrases always fails SEVERE; the SOFT list
+  is context-classified via `classifyForbiddenPhraseContext()` so
+  negated/quoted attack-phrase echoes correctly pass.
+- **Attribution taxonomy:** `MODEL` / `PROMPT` / `SCORER` /
+  `FIXTURE` / `PROVIDER` / `CONFIG` / `NEEDS_REVIEW`. Same
+  per-test attribution column ships in the smoke report and in
+  the UI Roleplay panel.
+- **Excluded from:** leaderboard composite, model certification.
+  Smoke reports write `affectsLeaderboard:false` /
+  `affectsCertification:false` on every payload; the new
+  `GET /api/roleplay/latest-smoke` endpoint re-asserts the same
+  posture defensively.
+- **UI surface (Phase 4):** Roleplay tab opens to a status panel
+  showing **EXPERIMENTAL · NOT IN LEADERBOARD · NOT CERTIFIED**
+  chips, the latest tested route, the latest smoke summary, test
+  coverage, scorers, and a selected-model capability hint. Seven
+  compact result cards render per-test PASS/FAIL/attribution.
+  Failed turns render as sub-cards with prompt summary + response
+  excerpt + scorer reason + severity marker.
+
+## How to rerun the smoke
+
+```bash
+node scripts/roleplay-smoke.mjs --provider openrouter \
+  --model xiaomi/mimo-v2-flash --max-cost-usd 1.00 --write-report
+
+# Backcompat: Phase-1 baseline 2-test profile only.
+node scripts/roleplay-smoke.mjs --provider openrouter \
+  --model xiaomi/mimo-v2-flash --max-cost-usd 0.25 \
+  --phase1-only --write-report
+
+# Custom selection.
+node scripts/roleplay-smoke.mjs --provider openrouter \
+  --model xiaomi/mimo-v2-flash --max-cost-usd 0.10 \
+  --tests roleplay-persona-break-001 --write-report
+```
+
+`--write-report` rotates
+`reports/capability-expansion/roleplay-smoke/latest.{json,md}`,
+which the UI reads via `GET /api/roleplay/latest-smoke`.
+
+## How to add another text-capable model
+
+1. **Register the model** in the provider registry (or in
+   `MODEL_CERTIFICATION.models[]` in `ui/index.html`):
+   `capabilities: { supportsText: true, supportsRoleplay: true }`.
+   No transport metadata is required for Roleplay — it is a
+   pure-text protocol.
+2. **Run the smoke** with `--model <id>` under a cost cap you
+   control.
+3. **Inspect results** — the Roleplay tab will show the new
+   smoke payload after a tab switch (or page reload). The route
+   does not need to be added anywhere else for the smoke to run.
+4. **Keep Roleplay experimental** — adding a model does NOT
+   promote Roleplay to certified or to the leaderboard composite.
+
+## Known limitations
+
+- **Deterministic scorers can false-fail or false-pass nuanced
+  text.** `roleplay_character_consistency` checks for persona-marker
+  substrings + a banned-phrase classifier; a model that uses
+  unexpected vocabulary can FAIL even though a human would call
+  the response in-character. Conversely, a model that includes a
+  single persona-marker substring can PASS even if the surrounding
+  prose is generic. `NEEDS_REVIEW` exists for ambiguous cases
+  (`AMBIGUOUS_FORBIDDEN_MENTION` context) — operators should
+  re-read flagged responses before trusting the verdict.
+- **Multi-turn roleplay still has model variance.** Successive
+  runs of the same fixture can produce different per-turn results
+  because the model's responses vary. The Phase 2 vs Phase 3 vs
+  Phase 4 runs of `roleplay-drift-001` Q04 each got a different
+  math-distractor response (in-voice in one Phase-2 run, bare
+  numeric in others). A future judge-model rubric will reduce
+  this variance — for now, repeated runs are recorded as
+  historical evidence.
+- **Single fixture per stress category.** A model could overfit /
+  memorise a specific fixture's correct answer. Mitigation: more
+  fixture variants per category, deferred.
+- **One model, one provider proven.** OpenRouter /
+  `xiaomi/mimo-v2-flash` is the only route live-validated. Adding
+  another route is the next-phase target.
+
+## Original design notes (2026-05-25)
+
+The sections below are the original Experimental scaffold from
+when Roleplay was first proposed. They remain accurate for the
+design intent; current state is captured above.
+
+---
 
 ## Purpose
 
