@@ -2483,3 +2483,37 @@ tr:hover td{background:rgba(139,92,246,.04)}
   .action-grid{grid-template-columns:1fr 1fr}
   .action-grid .button{font-size:var(--text-xs)}
 }
+
+/* Phase-7 Vision lane status panel + POC result cards. Compact, deck-style.
+   See renderVisionLanePanel() in ui/index.html. */
+.vision-status-panel{display:flex;flex-direction:column;gap:14px}
+.vision-status-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.vision-status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.vision-status-block{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border:1px solid var(--border-subtle);border-radius:var(--radius-md);background:var(--bg-card);min-width:0}
+.vision-status-block-wide{grid-column:1/-1}
+.vs-label{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--ink-dim);text-transform:uppercase}
+.vs-value{font-size:var(--text-base);color:var(--ink);min-width:0;word-break:break-word}
+.vs-value.vc-cap-pass{color:#34d399}
+.vs-value.vc-cap-skip{color:#fbbf24}
+.vs-value.vc-cap-idle{color:var(--ink-soft)}
+.vs-sub{font-size:var(--text-xs);color:var(--ink-soft);line-height:1.4}
+.vision-status-foot{font-size:var(--text-xs);line-height:1.5;padding:8px 10px;border-top:1px dashed var(--border-subtle)}
+.vision-cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.vision-card{padding:10px 12px;border-radius:var(--radius-md);border:1px solid var(--border-subtle);background:var(--bg-card);display:flex;flex-direction:column;gap:8px;min-width:0}
+.vision-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;min-width:0}
+.vision-card-title{font-weight:600;font-size:var(--text-base);color:var(--ink)}
+.vision-card-meta{display:grid;gap:4px;min-width:0}
+.vc-row{display:grid;grid-template-columns:minmax(76px,.32fr) minmax(0,1fr);gap:8px;font-size:var(--text-xs);align-items:start;min-width:0}
+.vc-key{color:var(--ink-dim);font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;font-size:10px}
+.vc-val{color:var(--ink);min-width:0;word-break:break-word}
+.vc-val.mono{font-family:var(--mono)}
+.vc-val.dim{color:var(--ink-soft)}
+.vc-reason .vc-val{color:var(--ink-soft);line-height:1.4}
+.vision-card-pass{border-color:rgba(52,211,153,.28)}
+.vision-card-fail{border-color:rgba(239,68,68,.28)}
+.vision-card-skip{border-color:rgba(168,162,158,.28)}
+.vision-card-warn{border-color:rgba(245,158,11,.28)}
+.vision-card-idle{border-color:var(--border-subtle)}
+@media (max-width:719px){
+  .vision-status-grid{grid-template-columns:1fr}
+}

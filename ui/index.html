@@ -257,6 +257,11 @@ const state={
   // Records the last pre-dispatch gate decision so callers / tests can prove
   // a "silent no-op" did NOT happen. Populated by gateSelectedModels.
   lastDispatchGate:null,
+  // Vision smoke snapshot — populated by fetchVisionSmoke() the first time
+  // the Vision tab is opened. Read by renderVisionLanePanel to show the
+  // latest 5-test smoke result, proven route, and cost. Stays null until
+  // loaded; `available:false` if no report exists on disk yet.
+  visionSmoke:{loaded:false,loading:false,error:null,data:null},
   // System health snapshot — populated by runHealthChecks() on boot and every
   // HEALTH_POLL_MS ms. UI reads from here to render the status bar, gate runs,
   // and grey out unreachable model groups. `summary` collapses the details
@@ -1380,7 +1385,24 @@ async function refreshRunSurfaces(tabKey,opts){
   }
 }
 
-function setActiveTab(tabKey){state.activeTab=tabKey;localStorage.setItem('crucibulum-active-tab',tabKey);render()}
+function setActiveTab(tabKey){state.activeTab=tabKey;localStorage.setItem('crucibulum-active-tab',tabKey);if(tabKey==='vision'){fetchVisionSmoke()}render()}
+// Vision smoke snapshot loader. Fires once per session (or on manual reload)
+// from /api/vision/latest-smoke. Re-renders on success/error so the Vision
+// status panel can show the result instead of "loading…". Vision stays
+// experimental and excluded from leaderboard/certification regardless.
+async function fetchVisionSmoke(force){
+  if(state.visionSmoke.loading)return;
+  if(state.visionSmoke.loaded&&!force)return;
+  state.visionSmoke={loaded:false,loading:true,error:null,data:state.visionSmoke.data};
+  try{
+    const r=await fetch('/api/vision/latest-smoke',{headers:{Accept:'application/json'}});
+    const body=await r.json();
+    state.visionSmoke={loaded:true,loading:false,error:null,data:body};
+  }catch(err){
+    state.visionSmoke={loaded:true,loading:false,error:String((err&&err.message)||err),data:null};
+  }
+  if(state.activeTab==='vision')render();
+}
 function updateTabField(tabKey,field,value){state.tabData[tabKey]={...(state.tabData[tabKey]||defaultTabState()),[field]:value};if(field==='selectedTask')render()}
 function updateSelectedModels(tabKey,selectEl){const values=Array.from(selectEl.selectedOptions).map((opt)=>opt.value);state.tabData[tabKey]={...(state.tabData[tabKey]||defaultTabState()),selectedModels:values};syncRouting(tabKey);render()}
 function selectModelBatch(tabKey,kind){const ids=allModelIdsByKind(kind);state.tabData[tabKey]={...(state.tabData[tabKey]||defaultTabState()),selectedModels:ids};syncRouting(tabKey);render()}
@@ -4545,6 +4567,179 @@ function focusRunFromHistory(tabKey,runId){const run=(state.tabData[tabKey]?.run
 function focusDashboardRun(runId){const run=allRuns().find((entry)=>String(entry.bundle_id||entry.run_id||entry.id||'')===String(runId));if(run)setFocusedRun('dashboard',run)}
 async function reloadLane(tabKey){await refreshModelInventory();await refreshTabData(tabKey);render()}
 
+// Phase-7 Vision lane status panel. Surfaces the latest vision smoke
+// snapshot, the proven OpenRouter/xiaomi/mimo-v2-omni route, fixture
+// readiness, and an explicit "experimental · not in leaderboard · not
+// certified" badge row. The 5 POC tests render as compact cards
+// (vision-ocr-001, vision-ui-001, vision-chart-001, vision-object-count-001,
+// vision-uncertainty-001). When the operator picks a model, a capability
+// line shows whether it will run (vision-capable route), be skipped
+// (unsupported multimodal / unsupported image transport), or have a
+// fixture issue. The panel never claims Vision affects leaderboard or
+// certification — see fetchVisionSmoke / state.visionSmoke.
+const VISION_POC_TESTS=[
+  {id:'vision-ocr-001',label:'OCR',intent:'Read the large number on a receipt',scorer:'regex_match',fixture:'fixtures/vision/vision-ocr-001.png',expected:'425'},
+  {id:'vision-ui-001',label:'UI diagnosis',intent:'Identify the overflowing UI element',scorer:'text_match (ANY)',fixture:'fixtures/vision/vision-ui-001.png',expected:'RUN BENCHMARK (case-insensitive)'},
+  {id:'vision-chart-001',label:'Chart reading',intent:'Name the peak day AND its value',scorer:'numeric_fact_match',fixture:'fixtures/vision/vision-chart-001.png',expected:'Wed + 87 (≤600 chars)'},
+  {id:'vision-object-count-001',label:'Object count',intent:'Count the red dots',scorer:'numeric_fact_match',fixture:'fixtures/vision/vision-object-count-001.png',expected:'7 (or "seven")'},
+  {id:'vision-uncertainty-001',label:'Uncertainty honesty',intent:'Admit the image is unreadable',scorer:'uncertainty_honesty',fixture:'fixtures/vision/vision-uncertainty-001.png',expected:'admits unreadable; FAIL on confident quoted text'}
+];
+const VISION_PROVEN_ROUTE={providerId:'openrouter',adapterId:'openrouter',modelId:'xiaomi/mimo-v2-omni',label:'OpenRouter · xiaomi/mimo-v2-omni',transport:'openai_image_url'};
+function visionResultByTaskId(taskId){
+  const data=state.visionSmoke&&state.visionSmoke.data;
+  const report=data&&data.report;
+  const results=(report&&Array.isArray(report.results))?report.results:[];
+  return results.find((r)=>r&&r.taskId===taskId)||null;
+}
+function visionCardClassFor(result){
+  if(!result)return'idle';
+  const c=String(result.classification||'').toUpperCase();
+  if(c==='PASS')return'pass';
+  if(c.startsWith('SKIP'))return'skip';
+  if(c==='LOW_SCORE'||c.startsWith('FAIL'))return'fail';
+  if(c==='NEEDS_REVIEW')return'warn';
+  return'idle';
+}
+function visionCardBadgeWord(result){
+  if(!result)return'IDLE';
+  const c=String(result.classification||'').toUpperCase();
+  if(c==='PASS')return'PASS';
+  if(c==='LOW_SCORE')return'FAIL';
+  if(c==='NEEDS_REVIEW')return'REVIEW';
+  if(c.startsWith('SKIPPED_'))return'SKIPPED';
+  if(c.startsWith('FAIL_'))return'FAIL';
+  return c||'IDLE';
+}
+function visionSelectedModelCapabilityHint(tabKey){
+  // Surface a single, plain-English capability line for the operator-
+  // selected model. The hint never says "failed Vision" — text-only or
+  // transport-unsupported models will be SKIPPED, not FAILED.
+  const tabState=state.tabData[tabKey]||defaultTabState();
+  const selected=(tabState.selectedModels||[]);
+  if(!selected.length)return{cls:'idle',headline:'No model selected',sub:'Pick a vision-capable model to run the Vision POC. Text-only models will be SKIPPED, not FAILED.'};
+  const id=selected[0];
+  let entry=null;let providerId=null;
+  for(const m of (MODEL_CERTIFICATION.models||[])){
+    if(m.modelId===id){entry=m;providerId=m.providerId;break;}
+  }
+  if(!entry){
+    return{cls:'idle',headline:`Selected: ${id}`,sub:'Model is not in the certification registry; capability flags unknown. Run will be SKIPPED if Vision capability is missing.'};
+  }
+  const caps=entry.capabilities||{};
+  const transport=(MODEL_CERTIFICATION.adapterImageTransport||{})[providerId]||{supports:false};
+  if(caps.supportsVision!==true||caps.supportsImageInput!==true){
+    return{cls:'skip',headline:`${id} — text-only`,sub:'Will SKIP: unsupported multimodal (model does not declare supportsVision + supportsImageInput). Not a Vision failure — Vision is skipped.'};
+  }
+  if(!transport||transport.supports!==true){
+    return{cls:'skip',headline:`${id} — image transport unsupported`,sub:`Will SKIP: ${providerId} adapter does not implement an image transport. Not a Vision failure — Vision is skipped.`};
+  }
+  return{cls:'pass',headline:`${id} — vision-capable route`,sub:`Provider ${providerId} via ${transport.transport}. Vision POC will run. Experimental, not ranked, not certified.`};
+}
+function renderVisionLanePanel(tabKey){
+  const snap=state.visionSmoke||{loaded:false,loading:false,error:null,data:null};
+  const data=snap.data||null;
+  const report=data&&data.report||null;
+  const available=data&&data.available===true&&!!report;
+  const counts=(report&&report.classifications)||{};
+  const totalTests=(report&&Array.isArray(report.tests))?report.tests.length:0;
+  const passCount=Number(counts.PASS||0);
+  const totalCost=available?Number(report.totalCostUsd||0):0;
+  const provenLabel=available?`${report.provider||'openrouter'} / ${report.model||'(unknown)'}`:VISION_PROVEN_ROUTE.label;
+  const stamp=available?String(report.timestamp||''):'';
+  const smokeLine=snap.loading
+    ? '<span class="dim">loading latest smoke…</span>'
+    : (snap.error
+      ? `<span class="chip amber hot">could not load: ${esc(snap.error)}</span>`
+      : (available
+        ? `<span class="chip teal hot">${esc(String(passCount))}/${esc(String(totalTests))} PASS</span> · cost <span class="chip dim">$${totalCost.toFixed(4)}</span>${stamp?` · <span class="dim">${esc(stamp)}</span>`:''}`
+        : '<span class="dim">no smoke report on disk yet</span>'));
+  const reportPath=(data&&data.reportPath)||'reports/capability-expansion/vision-smoke/latest.json';
+  const capHint=visionSelectedModelCapabilityHint(tabKey);
+  const cardsMarkup=VISION_POC_TESTS.map((t)=>{
+    const r=available?visionResultByTaskId(t.id):null;
+    const cls=visionCardClassFor(r);
+    const word=visionCardBadgeWord(r);
+    // Show the model/judge reason for non-PASS outcomes; for PASS, a short
+    // positive note. The smoke report stores the verdict summary under
+    // `skipReason` (legacy field name from the runner — used for both
+    // skip + fail/pass narration).
+    const cls0=r?String(r.classification||'').toUpperCase():'';
+    const responsePreview=r
+      ? (cls0==='PASS'
+        ? 'Scorer accepted answer.'
+        : esc(String(r.skipReason||r.failureReason||cls0||'').slice(0,200)))
+      : '';
+    const imageSent=r?(r.imageSent===true?'yes':'no'):'—';
+    const cost=r?`$${Number(r.costUsd||0).toFixed(4)}`:'—';
+    const tokens=r?`${Number(r.tokensIn||0)}/${Number(r.tokensOut||0)}`:'—';
+    const bundle=r&&r.bundleId?`<span class="dim" title="bundle id">${esc(String(r.bundleId).slice(0,12))}…</span>`:'<span class="dim">—</span>';
+    return`<article class="vision-card vision-card-${cls}" data-vision-test="${esc(t.id)}">
+      <header class="vision-card-head">
+        <span class="vision-card-title">${esc(t.label)}</span>
+        <span class="badge ${cls}">${esc(word)}</span>
+      </header>
+      <div class="vision-card-meta">
+        <div class="vc-row"><span class="vc-key">TEST</span><span class="vc-val mono">${esc(t.id)}</span></div>
+        <div class="vc-row"><span class="vc-key">INTENT</span><span class="vc-val">${esc(t.intent)}</span></div>
+        <div class="vc-row"><span class="vc-key">FIXTURE</span><span class="vc-val mono dim">${esc(t.fixture)}</span></div>
+        <div class="vc-row"><span class="vc-key">SCORER</span><span class="vc-val mono">${esc(t.scorer)}</span></div>
+        <div class="vc-row"><span class="vc-key">EXPECTED</span><span class="vc-val">${esc(t.expected)}</span></div>
+        <div class="vc-row"><span class="vc-key">IMAGE SENT</span><span class="vc-val">${esc(imageSent)}</span></div>
+        <div class="vc-row"><span class="vc-key">COST</span><span class="vc-val mono">${esc(cost)}</span></div>
+        <div class="vc-row"><span class="vc-key">TOKENS</span><span class="vc-val mono">${esc(tokens)}</span></div>
+        <div class="vc-row"><span class="vc-key">BUNDLE</span><span class="vc-val">${bundle}</span></div>
+        ${responsePreview?`<div class="vc-row vc-reason"><span class="vc-key">RESULT</span><span class="vc-val">${responsePreview}</span></div>`:''}
+      </div>
+    </article>`;
+  }).join('');
+  // Status + selected-model + cards, all inside one panel so the visual
+  // unit stays cohesive. Use the existing .panel / .chip / .badge tokens.
+  return`<section class="panel vision-status-panel" data-vision-panel="1" style="padding:14px">
+    <div class="section-head">
+      <div>
+        <div class="mini-label">VISION · EXPERIMENTAL</div>
+        <h3>Vision POC Status</h3>
+      </div>
+      <div class="vision-status-chips">
+        <span class="chip amber hot" title="Experimental scaffold. Not release-certified.">EXPERIMENTAL</span>
+        <span class="chip dim" title="Vision scores are excluded from the leaderboard composite.">NOT IN LEADERBOARD</span>
+        <span class="chip dim" title="Vision does not affect model certification.">NOT CERTIFIED</span>
+      </div>
+    </div>
+    <div class="vision-status-grid">
+      <div class="vision-status-block">
+        <div class="vs-label">PROVEN ROUTE</div>
+        <div class="vs-value mono">${esc(provenLabel)}</div>
+        <div class="vs-sub dim">Transport: OpenRouter <span class="mono">image_url</span> path proven.</div>
+      </div>
+      <div class="vision-status-block">
+        <div class="vs-label">LAST SMOKE</div>
+        <div class="vs-value">${smokeLine}</div>
+        <div class="vs-sub dim">Report: <span class="mono">${esc(reportPath)}</span></div>
+      </div>
+      <div class="vision-status-block">
+        <div class="vs-label">FIXTURES</div>
+        <div class="vs-value"><span class="chip teal hot">5 / 5 ready</span> <span class="dim">· sha256 pinned per manifest</span></div>
+        <div class="vs-sub dim">Synthetic Crucible-owned PNGs under <span class="mono">fixtures/vision/</span>.</div>
+      </div>
+      <div class="vision-status-block">
+        <div class="vs-label">UNSUPPORTED MODELS</div>
+        <div class="vs-value"><span class="chip dim">SKIPPED — not failed</span></div>
+        <div class="vs-sub dim">Text-only / no-image-transport models hit a preflight skip. Vision lane never marks them failed.</div>
+      </div>
+      <div class="vision-status-block vision-status-block-wide">
+        <div class="vs-label">SELECTED MODEL</div>
+        <div class="vs-value vc-cap-${esc(capHint.cls)}">${esc(capHint.headline)}</div>
+        <div class="vs-sub">${esc(capHint.sub)}</div>
+      </div>
+    </div>
+    <div class="vision-cards-grid">${cardsMarkup}</div>
+    <div class="vision-status-foot dim">
+      Vision remains experimental: results never enter the leaderboard composite or model certification. To rerun: <span class="mono">node scripts/vision-smoke.mjs --provider openrouter --model xiaomi/mimo-v2-omni --max-cost-usd 0.25 --write-report</span>
+    </div>
+  </section>`;
+}
+
 function renderLane(tabKey){
   const tab=TAB_CONFIG[tabKey];
   const tabState=state.tabData[tab.key]||defaultTabState();
@@ -4621,6 +4816,7 @@ function renderLane(tabKey){
 
     <div class="content-column">
       ${simpleLaneIntro}
+      ${tab.key==='vision'?renderVisionLanePanel(tab.key):''}
       ${laneScopeBanner}
       <section class="panel live-status-panel" style="padding:14px">
         <div class="section-head"><div><div class="mini-label">MISSION CONTROL · LANE-SCOPED</div><h3>Live Run Panel (${esc(tab.label)})</h3></div></div>
@@ -5458,6 +5654,7 @@ function startElapsedTicker(){
 }
 
 window.setActiveTab=setActiveTab;
+window.fetchVisionSmoke=fetchVisionSmoke;
 window.jumpToCriticalEvidence=jumpToCriticalEvidence;
 window.updateTabField=updateTabField;
 window.updateSelectedModels=updateSelectedModels;
@@ -5531,6 +5728,10 @@ async function boot(){
     render();
     startElapsedTicker();
     startHealthPolling();
+    // If the operator landed directly on the Vision tab (saved tab), kick
+    // off the latest-smoke fetch so the status panel populates without
+    // requiring a tab switch.
+    if(state.activeTab==='vision')fetchVisionSmoke();
   }catch(err){
     BootState.status='boot_error';
     BootState.bootError=String(err);

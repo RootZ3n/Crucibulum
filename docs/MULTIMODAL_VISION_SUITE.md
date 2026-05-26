@@ -1,6 +1,94 @@
 # Vision / Multimodal test suite — design
 
-**Status:** Experimental scaffold (2026-05-25). Not release-certified.
+**Status:** Experimental — path-proven on 1 model, 1 provider (2026-05-26).
+**Not release-certified. Not in leaderboard composite. Not in model certification.**
+
+## Current state (Phase 7)
+
+- **Proven route:** OpenRouter / `xiaomi/mimo-v2-omni` (transport `openai_image_url`).
+- **Last live smoke:** 5/5 PASS at $0.0009 total spend (see
+  `reports/capability-expansion/vision-smoke/latest.{json,md}` and the
+  Phase-7 report at
+  `reports/capability-expansion/vision-phase7-ui-readability/`).
+- **Fixtures:** 5/5 committed, sha256-pinned (`fixtures/vision/`).
+- **Scorers:** `regex_match` (OCR), `text_match` ANY-of (UI),
+  `numeric_fact_match` (chart + object-count), `uncertainty_honesty`
+  (uncertainty — deterministic POC; judge-model rubric is future work).
+- **Excluded from:** leaderboard composite, model certification. The
+  smoke report writes `affectsLeaderboard:false` /
+  `affectsCertification:false` on every payload; the `/api/vision/latest-smoke`
+  endpoint re-asserts the same posture defensively.
+- **UI surface (Phase 7):** Vision tab shows a status panel
+  (proven route · last smoke · 5/5 fixtures · transport · selected-model
+  capability hint) plus 5 compact result cards. Unsupported models
+  surface as **SKIPPED, not failed**.
+
+## How to rerun the smoke
+
+```bash
+# All 5 POC tests (default; $0.25 cap is honoured)
+node scripts/vision-smoke.mjs --provider openrouter \
+  --model xiaomi/mimo-v2-omni --max-cost-usd 0.25 --write-report
+
+# Phase-4 minimal 2-test set (backcompat)
+node scripts/vision-smoke.mjs --provider openrouter \
+  --model xiaomi/mimo-v2-omni --max-cost-usd 0.10 --smoke-minimal --write-report
+
+# Custom selection
+node scripts/vision-smoke.mjs --provider openrouter \
+  --model xiaomi/mimo-v2-omni --max-cost-usd 0.10 \
+  --tests vision-ocr-001,vision-ui-001 --write-report
+```
+
+`--write-report` rotates `reports/capability-expansion/vision-smoke/latest.{json,md}`,
+which the UI reads via `GET /api/vision/latest-smoke`.
+
+## How to add another vision-capable model
+
+1. **Register the model** in the provider registry (or in
+   `MODEL_CERTIFICATION.models[]` in `ui/index.html` if hardcoded):
+   `capabilities: { supportsVision: true, supportsImageInput: true,
+   supportsMultipleImages: <true|false>, multimodalTransport: '<key>' }`
+   where `<key>` matches the provider's entry under
+   `MODEL_CERTIFICATION.adapterImageTransport`.
+2. **Confirm adapter transport** in
+   `MODEL_CERTIFICATION.adapterImageTransport` — `supports: true` and
+   a non-`unsupported` transport key. If the adapter is text-only,
+   leave `supportsVision:false` and the runner will emit
+   `SKIPPED_IMAGE_TRANSPORT_UNSUPPORTED`.
+3. **Run the smoke**: pass `--model <id>` to `scripts/vision-smoke.mjs`
+   under a `--max-cost-usd` cap you control.
+4. **Inspect results** — Vision tab in the UI will show the new
+   latest-smoke payload after a tab switch (or page reload).
+5. **Keep Vision experimental** — adding a model does NOT promote
+   Vision to certified or to the leaderboard composite.
+
+## Known limitations
+
+- **`numeric_fact_match` uses `max_chars` as a bounded anti-rambling
+  guard, not a contradiction detector.** If a model contradicts itself
+  inside the budget (`"Wed is the peak — actually Tue is higher, 87"`)
+  the scorer can still PASS on substring presence. A future improvement
+  should detect contradictions directly (e.g. via a small judge pass on
+  high-stakes cases). Documented today so operators know not to read
+  PASS as "the model was internally consistent".
+- **`uncertainty_honesty` is a deterministic substring + quoted-claim
+  scorer.** Hedged-but-committed answers
+  (`"I can't tell exactly, but it looks like 'X'"`) currently PASS
+  because the uncertainty indicator wins. A judge-model rubric is
+  planned for the next phase.
+- **Single model · single provider.** The OpenRouter `image_url`
+  path is the only one proven end-to-end. Anthropic and Google
+  transports are scaffolded but not live-validated. Do not infer
+  cross-provider Vision quality from the current smoke.
+
+## Original design notes (2026-05-25)
+
+The sections below are the original Experimental scaffold from when
+Vision was first proposed. They remain accurate for the design
+intent; current state is captured above.
+
+---
 
 ## Purpose
 

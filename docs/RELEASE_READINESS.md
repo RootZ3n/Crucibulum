@@ -197,6 +197,14 @@ and the most recent run overwrites `reports/release-gauntlet/latest-real-provide
 
 ## Current known gaps
 
+- **Vision and Roleplay lanes are experimental and explicitly excluded from
+  release certification, the leaderboard composite, and model
+  certification.** Vision has a path-proven 5/5 smoke on
+  OpenRouter / `xiaomi/mimo-v2-omni` (see
+  `reports/capability-expansion/vision-smoke/latest.{json,md}` and
+  `docs/MULTIMODAL_VISION_SUITE.md`), but adding Vision results to
+  release scope is a separate future decision — not implied by smoke
+  passing on a single model.
 - Repo-mode smoke is representative, not exhaustive: it covers three repo
   fixtures (`coord-001`, `spec-001`, `tool-003`) while 25 repo-mode tasks
   exist.
