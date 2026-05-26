@@ -43,6 +43,52 @@ node scripts/vision-smoke.mjs --provider openrouter \
 `--write-report` rotates `reports/capability-expansion/vision-smoke/latest.{json,md}`,
 which the UI reads via `GET /api/vision/latest-smoke`.
 
+## Stability profile (Roadmap Phase B)
+
+`scripts/vision-stability.mjs` runs the same 5-test suite N times per
+route to produce repeat-run evidence the capability-certification
+doctrine evaluator can consume. Mirrors `scripts/roleplay-stability.mjs`.
+
+```bash
+# 3-repeat profile (Vision STABLE gate minimum), per-route $1.50 cap
+node scripts/vision-stability.mjs --provider openrouter \
+  --model xiaomi/mimo-v2-omni --runs 3 --max-cost-usd 1.50 --write-report
+
+node scripts/vision-stability.mjs --provider openai \
+  --model gpt-5.4-mini --runs 3 --max-cost-usd 1.50 --write-report
+```
+
+Per-test classification produces one of **ten labels**:
+
+- `STABLE_PASS` — every repeat passed.
+- `STABLE_SKIP` — every repeat skipped (e.g. unsupported transport).
+- `RECURRING_FAIL` — ≥2 honest failures (MODEL attribution).
+- `INTERMITTENT_FAIL` — 1 fail / ≥1 pass; model variance.
+- `NEEDS_REVIEW_STABLE` — ≥2 reviews; humans must decide.
+- `MODEL_VARIANCE` — fail + pass mix without recurring attribution.
+- `SCORER_SUSPECT` — ≥2 failures all attributed to SCORER (or
+  recurring same-reason ambiguity).
+- `FIXTURE_SUSPECT` — ≥2 failures all attributed to FIXTURE.
+- `PROVIDER_SUSPECT` — ≥2 failures all attributed to PROVIDER.
+- `CONFIG_SUSPECT` — ≥2 failures all attributed to CONFIG.
+
+Output writes `reports/capability-expansion/vision-stability/<ts>.{json,md}`
+plus `latest.{json,md}`. The JSON payload carries a `dryRunGateEligibility`
+block that calls `evaluatePromotion()` against the doctrine's
+PROVIDER_TESTED and STABLE gates **read-only** — no promotion, no
+mutation, no leaderboard impact. The block exists so operators can
+see at a glance which gates are met and which are blocked, without
+the runner needing to know about model registries.
+
+**Cost discipline.** Stability runs are bounded by `--max-cost-usd`
+per invocation (default 1.50). The runner accumulates per-run cost
+and `break`s the outer repeat loop once the cap is reached. The Phase
+B live-baseline used $0.0046 of a $3.00 budget across both routes.
+
+**Promotion is never triggered by this runner.** Even if a route meets
+every threshold, Vision remains EXPERIMENTAL until a separate
+doctrine-aware promotion path lands in Phase D.
+
 ## How to add another vision-capable model
 
 1. **Register the model** in the provider registry (or in

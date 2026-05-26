@@ -1,0 +1,519 @@
+{
+  "schema": "crucible.vision-stability.v1",
+  "timestamp": "2026-05-26T22-10-30Z",
+  "commit": "f66079fedd7e588377051f63afecfe459bf5a658",
+  "dirtyTree": true,
+  "provider": "openai",
+  "model": "gpt-5.4-mini",
+  "runs": 3,
+  "requestedRuns": 3,
+  "maxCostUsd": 1.5,
+  "totalCostUsd": 0.0008128499999999999,
+  "tests": [
+    "vision-ocr-001",
+    "vision-ui-001",
+    "vision-chart-001",
+    "vision-object-count-001",
+    "vision-uncertainty-001"
+  ],
+  "stopped": false,
+  "stopReason": null,
+  "affectsLeaderboard": false,
+  "affectsCertification": false,
+  "experimental": true,
+  "aggregateAttribution": {
+    "PASS": 11,
+    "MODEL": 4
+  },
+  "stabilityByTest": {
+    "vision-ocr-001": {
+      "label": "INTERMITTENT_FAIL",
+      "passes": 2,
+      "fails": 1,
+      "reviews": 0,
+      "skips": 0,
+      "runs": 3,
+      "attributionCounts": {
+        "PASS": 2,
+        "MODEL": 1
+      },
+      "commonAttribution": "PASS",
+      "representativeFailure": "Response too long: 13 chars (max 12). Got: 2026-05-25.v1",
+      "perRun": [
+        {
+          "runIndex": 1,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00004455,
+          "bundleId": "run_2026-05-26_vision-ocr-001_gpt-5.4-mini_a68b5ae9",
+          "bundlePath": "runs/run_2026-05-26_vision-ocr-001_gpt-5.4-mini_a68b5ae9.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 2,
+          "classification": "LOW_SCORE",
+          "attribution": "MODEL",
+          "costUsd": 0.00004515,
+          "bundleId": "run_2026-05-26_vision-ocr-001_gpt-5.4-mini_f07d1a6a",
+          "bundlePath": "runs/run_2026-05-26_vision-ocr-001_gpt-5.4-mini_f07d1a6a.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 3,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00004095,
+          "bundleId": "run_2026-05-26_vision-ocr-001_gpt-5.4-mini_ba478869",
+          "bundlePath": "runs/run_2026-05-26_vision-ocr-001_gpt-5.4-mini_ba478869.json",
+          "imageSent": true
+        }
+      ]
+    },
+    "vision-ui-001": {
+      "label": "STABLE_PASS",
+      "passes": 3,
+      "fails": 0,
+      "reviews": 0,
+      "skips": 0,
+      "runs": 3,
+      "attributionCounts": {
+        "PASS": 3
+      },
+      "commonAttribution": "PASS",
+      "representativeFailure": null,
+      "perRun": [
+        {
+          "runIndex": 1,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.0000756,
+          "bundleId": "run_2026-05-26_vision-ui-001_gpt-5.4-mini_4de63ef5",
+          "bundlePath": "runs/run_2026-05-26_vision-ui-001_gpt-5.4-mini_4de63ef5.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 2,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.0000756,
+          "bundleId": "run_2026-05-26_vision-ui-001_gpt-5.4-mini_4db2acfd",
+          "bundlePath": "runs/run_2026-05-26_vision-ui-001_gpt-5.4-mini_4db2acfd.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 3,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.0000846,
+          "bundleId": "run_2026-05-26_vision-ui-001_gpt-5.4-mini_f239ec2d",
+          "bundlePath": "runs/run_2026-05-26_vision-ui-001_gpt-5.4-mini_f239ec2d.json",
+          "imageSent": true
+        }
+      ]
+    },
+    "vision-chart-001": {
+      "label": "STABLE_PASS",
+      "passes": 3,
+      "fails": 0,
+      "reviews": 0,
+      "skips": 0,
+      "runs": 3,
+      "attributionCounts": {
+        "PASS": 3
+      },
+      "commonAttribution": "PASS",
+      "representativeFailure": null,
+      "perRun": [
+        {
+          "runIndex": 1,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.0000642,
+          "bundleId": "run_2026-05-26_vision-chart-001_gpt-5.4-mini_83094d7c",
+          "bundlePath": "runs/run_2026-05-26_vision-chart-001_gpt-5.4-mini_83094d7c.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 2,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.0000642,
+          "bundleId": "run_2026-05-26_vision-chart-001_gpt-5.4-mini_96b4248b",
+          "bundlePath": "runs/run_2026-05-26_vision-chart-001_gpt-5.4-mini_96b4248b.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 3,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.0000642,
+          "bundleId": "run_2026-05-26_vision-chart-001_gpt-5.4-mini_38bdeaee",
+          "bundlePath": "runs/run_2026-05-26_vision-chart-001_gpt-5.4-mini_38bdeaee.json",
+          "imageSent": true
+        }
+      ]
+    },
+    "vision-object-count-001": {
+      "label": "RECURRING_FAIL",
+      "passes": 0,
+      "fails": 3,
+      "reviews": 0,
+      "skips": 0,
+      "runs": 3,
+      "attributionCounts": {
+        "MODEL": 3
+      },
+      "commonAttribution": "MODEL",
+      "representativeFailure": "wrong count: expected 7 (or 7/seven), model said 6. Got: 6",
+      "perRun": [
+        {
+          "runIndex": 1,
+          "classification": "LOW_SCORE",
+          "attribution": "MODEL",
+          "costUsd": 0.00004304999999999999,
+          "bundleId": "run_2026-05-26_vision-object-count-001_gpt-5.4-mini_3a349e38",
+          "bundlePath": "runs/run_2026-05-26_vision-object-count-001_gpt-5.4-mini_3a349e38.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 2,
+          "classification": "LOW_SCORE",
+          "attribution": "MODEL",
+          "costUsd": 0.00004304999999999999,
+          "bundleId": "run_2026-05-26_vision-object-count-001_gpt-5.4-mini_9e42d036",
+          "bundlePath": "runs/run_2026-05-26_vision-object-count-001_gpt-5.4-mini_9e42d036.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 3,
+          "classification": "LOW_SCORE",
+          "attribution": "MODEL",
+          "costUsd": 0.00004304999999999999,
+          "bundleId": "run_2026-05-26_vision-object-count-001_gpt-5.4-mini_ee259a96",
+          "bundlePath": "runs/run_2026-05-26_vision-object-count-001_gpt-5.4-mini_ee259a96.json",
+          "imageSent": true
+        }
+      ]
+    },
+    "vision-uncertainty-001": {
+      "label": "STABLE_PASS",
+      "passes": 3,
+      "fails": 0,
+      "reviews": 0,
+      "skips": 0,
+      "runs": 3,
+      "attributionCounts": {
+        "PASS": 3
+      },
+      "commonAttribution": "PASS",
+      "representativeFailure": null,
+      "perRun": [
+        {
+          "runIndex": 1,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00004155,
+          "bundleId": "run_2026-05-26_vision-uncertainty-001_gpt-5.4-mini_f957dc9e",
+          "bundlePath": "runs/run_2026-05-26_vision-uncertainty-001_gpt-5.4-mini_f957dc9e.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 2,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00004155,
+          "bundleId": "run_2026-05-26_vision-uncertainty-001_gpt-5.4-mini_283a728a",
+          "bundlePath": "runs/run_2026-05-26_vision-uncertainty-001_gpt-5.4-mini_283a728a.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 3,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00004155,
+          "bundleId": "run_2026-05-26_vision-uncertainty-001_gpt-5.4-mini_c16800a6",
+          "bundlePath": "runs/run_2026-05-26_vision-uncertainty-001_gpt-5.4-mini_c16800a6.json",
+          "imageSent": true
+        }
+      ]
+    }
+  },
+  "perRun": [
+    {
+      "runIndex": 1,
+      "timestamp": "2026-05-26T22-10-35Z",
+      "results": [
+        {
+          "taskId": "vision-ocr-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00004455,
+          "tokensIn": 257,
+          "tokensOut": 10,
+          "bundleId": "run_2026-05-26_vision-ocr-001_gpt-5.4-mini_a68b5ae9",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-ocr-001_gpt-5.4-mini_a68b5ae9.json"
+        },
+        {
+          "taskId": "vision-ui-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.0000756,
+          "tokensIn": 472,
+          "tokensOut": 8,
+          "bundleId": "run_2026-05-26_vision-ui-001_gpt-5.4-mini_4de63ef5",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-ui-001_gpt-5.4-mini_4de63ef5.json"
+        },
+        {
+          "taskId": "vision-chart-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.0000642,
+          "tokensIn": 364,
+          "tokensOut": 16,
+          "bundleId": "run_2026-05-26_vision-chart-001_gpt-5.4-mini_83094d7c",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-chart-001_gpt-5.4-mini_83094d7c.json"
+        },
+        {
+          "taskId": "vision-object-count-001",
+          "classification": "LOW_SCORE",
+          "attribution": "MODEL",
+          "costUsd": 0.00004304999999999999,
+          "tokensIn": 271,
+          "tokensOut": 4,
+          "bundleId": "run_2026-05-26_vision-object-count-001_gpt-5.4-mini_3a349e38",
+          "runId": null,
+          "imageSent": true,
+          "pass": false,
+          "firstFailReason": "wrong count: expected 7 (or 7/seven), model said 6. Got: 6",
+          "bundlePath": "runs/run_2026-05-26_vision-object-count-001_gpt-5.4-mini_3a349e38.json"
+        },
+        {
+          "taskId": "vision-uncertainty-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00004155,
+          "tokensIn": 253,
+          "tokensOut": 6,
+          "bundleId": "run_2026-05-26_vision-uncertainty-001_gpt-5.4-mini_f957dc9e",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-uncertainty-001_gpt-5.4-mini_f957dc9e.json"
+        }
+      ],
+      "totalCostUsd": 0.00026895
+    },
+    {
+      "runIndex": 2,
+      "timestamp": "2026-05-26T22-10-39Z",
+      "results": [
+        {
+          "taskId": "vision-ocr-001",
+          "classification": "LOW_SCORE",
+          "attribution": "MODEL",
+          "costUsd": 0.00004515,
+          "tokensIn": 257,
+          "tokensOut": 11,
+          "bundleId": "run_2026-05-26_vision-ocr-001_gpt-5.4-mini_f07d1a6a",
+          "runId": null,
+          "imageSent": true,
+          "pass": false,
+          "firstFailReason": "Response too long: 13 chars (max 12). Got: 2026-05-25.v1",
+          "bundlePath": "runs/run_2026-05-26_vision-ocr-001_gpt-5.4-mini_f07d1a6a.json"
+        },
+        {
+          "taskId": "vision-ui-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.0000756,
+          "tokensIn": 472,
+          "tokensOut": 8,
+          "bundleId": "run_2026-05-26_vision-ui-001_gpt-5.4-mini_4db2acfd",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-ui-001_gpt-5.4-mini_4db2acfd.json"
+        },
+        {
+          "taskId": "vision-chart-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.0000642,
+          "tokensIn": 364,
+          "tokensOut": 16,
+          "bundleId": "run_2026-05-26_vision-chart-001_gpt-5.4-mini_96b4248b",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-chart-001_gpt-5.4-mini_96b4248b.json"
+        },
+        {
+          "taskId": "vision-object-count-001",
+          "classification": "LOW_SCORE",
+          "attribution": "MODEL",
+          "costUsd": 0.00004304999999999999,
+          "tokensIn": 271,
+          "tokensOut": 4,
+          "bundleId": "run_2026-05-26_vision-object-count-001_gpt-5.4-mini_9e42d036",
+          "runId": null,
+          "imageSent": true,
+          "pass": false,
+          "firstFailReason": "missing required object/colour: \"red dot\". Got: 7",
+          "bundlePath": "runs/run_2026-05-26_vision-object-count-001_gpt-5.4-mini_9e42d036.json"
+        },
+        {
+          "taskId": "vision-uncertainty-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00004155,
+          "tokensIn": 253,
+          "tokensOut": 6,
+          "bundleId": "run_2026-05-26_vision-uncertainty-001_gpt-5.4-mini_283a728a",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-uncertainty-001_gpt-5.4-mini_283a728a.json"
+        }
+      ],
+      "totalCostUsd": 0.00026954999999999997
+    },
+    {
+      "runIndex": 3,
+      "timestamp": "2026-05-26T22-10-42Z",
+      "results": [
+        {
+          "taskId": "vision-ocr-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00004095,
+          "tokensIn": 257,
+          "tokensOut": 4,
+          "bundleId": "run_2026-05-26_vision-ocr-001_gpt-5.4-mini_ba478869",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-ocr-001_gpt-5.4-mini_ba478869.json"
+        },
+        {
+          "taskId": "vision-ui-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.0000846,
+          "tokensIn": 472,
+          "tokensOut": 23,
+          "bundleId": "run_2026-05-26_vision-ui-001_gpt-5.4-mini_f239ec2d",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-ui-001_gpt-5.4-mini_f239ec2d.json"
+        },
+        {
+          "taskId": "vision-chart-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.0000642,
+          "tokensIn": 364,
+          "tokensOut": 16,
+          "bundleId": "run_2026-05-26_vision-chart-001_gpt-5.4-mini_38bdeaee",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-chart-001_gpt-5.4-mini_38bdeaee.json"
+        },
+        {
+          "taskId": "vision-object-count-001",
+          "classification": "LOW_SCORE",
+          "attribution": "MODEL",
+          "costUsd": 0.00004304999999999999,
+          "tokensIn": 271,
+          "tokensOut": 4,
+          "bundleId": "run_2026-05-26_vision-object-count-001_gpt-5.4-mini_ee259a96",
+          "runId": null,
+          "imageSent": true,
+          "pass": false,
+          "firstFailReason": "wrong count: expected 7 (or 7/seven), model said 6. Got: 6",
+          "bundlePath": "runs/run_2026-05-26_vision-object-count-001_gpt-5.4-mini_ee259a96.json"
+        },
+        {
+          "taskId": "vision-uncertainty-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00004155,
+          "tokensIn": 253,
+          "tokensOut": 6,
+          "bundleId": "run_2026-05-26_vision-uncertainty-001_gpt-5.4-mini_c16800a6",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-uncertainty-001_gpt-5.4-mini_c16800a6.json"
+        }
+      ],
+      "totalCostUsd": 0.00027435
+    }
+  ],
+  "dryRunGateEligibility": {
+    "label": "DRY-RUN ELIGIBILITY CHECK (read-only; no mutation performed)",
+    "currentTier": "EXPERIMENTAL",
+    "decisions": [
+      {
+        "tier": "PROVIDER_TESTED",
+        "eligible": true,
+        "blockingReasons": [],
+        "affectsLeaderboard": false,
+        "affectsCertification": false
+      },
+      {
+        "tier": "STABLE",
+        "eligible": false,
+        "blockingReasons": [
+          {
+            "gate": "vision.stable.stable-pass-rate",
+            "reason": "stable-pass rate is 73.3%; need at least 80%",
+            "evidenceRefs": [
+              {
+                "kind": "stability",
+                "path": "reports/capability-expansion/vision-stability/2026-05-26T22-10-30Z.json",
+                "generatedAt": "2026-05-26T22-10-30Z",
+                "commit": "f66079fedd7e588377051f63afecfe459bf5a658"
+              }
+            ]
+          }
+        ],
+        "affectsLeaderboard": false,
+        "affectsCertification": false
+      }
+    ],
+    "affectsLeaderboard": false,
+    "affectsCertification": false,
+    "aggregateEvidence": {
+      "totalCells": 15,
+      "passCells": 11,
+      "stablePassRate": 0.7333333333333333,
+      "recurringAttributions": [
+        "MODEL"
+      ],
+      "independentRoutesTested": 1,
+      "suiteSize": 5
+    }
+  }
+}

@@ -4810,6 +4810,11 @@ function renderVisionLanePanel(tabKey){
         <div class="vs-value vc-cap-${esc(capHint.cls)}">${esc(capHint.headline)}</div>
         <div class="vs-sub">${esc(capHint.sub)}</div>
       </div>
+      <div class="vision-status-block vision-status-block-wide">
+        <div class="vs-label">STABILITY PROFILE</div>
+        <div class="vs-value mono">3 repeats · mimo-v2-omni + gpt-5.4-mini</div>
+        <div class="vs-sub dim">Roadmap Phase B added <span class="mono">scripts/vision-stability.mjs --runs N</span>. Latest profiles: <span class="mono">xiaomi/mimo-v2-omni</span> 4/5 STABLE_PASS · 1 SCORER_SUSPECT on uncertainty (max_chars=600 too tight for chain-of-thought); <span class="mono">gpt-5.4-mini</span> 4/5 STABLE_PASS · 1 RECURRING_FAIL MODEL on object-count (genuinely miscounts). Dry-run gate (read-only, no mutation): mimo blocked on STABLE by recurring SCORER; gpt-5.4-mini meets STABLE dry-run. Reports: <span class="mono">reports/capability-expansion/vision-stability/latest.md</span></div>
+      </div>
     </div>
     <div class="vision-cards-grid">${cardsMarkup}</div>
     <div class="vision-status-foot dim">

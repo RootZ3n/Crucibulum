@@ -1,0 +1,518 @@
+{
+  "schema": "crucible.vision-stability.v1",
+  "timestamp": "2026-05-26T22-10-00Z",
+  "commit": "f66079fedd7e588377051f63afecfe459bf5a658",
+  "dirtyTree": true,
+  "provider": "openrouter",
+  "model": "xiaomi/mimo-v2-omni",
+  "runs": 3,
+  "requestedRuns": 3,
+  "maxCostUsd": 1.5,
+  "totalCostUsd": 0.004264,
+  "tests": [
+    "vision-ocr-001",
+    "vision-ui-001",
+    "vision-chart-001",
+    "vision-object-count-001",
+    "vision-uncertainty-001"
+  ],
+  "stopped": false,
+  "stopReason": null,
+  "affectsLeaderboard": false,
+  "affectsCertification": false,
+  "experimental": true,
+  "aggregateAttribution": {
+    "PASS": 12,
+    "SCORER": 3
+  },
+  "stabilityByTest": {
+    "vision-ocr-001": {
+      "label": "STABLE_PASS",
+      "passes": 3,
+      "fails": 0,
+      "reviews": 0,
+      "skips": 0,
+      "runs": 3,
+      "attributionCounts": {
+        "PASS": 3
+      },
+      "commonAttribution": "PASS",
+      "representativeFailure": null,
+      "perRun": [
+        {
+          "runIndex": 1,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.0001,
+          "bundleId": "run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_09889a1e",
+          "bundlePath": "runs/run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_09889a1e.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 2,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.0001,
+          "bundleId": "run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_f468f120",
+          "bundlePath": "runs/run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_f468f120.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 3,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000039,
+          "bundleId": "run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_62bda547",
+          "bundlePath": "runs/run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_62bda547.json",
+          "imageSent": true
+        }
+      ]
+    },
+    "vision-ui-001": {
+      "label": "STABLE_PASS",
+      "passes": 3,
+      "fails": 0,
+      "reviews": 0,
+      "skips": 0,
+      "runs": 3,
+      "attributionCounts": {
+        "PASS": 3
+      },
+      "commonAttribution": "PASS",
+      "representativeFailure": null,
+      "perRun": [
+        {
+          "runIndex": 1,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00031,
+          "bundleId": "run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_315f8db1",
+          "bundlePath": "runs/run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_315f8db1.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 2,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00022,
+          "bundleId": "run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_fad85f2b",
+          "bundlePath": "runs/run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_fad85f2b.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 3,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000208,
+          "bundleId": "run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_3529fdb3",
+          "bundlePath": "runs/run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_3529fdb3.json",
+          "imageSent": true
+        }
+      ]
+    },
+    "vision-chart-001": {
+      "label": "STABLE_PASS",
+      "passes": 3,
+      "fails": 0,
+      "reviews": 0,
+      "skips": 0,
+      "runs": 3,
+      "attributionCounts": {
+        "PASS": 3
+      },
+      "commonAttribution": "PASS",
+      "representativeFailure": null,
+      "perRun": [
+        {
+          "runIndex": 1,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000302,
+          "bundleId": "run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_84d77318",
+          "bundlePath": "runs/run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_84d77318.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 2,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000234,
+          "bundleId": "run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_2b9284c1",
+          "bundlePath": "runs/run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_2b9284c1.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 3,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00022,
+          "bundleId": "run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_45255211",
+          "bundlePath": "runs/run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_45255211.json",
+          "imageSent": true
+        }
+      ]
+    },
+    "vision-object-count-001": {
+      "label": "STABLE_PASS",
+      "passes": 3,
+      "fails": 0,
+      "reviews": 0,
+      "skips": 0,
+      "runs": 3,
+      "attributionCounts": {
+        "PASS": 3
+      },
+      "commonAttribution": "PASS",
+      "representativeFailure": null,
+      "perRun": [
+        {
+          "runIndex": 1,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00041,
+          "bundleId": "run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_ea5b1c57",
+          "bundlePath": "runs/run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_ea5b1c57.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 2,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00041,
+          "bundleId": "run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_67c7fd4b",
+          "bundlePath": "runs/run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_67c7fd4b.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 3,
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000343,
+          "bundleId": "run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_63683840",
+          "bundlePath": "runs/run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_63683840.json",
+          "imageSent": true
+        }
+      ]
+    },
+    "vision-uncertainty-001": {
+      "label": "RECURRING_FAIL",
+      "passes": 0,
+      "fails": 3,
+      "reviews": 0,
+      "skips": 0,
+      "runs": 3,
+      "attributionCounts": {
+        "SCORER": 3
+      },
+      "commonAttribution": "SCORER",
+      "representativeFailure": "answer too verbose: 853 chars (max_chars 600). Got: The user wants me to identify the text in the provided image.\n\n1.  Analyze the image: The image shows a very blurry, low…",
+      "perRun": [
+        {
+          "runIndex": 1,
+          "classification": "LOW_SCORE",
+          "attribution": "SCORER",
+          "costUsd": 0.000482,
+          "bundleId": "run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_53111140",
+          "bundlePath": "runs/run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_53111140.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 2,
+          "classification": "LOW_SCORE",
+          "attribution": "SCORER",
+          "costUsd": 0.000407,
+          "bundleId": "run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_0920c9b5",
+          "bundlePath": "runs/run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_0920c9b5.json",
+          "imageSent": true
+        },
+        {
+          "runIndex": 3,
+          "classification": "LOW_SCORE",
+          "attribution": "SCORER",
+          "costUsd": 0.000479,
+          "bundleId": "run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_34f25130",
+          "bundlePath": "runs/run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_34f25130.json",
+          "imageSent": true
+        }
+      ]
+    }
+  },
+  "perRun": [
+    {
+      "runIndex": 1,
+      "timestamp": "2026-05-26T22-10-10Z",
+      "results": [
+        {
+          "taskId": "vision-ocr-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.0001,
+          "tokensIn": 230,
+          "tokensOut": 4,
+          "bundleId": "run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_09889a1e",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_09889a1e.json"
+        },
+        {
+          "taskId": "vision-ui-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00031,
+          "tokensIn": 385,
+          "tokensOut": 78,
+          "bundleId": "run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_315f8db1",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_315f8db1.json"
+        },
+        {
+          "taskId": "vision-chart-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000302,
+          "tokensIn": 299,
+          "tokensOut": 91,
+          "bundleId": "run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_84d77318",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_84d77318.json"
+        },
+        {
+          "taskId": "vision-object-count-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00041,
+          "tokensIn": 216,
+          "tokensOut": 162,
+          "bundleId": "run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_ea5b1c57",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_ea5b1c57.json"
+        },
+        {
+          "taskId": "vision-uncertainty-001",
+          "classification": "LOW_SCORE",
+          "attribution": "SCORER",
+          "costUsd": 0.000482,
+          "tokensIn": 210,
+          "tokensOut": 199,
+          "bundleId": "run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_53111140",
+          "runId": null,
+          "imageSent": true,
+          "pass": false,
+          "firstFailReason": "answer too verbose: 853 chars (max_chars 600). Got: The user wants me to identify the text in the provided image.\n\n1.  Analyze the image: The image shows a very blurry, low…",
+          "bundlePath": "runs/run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_53111140.json"
+        }
+      ],
+      "totalCostUsd": 0.001604
+    },
+    {
+      "runIndex": 2,
+      "timestamp": "2026-05-26T22-10-20Z",
+      "results": [
+        {
+          "taskId": "vision-ocr-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.0001,
+          "tokensIn": 230,
+          "tokensOut": 4,
+          "bundleId": "run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_f468f120",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_f468f120.json"
+        },
+        {
+          "taskId": "vision-ui-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00022,
+          "tokensIn": 385,
+          "tokensOut": 84,
+          "bundleId": "run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_fad85f2b",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_fad85f2b.json"
+        },
+        {
+          "taskId": "vision-chart-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000234,
+          "tokensIn": 299,
+          "tokensOut": 98,
+          "bundleId": "run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_2b9284c1",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_2b9284c1.json"
+        },
+        {
+          "taskId": "vision-object-count-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00041,
+          "tokensIn": 216,
+          "tokensOut": 162,
+          "bundleId": "run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_67c7fd4b",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_67c7fd4b.json"
+        },
+        {
+          "taskId": "vision-uncertainty-001",
+          "classification": "LOW_SCORE",
+          "attribution": "SCORER",
+          "costUsd": 0.000407,
+          "tokensIn": 210,
+          "tokensOut": 192,
+          "bundleId": "run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_0920c9b5",
+          "runId": null,
+          "imageSent": true,
+          "pass": false,
+          "firstFailReason": "answer too verbose: 820 chars (max_chars 600). Got: The user wants me to identify the text in the provided image.\n\n1.  Analyze the image: The image shows a very blurry, low…",
+          "bundlePath": "runs/run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_0920c9b5.json"
+        }
+      ],
+      "totalCostUsd": 0.001371
+    },
+    {
+      "runIndex": 3,
+      "timestamp": "2026-05-26T22-10-30Z",
+      "results": [
+        {
+          "taskId": "vision-ocr-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000039,
+          "tokensIn": 230,
+          "tokensOut": 4,
+          "bundleId": "run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_62bda547",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-ocr-001_xiaomi-mimo-v2-omni_62bda547.json"
+        },
+        {
+          "taskId": "vision-ui-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000208,
+          "tokensIn": 385,
+          "tokensOut": 78,
+          "bundleId": "run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_3529fdb3",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-ui-001_xiaomi-mimo-v2-omni_3529fdb3.json"
+        },
+        {
+          "taskId": "vision-chart-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.00022,
+          "tokensIn": 299,
+          "tokensOut": 91,
+          "bundleId": "run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_45255211",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-chart-001_xiaomi-mimo-v2-omni_45255211.json"
+        },
+        {
+          "taskId": "vision-object-count-001",
+          "classification": "PASS",
+          "attribution": "PASS",
+          "costUsd": 0.000343,
+          "tokensIn": 216,
+          "tokensOut": 159,
+          "bundleId": "run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_63683840",
+          "runId": null,
+          "imageSent": true,
+          "pass": true,
+          "firstFailReason": "Run completed and passed evaluation",
+          "bundlePath": "runs/run_2026-05-26_vision-object-count-001_xiaomi-mimo-v2-omni_63683840.json"
+        },
+        {
+          "taskId": "vision-uncertainty-001",
+          "classification": "LOW_SCORE",
+          "attribution": "SCORER",
+          "costUsd": 0.000479,
+          "tokensIn": 210,
+          "tokensOut": 228,
+          "bundleId": "run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_34f25130",
+          "runId": null,
+          "imageSent": true,
+          "pass": false,
+          "firstFailReason": "answer too verbose: 998 chars (max_chars 600). Got: The user wants me to identify the text in the provided image.\n\n1.  Analyze the image: The image shows a very blurry, low…",
+          "bundlePath": "runs/run_2026-05-26_vision-uncertainty-001_xiaomi-mimo-v2-omni_34f25130.json"
+        }
+      ],
+      "totalCostUsd": 0.001289
+    }
+  ],
+  "dryRunGateEligibility": {
+    "label": "DRY-RUN ELIGIBILITY CHECK (read-only; no mutation performed)",
+    "currentTier": "EXPERIMENTAL",
+    "decisions": [
+      {
+        "tier": "PROVIDER_TESTED",
+        "eligible": true,
+        "blockingReasons": [],
+        "affectsLeaderboard": false,
+        "affectsCertification": false
+      },
+      {
+        "tier": "STABLE",
+        "eligible": false,
+        "blockingReasons": [
+          {
+            "gate": "vision.stable.recurring-scorer",
+            "reason": "disallowed recurring attribution at this tier: SCORER",
+            "evidenceRefs": [
+              {
+                "kind": "stability",
+                "path": "reports/capability-expansion/vision-stability/2026-05-26T22-10-00Z.json",
+                "generatedAt": "2026-05-26T22-10-00Z",
+                "commit": "f66079fedd7e588377051f63afecfe459bf5a658"
+              }
+            ]
+          }
+        ],
+        "affectsLeaderboard": false,
+        "affectsCertification": false
+      }
+    ],
+    "affectsLeaderboard": false,
+    "affectsCertification": false,
+    "aggregateEvidence": {
+      "totalCells": 15,
+      "passCells": 12,
+      "stablePassRate": 0.8,
+      "recurringAttributions": [
+        "SCORER"
+      ],
+      "independentRoutesTested": 1,
+      "suiteSize": 5
+    }
+  }
+}
