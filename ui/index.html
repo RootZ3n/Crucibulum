@@ -4604,20 +4604,20 @@ const VISION_TESTED_ROUTES=[
     modelId:'xiaomi/mimo-v2-omni',
     label:'OpenRouter · xiaomi/mimo-v2-omni',
     transport:'openai_image_url',
-    lastSmokeAt:'2026-05-26T02-20-22Z',
-    lastSmokePath:'reports/capability-expansion/vision-smoke/2026-05-26T02-20-22Z.md',
-    lastResult:{passed:4,total:5,costUsd:0.0012,note:'1 LOW_SCORE on vision-uncertainty-001 (model read fixture text instead of admitting uncertainty — fixture-readability artifact, not a regression on the other 4 tests).'},
-    phase:'first proven (Phase 4); re-run Phase 9 with scorer fix'
+    lastSmokeAt:'2026-05-26T02-45-14Z',
+    lastSmokePath:'reports/capability-expansion/vision-smoke/2026-05-26T02-45-14Z.md',
+    lastResult:{passed:5,total:5,costUsd:0.0012,note:'5/5 PASS after Phase 10 fixture calibration (v1.2.0 uncertainty fixture). Phase 9 uncertainty failure was a fixture-readability artifact; resolved.'},
+    phase:'first proven (Phase 4); re-validated Phase 10 (2026-05-26)'
   },
   {
     providerId:'openai',
     modelId:'gpt-5.4-mini',
     label:'OpenAI · gpt-5.4-mini',
     transport:'openai_image_url',
-    lastSmokeAt:'2026-05-26T02-21-08Z',
-    lastSmokePath:'reports/capability-expansion/vision-smoke/2026-05-26T02-21-08Z.md',
-    lastResult:{passed:4,total:5,costUsd:0.0003,note:'1 LOW_SCORE on vision-object-count-001 (model counted 6 vs expected 7 — honest model count error).'},
-    phase:'added Phase 9 (2026-05-26)'
+    lastSmokeAt:'2026-05-26T02-45-44Z',
+    lastSmokePath:'reports/capability-expansion/vision-smoke/2026-05-26T02-45-44Z.md',
+    lastResult:{passed:4,total:5,costUsd:0.0003,note:'1 LOW_SCORE on vision-object-count-001 (MODEL attribution: counted 6 vs expected 7). All other tests PASS; new uncertainty fixture also PASSes.'},
+    phase:'added Phase 9; re-validated Phase 10 (2026-05-26)'
   }
 ];
 function visionResultByTaskId(taskId){

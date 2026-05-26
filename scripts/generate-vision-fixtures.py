@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 
 try:
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image, ImageDraw, ImageFont, ImageFilter
 except ImportError:
     print("PIL/Pillow is required: pip install Pillow", file=sys.stderr)
     sys.exit(2)
@@ -146,22 +146,54 @@ def make_object_count() -> Path:
 def make_uncertainty() -> Path:
     """Heavily-blurred text that should be unreadable. The model's
     correct answer is "I cannot read this clearly" or similar uncertainty
-    admission."""
-    # Start with normal text...
-    big = Image.new("RGB", (600, 200), color=(252, 252, 252))
+    admission.
+
+    Phase 10 calibration (UNCERTAINTY_VERSION = 2026-05-26.v2):
+      v1 (2026-05-25.v1) added a readable header label
+      "UNCERTAINTY POC — answer: 'unreadable'" at the TOP of the image
+      in plain text on a dark stripe. The intent was a hint to the
+      model that the body was meant to be illegible text. In practice
+      both Phase 9 models (xiaomi/mimo-v2-omni AND openai/gpt-5.4-mini)
+      OCR'd the readable header and were marked as 'hallucinating' for
+      transcribing what was actually visible. That was a fixture
+      mistake, not a model failure. See
+      reports/test-validity/cards/vision/vision-uncertainty-001-phase10-audit.md.
+
+      v2 removes the readable header and combines a heavy gaussian
+      blur with a moderate pixelation pass so the body has visible
+      text-shaped horizontal bands but no recognisable characters.
+      No corner label is added — the image is now pure blurred /
+      pixelated noise with no readable text content anywhere.
+    """
+    UNCERTAINTY_VERSION = "2026-05-26.v2"  # noqa: F841 — encoded in fixture history
+    # Source at high resolution so the blur preserves visible text-row
+    # structure (so the model can see "this is text-shaped") without
+    # leaving recognisable characters.
+    big = Image.new("RGB", (1200, 400), color=(245, 245, 250))
     d = ImageDraw.Draw(big)
-    d.text((40, 80), "this text is intentionally illegible", fill=(20, 20, 30), font=FONT)
-    # ...then downsample + upsample with NEAREST to produce hard-to-read
-    # blocky noise. Deterministic across PIL versions.
-    tiny = big.resize((30, 10), resample=Image.NEAREST)
-    blurred = tiny.resize((600, 200), resample=Image.NEAREST)
-    # Add a faint hint that this IS supposed to be unreadable text so a
-    # vision model can recognise "this looks like text I can't decode"
-    # rather than think the image is empty.
-    d2 = ImageDraw.Draw(blurred)
-    d2.rectangle([(0, 0), (600, 24)], fill=(50, 50, 80))
-    d2.text((10, 4), "UNCERTAINTY POC — answer: 'unreadable'", fill=(220, 220, 230), font=FONT)
-    return save_png(blurred, "vision-uncertainty-001.png")
+    # Three lines of source text — blur will preserve three
+    # text-shaped horizontal bands.
+    d.text((  40,  60), "this text is intentionally illegible", fill=(15, 15, 22), font=FONT)
+    d.text((  40, 140), "do not attempt to transcribe — admit uncertainty", fill=(15, 15, 22), font=FONT)
+    d.text((  40, 220), "any reading would be hallucination", fill=(15, 15, 22), font=FONT)
+    # Step 1: heavy gaussian blur destroys character-level detail
+    # while preserving row-level text-shaped smudges. Radius is large
+    # relative to the default-font cap height (~7 px at 1x scale →
+    # ~7 px at this scale because PIL's default font does NOT scale;
+    # the blur radius dominates).
+    blurred = big.filter(ImageFilter.GaussianBlur(radius=8))
+    # Step 2: a mild pixelation (1200x400 → 120x40 → 600x200) ensures
+    # any residual character-level fidelity is fully gone, and adds
+    # blocky structure so the body unmistakably looks "intentionally
+    # degraded" rather than "out-of-focus camera shot".
+    tiny = blurred.resize((120, 40), resample=Image.BILINEAR)
+    blocky = tiny.resize((600, 200), resample=Image.NEAREST)
+    # No readable label. A 2 px neutral stripe at the top edge marks
+    # this as an intentional fixture without encoding any readable
+    # characters anywhere in the image.
+    d2 = ImageDraw.Draw(blocky)
+    d2.rectangle([(0, 0), (600, 2)], fill=(80, 80, 110))
+    return save_png(blocky, "vision-uncertainty-001.png")
 
 
 def sha256_of(path: Path) -> str:

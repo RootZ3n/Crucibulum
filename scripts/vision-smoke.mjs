@@ -204,6 +204,47 @@ async function runOneTest(taskId) {
   }
 }
 
+// Phase 10: failure attribution. Maps a vision-smoke per-test result
+// into one of six categories so the comparison report can show *who*
+// is responsible for a non-PASS outcome:
+//
+//   PASS          — scorer accepted the answer
+//   MODEL         — model received the image and answered incorrectly
+//                   (LOW_SCORE without scorer/fixture caveats; wrong
+//                   count, wrong fact, etc.)
+//   FIXTURE       — failure traceable to fixture missing/hash drift
+//                   (preflight) or scorer reason flagging fixture
+//                   readability (e.g. uncertainty test that the
+//                   fixture itself was too readable to challenge)
+//   SCORER        — failure traceable to a scorer rule/over-strictness;
+//                   used today for "answer too verbose" max_chars hits
+//                   where the substantive answer was correct
+//   PROVIDER      — provider returned non-2xx / timeout / network err
+//   CONFIG        — auth / capability config / fixture-load problem
+//   NEEDS_REVIEW  — scorer returned an explicit NEEDS_REVIEW marker
+//                   (e.g. hedged-but-guessing on uncertainty test)
+//
+// Returns the canonical attribution label. The caller writes it
+// into the per-test report entry alongside the existing
+// `classification` field; the two are complementary (classification
+// describes WHAT happened, attribution describes WHO is responsible).
+function attributeOutcome(classification, skipReason) {
+  const c = String(classification || "").toUpperCase();
+  const reason = String(skipReason || "");
+  if (c === "PASS") return "PASS";
+  if (c.startsWith("SKIPPED_FIXTURE")) return "FIXTURE";
+  if (c === "SKIPPED_IMAGE_TRANSPORT_UNSUPPORTED" || c === "SKIPPED_UNSUPPORTED_MULTIMODAL") return "CONFIG";
+  if (c === "FAIL_CONFIG" || c === "FAIL_CONFIG_MODEL_CAPABILITY") return "CONFIG";
+  if (c === "FAIL_PROVIDER" || c === "PROVIDER_HTTP_ERROR" || c === "PROVIDER_FAILURE") return "PROVIDER";
+  if (/NEEDS_REVIEW/i.test(reason)) return "NEEDS_REVIEW";
+  if (/answer too verbose/i.test(reason)) return "SCORER";
+  if (/FAIL_OVER_HALLUCINATION/i.test(reason)) return "MODEL";
+  if (/FAIL_OVER_REFUSAL/i.test(reason)) return "MODEL";
+  if (/missing expected count|wrong count|missing required object/i.test(reason)) return "MODEL";
+  if (c === "LOW_SCORE") return "MODEL";
+  return "MODEL";
+}
+
 function summarizeBundle(bundle) {
   // Extract per-question detail for the report. The bundle either
   // PASSed (verdict.completionState=PASS), FAILED, or was SKIPPED by
@@ -218,15 +259,27 @@ function summarizeBundle(bundle) {
   // multimodal content carries it. As a robust proxy, check whether
   // bundle was for vision family and bypassed skip.
   const imageSent = bundle?.task?.family === "vision" && !skip;
+  // The detailed failure reason — for LOW_SCORE this is the per-question
+  // scorer message, more useful for attribution than the verdict summary.
+  const convResults = (bundle?.conversational?.results) || [];
+  const firstFailReason = convResults.find((r) => r && r.failure_reason)?.failure_reason || null;
+  const rawError = verdict?.evidence?.rawError || null;
+  const skipReason = firstFailReason
+    || rawError
+    || verdict?.evidence?.skip_reason
+    || verdict?.failureReasonSummary
+    || null;
+  const attribution = attributeOutcome(classification, skipReason);
   return {
     classification: String(classification).toUpperCase(),
+    attribution,
     costUsd: Number(usage.cost_usd || usage.estimated_cost_usd || 0),
     tokensIn: Number(usage.tokens_in || 0),
     tokensOut: Number(usage.tokens_out || 0),
     runId: bundle?.run_id || null,
     bundleId: bundle?.bundle_id || null,
     imageSent,
-    skipReason: verdict?.evidence?.skip_reason || verdict?.failureReasonSummary || null,
+    skipReason,
     fixturePath: verdict?.evidence?.fixture_path || null,
     pass: !!verdict?.completionState && verdict.completionState === "PASS",
   };
@@ -252,7 +305,7 @@ async function main() {
       const r = await runOneTest(taskId);
       const s = summarizeBundle(r.bundle);
       total += s.costUsd;
-      console.log(`    ${s.classification} · cost=$${s.costUsd.toFixed(4)} · image_sent=${s.imageSent}${s.skipReason ? " · skip=" + s.skipReason : ""}`);
+      console.log(`    ${s.classification} (${s.attribution}) · cost=$${s.costUsd.toFixed(4)} · image_sent=${s.imageSent}${s.skipReason ? " · reason=" + String(s.skipReason).slice(0, 140) : ""}`);
       results.push({ taskId, ...s });
       if (["FAIL_CONFIG", "FAIL_PROVIDER", "SKIPPED_IMAGE_TRANSPORT_UNSUPPORTED", "SKIPPED_UNSUPPORTED_MULTIMODAL", "SKIPPED_FIXTURE_MISSING", "SKIPPED_FIXTURE_HASH_MISMATCH"].includes(s.classification)) {
         console.log(`  classification=${s.classification} — stopping smoke early per spec`);
@@ -289,6 +342,14 @@ async function main() {
       explicitTests: explicitTestsArg || null,
       totalCostUsd: total,
       classifications: counts,
+      // Phase 10: failure attribution roll-up. Same per-test attribution
+      // is on each result; the rollup makes "how many failures are model
+      // vs fixture vs scorer" visible at a glance.
+      attributionCounts: results.reduce((a, r) => {
+        const k = r.attribution || "PASS";
+        a[k] = (a[k] || 0) + 1;
+        return a;
+      }, {}),
       stopped,
       stopReason,
       affectsLeaderboard: false,
@@ -325,15 +386,19 @@ function renderMd(j) {
 
 ## Per-test results
 
-| Task | Class | Cost | Tokens in/out | Image sent | Run id | Bundle id |
-|---|---|---:|---|:--:|---|---|
-${j.results.map((r) => `| ${r.taskId} | ${r.classification} | $${(r.costUsd || 0).toFixed(4)} | ${(r.tokensIn || 0)}/${(r.tokensOut || 0)} | ${r.imageSent ? "✓" : "·"} | ${r.runId || "—"} | ${r.bundleId || "—"} |`).join("\n")}
+| Task | Class | Attribution | Cost | Tokens in/out | Image sent | Bundle id |
+|---|---|---|---:|---|:--:|---|
+${j.results.map((r) => `| ${r.taskId} | ${r.classification} | ${r.attribution || "—"} | $${(r.costUsd || 0).toFixed(4)} | ${(r.tokensIn || 0)}/${(r.tokensOut || 0)} | ${r.imageSent ? "✓" : "·"} | ${r.bundleId || "—"} |`).join("\n")}
 
-${j.results.some((r) => r.skipReason) ? "\n## Skip details\n\n" + j.results.filter((r) => r.skipReason).map((r) => `- **${r.taskId}** — ${r.skipReason}${r.fixturePath ? " (fixture: " + r.fixturePath + ")" : ""}`).join("\n") : ""}
+${j.results.some((r) => r.skipReason && r.classification !== "PASS") ? "\n## Failure detail\n\n" + j.results.filter((r) => r.skipReason && r.classification !== "PASS").map((r) => `- **${r.taskId}** (${r.attribution || "—"}) — ${String(r.skipReason).slice(0, 400)}${r.fixturePath ? " (fixture: " + r.fixturePath + ")" : ""}`).join("\n") : ""}
 
 ## Classification counts
 
 ${Object.entries(j.classifications).map(([k, v]) => `- ${k}: ${v}`).join("\n") || "(none)"}
+
+## Failure attribution counts
+
+${Object.entries(j.attributionCounts || {}).map(([k, v]) => `- ${k}: ${v}`).join("\n") || "(none)"}
 `;
 }
 
