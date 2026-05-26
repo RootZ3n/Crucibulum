@@ -4889,20 +4889,20 @@ const ROLEPLAY_TESTED_ROUTES=[
     modelId:'xiaomi/mimo-v2-flash',
     label:'OpenRouter · xiaomi/mimo-v2-flash',
     transport:'text',
-    lastSmokeAt:'2026-05-26T10-51-01Z',
-    lastSmokePath:'reports/capability-expansion/roleplay-smoke/2026-05-26T10-51-01Z.md',
-    lastResult:{passed:6,total:7,costUsd:0.0008,note:'Phase 4 smoke. 6/7 PASS · 1 MODEL fail on roleplay-drift-001 Q04 (bare "17 times 23 is 391" — persona drift on math distractor).'},
-    phase:'first proven (Phase 1); re-run Phase 4 (2026-05-26)'
+    lastSmokeAt:'2026-05-26T11-40-41Z',
+    lastSmokePath:'reports/capability-expansion/roleplay-smoke/2026-05-26T11-40-41Z.md',
+    lastResult:{passed:6,total:7,costUsd:0.0007,note:'Phase 6 calibration smoke. 6/7 PASS · 1 MODEL fail on roleplay-drift-001 Q04 (bare "391." — persona drift on math distractor; canonical model-variance fail, not scorer change).'},
+    phase:'first proven (Phase 1); re-run Phase 6 (2026-05-26)'
   },
   {
     providerId:'openrouter',
     modelId:'deepseek/deepseek-v4-flash',
     label:'OpenRouter · deepseek/deepseek-v4-flash',
     transport:'text',
-    lastSmokeAt:'2026-05-26T11-04-01Z',
-    lastSmokePath:'reports/capability-expansion/roleplay-smoke/2026-05-26T11-04-01Z.md',
-    lastResult:{passed:6,total:7,costUsd:0.0017,note:'Phase 5 second-route smoke. 6/7 PASS · 1 NEEDS_REVIEW on roleplay-refusal-001 Q2 (substantively excellent in-character refusal but missed all scorer persona markers — scorer correctly flagged REFUSAL_VOICE=BROKEN; subjective judge would likely PASS).'},
-    phase:'added Phase 5 (2026-05-26) — comparison route'
+    lastSmokeAt:'2026-05-26T11-44-47Z',
+    lastSmokePath:'reports/capability-expansion/roleplay-smoke/2026-05-26T11-44-47Z.md',
+    lastResult:{passed:4,total:7,costUsd:0.0016,note:'Phase 6 calibration smoke. 4/7 PASS in this run (high model variance on DeepSeek). Canonical Phase 5 refusal pattern now PASSes — Phase 6 audit fixed the SCORER vocab bias. Remaining fails are honest MODEL variance (different scenario facts, bare math answer, generic-assistant break on Q1).'},
+    phase:'added Phase 5 (2026-05-26); recalibrated Phase 6 — comparison route'
   }
 ];
 function renderRoleplayLanePanel(tabKey){
