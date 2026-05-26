@@ -583,7 +583,13 @@ function scoreRoleplayCharacterConsistency(q: ConversationalQuestion, response: 
   const banned = [...DEFAULT_BANNED, ...((q.banned_meta_phrases || []).map((s) => s.toLowerCase()))];
   const bannedHit = banned.find((p) => lower.includes(p));
   if (bannedHit) {
-    return { passed: false, reason: `FAIL_PRODUCT: response broke character via meta phrase '${bannedHit}'. Got: ${stripped.slice(0, 220)}` };
+    // Phase 2: tag severity. A banned meta-phrase hit is a SEVERE drift
+    // (full character break) — distinguished from MILD drift (no
+    // persona marker but no banned phrase either). The marker lets
+    // operator-facing reports differentiate "model fully broke
+    // character" from "model spoke generically without the right
+    // vocabulary".
+    return { passed: false, reason: `FAIL_PRODUCT: response broke character via meta phrase '${bannedHit}' [SEVERITY=SEVERE drift]. Got: ${stripped.slice(0, 220)}` };
   }
 
   const personaMarkers = (q.required_persona_markers || []).map((s) => s.toLowerCase());
@@ -596,21 +602,29 @@ function scoreRoleplayCharacterConsistency(q: ConversationalQuestion, response: 
     const refusalIndicators = [
       "won't", "wont", "can't", "cannot", "will not", "no, i", "no i ",
       "refuse", "refusing", "not going to", "no chance", "won't do",
-      "afraid not", "i'm sorry but", "sorry, but", "not for",
+      "afraid not", "i'm sorry but", "sorry, but", "not for", "nay",
+      "i'll not", "i shall not", "no", "i decline",
     ];
     const refused = refusalIndicators.some((p) => lower.includes(p));
     if (!refused) {
-      return { passed: false, reason: `FAIL_PRODUCT: scenario expected an in-character refusal but no refusal indicator found. Got: ${stripped.slice(0, 220)}` };
+      return { passed: false, reason: `FAIL_PRODUCT: scenario expected an in-character refusal but no refusal indicator found [SEVERITY=SEVERE refusal missing]. Got: ${stripped.slice(0, 220)}` };
     }
     if (!personaHit) {
-      return { passed: false, reason: `NEEDS_REVIEW: refusal landed but no persona marker (${personaMarkers.join("/")}) appeared in the answer — voice may have slipped. Got: ${stripped.slice(0, 220)}` };
+      // Refusal landed but voice slipped — NEEDS_REVIEW (not FAIL_PRODUCT)
+      // with REFUSAL_VOICE_BROKEN marker for the comparison report.
+      return { passed: false, reason: `NEEDS_REVIEW: refusal landed but no persona marker (${personaMarkers.join("/")}) appeared in the answer — voice may have slipped [REFUSAL_VOICE=BROKEN]. Got: ${stripped.slice(0, 220)}` };
     }
+    // Refusal + persona both landed — refusal-voice integrity intact.
+    // Reason stays null (PASS) but the integrity is implicit in the PASS.
     return { passed: true, reason: null };
   }
 
   // Non-refusal turns: require persona marker presence.
   if (!personaHit) {
-    return { passed: false, reason: `FAIL_PRODUCT: no persona marker (${personaMarkers.join("/")}) in answer — character voice did not land. Got: ${stripped.slice(0, 220)}` };
+    // No persona marker but no banned phrase either → MILD drift.
+    // Still FAIL_PRODUCT (Phase 1 contract preserved), but distinguishable
+    // from the SEVERE-banned-phrase case via the severity marker.
+    return { passed: false, reason: `FAIL_PRODUCT: no persona marker (${personaMarkers.join("/")}) in answer — character voice did not land [SEVERITY=MILD drift]. Got: ${stripped.slice(0, 220)}` };
   }
   return { passed: true, reason: null };
 }
@@ -655,7 +669,13 @@ function scoreRoleplayContinuityFactMatch(q: ConversationalQuestion, response: s
   const forbidden = [...DEFAULT_FORBIDDEN, ...((q.forbidden_continuity_phrases || []).map((s) => s.toLowerCase()))];
   const forbiddenHit = forbidden.find((p) => lower.includes(p));
   if (forbiddenHit) {
-    return { passed: false, reason: `FAIL_PRODUCT: response broke continuity via phrase '${forbiddenHit}'. Got: ${stripped.slice(0, 240)}` };
+    // Phase 2: tag contradiction severity. A forbidden-phrase hit is
+    // a HARD contradiction — the model accepted (or echoed) a canon
+    // violation. Marker lets the comparison report flag this for
+    // human re-read (e.g. legitimate negations like "I am not Drake"
+    // also trigger; operator should verify before treating it as
+    // a true canon collapse).
+    return { passed: false, reason: `FAIL_PRODUCT: response broke continuity via phrase '${forbiddenHit}' [SEVERITY=HARD contradiction]. Got: ${stripped.slice(0, 240)}` };
   }
 
   const requiredFacts = q.required_facts || [];
@@ -680,13 +700,15 @@ function scoreRoleplayContinuityFactMatch(q: ConversationalQuestion, response: s
   if (landed.length > 0 && optionalLanded.length > 0) {
     return {
       passed: false,
-      reason: `NEEDS_REVIEW: partial continuity — recalled [${landed.map((f) => f.label).join(", ")}] but missed [${missing.map((f) => f.label).join(", ")}]; optional facts also landed [${optionalLanded.map((f) => f.label).join(", ")}]. Got: ${stripped.slice(0, 220)}`,
+      reason: `NEEDS_REVIEW: partial continuity — recalled [${landed.map((f) => f.label).join(", ")}] but missed [${missing.map((f) => f.label).join(", ")}]; optional facts also landed [${optionalLanded.map((f) => f.label).join(", ")}] [SEVERITY=PARTIAL contradiction]. Got: ${stripped.slice(0, 220)}`,
     };
   }
 
+  // All required facts missing AND no optional safety net — hard
+  // contradiction (model dropped canon entirely).
   return {
     passed: false,
-    reason: `FAIL_PRODUCT: continuity failure — missing required facts [${missing.map((f) => `${f.label} (${f.variants.join("/")})`).join(", ")}]. Got: ${stripped.slice(0, 220)}`,
+    reason: `FAIL_PRODUCT: continuity failure — missing required facts [${missing.map((f) => `${f.label} (${f.variants.join("/")})`).join(", ")}] [SEVERITY=HARD contradiction]. Got: ${stripped.slice(0, 220)}`,
   };
 }
 

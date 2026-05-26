@@ -183,15 +183,18 @@ describe('Phase 3 · synthetic vision fixtures', () => {
     assert.match(src, /"SKIPPED_IMAGE_TRANSPORT_UNSUPPORTED"/, 'classifyTier SKIP_CODES must include SKIPPED_IMAGE_TRANSPORT_UNSUPPORTED');
   });
 
-  it('V13 · release-gauntlet --dry-run-inventory still reports 23 families / 72 tasks / 47 conversational', () => {
+  it('V13 · release-gauntlet --dry-run-inventory still reports 23 families / 77 tasks / 52 conversational (post Roleplay Phase 2)', () => {
+    // Updated 2026-05-26 (Roleplay Phase 2): roleplay family grew from
+    // 5 → 10 tasks (added drift-001 / refusal-001 / continuity-002 /
+    // contradiction-001 / persona-break-001). Family count unchanged.
     const out = execFileSync(process.execPath, ['scripts/release-gauntlet.mjs', '--dry-run-inventory'], {
       cwd: ROOT,
       encoding: 'utf-8',
       timeout: 30_000,
     });
     assert.match(out, /families:\s+23/);
-    assert.match(out, /tasks total:\s+72/);
-    assert.match(out, /conversational:\s+47/);
+    assert.match(out, /tasks total:\s+77/);
+    assert.match(out, /conversational:\s+52/);
   });
 
   it('V14 · fixture generator script exists, is executable, and deterministic on re-run', () => {

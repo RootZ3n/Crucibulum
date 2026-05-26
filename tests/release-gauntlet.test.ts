@@ -53,9 +53,13 @@ describe("release-gauntlet: --dry-run-inventory", () => {
     // Bumped from 21 → 23 by the 2026-05-25 roleplay + vision scaffold
     // (5 roleplay POC manifests under tasks/roleplay/, 5 vision under
     // tasks/vision/). Conversational total bumps by 10.
+    // Bumped tasks 72 → 77 + conversational 47 → 52 by the 2026-05-26
+    // Roleplay Phase 2 adversarial expansion (added drift-001 /
+    // refusal-001 / continuity-002 / contradiction-001 /
+    // persona-break-001 under tasks/roleplay/).
     assert.match(stdout, /families:\s+23/);
-    assert.match(stdout, /tasks total:\s+72/);
-    assert.match(stdout, /conversational:\s+47/);
+    assert.match(stdout, /tasks total:\s+77/);
+    assert.match(stdout, /conversational:\s+52/);
     assert.match(stdout, /repo:\s+25/);
     assert.match(stdout, /registered adapters:\s+12/);
     // Sample of expected families.

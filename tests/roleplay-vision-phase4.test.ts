@@ -154,15 +154,17 @@ describe('Phase 4 · skip-card rendering + image transport', () => {
     assert.match(base, /\|\s*"vision"/, 'ConversationalFamily must include "vision"');
   });
 
-  it('P14 · release-gauntlet --dry-run-inventory still reports 23 families / 72 tasks / 47 conversational', () => {
+  it('P14 · release-gauntlet --dry-run-inventory still reports 23 families / 77 tasks / 52 conversational (post Roleplay Phase 2)', () => {
+    // Updated 2026-05-26 (Roleplay Phase 2): roleplay family grew from
+    // 5 → 10 tasks. Family count unchanged.
     const out = execFileSync(process.execPath, ['scripts/release-gauntlet.mjs', '--dry-run-inventory'], {
       cwd: ROOT,
       encoding: 'utf-8',
       timeout: 30_000,
     });
     assert.match(out, /families:\s+23/);
-    assert.match(out, /tasks total:\s+72/);
-    assert.match(out, /conversational:\s+47/);
+    assert.match(out, /tasks total:\s+77/);
+    assert.match(out, /conversational:\s+52/);
   });
 
   describe('Phase 4 tactical guards', () => {

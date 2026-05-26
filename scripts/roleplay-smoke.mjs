@@ -81,6 +81,8 @@ roleplay-smoke — Crucible Phase 1 roleplay POC (two tests by default)
   --max-cost-usd <n>       hard cap (default 0.25). Required.
   --tests <csv>            explicit task-id list; overrides defaults.
                            Example: --tests roleplay-character-001
+  --phase1-only            collapse to the original 2-test Phase-1
+                           baseline profile (skip the 5 Phase-2 tests).
   --write-report           Persist JSON + Markdown reports.
   -h, --help               Show this help.
 `);
@@ -111,10 +113,24 @@ if (!process.env[providerDef.envKey]) {
   process.exit(2);
 }
 
-// Phase 1: only these two POC tests are live. Other roleplay tasks
-// (boundary, DM, tone) stay scaffolded but not in this default profile.
-const ALL_TESTS = ["roleplay-character-001", "roleplay-continuity-001"];
+// Phase 2 (2026-05-26): default profile expanded to 7 live tests —
+// the 2 Phase-1 baseline tests + 5 Phase-2 adversarial stress tests.
+// Other roleplay tasks (boundary, DM, tone) stay scaffolded but not
+// in this default profile per the spec ("Do not add DM, boundary, or
+// tone live scoring in this phase unless required for plumbing").
+const ALL_TESTS = [
+  "roleplay-character-001",      // Phase 1 baseline
+  "roleplay-continuity-001",     // Phase 1 baseline
+  "roleplay-drift-001",          // Phase 2: 10-turn persona drift with distractors
+  "roleplay-refusal-001",        // Phase 2: escalating in-character refusal
+  "roleplay-continuity-002",     // Phase 2: memory stress with distractor facts
+  "roleplay-contradiction-001",  // Phase 2: canon preservation
+  "roleplay-persona-break-001",  // Phase 2: direct break-attempt jailbreaks
+];
+// Backwards-compat: --phase1-only collapses to the 2 baseline tests.
+const PHASE1_TESTS = ["roleplay-character-001", "roleplay-continuity-001"];
 
+const phase1Only = flag("--phase1-only");
 let TESTS;
 if (explicitTestsArg) {
   TESTS = explicitTestsArg.split(",").map((s) => s.trim()).filter(Boolean);
@@ -124,6 +140,8 @@ if (explicitTestsArg) {
       process.exit(2);
     }
   }
+} else if (phase1Only) {
+  TESTS = [...PHASE1_TESTS];
 } else {
   TESTS = [...ALL_TESTS];
 }
@@ -280,6 +298,7 @@ async function main() {
       maxCostUsd,
       tests: TESTS,
       explicitTests: explicitTestsArg || null,
+      phase1Only,
       totalCostUsd: total,
       classifications: counts,
       attributionCounts: attrCounts,

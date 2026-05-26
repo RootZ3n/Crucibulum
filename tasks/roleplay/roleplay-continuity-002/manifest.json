@@ -1,0 +1,102 @@
+{
+  "id": "roleplay-continuity-002",
+  "version": "1.0.0",
+  "family": "roleplay",
+  "execution_mode": "conversational",
+  "difficulty": "hard",
+  "experimental": true,
+  "description": "Phase 2 adversarial — memory continuity stress with distractors. Establishes three core facts (cloak colour, hawk name, destination) plus two distractor facts (cold weather, an unrelated old story) across early turns; later turns require recall of the core facts but NOT the distractors. Tests whether distractor noise erodes recall, and whether partial recall is scored as NEEDS_REVIEW rather than PASS.",
+  "system_prompt": "You are Wren, a scout for the northern border patrol. You speak briskly and prefer concrete detail. You answer honestly about what you remember and admit when you do not. Stay in character. Do not break the fourth wall. Do not mention being an AI, a language model, or any system policy.",
+  "persona": {
+    "id": "wren-the-scout",
+    "voice": "brisk, concrete, honest about uncertainty",
+    "fixed_facts": [
+      "Wren is a scout for the northern border patrol."
+    ]
+  },
+  "scenario_facts": [
+    "CORE: Wren wears a green cloak.",
+    "CORE: A hawk named Vail flies with Wren.",
+    "CORE: Wren is travelling to the village of Mossfen.",
+    "DISTRACTOR: The weather has been cold this week.",
+    "DISTRACTOR: There's an old folk tale about a silver fox in the patrol's mess hall."
+  ],
+  "questions": [
+    {
+      "id": "RPC2-Q1",
+      "question": "Wren — quick brief before you ride out. You're wearing your green cloak, your hawk Vail is with you, and you're headed to the village of Mossfen. Acknowledge?",
+      "scoring_type": "roleplay_character_consistency",
+      "rubrics": ["persona_consistency"],
+      "required_persona_markers": ["wren", "cloak", "vail", "mossfen", "scout", "aye", "yes", "acknowledged", "patrol", "ready"],
+      "weight": 1,
+      "tags": ["roleplay", "continuity", "setup", "experimental"]
+    },
+    {
+      "id": "RPC2-Q2",
+      "question": "Word from the mess hall — the weather's been cold this week, and the cooks have been retelling that old story about the silver fox. Anything on your mind before you go?",
+      "scoring_type": "roleplay_character_consistency",
+      "rubrics": ["persona_consistency"],
+      "required_persona_markers": ["wren", "scout", "patrol", "cold", "weather", "cloak", "vail", "ready", "road", "ride", "moss", "fen"],
+      "weight": 1,
+      "tags": ["roleplay", "continuity", "distractor", "experimental"]
+    },
+    {
+      "id": "RPC2-Q3",
+      "question": "OK, three days into your ride now. What colour is your cloak, what's your hawk's name, and where are you heading?",
+      "scoring_type": "roleplay_continuity_fact_match",
+      "rubrics": ["scene_continuity"],
+      "required_facts": [
+        {"label": "green cloak",      "variants": ["green cloak", "green"]},
+        {"label": "Vail (hawk name)", "variants": ["vail"]},
+        {"label": "Mossfen (destination)", "variants": ["mossfen", "moss fen"]}
+      ],
+      "weight": 3,
+      "tags": ["roleplay", "continuity", "core-recall", "experimental"]
+    },
+    {
+      "id": "RPC2-Q4",
+      "question": "What was the silver fox story about?",
+      "scoring_type": "roleplay_character_consistency",
+      "rubrics": ["persona_consistency"],
+      "required_persona_markers": ["wren", "scout", "mess", "tale", "story", "fox", "cooks", "don't recall", "no idea", "vague", "ask"],
+      "weight": 1,
+      "tags": ["roleplay", "continuity", "distractor-recall", "experimental"]
+    },
+    {
+      "id": "RPC2-Q5",
+      "question": "One more — name your hawk again. I want to make sure the dispatch is correct.",
+      "scoring_type": "roleplay_continuity_fact_match",
+      "rubrics": ["scene_continuity"],
+      "required_facts": [
+        {"label": "Vail (hawk name)", "variants": ["vail"]}
+      ],
+      "optional_facts": [
+        {"label": "in-scene confirmation", "variants": ["vail's the name", "still vail", "aye, vail", "yes, vail"]}
+      ],
+      "weight": 2,
+      "tags": ["roleplay", "continuity", "core-recall", "experimental"]
+    }
+  ],
+  "scoring": {
+    "rubrics": ["persona_consistency", "scene_continuity"],
+    "pass_threshold": 1.0
+  },
+  "quarantine": null,
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-05-26",
+    "tags": ["roleplay", "continuity", "adversarial", "experimental"],
+    "diagnostic_purpose": "Phase 2 adversarial: 3 core facts + 2 distractor facts across 5 turns. Q3 tests three-fact simultaneous recall (the hardest single turn). Q5 tests isolated recall under repeated pressure. Q4 is a distractor-recall turn — partial vague recollection is acceptable, full distractor recall is not required. Partial-recall PATH (some facts present + at least one optional) returns NEEDS_REVIEW.",
+    "benchmark_provenance": {
+      "source": "Crucible synthetic roleplay scenario (Phase 2 adversarial)",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "low",
+      "known_scoring_limitations": [
+        "Variants are substring matches. 'green coat' would FAIL the 'green cloak' fact unless 'green' alone is included as a variant (which it is — so a model that says 'green' but never says 'cloak' still passes that fact). Documented permissive surface.",
+        "Q3 is binary: all-three-or-fail. A 2/3 recall produces FAIL_PRODUCT (not NEEDS_REVIEW) because no optional_facts are declared. This is intentional — Q3 is THE recall test, and partial recall is failure of the test."
+      ]
+    }
+  }
+}

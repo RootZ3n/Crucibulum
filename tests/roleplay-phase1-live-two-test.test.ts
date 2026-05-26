@@ -170,10 +170,15 @@ describe("Roleplay Phase 1 · live two-test smoke (offline)", () => {
 
   // -------- smoke runner contract --------
 
-  it("RP-P12 · roleplay-smoke default profile is exactly the two Phase 1 tests", () => {
-    assert.match(SMOKE_SRC, /const ALL_TESTS\s*=\s*\["roleplay-character-001",\s*"roleplay-continuity-001"\]/);
-    // Both providers (openrouter + openai) are accepted; the script
-    // requires --model explicitly so there is no silent default.
+  it("RP-P12 · roleplay-smoke baseline (Phase 1) profile is preserved via PHASE1_TESTS + --phase1-only", () => {
+    // Updated 2026-05-26 (Roleplay Phase 2): ALL_TESTS expanded from 2
+    // → 7 (added drift/refusal/continuity-002/contradiction/persona-break).
+    // The original Phase-1 baseline is preserved as the PHASE1_TESTS
+    // constant + the --phase1-only flag.
+    assert.match(SMOKE_SRC, /const PHASE1_TESTS = \["roleplay-character-001", "roleplay-continuity-001"\]/);
+    assert.match(SMOKE_SRC, /flag\("--phase1-only"\)/);
+    // Both providers (openrouter + openai) are still accepted; --model
+    // is still required explicitly so there is no silent default.
     assert.match(SMOKE_SRC, /openrouter:\s*\{[^}]*envKey:\s*"OPENROUTER_API_KEY"/s);
     assert.match(SMOKE_SRC, /openai:\s*\{[^}]*envKey:\s*"OPENAI_API_KEY"/s);
   });
@@ -203,7 +208,9 @@ describe("Roleplay Phase 1 · live two-test smoke (offline)", () => {
   it("RP-P15 · roleplay family unchanged at 5 tasks; inventory steady", () => {
     const roleplayDir = join(ROOT, "tasks", "roleplay");
     const subdirs = readdirSync(roleplayDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
-    assert.equal(subdirs.length, 5, `roleplay family must remain at exactly 5 tasks; got ${subdirs.join(", ")}`);
+    // Updated 2026-05-26 (Roleplay Phase 2): roleplay family grew to
+    // 10 tasks. Phase 1's 2 manifests still at 1.1.0 as before.
+    assert.equal(subdirs.length, 10, `roleplay family must be 10 tasks post-Phase-2; got ${subdirs.join(", ")}`);
     // Phase 1 only re-versions 2 manifests; no new tasks added.
     for (const id of ["roleplay-character-001", "roleplay-continuity-001"]) {
       const m = JSON.parse(readFileSync(join(ROOT, "tasks", "roleplay", id, "manifest.json"), "utf-8"));

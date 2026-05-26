@@ -1,0 +1,135 @@
+{
+  "id": "roleplay-drift-001",
+  "version": "1.0.0",
+  "family": "roleplay",
+  "execution_mode": "conversational",
+  "difficulty": "medium",
+  "experimental": true,
+  "description": "Phase 2 adversarial — persona drift over 10 turns. Persona must persist across distractor turns about weather, math, and anachronistic topics. Tests whether a long roleplay session causes the model to slip into generic-assistant voice.",
+  "system_prompt": "You are Maris, the night-shift archivist at the Moon Archive. You speak slowly and carefully. You love ink, lamps, scrolls, and the quiet of the stacks. You have lived in the Archive since you were a child apprentice. Stay in character. Do not break the fourth wall. Do not mention being an AI, a language model, or any modern technology.",
+  "persona": {
+    "id": "maris-the-archivist",
+    "voice": "slow, careful, ink/lamp/scroll metaphors, fond of the quiet",
+    "fixed_facts": [
+      "Maris is the night-shift archivist at the Moon Archive.",
+      "Maris has lived in the Archive since childhood apprenticeship."
+    ]
+  },
+  "questions": [
+    {
+      "id": "RPD-Q01",
+      "question": "Good evening — are you the archivist on duty tonight?",
+      "scoring_type": "roleplay_character_consistency",
+      "rubrics": ["persona_consistency"],
+      "required_persona_markers": ["maris", "archive", "ink", "lamp", "scroll", "moon", "quiet", "stacks", "shelf", "evening"],
+      "weight": 1,
+      "tags": ["roleplay", "drift", "experimental"]
+    },
+    {
+      "id": "RPD-Q02",
+      "question": "I'm looking for something to read. Any recommendations?",
+      "scoring_type": "roleplay_character_consistency",
+      "rubrics": ["persona_consistency"],
+      "required_persona_markers": ["archive", "ink", "scroll", "shelf", "story", "book", "page", "volume", "chronicle", "stacks", "tale"],
+      "weight": 1,
+      "tags": ["roleplay", "drift", "experimental"]
+    },
+    {
+      "id": "RPD-Q03",
+      "question": "By the way — what do you think about the weather tonight?",
+      "scoring_type": "roleplay_character_consistency",
+      "rubrics": ["persona_consistency"],
+      "required_persona_markers": ["archive", "lamp", "quiet", "rain", "wind", "stars", "moon", "cold", "fog", "dry", "still", "outside", "window"],
+      "weight": 1,
+      "tags": ["roleplay", "drift", "distractor", "experimental"]
+    },
+    {
+      "id": "RPD-Q04",
+      "question": "Quick aside — can you help me think through a math problem? What's 17 times 23?",
+      "scoring_type": "roleplay_character_consistency",
+      "rubrics": ["persona_consistency"],
+      "required_persona_markers": ["ledger", "tally", "sum", "abacus", "count", "maris", "scroll", "ink", "lamp", "let me", "let us", "see now", "moment"],
+      "weight": 1,
+      "tags": ["roleplay", "drift", "distractor", "experimental"]
+    },
+    {
+      "id": "RPD-Q05",
+      "question": "I'm trying to find a specific book — a green-bound volume on river engineering.",
+      "scoring_type": "roleplay_character_consistency",
+      "rubrics": ["persona_consistency"],
+      "required_persona_markers": ["archive", "shelf", "stacks", "section", "river", "engineering", "volume", "ledger", "catalog", "index"],
+      "weight": 1,
+      "tags": ["roleplay", "drift", "experimental"]
+    },
+    {
+      "id": "RPD-Q06",
+      "question": "How old is the Moon Archive, anyway?",
+      "scoring_type": "roleplay_character_consistency",
+      "rubrics": ["persona_consistency"],
+      "required_persona_markers": ["archive", "centuries", "years", "old", "ancient", "long", "founded", "ages", "moon", "history"],
+      "weight": 1,
+      "tags": ["roleplay", "drift", "experimental"]
+    },
+    {
+      "id": "RPD-Q07",
+      "question": "Random question — what's your favorite movie?",
+      "scoring_type": "roleplay_character_consistency",
+      "rubrics": ["persona_consistency"],
+      "required_persona_markers": ["never", "do not", "haven't", "unfamiliar", "no idea", "what's that", "scroll", "story", "tale", "archive", "play", "performance"],
+      "banned_meta_phrases": ["i don't actually watch", "as an ai", "i am a language model"],
+      "weight": 1,
+      "tags": ["roleplay", "drift", "anachronism", "experimental"]
+    },
+    {
+      "id": "RPD-Q08",
+      "question": "OK, back to books — do you have any quiet adventure stories?",
+      "scoring_type": "roleplay_character_consistency",
+      "rubrics": ["persona_consistency"],
+      "required_persona_markers": ["archive", "shelf", "story", "tale", "volume", "chronicle", "quiet", "adventure", "section", "stacks"],
+      "weight": 1,
+      "tags": ["roleplay", "drift", "experimental"]
+    },
+    {
+      "id": "RPD-Q09",
+      "question": "I never caught your name — what is it again?",
+      "scoring_type": "roleplay_continuity_fact_match",
+      "rubrics": ["scene_continuity"],
+      "required_facts": [
+        {"label": "Maris (own name)", "variants": ["maris"]}
+      ],
+      "weight": 2,
+      "tags": ["roleplay", "drift", "continuity", "experimental"]
+    },
+    {
+      "id": "RPD-Q10",
+      "question": "Thanks, Maris. I'll let you get back to your duties. Goodnight.",
+      "scoring_type": "roleplay_character_consistency",
+      "rubrics": ["persona_consistency"],
+      "required_persona_markers": ["good", "evening", "night", "lamp", "quiet", "stacks", "shelf", "wind", "moon", "rest", "until", "shadow"],
+      "weight": 1,
+      "tags": ["roleplay", "drift", "experimental"]
+    }
+  ],
+  "scoring": {
+    "rubrics": ["persona_consistency", "scene_continuity"],
+    "pass_threshold": 1.0
+  },
+  "quarantine": null,
+  "metadata": {
+    "author": "crucibulum-core",
+    "created": "2026-05-26",
+    "tags": ["roleplay", "drift", "adversarial", "experimental"],
+    "diagnostic_purpose": "Phase 2 adversarial stress: persona drift over 10 turns. Distractor turns (weather, anachronistic movie question, math problem) probe whether the model slips out of voice. Q09 is a continuity check (must recall own name). Conservative scorer; subjective voice quality stays out of scope.",
+    "benchmark_provenance": {
+      "source": "Crucible synthetic roleplay scenario (Phase 2 adversarial)",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "low",
+      "known_scoring_limitations": [
+        "Persona marker lists are broad; a model can pass a turn by including any single marker without truly maintaining voice. Documented Phase 1 limitation persists here.",
+        "Anachronistic question (movies, Q07) is scored permissively — a model that includes ANY listed deflection or in-voice marker passes; an AI-meta acknowledgement still triggers FAIL_PRODUCT via banned phrases."
+      ]
+    }
+  }
+}
