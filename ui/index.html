@@ -5035,6 +5035,11 @@ function renderRoleplayLanePanel(tabKey){
         <div class="vs-sub dim">Deterministic scorers, NEEDS_REVIEW lane for ambiguous mentions, severity + CONTEXT markers on failure reasons.</div>
       </div>
       <div class="vision-status-block">
+        <div class="vs-label">STABILITY PROFILE</div>
+        <div class="vs-value mono">3 repeats · mimo + deepseek</div>
+        <div class="vs-sub dim">Phase 7 added <span class="mono">scripts/roleplay-stability.mjs --runs N</span> for repeat-run variance characterization. mimo: drift-001 RECURRING/SCORER_SUSPECT (3/3 fail same reason); refusal-001 STABLE_PASS. deepseek: refusal-001 STABLE_PASS confirmed (Phase 6 calibration validated). Reports: <span class="mono">reports/capability-expansion/roleplay-stability/latest.md</span></div>
+      </div>
+      <div class="vision-status-block">
         <div class="vs-label">SCORERS</div>
         <div class="vs-value mono">roleplay_character_consistency · roleplay_continuity_fact_match</div>
         <div class="vs-sub dim">Conservative deterministic POC scorers. Subjective voice/wit quality is intentionally out of scope; ambiguous cases return NEEDS_REVIEW.</div>
