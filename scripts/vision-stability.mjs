@@ -56,14 +56,27 @@ const PROVIDERS = {
   },
 };
 
-// Phase B stability profile: same 5-test Vision POC suite as
-// scripts/vision-smoke.mjs default.
+// Phase 14 / Roadmap C — same 15-test Vision suite as
+// scripts/vision-smoke.mjs default. Original POC 5 preserved first so
+// historical reports stay comparable.
 const ALL_TESTS = [
+  // Phase 6 — POC 5.
   "vision-ocr-001",
   "vision-ui-001",
   "vision-chart-001",
   "vision-object-count-001",
   "vision-uncertainty-001",
+  // Phase 14 — suite expansion (+10).
+  "vision-small-text-001",
+  "vision-noisy-text-001",
+  "vision-spatial-001",
+  "vision-spatial-002",
+  "vision-visual-contradiction-001",
+  "vision-hallucination-resistance-001",
+  "vision-multi-object-compare-001",
+  "vision-ui-state-001",
+  "vision-chart-trend-001",
+  "vision-table-001",
 ];
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");

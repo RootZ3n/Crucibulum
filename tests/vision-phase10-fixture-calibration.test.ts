@@ -166,10 +166,15 @@ describe("Vision Phase 10 · uncertainty fixture calibration (offline)", () => {
     assert.match(JUDGE_SRC, /\(\?<!\\\\d\)\$\{v\}\(\?!\\\\d\)\(\?!\\\\\.\\\\d\)/);
   });
 
-  it("P14 · vision family still at 5 tasks; release-gauntlet inventory unchanged by Phase 10", () => {
+  it("P14 · vision family inventory pinned (Phase 10 left it at 5; Phase 14 / Roadmap C grew it to 15)", () => {
     const visionDir = join(ROOT, "tasks", "vision");
     const subdirs = readdirSync(visionDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
-    assert.equal(subdirs.length, 5, `vision family must remain at exactly 5 tasks; got ${subdirs.join(", ")}`);
+    // The Phase 10 fixture-calibration audit did not change the
+    // Vision task count (still 5 at that time). Phase 14 / Roadmap C
+    // grew the suite to 15 to satisfy the CAPABILITY_CERTIFIED
+    // suite-size doctrine gate. The 5 original POC tests are
+    // preserved unchanged; 10 new tests appended.
+    assert.equal(subdirs.length, 15, `vision family must be exactly 15 tasks post Phase 14; got ${subdirs.join(", ")}`);
     // Spot-check fixture sizes — uncertainty must be the regenerated v1.2.0
     // size (~1200 bytes is the expected ballpark for the new generator
     // output); under 50 KB cap per generator policy.

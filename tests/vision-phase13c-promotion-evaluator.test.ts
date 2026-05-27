@@ -208,20 +208,26 @@ describe("Vision Phase 13-C · read-only promotion evaluator endpoint", () => {
     }
   });
 
-  it("P12 · CAPABILITY_CERTIFIED is blocked on every route with the 5/15-suite-size blocker (and the 1/3-routes blocker)", async () => {
+  it("P12 · CAPABILITY_CERTIFIED is blocked on every route (suite-size OR independent-routes — Phase 14 cleared suite-size for v2.5)", async () => {
+    // Phase 14 / Roadmap C grew Vision to 15 tests and v2.5 ran the
+    // full-suite stability profile, which cleared the suite-size
+    // blocker for v2.5. The independent-routes blocker (1<3) still
+    // persists for every route, so CAPABILITY_CERTIFIED is still
+    // blocked everywhere — exactly what the doctrine should enforce.
+    // For routes whose stability evidence is still on 5 tests (v2-omni
+    // and gpt-5.4-mini in current snapshots), the suite-size blocker
+    // remains visible too.
     const { body } = await getPromo();
     for (const r of body.evaluatedRoutes) {
       assert.equal(r.capabilityCertifiedDecision.proposedTier, "CAPABILITY_CERTIFIED");
       assert.equal(r.capabilityCertifiedDecision.eligible, false, `${r.provider}/${r.model} CAPABILITY_CERTIFIED must be blocked today`);
       const gates = r.capabilityCertifiedDecision.blockingReasons.map((b) => b.gate);
-      assert.ok(gates.includes("vision.capability-certified.suite-size"), `${r.provider}/${r.model} must surface suite-size blocker; got ${gates.join(", ")}`);
-      // Independent-routes blocker only fires when stability evidence is
-      // present (it depends on `independentRoutesTested`). For routes
-      // with missing stability evidence the blocker may surface as
-      // "evidence-missing" instead — accept either pattern.
+      // At least ONE structural blocker (suite-size, independent-routes,
+      // or evidence-missing) must remain so promotion stays impossible.
+      const hasSuite = gates.includes("vision.capability-certified.suite-size");
       const hasRoutes = gates.includes("vision.capability-certified.independent-routes");
       const hasMissing = gates.includes("vision.capability-certified.evidence-missing");
-      assert.ok(hasRoutes || hasMissing, `${r.provider}/${r.model} must surface independent-routes or evidence-missing blocker; got ${gates.join(", ")}`);
+      assert.ok(hasSuite || hasRoutes || hasMissing, `${r.provider}/${r.model} must surface at least one CAPABILITY_CERTIFIED structural blocker; got: ${gates.join(", ")}`);
     }
   });
 
@@ -360,11 +366,12 @@ describe("Vision Phase 13-C · read-only promotion evaluator endpoint", () => {
     assert.match(HTML, /Roleplay remains experimental/);
   });
 
-  it("P24 · task inventory steady (23 / 5 / 10)", () => {
+  it("P24 · task inventory pinned (23 families · vision 15 post-Phase-14 · roleplay 10)", () => {
     const taskFams = readdirSync(join(ROOT, "tasks"), { withFileTypes: true })
       .filter((d) => d.isDirectory()).map((d) => d.name);
     assert.equal(taskFams.length, 23, `task family count must remain 23; got ${taskFams.length}`);
-    assert.equal(readdirSync(join(ROOT, "tasks", "vision"), { withFileTypes: true }).filter((d) => d.isDirectory()).length, 5);
+    // Phase 14 / Roadmap C grew Vision 5 → 15.
+    assert.equal(readdirSync(join(ROOT, "tasks", "vision"), { withFileTypes: true }).filter((d) => d.isDirectory()).length, 15);
     assert.equal(readdirSync(join(ROOT, "tasks", "roleplay"), { withFileTypes: true }).filter((d) => d.isDirectory()).length, 10);
   });
 });

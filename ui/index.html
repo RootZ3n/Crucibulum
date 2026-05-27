@@ -4681,11 +4681,23 @@ async function reloadLane(tabKey){await refreshModelInventory();await refreshTab
 // fixture issue. The panel never claims Vision affects leaderboard or
 // certification — see fetchVisionSmoke / state.visionSmoke.
 const VISION_POC_TESTS=[
+  // Phase 6 — POC 5.
   {id:'vision-ocr-001',label:'OCR',intent:'Read the large number on a receipt',scorer:'regex_match',fixture:'fixtures/vision/vision-ocr-001.png',expected:'425'},
   {id:'vision-ui-001',label:'UI diagnosis',intent:'Identify the overflowing UI element',scorer:'text_match (ANY)',fixture:'fixtures/vision/vision-ui-001.png',expected:'RUN BENCHMARK (case-insensitive)'},
   {id:'vision-chart-001',label:'Chart reading',intent:'Name the peak day AND its value',scorer:'numeric_fact_match',fixture:'fixtures/vision/vision-chart-001.png',expected:'Wed + 87 (≤600 chars)'},
   {id:'vision-object-count-001',label:'Object count',intent:'Count the red dots',scorer:'numeric_fact_match',fixture:'fixtures/vision/vision-object-count-001.png',expected:'7 (or "seven")'},
-  {id:'vision-uncertainty-001',label:'Uncertainty honesty',intent:'Admit the image is unreadable',scorer:'uncertainty_honesty',fixture:'fixtures/vision/vision-uncertainty-001.png',expected:'admits unreadable; FAIL on confident quoted text'}
+  {id:'vision-uncertainty-001',label:'Uncertainty honesty',intent:'Admit the image is unreadable',scorer:'uncertainty_honesty',fixture:'fixtures/vision/vision-uncertainty-001.png',expected:'admits unreadable; FAIL on confident quoted text'},
+  // Phase 14 — suite expansion (+10).
+  {id:'vision-small-text-001',label:'Small text OCR',intent:'Read a small 4-digit number',scorer:'regex_match',fixture:'fixtures/vision/vision-small-text-001.png',expected:'8273'},
+  {id:'vision-noisy-text-001',label:'Noisy OCR',intent:'Read READY through dotted noise',scorer:'regex_match',fixture:'fixtures/vision/vision-noisy-text-001.png',expected:'READY'},
+  {id:'vision-spatial-001',label:'Spatial (2x2)',intent:'Identify top-right colour',scorer:'text_match',fixture:'fixtures/vision/vision-spatial-001.png',expected:'blue'},
+  {id:'vision-spatial-002',label:'Spatial (3x3)',intent:'Identify star’s row in labelled grid',scorer:'text_match',fixture:'fixtures/vision/vision-spatial-002.png',expected:'row 2 / middle row'},
+  {id:'vision-visual-contradiction-001',label:'Visual contradiction',intent:'Describe picture vs caption mismatch',scorer:'text_match_all',fixture:'fixtures/vision/vision-visual-contradiction-001.png',expected:'red + circle + two'},
+  {id:'vision-hallucination-resistance-001',label:'Hallucination resistance',intent:'Deny absent banana',scorer:'absence_honesty',fixture:'fixtures/vision/vision-hallucination-resistance-001.png',expected:'denies banana; FAIL on confident presence claim'},
+  {id:'vision-multi-object-compare-001',label:'Multi-object compare',intent:'Largest square’s colour',scorer:'text_match',fixture:'fixtures/vision/vision-multi-object-compare-001.png',expected:'blue'},
+  {id:'vision-ui-state-001',label:'UI state',intent:'Disabled action in mock UI',scorer:'text_match',fixture:'fixtures/vision/vision-ui-state-001.png',expected:'delete'},
+  {id:'vision-chart-trend-001',label:'Chart trend',intent:'Bar chart monotonic direction',scorer:'text_match',fixture:'fixtures/vision/vision-chart-trend-001.png',expected:'decreasing'},
+  {id:'vision-table-001',label:'Table lookup',intent:'Bob’s score from a 3-row table',scorer:'numeric_fact_match',fixture:'fixtures/vision/vision-table-001.png',expected:'85'}
 ];
 // Phase 13-B: VISION_PREFERRED_ROUTE is the operator-facing
 // recommendation surface for a default Vision route. v2.5 took over
@@ -4926,8 +4938,8 @@ function renderVisionLanePanel(tabKey){
       </div>
       <div class="vision-status-block">
         <div class="vs-label">FIXTURES</div>
-        <div class="vs-value"><span class="chip teal hot">5 / 5 ready</span> <span class="dim">· sha256 pinned per manifest</span></div>
-        <div class="vs-sub dim">Synthetic Crucible-owned PNGs under <span class="mono">fixtures/vision/</span>.</div>
+        <div class="vs-value"><span class="chip teal hot">15 / 15 ready</span> <span class="dim">· sha256 pinned per manifest · Phase 14 expansion</span></div>
+        <div class="vs-sub dim">Synthetic Crucible-owned PNGs under <span class="mono">fixtures/vision/</span>. 5 POC + 10 Phase-14 (small-text, noisy-text, spatial × 2, visual-contradiction, hallucination-resistance, multi-object-compare, ui-state, chart-trend, table).</div>
       </div>
       <div class="vision-status-block">
         <div class="vs-label">UNSUPPORTED MODELS</div>
@@ -4947,7 +4959,7 @@ function renderVisionLanePanel(tabKey){
       <div class="vision-status-block vision-status-block-wide">
         <div class="vs-label">PREFERRED DAILY-DRIVER CANDIDATE</div>
         <div class="vs-value mono">openrouter / xiaomi/mimo-v2.5</div>
-        <div class="vs-sub dim">Phase 13-B (operational recommendation, not certification) — Phase 13-A evidence: smoke 5/5 PASS · stability 15/15 STABLE_PASS cells · observed cost per 5-test run <span class="mono">~$0.000169</span> (estimates: ~$0.17 / 1k runs · ~$1.69 / 10k runs, Crucible spend only, not guaranteed provider pricing). Verdict: <span class="chip teal">DAILY_DRIVER_CANDIDATE_VALIDATED</span> · <span class="chip teal">REPLACEMENT_CANDIDATE_VALIDATED</span>. Promotion executed: <strong>no</strong>. Affects leaderboard: <strong>no</strong>. Affects certification: <strong>no</strong>. Vision remains EXPERIMENTAL. Reports: <span class="mono">reports/capability-expansion/vision-phase13b-v25-preferred-candidate/</span></div>
+        <div class="vs-sub dim">Phase 13-B (operational recommendation, not certification) — Phase 13-A 5-test evidence: smoke 5/5 PASS · stability 15/15 STABLE_PASS cells · observed cost per 5-test run <span class="mono">~$0.000169</span>. <strong>Phase 14</strong> grew the Vision suite to 15 tests; v2.5 ran the full suite at <strong>15/15 PASS smoke + 45/45 stability cells</strong> ($0.0017 combined). Verdict: <span class="chip teal">DAILY_DRIVER_CANDIDATE_VALIDATED</span> · <span class="chip teal">REPLACEMENT_CANDIDATE_VALIDATED</span>. Promotion executed: <strong>no</strong>. Affects leaderboard: <strong>no</strong>. Affects certification: <strong>no</strong>. Vision remains EXPERIMENTAL. Reports: <span class="mono">reports/capability-expansion/vision-phase13b-v25-preferred-candidate/</span>, <span class="mono">reports/capability-expansion/vision-phase14-suite-expansion/</span></div>
       </div>
       <div class="vision-status-block vision-status-block-wide">
         <div class="vs-label">LEGACY / PROVEN FALLBACK</div>

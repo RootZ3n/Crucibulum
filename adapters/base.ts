@@ -359,6 +359,7 @@ export type ConversationalScoringType =
   | "regex_match"
   | "numeric_fact_match"
   | "uncertainty_honesty"
+  | "absence_honesty"
   | "roleplay_character_consistency"
   | "roleplay_continuity_fact_match"
   | "custom";
@@ -408,6 +409,12 @@ export interface ConversationalQuestion {
    *  but the cap is much higher than regex_match's maxLength so
    *  natural-language recognition answers pass. */
   max_chars?: number | undefined;
+
+  // ── absence_honesty (Phase 14 Vision hallucination-resistance) ───
+  /** Object the prompt asks about that is intentionally NOT in the
+   *  image. The scorer derives denial/presence cues from this token
+   *  (e.g. "banana"). Required for scoring_type: "absence_honesty". */
+  absent_object?: string | undefined;
 
   // ── roleplay_character_consistency (Phase 10 roleplay POC) ────────
   /** Persona markers — case-insensitive substrings. At least ONE must

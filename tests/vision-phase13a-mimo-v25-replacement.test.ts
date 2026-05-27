@@ -248,12 +248,13 @@ describe("Vision Phase 13-A · MiMo-V2.5 replacement + daily-driver candidate (o
     assert.match(HTML, /Roleplay remains experimental/);
   });
 
-  it("P16 · task inventory steady (23 families · vision 5 · roleplay 10)", () => {
+  it("P16 · task inventory pinned (23 families · vision 15 post-Phase-14 · roleplay 10)", () => {
     const taskFams = readdirSync(join(ROOT, "tasks"), { withFileTypes: true })
       .filter((d) => d.isDirectory())
       .map((d) => d.name);
     assert.equal(taskFams.length, 23, `task family count must remain 23; got ${taskFams.length}: ${taskFams.join(", ")}`);
-    assert.equal(readdirSync(join(ROOT, "tasks", "vision"), { withFileTypes: true }).filter((d) => d.isDirectory()).length, 5);
+    // Phase 14 / Roadmap C grew Vision 5 → 15.
+    assert.equal(readdirSync(join(ROOT, "tasks", "vision"), { withFileTypes: true }).filter((d) => d.isDirectory()).length, 15);
     assert.equal(readdirSync(join(ROOT, "tasks", "roleplay"), { withFileTypes: true }).filter((d) => d.isDirectory()).length, 10);
   });
 

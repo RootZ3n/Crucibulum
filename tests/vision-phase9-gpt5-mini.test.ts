@@ -160,13 +160,15 @@ describe("Vision Phase 9 · GPT-5.4-mini second route (offline)", () => {
     assert.match(HTML, /VISION_PROVEN_ROUTE\s*=\s*\{[^}]*xiaomi\/mimo-v2-omni/);
   });
 
-  it("P14 · release-gauntlet task inventory unchanged (no new families/tasks added by Phase 9)", () => {
-    // Snapshot the inventory derivation: families count comes from the
-    // tasks/<family>/ directory enumeration. Phase 9 does not add or
-    // remove a family — just registers an additional model. Confirm
-    // the vision family stays at 5 tasks.
+  it("P14 · release-gauntlet vision-family inventory pinned (Phase 9 left it at 5; Phase 14 / Roadmap C grew it to 15)", () => {
+    // Phase 9 itself added a Vision model (gpt-5.4-mini) but did not
+    // change the Vision task count (still 5 at that time). Phase 14 /
+    // Roadmap C grew the Vision suite to 15 to satisfy the
+    // CAPABILITY_CERTIFIED suite-size doctrine gate. The 5 original
+    // POC tests are preserved unchanged; this assertion tracks the
+    // post-Phase-14 live count.
     const visionDir = join(ROOT, "tasks", "vision");
     const subdirs = readdirSync(visionDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
-    assert.equal(subdirs.length, 5, `vision family must remain at exactly 5 tasks; got ${subdirs.length}: ${subdirs.join(", ")}`);
+    assert.equal(subdirs.length, 15, `vision family expected at 15 tasks post Phase 14; got ${subdirs.length}: ${subdirs.join(", ")}`);
   });
 });

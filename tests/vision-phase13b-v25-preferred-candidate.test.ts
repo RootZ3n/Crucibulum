@@ -213,7 +213,8 @@ describe("Vision Phase 13-B · prefer MiMo-V2.5 as Vision daily-driver candidate
       .filter((d) => d.isDirectory())
       .map((d) => d.name);
     assert.equal(taskFams.length, 23, `task family count must remain 23; got ${taskFams.length}`);
-    assert.equal(readdirSync(join(ROOT, "tasks", "vision"), { withFileTypes: true }).filter((d) => d.isDirectory()).length, 5);
+    // Phase 14 / Roadmap C grew Vision 5 → 15.
+    assert.equal(readdirSync(join(ROOT, "tasks", "vision"), { withFileTypes: true }).filter((d) => d.isDirectory()).length, 15);
     assert.equal(readdirSync(join(ROOT, "tasks", "roleplay"), { withFileTypes: true }).filter((d) => d.isDirectory()).length, 10);
   });
 });

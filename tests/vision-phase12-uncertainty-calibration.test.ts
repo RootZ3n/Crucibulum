@@ -263,7 +263,10 @@ describe("Vision Phase 12 · uncertainty scorer calibration (offline)", () => {
     assert.equal(taskFams.length, 23, `task family count must remain 23; got ${taskFams.length}: ${taskFams.join(", ")}`);
     const visionTasks = readdirSync(join(ROOT, "tasks", "vision"), { withFileTypes: true }).filter((d) => d.isDirectory()).length;
     const roleplayTasks = readdirSync(join(ROOT, "tasks", "roleplay"), { withFileTypes: true }).filter((d) => d.isDirectory()).length;
-    assert.equal(visionTasks, 5, "vision family must still have 5 tasks");
+    // Phase 14 / Roadmap C grew Vision 5 → 15. The Phase 12 scorer
+    // calibration didn't touch task count; this is the post-Phase-14
+    // live pin.
+    assert.equal(visionTasks, 15, "vision family expected at 15 tasks post-Phase-14");
     assert.equal(roleplayTasks, 10, "roleplay family must still have 10 tasks");
   });
 });

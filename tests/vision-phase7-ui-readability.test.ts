@@ -44,8 +44,10 @@ describe("Vision Phase 7 · UI readability (offline)", () => {
     assert.match(HTML, /OpenRouter[^]*xiaomi\/mimo-v2-omni/);
   });
 
-  it("P4 · Vision status panel shows a fixture-ready count (5 / 5)", () => {
-    assert.match(HTML, /5\s*\/\s*5 ready/);
+  it("P4 · Vision status panel shows a fixture-ready count (post-Phase-14: 15 / 15)", () => {
+    // Phase 14 / Roadmap C grew Vision 5 → 15. The status panel
+    // tracks the live fixture count.
+    assert.match(HTML, /15\s*\/\s*15 ready/);
   });
 
   // -------- POC result cards --------

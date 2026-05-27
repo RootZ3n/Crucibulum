@@ -96,13 +96,35 @@ node scripts/vision-stability.mjs --provider openai \
 
 ---
 
-## Phase C · Vision suite expansion (5 → 15 tests)
+## Phase C · Vision suite expansion (5 → 15 tests) — ✅ landed 2026-05-27
 
 **Goal:** Reach the doctrine's `CAPABILITY_CERTIFIED` suite-size
 gate by adding 10 new POC tests covering the categories listed in
 the doctrine (spatial reasoning, small/noisy text, visual
 contradiction, multi-object comparison, hallucination resistance,
 etc.).
+
+**Outcome:**
+- 10 new tests landed under `tasks/vision/` (vision-small-text-001,
+  vision-noisy-text-001, vision-spatial-001/002,
+  vision-visual-contradiction-001,
+  vision-hallucination-resistance-001,
+  vision-multi-object-compare-001, vision-ui-state-001,
+  vision-chart-trend-001, vision-table-001). All sha256-pinned.
+- New `absence_honesty` deterministic scorer (Phase 14) plus
+  test-validity cards for every new test.
+- Preferred route (`xiaomi/mimo-v2.5`) ran the full 15-test suite:
+  smoke 15/15 PASS at $0.0006; stability 15/15 STABLE_PASS
+  (45/45 cells) at $0.0011.
+- Doctrine evaluator now sees suite size 15 for v2.5; the
+  `vision.capability-certified.suite-size` blocker has cleared on
+  that route. `vision.capability-certified.independent-routes`
+  (1 < 3) still blocks promotion — exactly what Phase E will
+  address.
+- No promotion executed. `certified-models.json` byte-identical;
+  `MODEL_CERTIFICATION.models[].tier` unchanged.
+- Full report:
+  `reports/capability-expansion/vision-phase14-suite-expansion/`.
 
 **Files likely touched:**
 - `tasks/vision/vision-spatial-001/` (new)

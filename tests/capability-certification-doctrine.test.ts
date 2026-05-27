@@ -241,8 +241,11 @@ describe("Capability Certification Doctrine v1 (offline)", () => {
         assert.notEqual(m.tier, "RELEASE_CERTIFIED", `${m.modelId} must not be RELEASE_CERTIFIED via Vision/Roleplay capability tier`);
       }
     }
-    // Inventory unchanged (no new tasks were added this phase).
-    assert.equal(readdirSync(join(ROOT, "tasks", "vision"), { withFileTypes: true }).filter((d) => d.isDirectory()).length, 5);
+    // Inventory pin. Phase A (doctrine landing) saw vision=5, roleplay=10.
+    // Phase 14 / Roadmap C grew vision 5 → 15 (suite-size expansion);
+    // roleplay still at 10. The doctrine evaluator gates are
+    // unchanged; only the per-family task count moved.
+    assert.equal(readdirSync(join(ROOT, "tasks", "vision"), { withFileTypes: true }).filter((d) => d.isDirectory()).length, 15);
     assert.equal(readdirSync(join(ROOT, "tasks", "roleplay"), { withFileTypes: true }).filter((d) => d.isDirectory()).length, 10);
     // Gate-spec lookup sanity: doctrine ships specs for both
     // capabilities and all 5 tiers.

@@ -200,7 +200,9 @@ describe("Vision Phase 11 · stability runner + dry-run gate eligibility (offlin
     assert.equal(j.affectsCertification, false);
     assert.equal(j.experimental, true);
     assert.equal(j.runs, 3, "Phase B baseline ran 3 repeats");
-    assert.ok(Array.isArray(j.tests) && (j.tests as unknown[]).length === 5, "stability profile must exercise all 5 Vision POC tests");
+    // Phase 14 / Roadmap C grew the Vision suite from 5 → 15. The
+    // latest stability profile now exercises 15 tests.
+    assert.ok(Array.isArray(j.tests) && (j.tests as unknown[]).length === 15, `stability profile must exercise all 15 Vision tests post-Phase-14; got ${(j.tests as unknown[]).length}`);
   });
 
   it("P13 · latest.json embeds a dry-run gate eligibility block with both PROVIDER_TESTED + STABLE decisions", () => {
@@ -296,7 +298,9 @@ describe("Vision Phase 11 · stability runner + dry-run gate eligibility (offlin
     const roleplayDir = join(ROOT, "tasks", "roleplay");
     const vision = readdirSync(visionDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
     const roleplay = readdirSync(roleplayDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
-    assert.equal(vision.length, 5, `vision must remain at 5 tasks; got ${vision.join(", ")}`);
+    // Phase 14 / Roadmap C grew Vision 5 → 15. Phase 11 tests just
+    // pin the live count.
+    assert.equal(vision.length, 15, `vision family expected at 15 tasks post-Phase-14; got ${vision.join(", ")}`);
     assert.equal(roleplay.length, 10, `roleplay must remain at 10 tasks; got ${roleplay.join(", ")}`);
   });
 });

@@ -57,9 +57,13 @@ describe("release-gauntlet: --dry-run-inventory", () => {
     // Roleplay Phase 2 adversarial expansion (added drift-001 /
     // refusal-001 / continuity-002 / contradiction-001 /
     // persona-break-001 under tasks/roleplay/).
+    // Phase 14 / Roadmap C (2026-05-27): bumped tasks 77 → 87 +
+    // conversational 52 → 62 by the Vision suite expansion (5 → 15
+    // Vision tests under tasks/vision/). Families unchanged at 23 —
+    // Vision is one family.
     assert.match(stdout, /families:\s+23/);
-    assert.match(stdout, /tasks total:\s+77/);
-    assert.match(stdout, /conversational:\s+52/);
+    assert.match(stdout, /tasks total:\s+87/);
+    assert.match(stdout, /conversational:\s+62/);
     assert.match(stdout, /repo:\s+25/);
     assert.match(stdout, /registered adapters:\s+12/);
     // Sample of expected families.

@@ -16,10 +16,18 @@
   `reports/capability-expansion/vision-smoke/latest.{json,md}` and the
   Phase-7 report at
   `reports/capability-expansion/vision-phase7-ui-readability/`).
-- **Fixtures:** 5/5 committed, sha256-pinned (`fixtures/vision/`).
-- **Scorers:** `regex_match` (OCR), `text_match` ANY-of (UI),
-  `numeric_fact_match` (chart + object-count), `uncertainty_honesty`
-  (uncertainty — deterministic POC; judge-model rubric is future work).
+- **Fixtures:** 15/15 committed, sha256-pinned (`fixtures/vision/`).
+  Phase 14 / Roadmap C added 10 new tests (small-text, noisy-text,
+  spatial × 2, visual-contradiction, hallucination-resistance,
+  multi-object-compare, ui-state, chart-trend, table). The 5 POC
+  fixture hashes are preserved unchanged.
+- **Scorers:** `regex_match` (OCR), `text_match` / `text_match_all`
+  (UI · spatial · visual-contradiction · multi-object-compare ·
+  chart-trend), `numeric_fact_match` (chart · object-count · table),
+  `uncertainty_honesty` (uncertainty — deterministic POC), and
+  `absence_honesty` (Phase 14 NEW — hallucination resistance for
+  absent objects; deterministic POC mirroring `uncertainty_honesty`).
+  A judge-model rubric remains future work for both honesty scorers.
 - **Excluded from:** leaderboard composite, model certification. The
   smoke report writes `affectsLeaderboard:false` /
   `affectsCertification:false` on every payload; the `/api/vision/latest-smoke`
@@ -162,6 +170,48 @@ block immediately below the LEGACY / PROVEN FALLBACK block. Each
 row uses **"Eligible in dry-run"** or **"Blocked"** — never
 "Certified" or "Promoted" — and the column header for the action
 state is **"Promoted"** with every value literally `no`.
+
+## Phase 14 / Roadmap C — suite expansion (5 → 15 tests)
+
+The Vision suite grew from 5 tests to 15 in Phase 14 to satisfy the
+CAPABILITY_CERTIFIED suite-size doctrine gate (`minSuiteSize: 15`).
+Coverage map:
+
+| Category | POC 5 | Phase 14 additions | Total |
+|---|:--:|:--:|:--:|
+| OCR | 1 | +2 (`small-text-001`, `noisy-text-001`) | 3 |
+| object count | 1 | — | 1 |
+| chart reading | 1 | +1 (`chart-trend-001`) | 2 |
+| UI screenshot reasoning | 1 | +1 (`ui-state-001`) | 2 |
+| uncertainty honesty | 1 | — | 1 |
+| spatial reasoning | 0 | +2 (`spatial-001`, `spatial-002`) | 2 |
+| visual contradiction | 0 | +1 (`visual-contradiction-001`) | 1 |
+| multi-object comparison | 0 | +1 (`multi-object-compare-001`) | 1 |
+| hallucination resistance | 0 | +1 (`hallucination-resistance-001`) | 1 |
+| table lookup | 0 | +1 (`table-001`) | 1 |
+| **Total** | **5** | **+10** | **15** |
+
+**Live evidence on the preferred route.** `xiaomi/mimo-v2.5` ran the
+full 15-test smoke + 3-repeat stability (45 cells) under Phase 14:
+
+- Smoke: **15 / 15 PASS** at $0.0006.
+- Stability: **15 / 15 STABLE_PASS** (45 / 45 cells) at $0.0011.
+- Aggregate attribution: `{ PASS: 45 }`. No recurring attributions.
+
+**Dry-run gate after Phase 14.** The read-only evaluator at
+`GET /api/capabilities/vision/promotion-evaluation` shows:
+
+- v2.5 — **CAPABILITY_CERTIFIED suite-size blocker now CLEARED**
+  (suite=15). Only `vision.capability-certified.independent-routes`
+  (1 < 3) remains as a structural blocker — Roadmap Phase E will
+  add a third route.
+- v2-omni / gpt-5.4-mini — still on 5-test stability evidence, so
+  both blockers persist for them. Operators can rerun stability
+  against those routes on the full 15-test suite to clear the
+  suite-size blocker there too; the runner already supports it.
+
+**No promotion executed.** Vision remains EXPERIMENTAL. The doctrine
+evaluator is read-only.
 
 ## MiMo-V2.5 replacement and daily-driver candidate
 

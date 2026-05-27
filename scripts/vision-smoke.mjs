@@ -132,12 +132,26 @@ if (!process.env[providerDef.envKey]) {
   process.exit(2);
 }
 
+// Phase 14 / Roadmap C — Vision suite expanded 5 → 15 tests. Original
+// POC 5 are preserved first to keep historical reports comparable.
 const ALL_TESTS = [
+  // Phase 6 — POC 5.
   "vision-ocr-001",
   "vision-ui-001",
   "vision-chart-001",
   "vision-object-count-001",
   "vision-uncertainty-001",
+  // Phase 14 — suite expansion (+10).
+  "vision-small-text-001",
+  "vision-noisy-text-001",
+  "vision-spatial-001",
+  "vision-spatial-002",
+  "vision-visual-contradiction-001",
+  "vision-hallucination-resistance-001",
+  "vision-multi-object-compare-001",
+  "vision-ui-state-001",
+  "vision-chart-trend-001",
+  "vision-table-001",
 ];
 const MINIMAL_TESTS = ["vision-ocr-001", "vision-object-count-001"];
 
