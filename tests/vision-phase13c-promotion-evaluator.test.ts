@@ -29,7 +29,7 @@
 
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, existsSync, renameSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Server } from "node:http";
@@ -257,28 +257,30 @@ describe("Vision Phase 13-C · read-only promotion evaluator endpoint", () => {
   });
 
   it("P14 · missing evidence does not crash the route; per-tier decisions surface evidence-missing blockers", async () => {
-    // Temporarily hide the stability dir contents to simulate "no
-    // evidence on disk yet". We rename the dir back at the end so the
-    // rest of the suite isn't affected.
-    const stabilityDir = join(ROOT, "reports", "capability-expansion", "vision-stability");
-    const backupDir = stabilityDir + ".phase13c-tests-backup";
-    let didRename = false;
-    if (existsSync(stabilityDir)) {
-      renameSync(stabilityDir, backupDir);
-      didRename = true;
-    }
+    // Phase 18-B fix: simulate "no evidence on disk" by pointing
+    // CRUCIBLE_VISION_STABILITY_DIR at an empty tmp directory for
+    // the duration of this test. Previously this test renameSync'd
+    // the real reports/capability-expansion/vision-stability/ dir,
+    // which raced with any concurrent test file's request against
+    // the same endpoint. Env vars in node:test subprocesses are
+    // per-subprocess, so the override here can't leak.
+    const emptyDir = mkdtempSync(join(tmpdir(), "crcb-phase13c-empty-stability-"));
+    const previous = process.env["CRUCIBLE_VISION_STABILITY_DIR"];
+    process.env["CRUCIBLE_VISION_STABILITY_DIR"] = emptyDir;
     try {
       const { status, body } = await getPromo();
       assert.equal(status, 200, "endpoint must respond 200 even with no evidence on disk");
       assert.equal(body.experimental, true);
       assert.equal(body.promoted, false);
       for (const r of body.evaluatedRoutes) {
-        assert.equal(r.evidenceSummary.evidencePresent, false, `${r.provider}/${r.model} must report evidencePresent:false when stability dir is gone`);
+        assert.equal(r.evidenceSummary.evidencePresent, false, `${r.provider}/${r.model} must report evidencePresent:false when stability dir is empty`);
         const ptGates = r.providerTestedDecision.blockingReasons.map((b) => b.gate);
         assert.ok(ptGates.some((g) => g.includes("evidence-missing")), `${r.provider}/${r.model} PROVIDER_TESTED must surface an evidence-missing blocker; got ${ptGates.join(", ")}`);
       }
     } finally {
-      if (didRename) renameSync(backupDir, stabilityDir);
+      if (previous === undefined) delete process.env["CRUCIBLE_VISION_STABILITY_DIR"];
+      else process.env["CRUCIBLE_VISION_STABILITY_DIR"] = previous;
+      try { rmSync(emptyDir, { recursive: true, force: true }); } catch { /* best-effort */ }
     }
   });
 

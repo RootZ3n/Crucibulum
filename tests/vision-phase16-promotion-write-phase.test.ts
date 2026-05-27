@@ -335,16 +335,15 @@ describe("Vision Phase 16 · capability promotion write phase (offline + live AP
   // -------- doctrine-gate enforcement (must REFUSE when not eligible) --------
 
   it("P23 · POST refuses (422) when aggregate dry-run eligibility is false (stability dir gone → no evidence)", async () => {
-    // Wipe the real stability dir temporarily to force the aggregate
-    // to be ineligible (evidence-missing). Restore at end.
-    const stabilityDir = join(ROOT, "reports", "capability-expansion", "vision-stability");
-    const backup = stabilityDir + ".phase16-test-backup";
-    let renamed = false;
-    if (existsSync(stabilityDir)) {
-      const { renameSync } = await import("node:fs");
-      renameSync(stabilityDir, backup);
-      renamed = true;
-    }
+    // Phase 18-B fix: simulate "no evidence" by pointing
+    // CRUCIBLE_VISION_STABILITY_DIR at an empty tmp dir for the
+    // duration of this test. The previous implementation renameSync'd
+    // the real reports/capability-expansion/vision-stability/ dir,
+    // which raced with any concurrent test file's request against
+    // the same endpoint.
+    const emptyDir = mkdtempSync(join(tmpdir(), "crcb-phase16-empty-stability-"));
+    const previous = process.env["CRUCIBLE_VISION_STABILITY_DIR"];
+    process.env["CRUCIBLE_VISION_STABILITY_DIR"] = emptyDir;
     try {
       // First reset the capability state so we're attempting a fresh
       // promotion (not idempotent re-promotion).
@@ -356,10 +355,9 @@ describe("Vision Phase 16 · capability promotion write phase (offline + live AP
       assert.equal(body.affectsCertification, false);
       assert.equal(existsSync(join(CAP_STATE_DIR, "capability-certifications.json")), false, "no state must be written when promotion refused");
     } finally {
-      if (renamed) {
-        const { renameSync } = await import("node:fs");
-        renameSync(backup, stabilityDir);
-      }
+      if (previous === undefined) delete process.env["CRUCIBLE_VISION_STABILITY_DIR"];
+      else process.env["CRUCIBLE_VISION_STABILITY_DIR"] = previous;
+      try { rmSync(emptyDir, { recursive: true, force: true }); } catch { /* best-effort */ }
     }
   });
 

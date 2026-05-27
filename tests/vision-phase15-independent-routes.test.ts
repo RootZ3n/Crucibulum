@@ -213,12 +213,10 @@ describe("Vision Phase 15 / Roadmap E · independent-route validation (offline +
   });
 
   it("P9 · routesQualifying enumerates exactly the routes with 15-test stability evidence at ≥80% pass rate", async () => {
-    // Retry-on-cross-file-FS-race (Phase 13c P14).
-    let body = await getPromo();
-    if (!body.aggregateCapabilityCertified || body.aggregateCapabilityCertified.routesQualifying.length < 3) {
-      await new Promise((r) => setTimeout(r, 200));
-      body = await getPromo();
-    }
+    // Phase 18-B removed the retry-on-FS-race (Phase 13c P14 +
+    // Phase 16 P23 now use env override instead of renameSync, so
+    // the race source is gone).
+    const body = await getPromo();
     const expected = [
       { provider: "openrouter", model: "xiaomi/mimo-v2.5", family: "MiMo" },
       { provider: "openai", model: "gpt-5.4-mini", family: "GPT-5" },
@@ -247,16 +245,11 @@ describe("Vision Phase 15 / Roadmap E · independent-route validation (offline +
   // -------- no-promotion guarantee --------
 
   it("P11 · top-level promoted:false / affectsLeaderboard:false / affectsCertification:false preserved", async () => {
-    // Same retry-on-cross-file-FS-race pattern as P12 (Phase 13c P14
-    // temporarily renames the stability dir in a separate node:test
-    // subprocess; if the request lands during the rename window the
-    // response may be the synthetic-blocker shape with some fields
-    // undefined). Two attempts with a tiny gap is enough.
-    let body = await getPromo();
-    if (body.promoted === undefined) {
-      await new Promise((r) => setTimeout(r, 200));
-      body = await getPromo();
-    }
+    // Phase 18-B removed the retry-on-FS-race that used to live here.
+    // The race source (Phase 13c P14 + Phase 16 P23 renaming the
+    // real stability dir) was eliminated by making the dir
+    // env-overridable; those tests now point at empty tmp dirs.
+    const body = await getPromo();
     assert.equal(body.promoted, false);
     assert.equal(body.affectsLeaderboard, false);
     assert.equal(body.affectsCertification, false);
@@ -266,18 +259,11 @@ describe("Vision Phase 15 / Roadmap E · independent-route validation (offline +
   });
 
   it("P12 · aggregateCapabilityCertified block carries literal-false promoted/affectsLeaderboard/affectsCertification", async () => {
-    // Retry once if a parallel test (phase13c P14) is in the middle of
-    // renaming the stability dir — the endpoint still returns 200 but
-    // the aggregate block can briefly land in synthetic-blocker mode.
-    // Two attempts with a tiny gap is enough to recover from any
-    // realistic dir-rename window.
-    let body = await getPromo();
-    if (!body.aggregateCapabilityCertified) {
-      await new Promise((r) => setTimeout(r, 200));
-      body = await getPromo();
-    }
+    // Phase 18-B removed the retry-on-FS-race (no longer needed —
+    // the cross-file rename race was fixed at the source).
+    const body = await getPromo();
     const agg = body.aggregateCapabilityCertified;
-    assert.ok(agg, "aggregateCapabilityCertified must be present in the response (after retry-on-race)");
+    assert.ok(agg, "aggregateCapabilityCertified must be present in the response");
     assert.equal(agg.promoted, false);
     assert.equal(agg.affectsLeaderboard, false);
     assert.equal(agg.affectsCertification, false);

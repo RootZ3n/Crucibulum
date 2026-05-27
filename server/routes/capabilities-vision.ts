@@ -60,8 +60,19 @@ function modelCertificationTierMutated(_before: string | null, _after: string | 
 }
 
 const REPO_ROOT = join(import.meta.dirname, "..", "..", "..");
-const STABILITY_DIR = join(REPO_ROOT, "reports", "capability-expansion", "vision-stability");
+const DEFAULT_STABILITY_DIR = join(REPO_ROOT, "reports", "capability-expansion", "vision-stability");
 const CERTIFIED_MODELS_JSON = join(REPO_ROOT, "reports", "model-certification", "certified-models.json");
+
+/** Resolve the Vision stability evidence directory. Overridable via
+ *  `CRUCIBLE_VISION_STABILITY_DIR` so tests that need to simulate
+ *  "no evidence on disk" can point at an empty tmp path WITHOUT
+ *  renaming the real `reports/capability-expansion/vision-stability/`
+ *  directory. The rename approach was Phase 13c P14's original
+ *  implementation and was the source of the cross-file test race
+ *  Phase 18-B fixed. */
+function stabilityDir(): string {
+  return process.env["CRUCIBLE_VISION_STABILITY_DIR"] ?? DEFAULT_STABILITY_DIR;
+}
 
 type VisionRouteRole =
   | "preferred_daily_driver_candidate"
@@ -166,12 +177,13 @@ interface RouteEvaluation {
  * alphabetically is the newest.
  */
 function findLatestStabilityFor(provider: string, model: string): string | null {
-  if (!existsSync(STABILITY_DIR)) return null;
+  const dir = stabilityDir();
+  if (!existsSync(dir)) return null;
   const candidates: string[] = [];
-  for (const name of readdirSync(STABILITY_DIR)) {
+  for (const name of readdirSync(dir)) {
     if (!name.endsWith(".json") || name === "latest.json") continue;
     try {
-      const j = JSON.parse(readFileSync(join(STABILITY_DIR, name), "utf-8"));
+      const j = JSON.parse(readFileSync(join(dir, name), "utf-8"));
       if (j.provider === provider && j.model === model) candidates.push(name);
     } catch {
       // ignore unparseable files
@@ -199,7 +211,7 @@ function loadEvidence(provider: string, model: string): RouteEvidence {
       reason: `no stability report on disk for ${provider} / ${model}`,
     };
   }
-  const fullPath = join(STABILITY_DIR, latest);
+  const fullPath = join(stabilityDir(), latest);
   const j = JSON.parse(readFileSync(fullPath, "utf-8")) as {
     timestamp?: string;
     commit?: string;
