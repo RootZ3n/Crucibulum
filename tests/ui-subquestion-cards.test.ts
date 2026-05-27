@@ -23,7 +23,9 @@ describe('Crucible sub-question failure cards', () => {
     // Mounted in renderFocusedRun above the Test Review Explorer subpanel.
     const focusedStart = HTML.indexOf('function renderFocusedRun(tabKey)');
     assert.ok(focusedStart > 0, 'renderFocusedRun not found');
-    const focusedBody = HTML.slice(focusedStart, focusedStart + 12000);
+    // Phase 18 widened the window from 12000 → 14000 (composite-
+    // score breakdown block added ~700 chars).
+    const focusedBody = HTML.slice(focusedStart, focusedStart + 14000);
     assert.ok(focusedBody.includes('renderSubQuestionFailures(result)'), 'renderFocusedRun must invoke renderSubQuestionFailures(result)');
     // And it appears BEFORE LAYER C (Test Review Explorer) so failed
     // sub-questions surface first.

@@ -46,7 +46,11 @@ describe('Phase 4 · skip-card rendering + image transport', () => {
     // Mounted inside renderFocusedRun, above the Test Review Explorer.
     const focusedStart = HTML.indexOf('function renderFocusedRun(tabKey)');
     assert.ok(focusedStart > 0, 'renderFocusedRun not found');
-    const focused = HTML.slice(focusedStart, focusedStart + 12000);
+    // Phase 18 widened the window from 12000 → 14000 because the
+    // composite-score breakdown block added ~700 chars of conditional
+    // template literal between the score block and the
+    // renderSkipCards mount.
+    const focused = HTML.slice(focusedStart, focusedStart + 14000);
     assert.ok(focused.includes('renderSkipCards(result)'), 'renderFocusedRun must call renderSkipCards(result)');
     const skipIdx = focused.indexOf('renderSkipCards(result)');
     const layerCIdx = focused.indexOf('LAYER C');

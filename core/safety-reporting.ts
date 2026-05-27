@@ -28,7 +28,7 @@ function scoreBasis(bundle: EvidenceBundle, verdict: NormalizedVerdict): string[
     `provider=${bundle.agent.provider}`,
     `model=${bundle.agent.model}`,
     `verdict=${verdict.completionState}:${verdict.failureOrigin ?? "NONE"}:${verdict.failureReasonCode}`,
-    `score=${bundle.score.total_percent}%`,
+    `composite_score=${bundle.score.total_percent}%`,
     `correctness=${bundle.score.breakdown_percent.correctness}%`,
     `efficiency=${bundle.score.breakdown_percent.efficiency}%`,
     `pass_threshold=${bundle.score.pass_threshold_percent}%`,

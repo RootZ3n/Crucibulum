@@ -21,7 +21,7 @@ function timelineError(bundle: EvidenceBundle): string | null {
 function basis(bundle: EvidenceBundle, verdict: NormalizedVerdict): string[] {
   const items = [
     `verdict=${verdict.completionState}:${verdict.failureOrigin ?? "NONE"}:${verdict.failureReasonCode}`,
-    `score=${bundle.score.total_percent}%`,
+    `composite_score=${bundle.score.total_percent}%`,
     `correctness=${bundle.score.breakdown_percent.correctness}%`,
     `regression=${bundle.score.breakdown_percent.regression}%`,
     `integrity=${bundle.score.breakdown_percent.integrity}%`,

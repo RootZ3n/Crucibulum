@@ -4319,8 +4319,8 @@ function renderFocusedRun(tabKey){
   const judgeTokensOut=Number(ju.tokens_out||0);
   const totalCost=Number(op.cost||0)+judgeCost;
   const glyphs=[
-    {label:'CORRECT',value:`${scorePct(op.correctness)}%`,cls:'teal'},
-    {label:'EFFICIENCY',value:`${scorePct(op.efficiency)}%`,cls:'teal'},
+    {label:'CORRECTNESS',value:`${scorePct(op.correctness)}%`,cls:'teal',title:'Per-question correctness rollup. For tests with binary scorers (text_match_all, regex_match, numeric_fact_match, etc.), legal values are sum_of_passing_weights / total_weight — e.g. for 3-question equal-weight binary tests the only legal values are 0 / 33.33 / 66.67 / 100. The COMPOSITE score above blends this with EFFICIENCY credit.'},
+    {label:'EFFICIENCY CREDIT',value:`${scorePct(op.efficiency)}%`,cls:'teal',title:'Efficiency credit (time/token budget headroom). Feeds the COMPOSITE score at 15% weight for conversational tests; never affects CORRECTNESS.'},
     {label:'TOK IN (M)',value:String(op.tokensIn||0),title:'Tested-model input tokens'},
     {label:'TOK OUT (M)',value:String(op.tokensOut||0),title:'Tested-model output tokens'},
     {label:'MODEL COST',value:fmtMoney(op.cost),cls:'',title:'Cost charged for the model under test'},
@@ -4345,10 +4345,13 @@ function renderFocusedRun(tabKey){
           <span class="chip dim">${esc(fmtDate(result.timestamp))}</span>
         </div>
       </div>
-      <div class="mc-score ${overallCls}">
-        <div class="mc-score-label">OVERALL</div>
+      <div class="mc-score ${overallCls}" title="Composite score combines correctness with secondary credits (efficiency / regression / integrity). For conversational tests the formula is round((correctness*0.85 + efficiency*0.15)*100)/100, so legal composite values may differ from the binary correctness anchors. See docs/SCORING_FIELDS.md.">
+        <div class="mc-score-label">COMPOSITE</div>
         <div class="mc-score-num">${esc(result.overallKnown?String(result.overall):'—')}</div>
         <span class="badge ${overallCls}">${overallWord}</span>
+        ${(result.overallKnown && (typeof op.correctness === 'number' || typeof op.efficiency === 'number'))
+          ? `<div class="mc-score-breakdown dim" style="font-size:10px;margin-top:4px;line-height:1.3" title="The COMPOSITE above is round((correctness*0.85 + efficiency*0.15)*100)/100 for conversational tests. Inspect Correctness directly for binary-question accuracy.">correctness ${esc(String(scorePct(op.correctness)))}% · efficiency ${esc(String(scorePct(op.efficiency)))}%<br>formula: correctness×85% + efficiency×15%</div>`
+          : ''}
       </div>
     </div>
 
@@ -4360,7 +4363,7 @@ function renderFocusedRun(tabKey){
         </div>
         ${isSimpleView()?'':`<div class="subpanel">
           <div class="section-head"><div><div class="mini-label">TELEMETRY</div><h3>Operational Readout</h3></div></div>
-          <div class="glyph-grid">${glyphs.map(g=>`<div class="glyph"><div class="g-label">${esc(g.label)}</div><div class="g-value ${g.cls||''}">${esc(g.value)}</div></div>`).join('')}</div>
+          <div class="glyph-grid">${glyphs.map(g=>`<div class="glyph"${g.title?` title="${esc(g.title)}"`:''}><div class="g-label">${esc(g.label)}</div><div class="g-value ${g.cls||''}">${esc(g.value)}</div></div>`).join('')}</div>
         </div>`}
       </div>
       ${isAdvancedView()?`<div class="stack-grid">
