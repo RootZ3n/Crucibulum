@@ -395,14 +395,51 @@ repo task family has been live-certified. Automated UI-shape checks and the
 manual browser UI checklist pass for the scoped target set, but this remains
 `RELEASE_SCOPED_TO_CERTIFIED_TARGETS`, not `FULL_RELEASE_READY`.
 
+### Vision Capability-Certified (separate from the release-certification scope above)
+
+Vision is currently the one **capability** that has been formally
+promoted under Crucible's doctrine-gated capability-certification
+track (`docs/CAPABILITY_CERTIFICATION_DOCTRINE.md`). This is
+**separate from** the general release-certification scope above:
+
+- Vision capability certification is based on Crucible's 15-test
+  Vision suite run across **three independent route families**
+  (MiMo, GPT-5, Anthropic) with aggregate pass rate ≥ 80% and no
+  disallowed recurring measurement attribution.
+- It says the **capability evaluation pipeline** works correctly
+  and that real models pass it. It does **not** certify any one
+  model as universally release-ready.
+- It does **not** affect the leaderboard composite
+  (`TAB_CONFIG.vision.scoreFamilies = []`).
+- It does **not** mutate `reports/model-certification/certified-models.json`
+  or `MODEL_CERTIFICATION.models[].tier`. Those files remain
+  byte-identical to their pre-promotion state. The release-
+  certification scope above is unchanged by Vision promotion.
+- Promotion is operator-explicit (signed confirmation phrase at
+  `POST /api/capabilities/vision/promote`). An immutable receipt
+  lives under `reports/capability-promotions/vision/`. Local
+  state lives in `data/capability-certifications.json` and is
+  gitignored — fresh checkouts have no capability-promoted state
+  and render the chip as `EXPERIMENTAL` by default.
+- Full plain-English summary, audit trail, and verification
+  commands: [docs/VISION_CAPABILITY_CERTIFICATION_SUMMARY.md](docs/VISION_CAPABILITY_CERTIFICATION_SUMMARY.md).
+
+Capability badges other than Vision (Roleplay, tool-calling, etc.)
+remain experimental until they reach the same level of
+multi-family evidence under the same doctrine.
+
 ## Methodology and Trust Docs
 
 Crucible is being documented as a public audit and evidence-inspection system rather than only a codebase. Start here:
 
 - [docs/methodology.md](docs/methodology.md)
 - [docs/scoring.md](docs/scoring.md)
+- [docs/SCORING_FIELDS.md](docs/SCORING_FIELDS.md) — composite vs correctness vs efficiency credit; what each `score.*` field means; why `total_percent` may not match the binary correctness anchors.
 - [docs/versioning.md](docs/versioning.md)
 - [docs/reproducibility.md](docs/reproducibility.md)
+- [docs/CAPABILITY_CERTIFICATION_DOCTRINE.md](docs/CAPABILITY_CERTIFICATION_DOCTRINE.md) — capability-specific certification track (separate from general model certification).
+- [docs/VISION_CAPABILITY_CERTIFICATION_SUMMARY.md](docs/VISION_CAPABILITY_CERTIFICATION_SUMMARY.md) — plain-English audit summary for Vision Capability-Certified (the one currently-promoted capability).
+- [docs/MULTIMODAL_VISION_SUITE.md](docs/MULTIMODAL_VISION_SUITE.md) — Vision suite design, 15-test list, scorers, fixture provenance.
 
 ## UI and API
 
