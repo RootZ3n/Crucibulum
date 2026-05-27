@@ -4869,12 +4869,25 @@ function renderVisionLanePanel(tabKey){
         ?agg.decision.blockingReasons.map((b)=>String(b.gate||'')).join(', ')
         :'';
       const families=(agg.independentFamiliesQualifying||[]).map(esc).join(', ')||'(none)';
+      const ps=promoData.promotionState;
+      // Phase 16 — surface promotion state (or its absence) so the
+      // aggregate sub-block shows the real "Promoted" line: yes after
+      // POST /api/capabilities/vision/promote has run; no otherwise.
+      const promotedLine=ps
+        ?`Promoted: <strong>yes</strong> (at <span class="mono">${esc(String(ps.promotedAt||''))}</span> by <span class="mono">${esc(String(ps.promotedBy||'operator'))}</span>) · Affects leaderboard: <strong>no</strong> · Affects general certification: <strong>no</strong>`
+        :`Promoted: <strong>no</strong> · Affects leaderboard: <strong>no</strong> · Affects certification: <strong>no</strong>`;
+      const receiptLine=ps&&ps.promotionReceipt
+        ?`<br>Receipt: <span class="mono" style="font-size:10px">${esc(String(ps.promotionReceipt))}</span>`
+        :'';
+      const drift=ps&&ps.currentEvidenceStillEligible===false
+        ?`<br><span class="chip amber" style="font-size:10px">Evidence drift: current aggregate no longer dry-run eligible — operator should revalidate</span>`
+        :'';
       aggHtml=`<div style="margin-top:10px;padding:8px 10px;border-top:1px solid var(--border-subtle, #2a2a3a)">
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;opacity:0.7;margin-bottom:4px">Aggregate Capability-Certified (cross-route, read-only)</div>
         <div style="font-size:12px">
           Qualifying families: <strong>${agg.independentFamilyCount}/${agg.independentFamilyTarget}</strong> · <span class="mono">${families}</span><br>
           Aggregate Capability-Certified: ${aggBadge}${aggGates?` <span class="dim" style="font-size:10px">(${esc(aggGates)})</span>`:''}<br>
-          Promoted: <strong>no</strong> · Affects leaderboard: <strong>no</strong> · Affects certification: <strong>no</strong>
+          ${promotedLine}${receiptLine}${drift}
         </div>
       </div>`;
     }
@@ -4925,13 +4938,15 @@ function renderVisionLanePanel(tabKey){
   return`<section class="panel vision-status-panel" data-vision-panel="1" style="padding:14px">
     <div class="section-head">
       <div>
-        <div class="mini-label">VISION · EXPERIMENTAL</div>
+        <div class="mini-label">${(promoData&&promoData.promoted===true)?'VISION · CAPABILITY-CERTIFIED':'VISION · EXPERIMENTAL'}</div>
         <h3>Vision POC Status</h3>
       </div>
       <div class="vision-status-chips">
-        <span class="chip amber hot" title="Experimental scaffold. Not release-certified.">EXPERIMENTAL</span>
+        ${(promoData&&promoData.promoted===true)
+          ?`<span class="chip teal hot" title="Vision capability has been formally promoted by an operator-triggered POST /api/capabilities/vision/promote. Capability-specific badge only — does NOT mean release-certified or in-leaderboard.">CAPABILITY-CERTIFIED</span>`
+          :`<span class="chip amber hot" title="Experimental scaffold. Not release-certified.">EXPERIMENTAL</span>`}
         <span class="chip dim" title="Vision scores are excluded from the leaderboard composite.">NOT IN LEADERBOARD</span>
-        <span class="chip dim" title="Vision does not affect model certification.">NOT CERTIFIED</span>
+        <span class="chip dim" title="Vision does not affect model certification (certified-models.json + MODEL_CERTIFICATION.models[].tier). Capability-Certified is a separate, capability-only state.">NOT CERTIFIED</span>
       </div>
     </div>
     <div class="vision-status-grid">

@@ -35,14 +35,22 @@ import { join } from "node:path";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 
-// Isolate harness FS before importing anything env-aware.
+// Isolate harness FS before importing anything env-aware. Phase 16
+// added a global env var (CRUCIBLE_CAPABILITY_STATE_DIR) — point it
+// to a Phase 13c-owned tmp dir so other test files can't leak state
+// into our GET responses (node:test runs files concurrently in the
+// same process by default).
 const RUNS_DIR = mkdtempSync(join(tmpdir(), "crcb-phase13c-runs-"));
 const STATE_DIR = mkdtempSync(join(tmpdir(), "crcb-phase13c-state-"));
 const LINKS_DIR = mkdtempSync(join(tmpdir(), "crcb-phase13c-links-"));
+const CAP_STATE_DIR = mkdtempSync(join(tmpdir(), "crcb-phase13c-capstate-"));
+const CAP_REPORTS_DIR = mkdtempSync(join(tmpdir(), "crcb-phase13c-capreports-"));
 mkdirSync(join(STATE_DIR, "memory-sessions"), { recursive: true });
 process.env["CRUCIBULUM_RUNS_DIR"] = RUNS_DIR;
 process.env["CRUCIBULUM_STATE_DIR"] = STATE_DIR;
 process.env["CRUCIBULUM_LINKS_DIR"] = LINKS_DIR;
+process.env["CRUCIBLE_CAPABILITY_STATE_DIR"] = CAP_STATE_DIR;
+process.env["CRUCIBLE_CAPABILITY_REPORTS_DIR"] = CAP_REPORTS_DIR;
 process.env["CRUCIBLE_HMAC_KEY"] = "phase13c-test-hmac";
 
 const { createApp } = await import("../server/app.js");
@@ -128,16 +136,26 @@ describe("Vision Phase 13-C · read-only promotion evaluator endpoint", () => {
     }
   });
 
-  it("P3 · no /api/capabilities/vision/promote (or similar write-phase path) is registered", async () => {
+  it("P3 · adjacent capability write paths remain unregistered (Phase 16 added only POST /api/capabilities/vision/promote)", async () => {
+    // Phase 16 / Roadmap follow-up shipped exactly ONE write path:
+    // POST /api/capabilities/vision/promote. Adjacent paths like
+    // /promotion, /certify, /api/capabilities/promote (without
+    // /vision/) must still 404 so the write surface stays narrow
+    // and explicit. The /promote path itself is now valid; an
+    // unconfirmed POST returns 400 (rejected confirmation), not 404.
     for (const writePath of [
-      "/api/capabilities/vision/promote",
       "/api/capabilities/vision/promotion",
       "/api/capabilities/vision/certify",
       "/api/capabilities/promote",
     ]) {
       const r = await fetch(`${base}${writePath}`, { method: "POST", body: "{}", headers: { "Content-Type": "application/json" } });
-      assert.equal(r.status, 404, `write-phase path ${writePath} must not be registered yet`);
+      assert.equal(r.status, 404, `write-phase path ${writePath} must not be registered`);
     }
+    // The registered Phase 16 path responds 400 (not 404) to an
+    // unconfirmed POST — proof the route exists but refuses to
+    // promote without the confirmation phrase.
+    const ok = await fetch(`${base}/api/capabilities/vision/promote`, { method: "POST", body: "{}", headers: { "Content-Type": "application/json" } });
+    assert.equal(ok.status, 400, "POST /api/capabilities/vision/promote with empty body must return 400 (confirmation missing), not 404");
   });
 
   it("P4 · response declares experimental:true", async () => {

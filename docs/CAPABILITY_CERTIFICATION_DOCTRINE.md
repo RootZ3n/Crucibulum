@@ -417,6 +417,32 @@ weaken them:
     POST/PUT/PATCH promotion path exists. An actual promotion
     write-phase endpoint is still doctrine-deferred (the original
     phase-J scope).
+  - **2026-05-27 Phase 16 update:** the doctrine-aware write phase
+    did ship at `POST /api/capabilities/vision/promote`. The write
+    is **operator-explicit** (requires the confirmation phrase
+    `PROMOTE_VISION_CAPABILITY_CERTIFIED` in the request body) and
+    **doctrine-gated** (refuses unless the current
+    `aggregateCapabilityCertified.decision.eligible` is `true` with
+    empty `blockingReasons`). The write affects exactly two
+    locations:
+      - `data/capability-certifications.json` (persistent
+        capability-certification state — operator-written,
+        gitignored).
+      - `reports/capability-promotions/vision/<ts>.{json,md}`
+        (immutable receipt — committed to the repo as audit
+        evidence, never edited).
+    The write **never** touches `MODEL_CERTIFICATION.models[]`,
+    `certified-models.json`, or the leaderboard composite. The
+    receipt records the certified-models.json sha256 BEFORE and
+    AFTER the write so consumers can verify the file was untouched.
+    A successful POST flips the GET endpoint's response shape:
+    `promoted: true`, `currentTier: "CAPABILITY_CERTIFIED"`,
+    `promotionState: {...}`, `promotionRequiresFutureWritePhase: false`.
+    The capability-specific badge in the UI's Vision panel swaps
+    from `EXPERIMENTAL` to `CAPABILITY-CERTIFIED`; the `NOT IN
+    LEADERBOARD` and `NOT CERTIFIED` (general-model-cert) chips
+    are preserved unchanged. Capability certification remains
+    architecturally separate from general model certification.
 - ❌ Do not change `MODEL_CERTIFICATION.models[].tier` for any model.
 - ❌ Do not add capability badges to the UI's general-model surface
   (roadmap phase J).

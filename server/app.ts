@@ -196,6 +196,13 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Cr
     // evaluator's PROVIDER_TESTED / STABLE / CAPABILITY_CERTIFIED
     // decisions for currently-tested Vision routes. GET-only by design.
     if (path === "/api/capabilities/vision/promotion-evaluation" && method === "GET") return void await capVision.handlePromotionEvaluation(req, res);
+    // Phase 16 / Roadmap follow-up — explicit, confirmation-gated
+    // Vision capability promotion write phase. POST-only. Refuses to
+    // write unless aggregateCapabilityCertified.decision.eligible is
+    // true with empty blockingReasons. Writes data/capability-certifications.json
+    // + an immutable receipt under reports/capability-promotions/vision/.
+    // Never touches certified-models.json or MODEL_CERTIFICATION.tier.
+    if (path === "/api/capabilities/vision/promote" && method === "POST") return void await capVision.handlePromote(req, res);
 
     // ── Roleplay (experimental, not in leaderboard/certification) ────────
     if (path === "/api/roleplay/latest-smoke" && method === "GET") return void await roleplay.handleLatestSmoke(req, res);

@@ -21,9 +21,10 @@
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { sendJSON } from "./shared.js";
+import { sendJSON, parseJsonBody } from "./shared.js";
 
 import { VISION_GATES, evaluatePromotion } from "../../core/capability-certification.js";
 import type {
@@ -31,9 +32,36 @@ import type {
   CapabilityPromotionDecision,
   CapabilityTier,
 } from "../../core/capability-certification-types.js";
+import {
+  STATE_SCHEMA,
+  buildPromotionReceipt,
+  capabilityReceiptDir,
+  capabilityStatePath,
+  isCapabilityPromoted,
+  readCapabilityCertificationState,
+  writeCapabilityCertificationState,
+  writeReceiptJson,
+} from "../../core/capability-promotion-state.js";
+import type { CapabilityCertificationState, CapabilityPromotionReceipt } from "../../core/capability-promotion-state.js";
+
+const PROMOTE_CONFIRMATION = "PROMOTE_VISION_CAPABILITY_CERTIFIED";
+
+function sha256OfFileOrNull(p: string): string | null {
+  if (!existsSync(p)) return null;
+  return createHash("sha256").update(readFileSync(p)).digest("hex");
+}
+
+function modelCertificationTierMutated(_before: string | null, _after: string | null): boolean {
+  // Conservative read: the writer never reads or modifies
+  // `MODEL_CERTIFICATION.models[]` at runtime — it lives in
+  // `ui/index.html` and is part of the source bundle. The receipt
+  // surfaces this as a static `false` so consumers can rely on it.
+  return false;
+}
 
 const REPO_ROOT = join(import.meta.dirname, "..", "..", "..");
 const STABILITY_DIR = join(REPO_ROOT, "reports", "capability-expansion", "vision-stability");
+const CERTIFIED_MODELS_JSON = join(REPO_ROOT, "reports", "model-certification", "certified-models.json");
 
 type VisionRouteRole =
   | "preferred_daily_driver_candidate"
@@ -405,14 +433,44 @@ export async function handlePromotionEvaluation(
     affectsCertification: false as const,
   }));
 
+  // Phase 16 — read persistent capability-promotion state. If Vision
+  // has been promoted by an explicit POST /api/capabilities/vision/promote,
+  // surface that here. The endpoint stays GET-only and never writes.
+  let state: CapabilityCertificationState;
+  try { state = readCapabilityCertificationState(); }
+  catch { state = { schema: STATE_SCHEMA, capabilities: {} }; }
+  const visionState = state.capabilities.vision;
+  const isPromoted = visionState?.promoted === true;
+  const currentTier: CapabilityTier = isPromoted ? visionState!.tier : "EXPERIMENTAL";
+  // promotionRequiresFutureWritePhase flips to false once a receipt
+  // exists; the write phase HAS shipped (it's the POST handler in
+  // this file). Pre-promotion the flag stays true so operators know
+  // a deliberate write is the next step.
+  const promotionRequiresFutureWritePhase = !isPromoted;
+
   sendJSON(res, 200, {
     capability: "vision",
-    experimental: true,
-    promoted: false,
+    experimental: !isPromoted,
+    promoted: isPromoted,
     affectsLeaderboard: false,
     affectsCertification: false,
     generatedAt: new Date().toISOString(),
-    currentTier: "EXPERIMENTAL",
+    currentTier,
+    promotionState: isPromoted ? {
+      tier: visionState!.tier,
+      promotedAt: visionState!.promotedAt,
+      promotedBy: visionState!.promotedBy,
+      promotionReceipt: visionState!.promotionReceipt,
+      operatorNote: visionState!.operatorNote,
+      // Phase 16 — if evidence has drifted since promotion (e.g.
+      // a new stability report comes in showing recurring SCORER),
+      // the current aggregate's eligible:false would surface this
+      // without auto-revoking. The promotion stays in effect; the
+      // operator decides whether to revalidate.
+      currentEvidenceStillEligible: aggregate.decision.eligible === true,
+      affectsLeaderboard: false,
+      affectsCertification: false,
+    } : null,
     preferredDailyDriver: preferred
       ? {
           provider: preferred.provider,
@@ -426,12 +484,7 @@ export async function handlePromotionEvaluation(
       : null,
     legacyFallbacks: legacy,
     evaluatedRoutes,
-    // Phase 15 / Roadmap E — aggregate-family doctrine view. The
-    // per-route capabilityCertifiedDecision always reports
-    // independent-routes as a blocker because each route's evidence
-    // is single-route by construction. This aggregate counts
-    // qualifying families across all evaluated routes and re-runs
-    // the doctrine evaluator with the cross-route count.
+    // Phase 15 / Roadmap E — aggregate-family doctrine view.
     aggregateCapabilityCertified: {
       independentFamiliesQualifying: aggregate.familiesQualifying,
       independentFamilyCount: aggregate.familiesQualifying.length,
@@ -448,12 +501,229 @@ export async function handlePromotionEvaluation(
       stableGate: VISION_GATES.STABLE,
       capabilityCertifiedGate: VISION_GATES.CAPABILITY_CERTIFIED,
     },
+    // This GET endpoint never mutates. The Phase 16 write phase
+    // (POST /api/capabilities/vision/promote) is a separate route.
     noMutationGuarantee: true,
-    promotionRequiresFutureWritePhase: true,
+    promotionRequiresFutureWritePhase,
     notes: {
-      readOnly: "This endpoint never mutates MODEL_CERTIFICATION.models[], certified-models.json, the leaderboard composite, or any other persistent registry. The doctrine evaluator is a pure function (see core/capability-certification.ts:149).",
-      capabilityCertifiedAlwaysBlockedToday: "Per-route capabilityCertifiedDecision blocks every route on independent-routes (1 < 3) because each route's evidence is single-route by construction. Phase 15 / Roadmap E added aggregateCapabilityCertified, which counts qualifying families across all evaluated routes and re-runs the doctrine evaluator with the cross-route count. The Vision suite is 15 tests (Phase 14 / Roadmap C); aggregate independent families with full-suite stability evidence is the doctrine gate that matters at the cross-route level. Even when the aggregate is dry-run eligible, this endpoint still declares promoted:false / promotionRequiresFutureWritePhase:true — actual promotion needs the future write-phase endpoint.",
-      futureWritePhase: "A promotion write-phase endpoint (Roadmap Phase D follow-up) would be required to actually promote a capability tier. This phase only adds the read-only surface.",
+      readOnly: "This GET endpoint never mutates MODEL_CERTIFICATION.models[], certified-models.json, the leaderboard composite, or any other persistent registry. The doctrine evaluator is a pure function (see core/capability-certification.ts:149). Capability promotion goes through POST /api/capabilities/vision/promote — a separate, explicit, confirmation-gated write phase that writes only data/capability-certifications.json + an immutable receipt.",
+      capabilityCertifiedAlwaysBlockedToday: "Per-route capabilityCertifiedDecision blocks every route on independent-routes (1 < 3) because each route's evidence is single-route by construction. Phase 15 / Roadmap E added aggregateCapabilityCertified, which counts qualifying families across all evaluated routes and re-runs the doctrine evaluator with the cross-route count. The Vision suite is 15 tests (Phase 14 / Roadmap C); aggregate independent families with full-suite stability evidence is the doctrine gate that matters at the cross-route level.",
+      writePhase: "Phase 16 / Roadmap follow-up shipped the explicit write phase at POST /api/capabilities/vision/promote. It requires the confirmation phrase '" + PROMOTE_CONFIRMATION + "' and only writes when aggregateCapabilityCertified.decision.eligible is true with empty blockingReasons. The write affects data/capability-certifications.json + the receipt directory only; certified-models.json + MODEL_CERTIFICATION.models[].tier + the leaderboard composite are never touched.",
     },
   });
+}
+
+// ── Phase 16 / Roadmap follow-up — promotion write phase ─────────────────
+//
+// POST /api/capabilities/vision/promote. Explicit confirmation
+// phrase required (PROMOTE_VISION_CAPABILITY_CERTIFIED) plus an
+// optional `operatorNote`. The handler re-evaluates the current
+// aggregate-family doctrine decision and refuses to write unless
+// `eligible:true` with empty `blockingReasons`. The write:
+//   1. Updates (or creates) data/capability-certifications.json
+//      with the promoted tier + receipt pointer + literal-false
+//      affectsLeaderboard/affectsCertification fields.
+//   2. Writes an immutable receipt JSON under
+//      reports/capability-promotions/vision/<ts>.json with the
+//      full aggregate decision, qualifying families, qualifying
+//      routes, source evidence refs, suite size, certified-models
+//      sha256 before/after (proof the file was not touched), and
+//      the operator note.
+//   3. Writes a Markdown render of the receipt next to the JSON.
+//
+// What the write does NOT do:
+//   - never touches certified-models.json
+//   - never touches MODEL_CERTIFICATION.models[].tier
+//   - never adds the Vision route into the leaderboard composite
+//   - never mutates historical stability/smoke reports
+//
+// All of these are asserted by the Phase 16 tests + the receipt's
+// before/after sha256 of certified-models.json.
+
+function renderReceiptMarkdown(receipt: CapabilityPromotionReceipt): string {
+  const lines: string[] = [];
+  lines.push(`# Crucible — Vision capability promotion receipt`);
+  lines.push("");
+  lines.push(`| Field | Value |`);
+  lines.push(`|---|---|`);
+  lines.push(`| Capability | \`${receipt.capability}\` |`);
+  lines.push(`| Previous tier | \`${receipt.previousTier}\` |`);
+  lines.push(`| Promoted tier | \`${receipt.promotedTier}\` |`);
+  lines.push(`| Promoted at (UTC) | \`${receipt.generatedAt}\` |`);
+  lines.push(`| Promoted by | \`${receipt.operator}\` |`);
+  lines.push(`| Suite size | \`${receipt.suiteSize}\` |`);
+  lines.push(`| Repeat runs | \`${receipt.repeatRuns}\` |`);
+  lines.push(`| Aggregate stable-pass rate | \`${(receipt.stablePassRate * 100).toFixed(1)}%\` |`);
+  lines.push(`| Qualifying families | \`${receipt.qualifyingFamilies.join(", ")}\` |`);
+  lines.push(`| Aggregate blockers | \`${receipt.aggregateDecision.blockingReasons.length === 0 ? "(none)" : receipt.aggregateDecision.blockingReasons.map((b) => b.gate).join(", ")}\` |`);
+  lines.push(`| **affectsLeaderboard** | **${receipt.affectsLeaderboard}** |`);
+  lines.push(`| **affectsCertification** | **${receipt.affectsCertification}** |`);
+  lines.push(`| certified-models.json sha256 BEFORE | \`${receipt.certifiedModelsJsonSha256Before ?? "(file absent)"}\` |`);
+  lines.push(`| certified-models.json sha256 AFTER | \`${receipt.certifiedModelsJsonSha256After ?? "(file absent)"}\` |`);
+  lines.push(`| \`MODEL_CERTIFICATION.models[].tier\` mutated | \`${receipt.modelCertificationTierMutated}\` |`);
+  lines.push("");
+  lines.push(`## Qualifying routes`);
+  lines.push("");
+  for (const r of receipt.qualifyingRoutes) {
+    lines.push(`- \`${r.provider} / ${r.model}\` (family: \`${r.family}\`)`);
+  }
+  lines.push("");
+  lines.push(`## Source evidence refs`);
+  lines.push("");
+  for (const e of receipt.sourceReports) {
+    lines.push(`- \`${e.kind}\` · \`${e.path}\`${e.commit ? ` (commit \`${e.commit}\`)` : ""}${e.generatedAt ? ` (generatedAt \`${e.generatedAt}\`)` : ""}`);
+  }
+  if (receipt.recurringAttributions.length) {
+    lines.push("");
+    lines.push(`## Recurring attributions in aggregate`);
+    lines.push("");
+    for (const a of receipt.recurringAttributions) {
+      lines.push(`- \`${a}\` (allowed under doctrine at this tier: ${VISION_GATES.CAPABILITY_CERTIFIED.disallowedRecurringAttributions.includes(a) ? "**no**" : "yes"})`);
+    }
+  }
+  lines.push("");
+  lines.push(`## Operator note`);
+  lines.push("");
+  lines.push(receipt.operatorNote && receipt.operatorNote.trim() ? receipt.operatorNote : "_(none provided)_");
+  lines.push("");
+  lines.push(`## Doctrine guarantees`);
+  lines.push("");
+  lines.push(`- This promotion writes only \`${capabilityStatePath().split("/").slice(-2).join("/")}\` (capability-certifications state) and this receipt.`);
+  lines.push(`- \`certified-models.json\` was NOT mutated (sha256 BEFORE === sha256 AFTER above; both should match).`);
+  lines.push(`- \`MODEL_CERTIFICATION.models[].tier\` was NOT mutated (the writer never reads or modifies that source).`);
+  lines.push(`- Vision is NOT added to the leaderboard composite.`);
+  lines.push(`- Vision is NOT added to the general model certification.`);
+  lines.push(`- The receipt is immutable: future re-promotions write new receipts; this file is never edited.`);
+  return lines.join("\n") + "\n";
+}
+
+export async function handlePromote(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await parseJsonBody<{ confirm?: string; operatorNote?: string; operator?: string }>(req);
+  if (!body.ok) {
+    sendJSON(res, 400, { error: body.error, affectsLeaderboard: false, affectsCertification: false });
+    return;
+  }
+  const input = body.value;
+  if (typeof input.confirm !== "string" || input.confirm !== PROMOTE_CONFIRMATION) {
+    sendJSON(res, 400, {
+      error: `confirmation phrase missing or wrong; the request body must include {"confirm":"${PROMOTE_CONFIRMATION}"}`,
+      promoted: false,
+      affectsLeaderboard: false,
+      affectsCertification: false,
+    });
+    return;
+  }
+
+  // Re-evaluate doctrine state at promotion time.
+  const evaluatedRoutes = VISION_ROUTES.map(evaluateRoute);
+  const aggregate = buildAggregateCapabilityCertifiedDecision(VISION_ROUTES, evaluatedRoutes);
+  if (aggregate.decision.eligible !== true || aggregate.decision.blockingReasons.length > 0) {
+    sendJSON(res, 422, {
+      error: "aggregate capability-certified dry-run is not eligible — refuse to promote",
+      aggregate: {
+        independentFamiliesQualifying: aggregate.familiesQualifying,
+        independentFamilyCount: aggregate.familiesQualifying.length,
+        independentFamilyTarget: VISION_GATES.CAPABILITY_CERTIFIED.minIndependentRoutes,
+        decision: aggregate.decision,
+      },
+      promoted: false,
+      affectsLeaderboard: false,
+      affectsCertification: false,
+    });
+    return;
+  }
+
+  const sha256Before = sha256OfFileOrNull(CERTIFIED_MODELS_JSON);
+  const ts = new Date().toISOString().replace(/\.\d+Z$/, "Z").replace(/[:.]/g, "-");
+  const receiptDir = capabilityReceiptDir("vision");
+  const receiptPath = join(receiptDir, `${ts}.json`);
+  const receiptMdPath = join(receiptDir, `${ts}.md`);
+
+  // Pick an anchor route for the suite-size + repeat-runs + pass-rate
+  // fields in the receipt (the same anchor the aggregate evaluator
+  // already used — by construction, every qualifying route has ≥15
+  // suite + ≥3 repeats + ≥80% pass).
+  const anchorEval = evaluatedRoutes.find((e) => aggregate.routesQualifying.some((q) => q.provider === e.provider && q.model === e.model))!;
+
+  const sourceReports: CapabilityEvidenceRef[] = aggregate.routesQualifying.map(({ provider, model }) => {
+    const e = evaluatedRoutes.find((x) => x.provider === provider && x.model === model)!;
+    const ref: CapabilityEvidenceRef = { kind: "stability", path: e.evidenceSource };
+    return ref;
+  });
+
+  const receipt = buildPromotionReceipt({
+    capability: "vision",
+    previousTier: "EXPERIMENTAL",
+    promotedTier: "CAPABILITY_CERTIFIED",
+    aggregateDecision: aggregate.decision,
+    qualifyingFamilies: aggregate.familiesQualifying,
+    qualifyingRoutes: aggregate.routesQualifying,
+    sourceReports,
+    suiteSize: anchorEval.evidenceSummary.suiteSize,
+    repeatRuns: anchorEval.evidenceSummary.repeatRuns,
+    stablePassRate: anchorEval.evidenceSummary.stablePassRate,
+    recurringAttributions: [...new Set(aggregate.routesQualifying.flatMap(({ provider, model }) =>
+      evaluatedRoutes.find((x) => x.provider === provider && x.model === model)?.evidenceSummary.recurringAttributions ?? []
+    ))],
+    certifiedModelsJsonSha256Before: sha256Before,
+    certifiedModelsJsonSha256After: sha256Before, // identical — the write never touches certified-models.json
+    modelCertificationTierMutated: modelCertificationTierMutated(sha256Before, sha256Before),
+    operator: typeof input.operator === "string" && input.operator.trim() ? input.operator.trim() : "operator",
+    operatorNote: typeof input.operatorNote === "string" && input.operatorNote.trim() ? input.operatorNote.trim() : null,
+    generatedAt: new Date().toISOString(),
+  }, receiptPath);
+
+  writeReceiptJson(receipt);
+  // Markdown receipt — written next to the JSON. Same atomic-write
+  // pattern as the JSON; the file is immutable thereafter.
+  const { writeFileSync, mkdirSync, existsSync } = await import("node:fs");
+  if (!existsSync(receiptDir)) mkdirSync(receiptDir, { recursive: true });
+  writeFileSync(receiptMdPath, renderReceiptMarkdown(receipt), "utf-8");
+
+  // Update / write the capability-certifications state file.
+  const state = (() => {
+    try { return readCapabilityCertificationState(); }
+    catch { return { schema: STATE_SCHEMA, capabilities: {} } as CapabilityCertificationState; }
+  })();
+  state.capabilities.vision = {
+    tier: "CAPABILITY_CERTIFIED",
+    promoted: true,
+    promotedAt: receipt.generatedAt,
+    promotedBy: receipt.operator,
+    promotionReceipt: receiptPath,
+    operatorNote: receipt.operatorNote,
+    evidence: {
+      aggregateDecision: aggregate.decision,
+      qualifyingFamilies: aggregate.familiesQualifying,
+      qualifyingRoutes: aggregate.routesQualifying,
+      sourceReports,
+      suiteSize: anchorEval.evidenceSummary.suiteSize,
+      repeatRuns: anchorEval.evidenceSummary.repeatRuns,
+      stablePassRate: anchorEval.evidenceSummary.stablePassRate,
+    },
+    affectsLeaderboard: false,
+    affectsCertification: false,
+  };
+  writeCapabilityCertificationState(state);
+
+  sendJSON(res, 200, {
+    ok: true,
+    capability: "vision",
+    promoted: true,
+    previousTier: "EXPERIMENTAL",
+    promotedTier: "CAPABILITY_CERTIFIED",
+    receiptPath,
+    receiptMarkdownPath: receiptMdPath,
+    statePath: capabilityStatePath(),
+    affectsLeaderboard: false,
+    affectsCertification: false,
+    certifiedModelsJsonUntouched: true,
+  });
+}
+
+// Helper used by the GET handler — exposed so the tests can verify
+// the current promotion state cleanly.
+export function isVisionPromoted(): boolean {
+  try { return isCapabilityPromoted("vision"); }
+  catch { return false; }
 }

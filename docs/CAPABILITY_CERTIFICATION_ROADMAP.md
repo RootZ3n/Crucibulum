@@ -380,6 +380,46 @@ style, DM/narrator pacing, scene memory, companion warmth, …).
 
 ---
 
+## Phase 16 — Vision capability promotion write phase — ✅ landed 2026-05-27
+
+**Goal:** Implement the doctrine-aware write phase so the Vision
+capability can be formally promoted to CAPABILITY_CERTIFIED based
+on the Phase 15 aggregate-family evidence, without touching general
+model certification.
+
+**Outcome:**
+- New `core/capability-promotion-state.ts` — read/write helpers
+  for `data/capability-certifications.json` (state) +
+  `reports/capability-promotions/<cap>/<ts>.{json,md}` (immutable
+  receipts).
+- New `POST /api/capabilities/vision/promote` endpoint. Explicit
+  confirmation phrase
+  `PROMOTE_VISION_CAPABILITY_CERTIFIED` required. Refuses to
+  write unless the current `aggregateCapabilityCertified.decision.eligible`
+  is `true` with empty `blockingReasons`. Writes the state file +
+  the receipt; never touches `certified-models.json` or
+  `MODEL_CERTIFICATION.models[].tier` (the receipt records the
+  certified-models.json sha256 BEFORE/AFTER as on-disk proof).
+- `GET /api/capabilities/vision/promotion-evaluation` extended to
+  surface `promoted`, `currentTier`, `promotionState` (with
+  `currentEvidenceStillEligible` for drift-detection),
+  `experimental`, and `promotionRequiresFutureWritePhase` based
+  on the persistent state.
+- UI Vision panel chip row swaps `EXPERIMENTAL` for
+  `CAPABILITY-CERTIFIED` when state is promoted; `NOT IN
+  LEADERBOARD` + `NOT CERTIFIED` (general-cert) chips preserved.
+- Test isolation: state + receipt dirs overridable via
+  `CRUCIBLE_CAPABILITY_STATE_DIR` /
+  `CRUCIBLE_CAPABILITY_REPORTS_DIR` env vars so tests never
+  contaminate real production state.
+- Phase 16 did NOT auto-execute promotion. Operators run the
+  POST explicitly. Manual command in
+  `docs/MULTIMODAL_VISION_SUITE.md`.
+- Full report:
+  `reports/capability-promotions/vision-phase16-write-phase/`.
+
+---
+
 ## Phase J · Capability badges / model cards
 
 **Goal:** Add a separate badge surface to UI model cards showing

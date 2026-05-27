@@ -238,11 +238,42 @@ Total Phase 15 live spend: **$0.0245** (well under the $10 cap).
 - `promoted: false`, `affectsLeaderboard: false`,
   `affectsCertification: false`, `promotionRequiresFutureWritePhase: true`
 
-**No promotion executed.** Even though the cross-route aggregate is
-now dry-run eligible, no write-phase endpoint exists; Vision stays
-EXPERIMENTAL on every route. The actual capability promotion path
-is still the deferred phase-J scope. Per-route
-`capabilityCertifiedDecision` continues to surface
+**No promotion executed yet — but the write-phase endpoint now
+exists.** Phase 16 / Roadmap follow-up shipped
+`POST /api/capabilities/vision/promote`. Phase 15 itself did not
+invoke promotion; the operator must call the write endpoint
+explicitly with the confirmation phrase
+`PROMOTE_VISION_CAPABILITY_CERTIFIED`. Until that POST runs,
+Vision stays EXPERIMENTAL on every route. After a successful
+POST, the GET endpoint's `promoted` flips to `true` and the UI's
+Vision panel swaps the `EXPERIMENTAL` chip for
+`CAPABILITY-CERTIFIED`; the `NOT IN LEADERBOARD` and `NOT
+CERTIFIED` (general-model-cert) chips are unchanged. The
+capability state is written only to `data/capability-certifications.json`
+and an immutable receipt under
+`reports/capability-promotions/vision/<ts>.{json,md}`;
+`certified-models.json` and
+`MODEL_CERTIFICATION.models[].tier` are never touched.
+
+To promote (operator-explicit, with `npm run serve` running on
+`127.0.0.1:18795`):
+
+```bash
+curl -X POST http://127.0.0.1:18795/api/capabilities/vision/promote \
+  -H 'Content-Type: application/json' \
+  -d '{"confirm":"PROMOTE_VISION_CAPABILITY_CERTIFIED",
+       "operatorNote":"Promoting Vision after Phase 15 aggregate dry-run eligibility."}'
+```
+
+Successful response includes the receipt path. The receipt itself
+records the qualifying families, qualifying routes, source
+evidence refs, and the certified-models.json sha256 BEFORE/AFTER
+(proof the file was untouched). Re-running the same POST when
+promotion is already in effect simply writes a new receipt
+(idempotent at the write level; the state file's promotion
+metadata is updated to point at the latest receipt).
+
+Per-route `capabilityCertifiedDecision` continues to surface
 `independent-routes` as a blocker because each route's evidence is
 single-route by construction — that's the per-route truth, not a
 contradiction with the aggregate view.

@@ -29,6 +29,13 @@ state/
 .aedis/
 .aedis-cache/
 
+# Phase 16 — capability-certification state. Lives in data/ by default
+# (override with CRUCIBLE_CAPABILITY_STATE_DIR). Operator-written
+# state, not source. Promotion receipts under
+# reports/capability-promotions/ ARE committed (immutable evidence;
+# same convention as other reports under reports/).
+data/capability-certifications.json
+
 # Per-task workspace clones (created by core/workspace.ts during a run)
 runs/ws_*/
 .crucibulum-workspaces/

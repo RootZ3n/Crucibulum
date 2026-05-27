@@ -40,14 +40,20 @@ import { join } from "node:path";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 
-// Isolate harness FS before any env-aware import.
+// Isolate harness FS before any env-aware import. Phase 16 added
+// a CRUCIBLE_CAPABILITY_STATE_DIR global env var; point it to a
+// Phase 14-owned tmp dir so other test files can't leak state.
 const RUNS_DIR = mkdtempSync(join(tmpdir(), "crcb-phase14-runs-"));
 const STATE_DIR = mkdtempSync(join(tmpdir(), "crcb-phase14-state-"));
 const LINKS_DIR = mkdtempSync(join(tmpdir(), "crcb-phase14-links-"));
+const CAP_STATE_DIR = mkdtempSync(join(tmpdir(), "crcb-phase14-capstate-"));
+const CAP_REPORTS_DIR = mkdtempSync(join(tmpdir(), "crcb-phase14-capreports-"));
 mkdirSync(join(STATE_DIR, "memory-sessions"), { recursive: true });
 process.env["CRUCIBULUM_RUNS_DIR"] = RUNS_DIR;
 process.env["CRUCIBULUM_STATE_DIR"] = STATE_DIR;
 process.env["CRUCIBULUM_LINKS_DIR"] = LINKS_DIR;
+process.env["CRUCIBLE_CAPABILITY_STATE_DIR"] = CAP_STATE_DIR;
+process.env["CRUCIBLE_CAPABILITY_REPORTS_DIR"] = CAP_REPORTS_DIR;
 process.env["CRUCIBLE_HMAC_KEY"] = "phase14-test-hmac";
 
 const { createApp } = await import("../server/app.js");
