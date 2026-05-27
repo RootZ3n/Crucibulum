@@ -403,6 +403,20 @@ weaken them:
   yet (designed in the roadmap; deferred to phase J).
 - ❌ Do not add a real `/api/capabilities/...` endpoint yet
   (roadmap phase J).
+  - **2026-05-26 Phase D update:** a **read-only** Vision
+    promotion-evaluator endpoint did ship at
+    `GET /api/capabilities/vision/promotion-evaluation`. It calls
+    `evaluatePromotion()` (pure function) for each currently-tested
+    Vision route (preferred / legacy / comparison) and returns the
+    per-tier dry-run decisions plus the doctrine gate specs. The
+    endpoint **never** mutates `MODEL_CERTIFICATION.models[]`,
+    `certified-models.json`, or the leaderboard composite — every
+    response declares `affectsLeaderboard: false`,
+    `affectsCertification: false`, `promoted: false`, and
+    `noMutationGuarantee: true`. It is registered GET-only; no
+    POST/PUT/PATCH promotion path exists. An actual promotion
+    write-phase endpoint is still doctrine-deferred (the original
+    phase-J scope).
 - ❌ Do not change `MODEL_CERTIFICATION.models[].tier` for any model.
 - ❌ Do not add capability badges to the UI's general-model surface
   (roadmap phase J).

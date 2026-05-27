@@ -31,6 +31,7 @@ import * as registry from "./routes/registry.js";
 import { handleRunBatch } from "./routes/batch.js";
 import * as capExport from "./routes/export.js";
 import * as vision from "./routes/vision.js";
+import * as capVision from "./routes/capabilities-vision.js";
 import * as roleplay from "./routes/roleplay.js";
 
 const DEFAULT_PORT = parseInt(envValue("CRUCIBLE_PORT", "CRUCIBULUM_PORT") ?? "18795", 10);
@@ -190,6 +191,11 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Cr
 
     // ── Vision (experimental, not in leaderboard/certification) ──────────
     if (path === "/api/vision/latest-smoke" && method === "GET") return void await vision.handleLatestSmoke(req, res);
+    // Roadmap Phase D — read-only Vision promotion evaluator. Never
+    // mutates registries or persistent state; surfaces the doctrine
+    // evaluator's PROVIDER_TESTED / STABLE / CAPABILITY_CERTIFIED
+    // decisions for currently-tested Vision routes. GET-only by design.
+    if (path === "/api/capabilities/vision/promotion-evaluation" && method === "GET") return void await capVision.handlePromotionEvaluation(req, res);
 
     // ── Roleplay (experimental, not in leaderboard/certification) ────────
     if (path === "/api/roleplay/latest-smoke" && method === "GET") return void await roleplay.handleLatestSmoke(req, res);

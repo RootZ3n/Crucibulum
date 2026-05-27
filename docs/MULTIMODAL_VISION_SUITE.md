@@ -108,7 +108,60 @@ B live-baseline used $0.0046 of a $3.00 budget across both routes.
 
 **Promotion is never triggered by this runner.** Even if a route meets
 every threshold, Vision remains EXPERIMENTAL until a separate
-doctrine-aware promotion path lands in Phase D.
+doctrine-aware promotion write-phase ships. Roadmap Phase D landed a
+**read-only** promotion evaluator at
+`GET /api/capabilities/vision/promotion-evaluation` (see "Promotion
+dry-run evaluator" below) — that endpoint surfaces eligibility but
+never promotes.
+
+## Promotion dry-run evaluator (Roadmap Phase D — read-only)
+
+`GET /api/capabilities/vision/promotion-evaluation` returns the
+doctrine evaluator's per-tier eligibility decisions for the three
+currently-tested Vision routes (preferred / legacy / comparison),
+plus the doctrine gate specs themselves. It calls
+`evaluatePromotion()` from `core/capability-certification.ts` —
+a pure function — and never writes to any registry.
+
+**No mutation.** The endpoint:
+
+- never touches `MODEL_CERTIFICATION.models[]`,
+- never writes to `certified-models.json`,
+- never affects the leaderboard composite,
+- and is registered GET-only (no POST/PUT/PATCH route exists).
+
+Every response carries the literal doctrine flags
+`promoted: false`, `affectsLeaderboard: false`,
+`affectsCertification: false`, `noMutationGuarantee: true`,
+`promotionRequiresFutureWritePhase: true`.
+
+**What "eligible" means here.** `eligible: true` on a tier means
+"the current evidence on disk would clear the doctrine gates for
+this tier *if* a promotion write-phase were to fire today". It is
+**not** a promotion. Vision remains EXPERIMENTAL on every route
+regardless of how many tiers come back eligible. To actually
+promote, a future write-phase endpoint (still doctrine-deferred)
+would need to ship.
+
+**Why CAPABILITY_CERTIFIED is currently blocked on every route.**
+Even when PROVIDER_TESTED and STABLE are eligible, the doctrine
+blocks CAPABILITY_CERTIFIED on two structural conditions today:
+
+- `vision.capability-certified.suite-size` — the Vision suite has
+  5 tests, the doctrine requires 15. Roadmap Phase C addresses
+  this.
+- `vision.capability-certified.independent-routes` — the smoke
+  profiles 1 route at a time; the doctrine requires 3 independent
+  route families. Roadmap Phase E addresses this.
+
+Operators can see these blockers explicitly in the response's
+`evaluatedRoutes[].capabilityCertifiedDecision.blockingReasons`.
+
+The Vision panel renders a compact "PROMOTION DRY RUN (READ-ONLY)"
+block immediately below the LEGACY / PROVEN FALLBACK block. Each
+row uses **"Eligible in dry-run"** or **"Blocked"** — never
+"Certified" or "Promoted" — and the column header for the action
+state is **"Promoted"** with every value literally `no`.
 
 ## MiMo-V2.5 replacement and daily-driver candidate
 
