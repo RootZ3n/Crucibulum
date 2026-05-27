@@ -198,12 +198,36 @@ curl http://127.0.0.1:14758/api/capabilities/vision/promotion-eval/openrouter/xi
 
 ---
 
-## Phase E · Vision third-route validation
+## Phase E · Vision third-route validation — ✅ landed 2026-05-27
 
 **Goal:** Satisfy the `CAPABILITY_CERTIFIED` `minIndependentRoutes: 3`
 gate by adding one model from a third independent family. Candidates:
 Anthropic Claude (direct adapter), Google Gemini, local Ollama with
 qwen3-vl.
+
+**Outcome:**
+- Anthropic Claude Haiku 4.5 registered via OpenRouter (no new
+  adapter work; the `openai_image_url` transport proxies cleanly).
+- Phase 15 refresh on the 15-test suite:
+  - MiMo family (`xiaomi/mimo-v2.5`): 45/45 STABLE_PASS (no recurring).
+  - GPT-5 family (`gpt-5.4-mini`): 14/15 STABLE_PASS · 1 RECURRING_FAIL
+    MODEL on object-count (42/45 cells).
+  - Anthropic family (`anthropic/claude-haiku-4-5`): 45/45 STABLE_PASS
+    (no recurring).
+- Promotion evaluator gained an `aggregateCapabilityCertified`
+  cross-route block. Aggregate result: 3/3 independent families
+  qualifying, dry-run eligible.
+- `promoted: false` / `affectsLeaderboard: false` /
+  `affectsCertification: false` preserved on the per-route blocks
+  AND the new aggregate block. No actual promotion — write-phase
+  is still deferred.
+- `MODEL_CERTIFICATION.models[].tier` unchanged for every prior
+  Vision route; new Anthropic entry registered at
+  `tier:'EXPERIMENTAL'`.
+- `certified-models.json` byte-identical.
+- Total Phase 15 live spend: $0.0245 (under the $10 cap).
+- Full report:
+  `reports/capability-expansion/vision-phase15-independent-routes/`.
 
 **Files likely touched:**
 - `MODEL_CERTIFICATION.models[]` entry for chosen route (capabilities

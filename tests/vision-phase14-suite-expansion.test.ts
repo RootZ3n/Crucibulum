@@ -290,15 +290,19 @@ describe("Vision Phase 14 · suite expansion 5 → 15 tests (offline + live API)
     assert.ok(gates.includes("vision.capability-certified.independent-routes"), `independent-routes blocker must REMAIN for v2.5; got: ${gates.join(", ")}`);
   });
 
-  it("P18 · v2-omni and gpt-5.4-mini still carry the suite-size blocker (5-test evidence not refreshed in Phase 14)", async () => {
+  it("P18 · v2-omni still carries the suite-size blocker (Phase 15 refreshed gpt-5.4-mini to 15-test evidence, so its suite-size blocker has cleared)", async () => {
     const r = await fetch(`${base}/api/capabilities/vision/promotion-evaluation`);
     const j = await r.json() as { evaluatedRoutes: Array<{ provider: string; model: string; capabilityCertifiedDecision: { blockingReasons: Array<{ gate: string }> } }> };
-    for (const id of [{ provider: "openrouter", model: "xiaomi/mimo-v2-omni" }, { provider: "openai", model: "gpt-5.4-mini" }]) {
-      const r = j.evaluatedRoutes.find((x) => x.provider === id.provider && x.model === id.model);
-      assert.ok(r, `${id.provider}/${id.model} must appear`);
-      const gates = r!.capabilityCertifiedDecision.blockingReasons.map((b) => b.gate);
-      assert.ok(gates.includes("vision.capability-certified.suite-size"), `${id.provider}/${id.model} must still surface suite-size blocker; got ${gates.join(", ")}`);
-    }
+    // Phase 15 refreshed gpt-5.4-mini on the 15-test suite, so the
+    // suite-size blocker has cleared on that route too. v2-omni was
+    // intentionally left on 5-test evidence (it's the legacy
+    // fallback, same MiMo family as v2.5 — re-running it would not
+    // change the aggregate-family count). At minimum, v2-omni still
+    // surfaces the suite-size blocker.
+    const omni = j.evaluatedRoutes.find((x) => x.provider === "openrouter" && x.model === "xiaomi/mimo-v2-omni");
+    assert.ok(omni, "xiaomi/mimo-v2-omni must appear");
+    const omniGates = omni!.capabilityCertifiedDecision.blockingReasons.map((b) => b.gate);
+    assert.ok(omniGates.includes("vision.capability-certified.suite-size"), `xiaomi/mimo-v2-omni must still surface suite-size blocker (5-test legacy evidence); got ${omniGates.join(", ")}`);
   });
 
   it("P19 · promotion evaluator response still declares promoted:false / no mutation / experimental:true", async () => {

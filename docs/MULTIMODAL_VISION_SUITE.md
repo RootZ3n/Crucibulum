@@ -213,6 +213,64 @@ full 15-test smoke + 3-repeat stability (45 cells) under Phase 14:
 **No promotion executed.** Vision remains EXPERIMENTAL. The doctrine
 evaluator is read-only.
 
+## Phase 15 / Roadmap E — independent-route validation (3 families)
+
+Phase 14 cleared the suite-size doctrine gate for the preferred
+route. Phase 15 / Roadmap E refreshed the 15-test stability profile
+across **3 independent model/provider families** so the
+`vision.capability-certified.independent-routes` gate (`minIndependentRoutes: 3`)
+has aggregate evidence at the cross-route level.
+
+| Family | Route | Smoke (15 cells) | Stability (45 cells) | Recurring attribution |
+|---|---|---:|---:|---|
+| **MiMo** | `openrouter / xiaomi/mimo-v2.5` (Phase 14) | 15/15 PASS @ $0.0006 | 45/45 STABLE_PASS @ $0.0011 | none |
+| **GPT-5** | `openai / gpt-5.4-mini` (Phase 15 refresh) | 14/15 PASS @ $0.0007 | 14/15 STABLE_PASS · 1 RECURRING_FAIL MODEL on object-count (42/45 cells) @ $0.0021 | MODEL (allowed under doctrine) |
+| **Anthropic** | `openrouter / anthropic/claude-haiku-4-5` (Phase 15 new) | 15/15 PASS @ $0.0054 | 45/45 STABLE_PASS @ $0.0163 | none |
+
+Total Phase 15 live spend: **$0.0245** (well under the $10 cap).
+
+**Independent-family aggregate** (read-only doctrine view at
+`/api/capabilities/vision/promotion-evaluation` → `aggregateCapabilityCertified`):
+
+- `independentFamiliesQualifying`: `["Anthropic", "GPT-5", "MiMo"]`
+- `independentFamilyCount`: **3 / 3**
+- aggregate Capability-Certified `decision.eligible`: **true** (dry-run only)
+- `promoted: false`, `affectsLeaderboard: false`,
+  `affectsCertification: false`, `promotionRequiresFutureWritePhase: true`
+
+**No promotion executed.** Even though the cross-route aggregate is
+now dry-run eligible, no write-phase endpoint exists; Vision stays
+EXPERIMENTAL on every route. The actual capability promotion path
+is still the deferred phase-J scope. Per-route
+`capabilityCertifiedDecision` continues to surface
+`independent-routes` as a blocker because each route's evidence is
+single-route by construction — that's the per-route truth, not a
+contradiction with the aggregate view.
+
+To rerun the routes:
+
+```bash
+# Preferred candidate (MiMo family)
+node scripts/vision-smoke.mjs     --provider openrouter --model xiaomi/mimo-v2.5            --max-cost-usd 1.00 --write-report
+node scripts/vision-stability.mjs --provider openrouter --model xiaomi/mimo-v2.5 --runs 3   --max-cost-usd 2.00 --write-report
+
+# GPT-5 family
+node scripts/vision-smoke.mjs     --provider openai --model gpt-5.4-mini                    --max-cost-usd 3.00 --write-report
+node scripts/vision-stability.mjs --provider openai --model gpt-5.4-mini --runs 3           --max-cost-usd 3.00 --write-report
+
+# Anthropic family (via OpenRouter)
+node scripts/vision-smoke.mjs     --provider openrouter --model anthropic/claude-haiku-4-5  --max-cost-usd 1.50 --write-report
+node scripts/vision-stability.mjs --provider openrouter --model anthropic/claude-haiku-4-5 --runs 3 --max-cost-usd 1.50 --write-report
+```
+
+**Doctrine note on independence.** MiMo variants
+(`xiaomi/mimo-v2.5`, `xiaomi/mimo-v2-omni`) share one MiMo family;
+the doctrine does NOT count them as separate independent routes.
+The Anthropic route is registered as `EXPERIMENTAL` in
+`MODEL_CERTIFICATION.models[]` (Vision-only enablement; non-Vision
+capabilities default conservatively) — same pattern as the Phase
+13-A v2.5 capability enablement.
+
 ## MiMo-V2.5 replacement and daily-driver candidate
 
 **Why evaluated.** MiMo-V2-Omni is expected to be deprecated and

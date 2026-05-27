@@ -274,13 +274,15 @@ describe("Vision Phase 13-C · read-only promotion evaluator endpoint", () => {
     assert.match(HTML, /Promotion executed:\s*<strong>no<\/strong>/i);
   });
 
-  it("P16 · UI preserves EXPERIMENTAL / NOT IN LEADERBOARD / NOT CERTIFIED chips and capability-certified blocker copy", () => {
+  it("P16 · UI preserves EXPERIMENTAL / NOT IN LEADERBOARD / NOT CERTIFIED chips and capability-certified blocker copy (Phase 15: per-route 1/3 routes message)", () => {
     assert.match(HTML, /chip amber hot[^>]*>EXPERIMENTAL/);
     assert.match(HTML, /NOT CERTIFIED/);
     assert.match(HTML, /Vision does not affect model certification/);
-    // The dry-run block surfaces the 5/15 suite-size + 1/3 independent-
-    // routes structural blocker for CAPABILITY_CERTIFIED.
-    assert.match(HTML, /5\/15 tests/);
+    // Phase 15 simplified the per-route Capability-Certified blocked
+    // chip to "per-route 1/3 routes" (the per-route view always has
+    // independent-routes as a blocker by construction; the suite-size
+    // half of the blocker can clear independently per route as their
+    // stability evidence is refreshed on the 15-test suite).
     assert.match(HTML, /1\/3 routes/);
   });
 

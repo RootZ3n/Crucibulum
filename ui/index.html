@@ -134,7 +134,15 @@ const MODEL_CERTIFICATION={
     // is intentional. The OpenAI adapter forwards `image_url` content
     // parts unchanged (`adapters/openai.ts`), and the adapterImageTransport
     // table above declares the `openai_image_url` path for this provider.
-    {providerId:'openai',modelId:'gpt-5.4-mini',tier:'EXPERIMENTAL',evidence:'reports/capability-expansion/vision-phase9-gpt5-mini/',campaign:'2026-05-26-vision-phase9',note:'Registered as a Phase 9 Vision experimental route. Capabilities declared so the runner sends image content; non-Vision capabilities default conservatively.',capabilities:{supportsText:true,supportsVision:true,supportsImageInput:true,supportsMultipleImages:true,multimodalTransport:'openai_image_url'}}
+    {providerId:'openai',modelId:'gpt-5.4-mini',tier:'EXPERIMENTAL',evidence:'reports/capability-expansion/vision-phase9-gpt5-mini/',campaign:'2026-05-26-vision-phase9',note:'Registered as a Phase 9 Vision experimental route. Capabilities declared so the runner sends image content; non-Vision capabilities default conservatively.',capabilities:{supportsText:true,supportsVision:true,supportsImageInput:true,supportsMultipleImages:true,multimodalTransport:'openai_image_url'}},
+    // Phase 15 / Roadmap E — Anthropic Claude Haiku via OpenRouter as
+    // the third independent Vision route family. Routed through
+    // OpenRouter (no direct Anthropic adapter call needed; the
+    // openai_image_url path proxies cleanly). Main-suite tier is
+    // EXPERIMENTAL because this entry was added only for Vision
+    // capability evidence; non-Vision capabilities default
+    // conservatively. See reports/capability-expansion/vision-phase15-independent-routes/.
+    {providerId:'openrouter',modelId:'anthropic/claude-haiku-4-5',tier:'EXPERIMENTAL',evidence:'reports/capability-expansion/vision-phase15-independent-routes/',campaign:'2026-05-27-vision-phase15',note:'Phase 15 / Roadmap E — registered as the third independent Vision route family (Anthropic). Vision capability flags enabled so the runner sends image content. Non-Vision capabilities default conservatively. Capability tier remains EXPERIMENTAL until a future doctrine-aware promotion phase.',capabilities:{supportsText:true,supportsVision:true,supportsImageInput:true,supportsMultipleImages:true,multimodalTransport:'openai_image_url'}}
   ]
 };
 
@@ -4832,26 +4840,48 @@ function renderVisionLanePanel(tabKey){
       const roleLabel=r.role==='preferred_daily_driver_candidate'?'Preferred candidate'
         :r.role==='legacy_proven_fallback'?'Legacy fallback'
         :r.role==='comparison_route'?'Comparison route'
+        :r.role==='independent_route_family'?'Independent family'
         :esc(String(r.role||''));
+      const familyTag=r.family?` <span class="dim" style="font-size:11px">· family: ${esc(r.family)}</span>`:'';
       const pt=r.providerTestedDecision||{};
       const st=r.stableDecision||{};
       const cc=r.capabilityCertifiedDecision||{};
       const ptBadge=pt.eligible===true?`<span class="chip teal">Eligible in dry-run</span>`:`<span class="chip amber">Blocked</span>`;
       const stBadge=st.eligible===true?`<span class="chip teal">Eligible in dry-run</span>`:`<span class="chip amber">Blocked</span>`;
       const ccBlockers=(cc.blockingReasons||[]).map((b)=>String(b.gate||'')).join(', ');
-      const ccBadge=cc.eligible===true?`<span class="chip teal">Eligible in dry-run</span>`:`<span class="chip amber">Blocked: 5/15 tests + 1/3 routes</span>`;
+      const ccBadge=cc.eligible===true?`<span class="chip teal">Eligible in dry-run</span>`:`<span class="chip amber">Blocked: per-route 1/3 routes</span>`;
       return `<tr>
-        <td class="mono">${esc(r.provider+' / '+r.model)}<div class="dim" style="font-size:11px">${esc(roleLabel)}</div></td>
+        <td class="mono">${esc(r.provider+' / '+r.model)}<div class="dim" style="font-size:11px">${esc(roleLabel)}${familyTag}</div></td>
         <td>${ptBadge}</td>
         <td>${stBadge}</td>
         <td>${ccBadge}<div class="dim" style="font-size:10px">${esc(ccBlockers||'—')}</div></td>
         <td><strong>no</strong></td>
       </tr>`;
     }).join('');
+    // Phase 15 / Roadmap E — aggregate-family doctrine view.
+    const agg=promoData.aggregateCapabilityCertified;
+    let aggHtml='';
+    if(agg){
+      const aggBadge=agg.decision&&agg.decision.eligible===true
+        ?`<span class="chip teal">Eligible in dry-run</span>`
+        :`<span class="chip amber">Blocked</span>`;
+      const aggGates=(agg.decision&&Array.isArray(agg.decision.blockingReasons))
+        ?agg.decision.blockingReasons.map((b)=>String(b.gate||'')).join(', ')
+        :'';
+      const families=(agg.independentFamiliesQualifying||[]).map(esc).join(', ')||'(none)';
+      aggHtml=`<div style="margin-top:10px;padding:8px 10px;border-top:1px solid var(--border-subtle, #2a2a3a)">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;opacity:0.7;margin-bottom:4px">Aggregate Capability-Certified (cross-route, read-only)</div>
+        <div style="font-size:12px">
+          Qualifying families: <strong>${agg.independentFamilyCount}/${agg.independentFamilyTarget}</strong> · <span class="mono">${families}</span><br>
+          Aggregate Capability-Certified: ${aggBadge}${aggGates?` <span class="dim" style="font-size:10px">(${esc(aggGates)})</span>`:''}<br>
+          Promoted: <strong>no</strong> · Affects leaderboard: <strong>no</strong> · Affects certification: <strong>no</strong>
+        </div>
+      </div>`;
+    }
     promoRowsHtml=`<table class="vc-table" style="width:100%;border-collapse:collapse;font-size:12px">
       <thead><tr><th style="text-align:left">Route</th><th>Provider-Tested</th><th>Stable</th><th>Capability-Certified</th><th>Promoted</th></tr></thead>
       <tbody>${rows}</tbody>
-    </table>`;
+    </table>${aggHtml}`;
   } else {promoRowsHtml=`<div class="dim">no promotion evaluator response on disk yet</div>`;}
   const cardsMarkup=VISION_POC_TESTS.map((t)=>{
     const r=available?visionResultByTaskId(t.id):null;
@@ -4954,7 +4984,7 @@ function renderVisionLanePanel(tabKey){
       <div class="vision-status-block vision-status-block-wide">
         <div class="vs-label">STABILITY PROFILE</div>
         <div class="vs-value mono">3 repeats · mimo-v2-omni + gpt-5.4-mini</div>
-        <div class="vs-sub dim">Roadmap Phase B added <span class="mono">scripts/vision-stability.mjs --runs N</span>; Phase 12 calibrated the uncertainty scorer to prioritise honesty over concision. Latest profiles: <span class="mono">xiaomi/mimo-v2-omni</span> 5/5 STABLE_PASS (15/15 cells, post-calibration); <span class="mono">gpt-5.4-mini</span> 4/5 STABLE_PASS · 1 RECURRING_FAIL MODEL on object-count (genuine miscount, not measurement instability). Dry-run gate (read-only, no mutation): both routes meet PROVIDER_TESTED + STABLE thresholds; no promotion executed — Vision remains EXPERIMENTAL until the doctrine-aware promotion path lands in Roadmap Phase D. Reports: <span class="mono">reports/capability-expansion/vision-stability/latest.md</span></div>
+        <div class="vs-sub dim">Roadmap Phase B added <span class="mono">scripts/vision-stability.mjs --runs N</span>; Phase 12 calibrated the uncertainty scorer to prioritise honesty over concision; Phase 14 / Roadmap C expanded the suite to 15 tests; <strong>Phase 15 / Roadmap E</strong> validated three independent families. 15-test stability evidence on disk: <span class="mono">xiaomi/mimo-v2.5</span> 15/15 STABLE_PASS (45/45 cells, MiMo family); <span class="mono">gpt-5.4-mini</span> 14/15 STABLE_PASS · 1 RECURRING_FAIL MODEL on object-count (42/45 cells, GPT-5 family); <span class="mono">anthropic/claude-haiku-4-5</span> 15/15 STABLE_PASS (45/45 cells, Anthropic family). Dry-run gate (read-only, no mutation): all three families meet PROVIDER_TESTED + STABLE thresholds; aggregate Capability-Certified now eligible-in-dry-run (3/3 families). No promotion executed — Vision remains EXPERIMENTAL until a future doctrine-aware write-phase ships. Reports: <span class="mono">reports/capability-expansion/vision-stability/latest.md</span>, <span class="mono">reports/capability-expansion/vision-phase15-independent-routes/</span></div>
       </div>
       <div class="vision-status-block vision-status-block-wide">
         <div class="vs-label">PREFERRED DAILY-DRIVER CANDIDATE</div>
@@ -4969,7 +4999,7 @@ function renderVisionLanePanel(tabKey){
       <div class="vision-status-block vision-status-block-wide">
         <div class="vs-label">PROMOTION DRY RUN (READ-ONLY)</div>
         <div class="vs-value mono">/api/capabilities/vision/promotion-evaluation</div>
-        <div class="vs-sub dim" style="margin-bottom:6px">Roadmap Phase D — read-only promotion evaluator. Surfaces doctrine eligibility per route. <strong>Promotion executed: no.</strong> Affects leaderboard: <strong>no</strong>. Affects certification: <strong>no</strong>. Capability-Certified remains blocked because the Vision suite has 5 tests (doctrine requires 15) and the smoke profiles only 1 route per stability run (doctrine requires 3 independent routes). Future write phase required to actually promote.</div>
+        <div class="vs-sub dim" style="margin-bottom:6px">Roadmap Phase D — read-only promotion evaluator; Phase 15 / Roadmap E added the aggregate-family cross-route view. Surfaces doctrine eligibility per route + the aggregate Capability-Certified decision. <strong>Promotion executed: no.</strong> Affects leaderboard: <strong>no</strong>. Affects certification: <strong>no</strong>. Per-route Capability-Certified is always blocked on independent-routes (each route's evidence is single-route by construction); the aggregate counts qualifying families across all evaluated routes. Future write phase required to actually promote.</div>
         ${promoRowsHtml}
       </div>
     </div>
