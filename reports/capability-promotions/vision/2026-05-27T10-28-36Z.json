@@ -1,0 +1,88 @@
+{
+  "capability": "vision",
+  "previousTier": "EXPERIMENTAL",
+  "promotedTier": "CAPABILITY_CERTIFIED",
+  "aggregateDecision": {
+    "eligible": true,
+    "capability": "vision",
+    "providerId": "(aggregate)",
+    "modelId": "(aggregate)",
+    "currentTier": "EXPERIMENTAL",
+    "proposedTier": "CAPABILITY_CERTIFIED",
+    "blockingReasons": [],
+    "evidenceRefs": [
+      {
+        "kind": "stability",
+        "path": "reports/capability-expansion/vision-stability/2026-05-27T01-02-06Z.json"
+      },
+      {
+        "kind": "stability",
+        "path": "reports/capability-expansion/vision-stability/2026-05-26T22-55-13Z.json"
+      },
+      {
+        "kind": "stability",
+        "path": "reports/capability-expansion/vision-stability/2026-05-27T02-21-49Z.json"
+      },
+      {
+        "kind": "stability",
+        "path": "reports/capability-expansion/vision-stability/2026-05-27T02-23-00Z.json"
+      }
+    ],
+    "generatedAt": "2026-05-27T10:28:36.870Z",
+    "affectsLeaderboard": false,
+    "affectsCertification": false
+  },
+  "qualifyingFamilies": [
+    "Anthropic",
+    "GPT-5",
+    "MiMo"
+  ],
+  "qualifyingRoutes": [
+    {
+      "provider": "openrouter",
+      "model": "xiaomi/mimo-v2.5",
+      "family": "MiMo"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5.4-mini",
+      "family": "GPT-5"
+    },
+    {
+      "provider": "openrouter",
+      "model": "anthropic/claude-haiku-4-5",
+      "family": "Anthropic"
+    }
+  ],
+  "sourceReports": [
+    {
+      "kind": "stability",
+      "path": "reports/capability-expansion/vision-stability/2026-05-27T01-02-06Z.json"
+    },
+    {
+      "kind": "stability",
+      "path": "reports/capability-expansion/vision-stability/2026-05-27T02-21-49Z.json"
+    },
+    {
+      "kind": "stability",
+      "path": "reports/capability-expansion/vision-stability/2026-05-27T02-23-00Z.json"
+    }
+  ],
+  "suiteSize": 15,
+  "repeatRuns": 3,
+  "stablePassRate": 1,
+  "recurringAttributions": [
+    "MODEL"
+  ],
+  "certifiedModelsJsonSha256Before": "7c88e1b5da0e9edf1d1d726a37a3b7ed432dc9101aeddb06583e91df38a6a172",
+  "certifiedModelsJsonSha256After": "7c88e1b5da0e9edf1d1d726a37a3b7ed432dc9101aeddb06583e91df38a6a172",
+  "modelCertificationTierMutated": false,
+  "operator": "Jeff Miller",
+  "operatorNote": "Promoting Vision after Phase 15 aggregate dry-run eligibility (3/3 families).",
+  "generatedAt": "2026-05-27T10:28:36.870Z",
+  "schema": "crucible.capability-promotion-receipt.v1",
+  "receiptPath": "/mnt/ai/crucible/reports/capability-promotions/vision/2026-05-27T10-28-36Z.json",
+  "noMutationGuarantee": false,
+  "affectsLeaderboard": false,
+  "affectsCertification": false
+}
