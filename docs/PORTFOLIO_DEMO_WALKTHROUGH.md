@@ -1,4 +1,4 @@
-# Crucible — Portfolio / Demo Walkthrough
+# Luak — Portfolio / Demo Walkthrough
 
 A 5–10 minute walkthrough for a portfolio reviewer, hiring
 manager, or beta tester. The structure scales: start with the
@@ -7,7 +7,7 @@ interview, expand to 10 minutes for a deeper technical review.
 
 ## 30-second summary
 
-Crucible is an evaluation harness that **refuses to overclaim**.
+Luak is an evaluation harness that **refuses to overclaim**.
 It runs model trials, scores them deterministically, and writes
 **immutable evidence receipts** that anyone can re-verify. Its
 most recently-shipped piece is a **doctrine-gated capability
@@ -19,28 +19,28 @@ certification. If you read the receipt under
 `reports/capability-promotions/vision/`, you can rederive every
 claim the badge makes from the underlying evidence.
 
-## The core trust problem Crucible solves
+## The core trust problem Luak solves
 
 Most evaluation tools fail one of these tests:
 
 - **Overclaim by silence.** "Vision works" is invisibly different
   from "we tested vision on three models and saw 100% on test
   fixtures we wrote ourselves." The first sounds general; the
-  second is what we actually have. Crucible always shows the
+  second is what we actually have. Luak always shows the
   second.
 - **Leaderboards that hide weak evidence.** A single-shot smoke
   on one model can produce a number that gets averaged into a
-  leaderboard. Crucible quarantines untrusted bundles by default
+  leaderboard. Luak quarantines untrusted bundles by default
   and ships a doctrine that defines what evidence justifies what
   claim.
 - **"Certified" drift.** The word "certified" gets reused for
   product-marketing claims, regulatory claims, and benchmark
-  claims, and operators can't tell which is which. Crucible
+  claims, and operators can't tell which is which. Luak
   scopes "certified" precisely (release-certified, capability-
   certified, provider-tested) and the UI chips spell out what
   each one does and does not mean.
 - **Provider drift.** Model behavior moves silently — pricing,
-  capability flags, even the model weights behind a name. Crucible
+  capability flags, even the model weights behind a name. Luak
   surfaces evidence drift (`currentEvidenceStillEligible`) without
   auto-revoking, so the operator decides what to do.
 
@@ -51,7 +51,7 @@ will use.
 
 ## 5-minute demo path
 
-Assumes Crucible is running locally on `127.0.0.1:18795`
+Assumes Luak is running locally on `127.0.0.1:18795`
 (`npm run serve` or the `crux-restart` alias).
 
 ### Step 1 (1 min): show that the test suite is green and the
@@ -207,7 +207,7 @@ Talking points:
   is the legitimate composite, but operators were reading
   `score.total_percent` while expecting
   `score.breakdown_percent.correctness`.
-- Crucible's conversational composite formula is
+- Luak's conversational composite formula is
   `round((correctness*0.85 + efficiency*0.15)*100)/100`. For
   1-of-3 PASS at efficiency ≈ 1, that's exactly 0.43.
 - Phase 18 relabeled the UI big-number `OVERALL → COMPOSITE`,
@@ -217,7 +217,7 @@ Talking points:
   anchor sets per binary manifest and can flag any future
   pipeline bug that produces an actually-impossible score.
 
-The takeaway: Crucible took a false alarm seriously, traced it to
+The takeaway: Luak took a false alarm seriously, traced it to
 field confusion (not a scoring bug), and added permanent
 guard-rails so the next reviewer doesn't get tripped up the same
 way.
@@ -230,7 +230,7 @@ sed -n '18,35p' README.md
 
 Talking points:
 
-- README explicitly says Crucible is NOT a universal model
+- README explicitly says Luak is NOT a universal model
   benchmark, NOT a safety certification, NOT proof that a model
   is safe, NOT a guarantee of local or cloud isolation.
 - The Vision Capability-Certified subsection spells out what
@@ -264,7 +264,7 @@ When the reviewer is looking at the Vision tab:
 
 ### Short plain-English version (60 seconds)
 
-"Crucible is an evaluation harness that refuses to overclaim.
+"Luak is an evaluation harness that refuses to overclaim.
 The newest piece is a capability promotion path that requires
 multi-family evidence before a capability badge can flip on.
 Vision is the first capability to clear it — 15 tests across
@@ -300,7 +300,7 @@ end-to-end."
 
 "The hardest problem in evaluation is honesty under pressure.
 When you're certifying something, you want to flip the switch.
-Crucible designs against that pressure: the promotion endpoint
+Luak designs against that pressure: the promotion endpoint
 is a separate route from the read-only evaluator; it requires an
 operator to type a confirmation phrase; it writes an immutable
 receipt before the state mutation that anyone can audit; and it
@@ -317,7 +317,7 @@ guardrails."
 
 ## Known limitations (state these openly)
 
-- **Local-only / no built-in auth.** Crucible binds to
+- **Local-only / no built-in auth.** Luak binds to
   `127.0.0.1:18795` by default and has no authentication.
   Operators exposing it beyond loopback must add network-layer
   access control (Tailscale, VPN, firewall, reverse-proxy
@@ -331,7 +331,7 @@ guardrails."
   diversity than (e.g.) a held-out test set drawn from real
   photographs. Operators evaluating Vision for production should
   add their own domain-specific evidence on top.
-- **Provider drift is possible at any time.** Crucible's
+- **Provider drift is possible at any time.** Luak's
   evidence is a snapshot. Providers can change pricing, swap
   underlying models, or change image-input behaviour without
   notice. Rerun the smoke + stability if anything in the
@@ -361,16 +361,16 @@ guardrails."
   `TAB_CONFIG.vision.scoreFamilies = []` and stays that way.
   Vision is its own tab with its own permanent NOT IN
   LEADERBOARD chip.
-- ❌ "Crucible is a production SaaS." It is a local
+- ❌ "Luak is a production SaaS." It is a local
   evaluation harness with no built-in auth. Production hosting
   requires the operator to add their own access control.
-- ❌ "Crucible guarantees provider behavior." Providers can
-  regress at any time. Crucible surfaces drift; it does not
+- ❌ "Luak guarantees provider behavior." Providers can
+  regress at any time. Luak surfaces drift; it does not
   prevent it.
-- ❌ "Crucible's capability badge is the same as a safety
+- ❌ "Luak's capability badge is the same as a safety
   certification." It is not. Capability certification is
   evidence-backed but narrowly scoped; safety is a separate
-  doctrine track that Crucible explicitly does not claim to
+  doctrine track that Luak explicitly does not claim to
   hold today.
 
 ## Audit trail (for a reviewer who wants to dig deeper)

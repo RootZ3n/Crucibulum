@@ -1,4 +1,4 @@
-# Crucible — Vision Capability-Certified (operator audit summary)
+# Luak — Vision Capability-Certified (operator audit summary)
 
 | Field | Value |
 |---|---|
@@ -10,7 +10,7 @@
 | Affects general model certification | **No** |
 | Reading audience | future operators · portfolio reviewers · beta testers |
 
-This document is the short, plain-English version of how Crucible
+This document is the short, plain-English version of how Luak
 arrived at `Vision: CAPABILITY-CERTIFIED` and exactly what that
 badge does and does not mean. The long-form evidence trail lives
 under `reports/capability-expansion/vision-*` and
@@ -18,13 +18,13 @@ under `reports/capability-expansion/vision-*` and
 
 ## 1. What "Vision Capability-Certified" means
 
-Crucible's doctrine
+Luak's doctrine
 (`docs/CAPABILITY_CERTIFICATION_DOCTRINE.md`) defines a
 capability-specific certification tier that is **independent of**
 the general model leaderboard and the general model-certification
 registry. Vision reaching `CAPABILITY_CERTIFIED` means:
 
-- **The Vision test suite is large enough.** Crucible's Vision
+- **The Vision test suite is large enough.** Luak's Vision
   suite is **15 tests** covering the doctrine's 10 required
   categories (OCR, object count, chart reading, UI screenshot
   reasoning, uncertainty honesty, spatial reasoning, small / noisy
@@ -35,7 +35,7 @@ registry. Vision reaching `CAPABILITY_CERTIFIED` means:
   stability profiles on the full 15-test suite, with aggregate
   per-route pass rate ≥ 80% and no recurring
   scorer/fixture/provider/config attribution. The doctrine
-  requires 3; Crucible has 3.
+  requires 3; Luak has 3.
 - **Promotion happened through an operator-explicit,
   doctrine-gated write path.** The promotion endpoint refused to
   write until the doctrine evaluator confirmed every gate was
@@ -47,7 +47,7 @@ registry. Vision reaching `CAPABILITY_CERTIFIED` means:
   /`false` (on the dry-run evaluator), `noMutationGuarantee` for
   the GET endpoint.
 
-In short: **Crucible has rigorous, reproducible, multi-family
+In short: **Luak has rigorous, reproducible, multi-family
 evidence that the Vision evaluation pipeline works correctly and
 that real models pass it.**
 
@@ -235,7 +235,7 @@ node scripts/release-gauntlet.mjs --dry-run-inventory \
 sha256sum reports/model-certification/certified-models.json
 #   → 7c88e1b5da0e9edf1d1d726a37a3b7ed432dc9101aeddb06583e91df38a6a172
 git log -1 --format='%H %s' -- reports/model-certification/certified-models.json
-#   → 9481ee57… expand crucible model certification registry  (pre-Phase-16, unchanged)
+#   → 9481ee57… expand luak model certification registry  (pre-Phase-16, unchanged)
 
 grep -n "vision:{key:'vision'" ui/index.html | grep "scoreFamilies:\[\]"
 #   → confirms scoreFamilies=[]
@@ -294,7 +294,7 @@ flow.
   diversity than (e.g.) a held-out test set drawn from real
   photographs. Operators evaluating Vision for production should
   add their own domain-specific evidence on top of this baseline.
-- **Provider drift is possible at any time.** Crucible's
+- **Provider drift is possible at any time.** Luak's
   evidence is a snapshot of model behaviour at the time of the
   stability runs (May 26–27, 2026). Providers can change pricing,
   swap underlying models, or change image-input behaviour without
@@ -302,7 +302,7 @@ flow.
   ecosystem changes; `promotionState.currentEvidenceStillEligible`
   is the operator's drift signal.
 - **Capability certification is evidence-backed, not universal
-  truth.** The badge attests that Crucible's specific 15-test
+  truth.** The badge attests that Luak's specific 15-test
   suite ran cleanly across three families. It does NOT prove
   that any Vision-capable model is universally correct, that
   every Vision-related failure mode is caught, or that the
@@ -323,10 +323,10 @@ flow.
   capabilities (Roleplay, tool-calling, etc.) have their own
   doctrine tracks and are explicitly still EXPERIMENTAL until
   they reach the same level of independent-family evidence.
-- **No external auth.** Crucible has no built-in authentication;
+- **No external auth.** Luak has no built-in authentication;
   the `POST /api/capabilities/vision/promote` endpoint is only
   as safe as the network around the bound port (default
-  `127.0.0.1:18795`). Operators exposing Crucible beyond
+  `127.0.0.1:18795`). Operators exposing Luak beyond
   loopback must add their own access control.
 
 ## 9. Audit trail (for portfolio review)

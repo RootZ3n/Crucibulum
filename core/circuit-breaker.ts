@@ -1,5 +1,5 @@
 /**
- * Crucible — Circuit Breaker & Rate Limiter
+ * Luak — Circuit Breaker & Rate Limiter
  * Prevents cascading failures and retry storms against model providers.
  */
 

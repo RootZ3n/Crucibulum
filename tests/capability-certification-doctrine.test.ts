@@ -1,5 +1,5 @@
 /**
- * Crucible — Capability Certification Doctrine (Doctrine v1) tests.
+ * Luak — Capability Certification Doctrine (Doctrine v1) tests.
  *
  * 12 deterministic offline assertions pinning the doctrine guarantees
  * defined in `docs/CAPABILITY_CERTIFICATION_DOCTRINE.md` and

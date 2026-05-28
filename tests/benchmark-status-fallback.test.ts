@@ -1,7 +1,7 @@
 /**
  * Benchmark lane regression for the real UI failure shape:
  * truthfulness-001 on a cloud-style model hits a provider RATE_LIMIT before
- * execution, while the browser fallback may also see Crucible's own read
+ * execution, while the browser fallback may also see Luak's own read
  * limiter on /status. The product invariant is durable evidence by run_id
  * and no terminal UI fallback to "Run state unreachable".
  */

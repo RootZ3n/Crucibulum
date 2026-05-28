@@ -1,5 +1,5 @@
 /**
- * Crucible — Core Security Enforcer
+ * Luak — Core Security Enforcer
  * Coordinates all security checks.
  */
 

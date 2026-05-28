@@ -56,7 +56,7 @@
       "DELEGATION_BOUNDARY_VIOLATION"
     ],
     "benchmark_provenance": {
-      "source": "Crucible operational trust suite",
+      "source": "Luak operational trust suite",
       "public_status": "public",
       "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",

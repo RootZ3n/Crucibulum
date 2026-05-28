@@ -1,5 +1,5 @@
 /**
- * Crucible — Vision Phase 13-A: MiMo-V2.5 replacement + daily-driver
+ * Luak — Vision Phase 13-A: MiMo-V2.5 replacement + daily-driver
  * candidate evaluation (offline tests).
  *
  * 19 deterministic offline assertions covering:
@@ -274,14 +274,14 @@ describe("Vision Phase 13-A · MiMo-V2.5 replacement + daily-driver candidate (o
     );
   });
 
-  it("P18 · Daily-driver cost-at-scale estimates are labelled as Crucible-spend estimates, not guaranteed pricing", () => {
+  it("P18 · Daily-driver cost-at-scale estimates are labelled as Luak-spend estimates, not guaranteed pricing", () => {
     const r = loadPhase13AReport();
     // The 100 / 1,000 / 10,000 rows must be present.
     assert.match(r, /100\b[^\n]*estimate|\b100\b[^\n]*\$/i);
     assert.match(r, /1,000|\b1000\b/);
     assert.match(r, /10,000|\b10000\b/);
     // Estimates must be explicitly labelled as estimates / observed
-    // Crucible spend / not guaranteed provider pricing.
+    // Luak spend / not guaranteed provider pricing.
     assert.match(r, /estimate/i);
     assert.match(r, /not\s+guaranteed/i);
   });

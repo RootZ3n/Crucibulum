@@ -1,6 +1,6 @@
 /**
- * Crucible — Unified Score Schema
- * Shared between the Squidley Crucible module and the standalone Crucible product.
+ * Luak — Unified Score Schema
+ * Shared between the Squidley Luak module and the standalone Luak product.
  *
  * Public score APIs use 0-100 percentages.
  * Internal run bundles still use 0-1 fractions until the bundle schema is migrated.
@@ -9,7 +9,7 @@
 import type { CompletionState, FailureOrigin, FailureReasonCode } from "./verdict.js";
 
 export type ScoreFamily = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K";
-export type ScoreSource = "crucible" | "crucibulum" | "veritor" | "verum";
+export type ScoreSource = "luak" | "crucible" | "crucibulum" | "veritor" | "verum";
 export type CanonicalTaskFamily =
   | "poison_localization"
   | "spec_discipline"

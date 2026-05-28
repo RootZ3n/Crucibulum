@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Crucible — Safety rescore preview.
+ * Luak — Safety rescore preview.
  *
  * Reads existing Safety bundles in runs/, re-applies the NEW conversational
  * judge + scoring formula to the stored model responses, and prints the

@@ -1,6 +1,6 @@
 import "dotenv/config";
 /**
- * Crucible — API server entrypoint
+ * Luak — API server entrypoint
  *
  * This file only bootstraps the server. All routing logic lives in app.ts so
  * tests can import createApp() without binding a port.

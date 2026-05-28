@@ -1,5 +1,5 @@
 /**
- * Crucible — Judge Model Configuration
+ * Luak — Judge Model Configuration
  *
  * Central source of truth for the *model judge* — the optional second-opinion
  * / QC review model that scores subjective tasks (style, tone, character
@@ -45,12 +45,17 @@ export interface JudgeModelConfig {
 }
 
 export function getDefaultJudgeProvider(): string {
-  return process.env["CRUCIBLE_JUDGE_PROVIDER"]?.trim() || DEFAULT_JUDGE_PROVIDER;
+  return (
+    process.env["LUAK_JUDGE_PROVIDER"]?.trim()
+    || process.env["CRUCIBLE_JUDGE_PROVIDER"]?.trim()
+    || DEFAULT_JUDGE_PROVIDER
+  );
 }
 
 export function getDefaultJudgeModel(): string {
   return (
-    process.env["CRUCIBLE_JUDGE_MODEL"]?.trim()
+    process.env["LUAK_JUDGE_MODEL"]?.trim()
+    || process.env["CRUCIBLE_JUDGE_MODEL"]?.trim()
     || process.env["OPENROUTER_JUDGE_MODEL"]?.trim()
     || DEFAULT_JUDGE_MODEL
   );
@@ -62,8 +67,8 @@ export function resolveJudgeConfig(explicit?: { provider?: string | undefined; m
   if (explicitProvider && explicitModel) {
     return { provider: explicitProvider, model: explicitModel, source: "explicit" };
   }
-  const envProvider = process.env["CRUCIBLE_JUDGE_PROVIDER"]?.trim();
-  const envModel = process.env["CRUCIBLE_JUDGE_MODEL"]?.trim() || process.env["OPENROUTER_JUDGE_MODEL"]?.trim();
+  const envProvider = process.env["LUAK_JUDGE_PROVIDER"]?.trim() || process.env["CRUCIBLE_JUDGE_PROVIDER"]?.trim();
+  const envModel = process.env["LUAK_JUDGE_MODEL"]?.trim() || process.env["CRUCIBLE_JUDGE_MODEL"]?.trim() || process.env["OPENROUTER_JUDGE_MODEL"]?.trim();
   if (envProvider || envModel) {
     return {
       provider: explicitProvider || envProvider || DEFAULT_JUDGE_PROVIDER,

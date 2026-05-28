@@ -1,5 +1,5 @@
 /**
- * Crucible — Vision Phase 16: doctrine-aware capability promotion
+ * Luak — Vision Phase 16: doctrine-aware capability promotion
  * write phase (offline + live HTTP tests with FS isolation).
  *
  * 25 deterministic tests. State + receipt directories are

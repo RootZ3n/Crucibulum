@@ -1,5 +1,5 @@
 /**
- * Crucible — Roleplay Phase 7: stability profile (offline).
+ * Luak — Roleplay Phase 7: stability profile (offline).
  *
  * 13 deterministic source/contract assertions covering Phase 7's
  * scope: scripts/roleplay-stability.mjs runner + stability

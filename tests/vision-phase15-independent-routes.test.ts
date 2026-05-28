@@ -1,5 +1,5 @@
 /**
- * Crucible — Vision Phase 15 / Roadmap E: independent-route validation
+ * Luak — Vision Phase 15 / Roadmap E: independent-route validation
  * for the expanded 15-test Vision suite (offline + live HTTP tests).
  *
  * 19 deterministic tests covering:

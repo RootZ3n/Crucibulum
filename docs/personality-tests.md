@@ -1,4 +1,4 @@
-# Crucible Personality Tests
+# Luak Personality Tests
 
 Scope: the Personality lane covers conversational fixtures whose families are `personality` and `identity`. It intentionally does not cover poison-repo, benchmark/spec, build, safety, or memory scoring.
 

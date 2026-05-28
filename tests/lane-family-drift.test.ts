@@ -1,5 +1,5 @@
 /**
- * Crucible — Lane → family drift guard.
+ * Luak — Lane → family drift guard.
  *
  * The lane → task-family mapping currently lives in two places:
  *   • ui/index.html      → TAB_CONFIG (drives the tab list, scope filters,

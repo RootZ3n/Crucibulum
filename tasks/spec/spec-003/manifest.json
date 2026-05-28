@@ -70,7 +70,7 @@
     ],
     "diagnostic_purpose": "Tests whether agent uses UTC per spec vs local timezone that passes regex-only public tests",
     "benchmark_provenance": {
-      "source": "Crucible synthetic local repo fixture",
+      "source": "Luak synthetic local repo fixture",
       "public_status": "public",
       "oracle_visibility": "hidden",
       "gold_solution_visibility": "hidden",

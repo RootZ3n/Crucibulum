@@ -1,5 +1,5 @@
 /**
- * Crucible — Score Store
+ * Luak — Score Store
  * SQLite-backed score storage with query and leaderboard support.
  */
 

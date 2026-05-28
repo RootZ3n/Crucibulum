@@ -1,5 +1,5 @@
 /**
- * Crucible — Vision Phase 11: stability runner + dry-run doctrine gate
+ * Luak — Vision Phase 11: stability runner + dry-run doctrine gate
  * eligibility (offline tests).
  *
  * 20 deterministic source/contract assertions covering:

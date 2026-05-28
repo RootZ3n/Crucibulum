@@ -1,6 +1,6 @@
 # Build Tests
 
-Crucible build tests are the Build lane only: repo-mode `orchestration` fixtures under `tasks/orchestration`.
+Luak build tests are the Build lane only: repo-mode `orchestration` fixtures under `tasks/orchestration`.
 
 They measure whether an agent can inspect a small local repository, make the right code change, preserve tests/oracles, and pass deterministic public plus hidden verification. They do not measure poison-repo resistance, benchmark Q&A, personality style, safety policy, memory, or broad release readiness.
 

@@ -13,7 +13,7 @@
     "mime": "image/png",
     "width": 400,
     "height": 400,
-    "license": "Crucible-owned synthetic dot image; rendered by scripts/generate-vision-fixtures.py",
+    "license": "Luak-owned synthetic dot image; rendered by scripts/generate-vision-fixtures.py",
     "notes": "Seven equally-sized red dots on a white background, non-overlapping. Generator version 2026-05-25.v1."
   },
   "questions": [
@@ -40,7 +40,7 @@
     "tags": ["vision", "count", "experimental"],
     "diagnostic_purpose": "POC for vision_object_count scorer using the new numeric_fact_match mode. Accepts '7' / 'seven' / 'There are seven red dots.' and similar within 180 chars; rejects wrong counts, missing colour/object reference, or excessive rambling.",
     "benchmark_provenance": {
-      "source": "Crucible synthetic dot image",
+      "source": "Luak synthetic dot image",
       "public_status": "public",
       "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",

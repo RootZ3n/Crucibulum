@@ -1,5 +1,5 @@
 /**
- * Crucible — Token Estimation
+ * Luak — Token Estimation
  * Rough estimation — not a tokenizer, just chars/4.
  */
 

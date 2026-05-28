@@ -1,5 +1,5 @@
 /**
- * Crucible — Runner
+ * Luak — Runner
  * Orchestrates the full evaluation lifecycle.
  * Load → Workspace → Security → Execute → Judge → Bundle
  */

@@ -1,5 +1,5 @@
 /**
- * Crucible — Run lifecycle regression
+ * Luak — Run lifecycle regression
  *
  * Drives sequential POST /api/run calls against the production server with a
  * deterministic injected adapter so the test can mirror the operator-reported

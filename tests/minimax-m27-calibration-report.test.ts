@@ -1,5 +1,5 @@
 /**
- * Crucible — MiniMax-M2.7 calibration before/after report.
+ * Luak — MiniMax-M2.7 calibration before/after report.
  *
  * Runs the audit's reported failure cases through (a) a snapshot of the
  * PRE-FIX judging logic, frozen inline below, and (b) the current

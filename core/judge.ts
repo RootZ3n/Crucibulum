@@ -1,5 +1,5 @@
 /**
- * Crucible — Judge
+ * Luak — Judge
  * Scores based on observable state transitions. Never trusts narration.
  * Scoring order: Integrity → Correctness → Regression → Efficiency
  *
@@ -22,10 +22,10 @@ import type { Oracle, TaskManifest, ExecutionResult, VerificationResults, DiffEn
 import type { JudgeCommandResult } from "./verdict.js";
 import { log } from "../utils/logger.js";
 
-// Integration boundary: Crucible is designed to be driven by Aedis as the primary
+// Integration boundary: Luak is designed to be driven by Aedis as the primary
 // orchestrator. The DETERMINISTIC_JUDGE_METADATA constant encodes the judge's
 // identity and components so Aedis's trust-routing layer can reason about it.
-// Crucible has no build-time dependency on Aedis — it exposes a task/evidence API
+// Luak has no build-time dependency on Aedis — it exposes a task/evidence API
 // that any orchestrator (Aedis, Ptah, or manual CLI) can consume.
 export const DETERMINISTIC_JUDGE_METADATA = {
   kind: "deterministic" as const,

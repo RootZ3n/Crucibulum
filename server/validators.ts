@@ -1,5 +1,5 @@
 /**
- * Crucible — Runtime request-body validation
+ * Luak — Runtime request-body validation
  *
  * Tiny, dependency-free validators for the handful of POST routes that accept
  * structured payloads. Intentionally not a generic schema framework — every
@@ -100,7 +100,7 @@ export interface CrucibleLinkRequest {
 // ── Validators ───────────────────────────────────────────────────────────────
 
 const VALID_SCORE_FAMILIES = new Set(["A", "B", "C", "D", "E", "F", "G", "H", "I"]);
-const VALID_SCORE_SOURCES = new Set(["crucible", "crucibulum", "veritor", "verum"]);
+const VALID_SCORE_SOURCES = new Set(["luak", "crucible", "crucibulum", "veritor", "verum"]);
 
 export function validateRunRequest(raw: unknown): ValidationResult<RunRequest> {
   const errors: string[] = [];

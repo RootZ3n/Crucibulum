@@ -1,5 +1,5 @@
 /**
- * Crucible — Storage / retention status routes
+ * Luak — Storage / retention status routes
  *
  * Tiny surface so the UI (and operators) can see how big the runs dir has
  * grown and what retention would do without actually deleting anything.

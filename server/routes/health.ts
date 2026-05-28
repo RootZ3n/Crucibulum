@@ -1,5 +1,5 @@
 /**
- * Crucible — Health Routes
+ * Luak — Health Routes
  * Health check, adapter status, judge info.
  */
 
@@ -16,7 +16,8 @@ import { cleanupStaleArtifacts, getCleanupStats } from "../../core/cleanup.js";
 export async function handleHealth(_req: IncomingMessage, res: ServerResponse): Promise<void> {
   sendJSON(res, 200, {
     status: "ok",
-    service: "crucible",
+    service: "luak",
+    service_legacy: "crucible",
     auth: { enabled: false, scheme: "none", note: "no built-in auth — operator owns network-layer access control" },
     uptime: process.uptime(),
   });

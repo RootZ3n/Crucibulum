@@ -1,5 +1,5 @@
 /**
- * Crucible — Leaderboard Aggregator Tests
+ * Luak — Leaderboard Aggregator Tests
  * Covers: aggregateByModel, buildLeaderboardEntry, pass@k correctness.
  */
 

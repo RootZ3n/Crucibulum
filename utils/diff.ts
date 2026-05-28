@@ -1,5 +1,5 @@
 /**
- * Crucible — Diff Utilities
+ * Luak — Diff Utilities
  */
 import { execSync } from "node:child_process";
 import { join } from "node:path";

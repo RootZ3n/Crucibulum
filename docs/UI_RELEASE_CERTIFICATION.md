@@ -1,4 +1,4 @@
-# Crucible UI release certification checklist
+# Luak UI release certification checklist
 
 This checklist is the manual/browser half of release certification. The
 automated `--ui-shape` gauntlet check only proves the expected UI code paths
@@ -7,7 +7,7 @@ are present; it does not prove a browser successfully drove them.
 Current status: `UI_CERTIFIED = YES` for the certified target scope archived
 in `docs/release-evidence/UI_RELEASE_CERTIFICATION_2026-05-24.md` and
 `reports/release-gauntlet/ui-manual/2026-05-24T01-36-16Z.md`. Passing
-automated UI-shape checks alone does not make Crucible unqualified
+automated UI-shape checks alone does not make Luak unqualified
 `FULL_RELEASE_READY`.
 
 Latest passing attempt:
@@ -36,7 +36,7 @@ operator-selectable, not release-certified.
 
 Required checks:
 
-1. Open the Crucible UI and select each release lane at least once:
+1. Open the Luak UI and select each release lane at least once:
    Personality, Poison, Build, Safety, Memory, Tools, Trust, Providers.
 2. Select a certified release-target provider/model.
 3. Confirm certified/uncertified model labels are visible in the picker:

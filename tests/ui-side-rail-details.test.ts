@@ -1,5 +1,5 @@
 /**
- * Crucible — side-rail detail decks
+ * Luak — side-rail detail decks
  *
  * Focused Run (which contains Provenance + Methodology subpanels) and
  * Best Model Recommendations (Quick Picks) were hoisted out of the
@@ -20,7 +20,7 @@ const ROOT = process.cwd();
 const HTML = readFileSync(join(ROOT, 'ui', 'index.html'), 'utf-8');
 const CSS = readFileSync(join(ROOT, 'ui', 'crucibulum.css'), 'utf-8');
 
-describe('Crucible side-rail detail decks', () => {
+describe('Luak side-rail detail decks', () => {
   it('S1 · Focused Run rail deck exists and wraps renderFocusedRun', () => {
     assert.ok(HTML.includes('function renderFocusedRunRailDeck'), 'missing renderFocusedRunRailDeck function');
     const start = HTML.indexOf('function renderFocusedRunRailDeck(');

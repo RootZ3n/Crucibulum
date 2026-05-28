@@ -1,5 +1,5 @@
 /**
- * Crucible — Luna deck LAYOUT-CORRECTION pins
+ * Luak — Luna deck LAYOUT-CORRECTION pins
  *
  * The first Luna pass produced the right colors/panels but laid them
  * out as a narrow centered scroll column. This file pins the corrected
@@ -110,7 +110,7 @@ describe('Luna deck layout correction', () => {
     });
 
     it('arena hides the redundant in-arena hero to stop double-rendering', () => {
-      assert.ok(/\.arena-shell\s+\.deck-body\s*>\s*\.abyss-banner\s*[\s\S]*display:\s*none/.test(CSS), 'in-arena .abyss-banner is not hidden — operator sees the giant Crucible card twice');
+      assert.ok(/\.arena-shell\s+\.deck-body\s*>\s*\.abyss-banner\s*[\s\S]*display:\s*none/.test(CSS), 'in-arena .abyss-banner is not hidden — operator sees the giant Luak card twice');
     });
 
     it('arena header strip provides per-tab info above the fold', () => {

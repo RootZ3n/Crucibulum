@@ -1,5 +1,5 @@
 /**
- * Crucible — scoring shape invariant for conversational lane bundles.
+ * Luak — scoring shape invariant for conversational lane bundles.
  *
  * Triggered by the 2026-05-27 Hermes audit of context-degradation-001
  * (see reports/scoring-integrity/context-degradation-001/). The audit
@@ -121,7 +121,7 @@ export function enumerateBinaryConversationalCorrectnessSet(
   if (total <= 0) return [];
   const seen = new Set<number>();
   const n = questions.length;
-  // Walk the 2^n subset of pass-bitmaps. For Crucible suites the
+  // Walk the 2^n subset of pass-bitmaps. For Luak suites the
   // question count is small (≤ ~10 today) so brute enumeration is
   // fine; documented behaviour above 12 questions: skip enumeration
   // (return empty) to avoid combinatorial blow-up.
@@ -139,7 +139,7 @@ export function enumerateBinaryConversationalCorrectnessSet(
 /** Enumerate the legal `(correctness, total)` composite anchors for
  *  a strictly-binary conversational manifest at a given `efficiency`.
  *  Use `efficiency = 1.0` for the "deterministic budget headroom"
- *  case that dominates Crucible's observed bundles today. */
+ *  case that dominates Luak's observed bundles today. */
 export function enumerateBinaryConversationalCompositeAnchors(
   questions: readonly ConversationalQuestion[],
   efficiency: number,

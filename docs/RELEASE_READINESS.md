@@ -1,6 +1,6 @@
-# Crucible release readiness
+# Luak release readiness
 
-This document defines what "release-ready" means for Crucible and how to
+This document defines what "release-ready" means for Luak and how to
 verify it. The bar is **evidence-driven**: every release-readiness claim
 must point at a gauntlet report.
 
@@ -103,8 +103,8 @@ The gauntlet classifies every probe into one of:
 | Class | Meaning | Treatment |
 |---|---|---|
 | `PASS` | Contract satisfied. | Counts toward release readiness. |
-| `FAIL_PRODUCT` | Crucible's product code broke an invariant. | **Release blocker.** |
-| `FAIL_PROVIDER` | An external provider misbehaved (rate-limit, 5xx, timeout, etc.) in a way Crucible classified honestly. | Not a product blocker — but track in the report's notes. |
+| `FAIL_PRODUCT` | Luak's product code broke an invariant. | **Release blocker.** |
+| `FAIL_PROVIDER` | An external provider misbehaved (rate-limit, 5xx, timeout, etc.) in a way Luak classified honestly. | Not a product blocker — but track in the report's notes. |
 | `FAIL_CONFIG` | A manifest, env var, or local config is broken. | Block release; fix the manifest/config. |
 | `SKIPPED_EXPLAINED` | Probe skipped on purpose (e.g., real-provider profile with no API key). | Allowed; must include the reason. |
 | `BLOCKED` | Probe couldn't run because of a dependency failure earlier in the matrix. | Investigate the dependency. |
@@ -120,8 +120,8 @@ The gauntlet classifies every probe into one of:
 - `/status` returning 404 after `activeRuns` GC when a persisted bundle exists for the run.
 
 ### What is **not** a product failure
-- Real provider returning 429 / 503 / timeout — Crucible's job is to *classify it honestly*, not to make the provider succeed.
-- A model giving wrong answers — that's a model-quality finding, not a Crucible bug.
+- Real provider returning 429 / 503 / timeout — Luak's job is to *classify it honestly*, not to make the provider succeed.
+- A model giving wrong answers — that's a model-quality finding, not a Luak bug.
 - Manifest defects — those classify as `FAIL_CONFIG`.
 
 ## Release gates, all required
@@ -131,8 +131,8 @@ release tag.
 
 | Gate | What it proves | How to run |
 | --- | --- | --- |
-| **Mock / platform layer** | Crucible's runner, bundle identity, SSE lifecycle, retention, classification all behave correctly under every failure shape we can simulate deterministically. | `npm run gauntlet:mock` |
-| **Real-provider layer** | The same code paths still behave correctly against the actual providers Crucible ships against. Surfaces real-world provider quirks the mock can't reproduce (region routing, model availability, rate-limit shape). | `node scripts/release-gauntlet.mjs --real-provider …` |
+| **Mock / platform layer** | Luak's runner, bundle identity, SSE lifecycle, retention, classification all behave correctly under every failure shape we can simulate deterministically. | `npm run gauntlet:mock` |
+| **Real-provider layer** | The same code paths still behave correctly against the actual providers Luak ships against. Surfaces real-world provider quirks the mock can't reproduce (region routing, model availability, rate-limit shape). | `node scripts/release-gauntlet.mjs --real-provider …` |
 | **Repo-mode layer** | Representative repo-mode tasks create isolated workspaces, produce diffs, pass through the deterministic judge, store bundles, hydrate by `run_id`, and leave source fixtures unchanged. | `node scripts/release-gauntlet.mjs --mock-only --repo-smoke --write-report` |
 | **UI layer** | Browser/operator flow can select lanes/models, run batches, display cooldowns, open completed and failure evidence, survive refresh, and avoid catch-all leaks. | `node scripts/release-gauntlet.mjs --mock-only --ui-shape --write-report` plus `docs/UI_RELEASE_CERTIFICATION.md` |
 
@@ -227,7 +227,7 @@ and the most recent run overwrites `reports/release-gauntlet/latest-real-provide
 | `UI_VISIBLE_LANES_CERTIFIED` | **YES — SCOPED SMOKE ONLY** | `reports/release-gauntlet/ui-manual/2026-05-24T12-19-05Z-all-visible-lanes-certification.md` — Personality `classification-001`, Benchmark `code-001`, Poison `poison-001`, Build `coord-001`, Safety `safety-001`, Memory `memory-001`, Tools `tool-001`, Trust `op-001` each `complete` with persisted bundle + refresh hydration; Providers tab surfaced with OpenRouter / DeepSeek V4 Pro visible. 0 `Run state unreachable`, 0 `Run stream interrupted`, 0 silent no-op dispatch in the certifying pass. |
 | `UI_FAILED_ROW_CLASSIFICATION_CERTIFIED` | **NO — NOT EXERCISED** | No default-selected run in the 2026-05-24 certifying pass produced a failed row; the failed-row classification/stage/reason path therefore was not exercised. UI cert remains partial until a failed-row scenario is driven through the browser. |
 | `REAL_PROVIDER_BROAD_READY` | **YES FOR RELEASE TARGETS** | `reports/release-gauntlet/real-provider/2026-05-24T00-31-06-889Z-openrouter-deepseek-deepseek-v4-pro.{json,md}`, `2026-05-24T00-32-14-849Z-openrouter-xiaomi-mimo-v2.5-pro.{json,md}`, `2026-05-24T00-33-18-590Z-ollama-qwen3.5-9b.{json,md}` — each 5/5 PASS |
-| `PROVIDER_SWEEP_READY` | **PARTIAL** | Initial sweep `reports/release-gauntlet/provider-sweep/2026-05-24T12-55-56Z-multi-provider-sweep.{json,md}` certified Ollama + OpenRouter (DeepSeek V4 Pro + Mimo v2.5 Pro) 5/5 PASS; Anthropic / OpenAI / MiniMax were `FAIL_CONFIG` on stale `.env` credentials. Direct re-sweep `reports/release-gauntlet/provider-sweep/2026-05-24T13-18-40Z-direct-provider-resweep.{json,md}` confirmed staleness. After syncing rotated keys from `/mnt/ai/aedis/.env` to `/mnt/ai/crucible/.env` and restarting `crucible.service`, the post-env-sync re-sweep `reports/release-gauntlet/provider-sweep/2026-05-24T13-35-31Z-direct-provider-resweep-post-env-sync.{json,md}` shows: Anthropic `claude-haiku-4-5-20251001` PASS 5/5 ($0.3918), OpenAI `gpt-5.4-mini` PASS 5/5 ($0.0000 — token/cost capture has an upstream `usage`-missing observability gap, not a release blocker), MiniMax `MiniMax-M2.7` PASS 4/5 with one honest `FAIL_PROVIDER/TIMEOUT` on `role-stress-001`. 0 `FAIL_PRODUCT` across every sweep run since `70603ab`. |
+| `PROVIDER_SWEEP_READY` | **PARTIAL** | Initial sweep `reports/release-gauntlet/provider-sweep/2026-05-24T12-55-56Z-multi-provider-sweep.{json,md}` certified Ollama + OpenRouter (DeepSeek V4 Pro + Mimo v2.5 Pro) 5/5 PASS; Anthropic / OpenAI / MiniMax were `FAIL_CONFIG` on stale `.env` credentials. Direct re-sweep `reports/release-gauntlet/provider-sweep/2026-05-24T13-18-40Z-direct-provider-resweep.{json,md}` confirmed staleness. After syncing rotated keys from `/mnt/ai/aedis/.env` to `/mnt/ai/luak/.env` and restarting `luak.service`, the post-env-sync re-sweep `reports/release-gauntlet/provider-sweep/2026-05-24T13-35-31Z-direct-provider-resweep-post-env-sync.{json,md}` shows: Anthropic `claude-haiku-4-5-20251001` PASS 5/5 ($0.3918), OpenAI `gpt-5.4-mini` PASS 5/5 ($0.0000 — token/cost capture has an upstream `usage`-missing observability gap, not a release blocker), MiniMax `MiniMax-M2.7` PASS 4/5 with one honest `FAIL_PROVIDER/TIMEOUT` on `role-stress-001`. 0 `FAIL_PRODUCT` across every sweep run since `70603ab`. |
 | `RELEASE_TARGETS_CERTIFIED` | **YES — scoped to 3 named targets** | OpenRouter `deepseek/deepseek-v4-pro`, OpenRouter `xiaomi/mimo-v2.5-pro`, Ollama `qwen3.5:9b`. |
 | `ALL_VISIBLE_PROVIDERS_CERTIFIED` | **PARTIAL — direct adapters now in scope** | Anthropic direct and OpenAI direct adapters PASS 5/5 on broad-smoke against `claude-haiku-4-5-20251001` and `gpt-5.4-mini` respectively. MiniMax direct PASS 4/5 with one honest provider TIMEOUT on the longer `role-stress-001` task. Z.ai, Google, Squidley/OpenClaw/ClaudeCode/Grimoire adapters remain `UNCERTIFIED_NOT_RELEASE_TARGET`. |
 | `REPO_MODE_CERTIFIED` | **REPRESENTATIVE ONLY** | `reports/release-gauntlet/2026-05-24T00-28-57-869Z.{json,md}` — `coord-001`, `spec-001`, and `tool-003` repo-smoke PASS; 22 repo-mode tasks remain outside direct smoke coverage |
@@ -235,7 +235,7 @@ and the most recent run overwrites `reports/release-gauntlet/latest-real-provide
 
 ### 2026-05-24 /api/health hardening note
 
-The 2026-05-24 broad manual UI sweep hit Crucible's own `RATE_READ` bucket on
+The 2026-05-24 broad manual UI sweep hit Luak's own `RATE_READ` bucket on
 `/api/health`: the browser flipped to `state.health.net.ok = false`, cloud
 presets aggregated as `down`, and `gateSelectedModels()` silently no-op'd
 remaining cloud dispatches because no operator-visible activity entry was

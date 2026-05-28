@@ -1,5 +1,5 @@
 /**
- * Crucible — Phase-2 hardening regression tests
+ * Luak — Phase-2 hardening regression tests
  *
  * Covers the items closed in the second hardening pass:
  *   - bundle verification on load (tampered disk state must flip trust.bundle_verified)
@@ -37,7 +37,7 @@ function makeBuiltBundle(): EvidenceBundle {
       scoring: { weights: { correctness: 1, regression: 0, integrity: 0, efficiency: 0 }, pass_threshold: 0.5 },
       verification: {},
       task: { title: "t", description: "d" },
-      metadata: { author: "crucible-test", created: "2026-04-01", tags: [], diagnostic_purpose: "test", benchmark_provenance: "hardening-test" },
+      metadata: { author: "luak-test", created: "2026-04-01", tags: [], diagnostic_purpose: "test", benchmark_provenance: "hardening-test" },
     } as never,
     oracle: { checks: { correctness: [], regression: [], integrity: [], decoys: [], anti_cheat: { forbidden_code_patterns: [] } }, ground_truth: { bug_location: "", correct_fix_pattern: "" } } as never,
     executionResult: {

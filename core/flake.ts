@@ -1,5 +1,5 @@
 /**
- * Crucible — Flake Detection / Retry Support
+ * Luak — Flake Detection / Retry Support
  * Wraps runTask with configurable retry logic for benchmark reliability.
  */
 

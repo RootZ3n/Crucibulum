@@ -1,5 +1,5 @@
 /**
- * Crucible — Timing Utilities
+ * Luak — Timing Utilities
  */
 
 export class StepTimer {

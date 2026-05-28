@@ -1,5 +1,5 @@
 /**
- * Crucible — Lane scoring & isolation regression suite.
+ * Luak — Lane scoring & isolation regression suite.
  *
  * Companion to tests/safety-scoring.test.ts. This file pins the cross-lane
  * scoring guarantees discovered in the release audit:

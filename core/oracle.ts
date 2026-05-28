@@ -1,5 +1,5 @@
 /**
- * Crucible — Oracle Loader
+ * Luak — Oracle Loader
  * Loads oracle files for the Judge. NEVER exposed to agent runtime.
  */
 

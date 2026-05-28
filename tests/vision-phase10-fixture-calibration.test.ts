@@ -1,5 +1,5 @@
 /**
- * Crucible — Vision Phase 10: uncertainty fixture calibration +
+ * Luak — Vision Phase 10: uncertainty fixture calibration +
  * vision comparison interpretation (offline tests).
  *
  * 14 deterministic source/contract assertions covering:

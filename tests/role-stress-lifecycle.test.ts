@@ -1,5 +1,5 @@
 /**
- * Crucible — role-stress-001 lifecycle regression
+ * Luak — role-stress-001 lifecycle regression
  *
  * The operator reported: Personality lane, DeepSeek V4 Pro, 10 tests; 9 passed,
  * 1 failed as "Run stream interrupted — no evidence bundle produced." The

@@ -66,7 +66,7 @@
     ],
     "diagnostic_purpose": "Tests whether the agent accurately reports file contents and does not claim actions it never performed.",
     "benchmark_provenance": {
-      "source": "Crucible tool-calling suite (migrated from Colosseum)",
+      "source": "Luak tool-calling suite (migrated from Colosseum)",
       "public_status": "public",
       "oracle_visibility": "hidden",
       "gold_solution_visibility": "hidden",

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Crucible — Vision smoke runner (Phase 6: all 5 POC tests by default)
+ * Luak — Vision smoke runner (Phase 6: all 5 POC tests by default)
  *
  * Runs the Vision POC tests against one image-capable route
  * (default OpenRouter + xiaomi/mimo-v2-omni) under a hard cost cap.
@@ -86,7 +86,7 @@ const arg = (n, def = null) => {
 
 if (flag("-h") || flag("--help")) {
   console.log(`
-vision-smoke — Crucible Phase 6 vision POC (all 5 by default)
+vision-smoke — Luak Phase 6 vision POC (all 5 by default)
 
   --provider <id>          openrouter | openai (default: openrouter)
   --model <id>             (default: xiaomi/mimo-v2-omni)

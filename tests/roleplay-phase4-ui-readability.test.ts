@@ -1,5 +1,5 @@
 /**
- * Crucible — Roleplay Phase 4: UI readability + backend route (offline).
+ * Luak — Roleplay Phase 4: UI readability + backend route (offline).
  *
  * 15 deterministic source/contract assertions covering Phase 4's
  * scope: live-smoke-driven result cards + failed-turn sub-cards +

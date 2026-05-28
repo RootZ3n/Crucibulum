@@ -1,5 +1,5 @@
 /**
- * Crucible — Structured Logger
+ * Luak — Structured Logger
  */
 
 export type LogLevel = "debug" | "info" | "warn" | "error";

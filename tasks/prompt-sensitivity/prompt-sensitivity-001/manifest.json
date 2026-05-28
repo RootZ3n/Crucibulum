@@ -125,7 +125,7 @@
     ],
     "diagnostic_purpose": "Tests whether model gives consistent answers regardless of prompt phrasing — same intent, different wording must produce same classification",
     "benchmark_provenance": {
-      "source": "Crucible synthetic conversational task",
+      "source": "Luak synthetic conversational task",
       "public_status": "public",
       "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",

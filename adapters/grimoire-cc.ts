@@ -1,5 +1,5 @@
 /**
- * Crucible — Grimoire CC Adapter
+ * Luak — Grimoire CC Adapter
  * Routes tasks through Squidley's Grimoire CC mode.
  * CC Mode = non-blocking approval flow, file editing with approval gates.
  * For benchmark runs, auto_approve is set to true.

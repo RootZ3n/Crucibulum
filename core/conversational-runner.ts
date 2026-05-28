@@ -1,5 +1,5 @@
 /**
- * Crucible — Conversational Runner
+ * Luak — Conversational Runner
  * Executes chat-based tests: sends questions via adapter.chat(),
  * scores responses deterministically, produces evidence bundles.
  *

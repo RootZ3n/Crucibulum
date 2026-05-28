@@ -1,6 +1,6 @@
 # Provider / Model Selection
 
-Crucible uses one provider/model control plane for every release lane: benchmark, personality, poison, build, safety, and memory. The lane changes the task set; it must not change the model picker semantics.
+Luak uses one provider/model control plane for every release lane: benchmark, personality, poison, build, safety, and memory. The lane changes the task set; it must not change the model picker semantics.
 
 ## Model Discovery
 
@@ -49,7 +49,7 @@ Fallback rules:
 - Registered cloud model: exact registered provider/model route.
 - Curated cloud model: posted provider/adapter/model route from the UI.
 - Registry tie without a provider hint: first-class providers, currently OpenRouter, win.
-- Registry tie with a provider hint: the hinted provider must have the model; Crucible does not silently switch to another provider.
+- Registry tie with a provider hint: the hinted provider must have the model; Luak does not silently switch to another provider.
 
 Live provider verification depends on configured API keys and provider health. If no provider keys are available, live verification status is `UNKNOWN`; mocked routing tests remain authoritative for selection plumbing.
 

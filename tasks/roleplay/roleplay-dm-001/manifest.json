@@ -64,7 +64,7 @@
     "tags": ["roleplay", "dm", "narrator", "experimental"],
     "diagnostic_purpose": "POC for dm_narrator rubric — model must run a small scenario with choices and honor an anti-railroad off-script player decision.",
     "benchmark_provenance": {
-      "source": "Crucible synthetic DM scenario",
+      "source": "Luak synthetic DM scenario",
       "public_status": "public",
       "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",

@@ -1,5 +1,5 @@
 /**
- * Crucible — Roleplay/Vision Phase 2: skip classifiers + flake fix
+ * Luak — Roleplay/Vision Phase 2: skip classifiers + flake fix
  *
  * 13 pins for the Phase 2 stabilisation work:
  *

@@ -1,5 +1,5 @@
 /**
- * Crucible — API app factory
+ * Luak — API app factory
  *
  * Pure factory for the HTTP server. The previous layout ran listen() as a
  * module-load side effect, which made it impossible to stand the server up in
@@ -34,8 +34,8 @@ import * as vision from "./routes/vision.js";
 import * as capVision from "./routes/capabilities-vision.js";
 import * as roleplay from "./routes/roleplay.js";
 
-const DEFAULT_PORT = parseInt(envValue("CRUCIBLE_PORT", "CRUCIBULUM_PORT") ?? "18795", 10);
-const DEFAULT_HOST = envValue("CRUCIBLE_HOST", "CRUCIBULUM_HOST") ?? "127.0.0.1";
+const DEFAULT_PORT = parseInt(envValue("LUAK_PORT", "CRUCIBLE_PORT", "CRUCIBULUM_PORT") ?? "18795", 10);
+const DEFAULT_HOST = envValue("LUAK_HOST", "CRUCIBLE_HOST", "CRUCIBULUM_HOST") ?? "127.0.0.1";
 const UI_DIR = join(import.meta.dirname, "..", "..", "ui");
 const UI_PATH = join(UI_DIR, "index.html");
 const CRUCIBULUM_CSS_PATH = join(UI_DIR, "crucibulum.css");
@@ -82,14 +82,14 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Cr
         res.end(readFileSync(UI_PATH, "utf-8"));
       } else {
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-        res.end("<html><body><h1>Crucible</h1><p>UI not built yet.</p></body></html>");
+        res.end("<html><body><h1>Luak</h1><p>UI not built yet.</p></body></html>");
       }
       return;
     }
 
-    // Crucible design-system stylesheet. Auctor is now a standalone
+    // Luak design-system stylesheet. Auctor is now a standalone
     // product with its own server and its own copy of these tokens; this
-    // route only serves Crucible's own shell.
+    // route only serves Luak's own shell.
     if (method === "GET" && path === "/crucibulum.css") {
       if (existsSync(CRUCIBULUM_CSS_PATH)) {
         res.writeHead(200, { "Content-Type": "text/css; charset=utf-8", "Cache-Control": "public, max-age=3600" });
@@ -143,7 +143,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Cr
 
     if ((path === "/api/runs" || path === "/runs") && method === "GET") return void await run.handleRunsList(req, res, url);
     if (path.startsWith("/api/runs/") && path.endsWith("/summary") && method === "GET") return void await run.handleRunSummary(req, res, path);
-    if (path.startsWith("/api/runs/") && !path.includes("/live") && !path.endsWith("/summary") && !path.endsWith("/crucible-link") && method === "GET") return void await run.handleRunGet(req, res, path);
+    if (path.startsWith("/api/runs/") && !path.includes("/live") && !path.endsWith("/summary") && !path.endsWith("/crucible-link") && !path.endsWith("/luak-link") && method === "GET") return void await run.handleRunGet(req, res, path);
     if ((path === "/api/stats" || path === "/stats") && method === "GET") return void await run.handleStats(req, res, url);
     if (path === "/api/receipts" && method === "GET") return void await run.handleReceipts(req, res, url);
     if (path === "/api/compare" && method === "GET") return void await run.handleCompare(req, res, url);
@@ -158,7 +158,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Cr
     if (path === "/api/run-suite" && method === "POST") return void await suite.handleRunSuitePost(req, res);
     if (path.startsWith("/api/run-suite/") && path.endsWith("/status") && method === "GET") return void await suite.handleRunSuiteStatus(req, res, path);
 
-    if (path.startsWith("/api/runs/") && path.endsWith("/crucible-link") && method === "POST") return void await run.handleCrucibleLink(req, res, path);
+    if (path.startsWith("/api/runs/") && (path.endsWith("/crucible-link") || path.endsWith("/luak-link")) && method === "POST") return void await run.handleCrucibleLink(req, res, path);
 
     // ── Provider / model registry ───────────────────────────────────────
     if (path === "/api/registry/state" && method === "GET") return void await registry.handleRegistryState(req, res);
@@ -222,7 +222,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Cr
 }
 
 /**
- * Build an http.Server wired to the Crucible routes. Does NOT call listen() —
+ * Build an http.Server wired to the Luak routes. Does NOT call listen() —
  * the caller decides when/where to bind. Safe to import from tests.
  */
 export function createApp(options: CreateAppOptions = {}): Server {
@@ -243,10 +243,12 @@ export function createApp(options: CreateAppOptions = {}): Server {
  */
 export async function startServer(port: number = DEFAULT_PORT, host: string = DEFAULT_HOST): Promise<Server> {
   const server = createApp();
-  log("info", "api", "Auth: NONE — no built-in authentication. Bind to loopback or put a private-network gate (Tailscale, VPN, firewall, reverse-proxy auth) in front of Crucible if you expose it beyond this machine.");
-  if (!process.env["CRUCIBLE_HMAC_KEY"]) {
-    log("warn", "hmac", "CRUCIBLE_HMAC_KEY is not set — unsigned bundles will be quarantined and not ranked on the public leaderboard");
+  log("info", "api", "Auth: NONE — no built-in authentication. Bind to loopback or put a private-network gate (Tailscale, VPN, firewall, reverse-proxy auth) in front of Luak if you expose it beyond this machine.");
+  if (!process.env["LUAK_HMAC_KEY"] && !process.env["CRUCIBLE_HMAC_KEY"]) {
+    log("warn", "hmac", "LUAK_HMAC_KEY is not set — unsigned bundles will be quarantined and not ranked on the public leaderboard");
     log("warn", "hmac", "This is fine for local demos, but meaningful verified rankings require a configured HMAC key");
+  } else if (!process.env["LUAK_HMAC_KEY"] && process.env["CRUCIBLE_HMAC_KEY"]) {
+    log("warn", "hmac", "Using deprecated CRUCIBLE_HMAC_KEY; rename to LUAK_HMAC_KEY (CRUCIBLE_* remains supported as an alias)");
   }
   try {
     const scorerResults = await loadAllScorers();
@@ -259,7 +261,7 @@ export async function startServer(port: number = DEFAULT_PORT, host: string = DE
   }
   await new Promise<void>((resolve) => server.listen(port, host, () => resolve()));
   const displayHost = host === "0.0.0.0" ? "localhost" : host;
-  log("info", "api", `Crucible server running on http://${displayHost}:${port}`);
+  log("info", "api", `Luak server running on http://${displayHost}:${port}`);
   log("info", "api", `Bind host: ${host}`);
   log("info", "api", `UI: http://${displayHost}:${port}/`);
   log("info", "api", `API: http://${displayHost}:${port}/api/`);

@@ -1,5 +1,5 @@
 /**
- * Crucible — Vision Phase 14 / Roadmap C suite expansion (5 → 15
+ * Luak — Vision Phase 14 / Roadmap C suite expansion (5 → 15
  * tests). Offline + live-HTTP regression tests.
  *
  * 25 deterministic tests covering:

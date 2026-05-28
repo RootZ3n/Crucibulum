@@ -68,7 +68,7 @@
     ],
     "diagnostic_purpose": "Tests ability to extract structured information from messy real-world input including technical jargon and conversational transcripts",
     "benchmark_provenance": {
-      "source": "Crucible synthetic conversational task",
+      "source": "Luak synthetic conversational task",
       "public_status": "public",
       "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",

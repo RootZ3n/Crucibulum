@@ -1,4 +1,4 @@
-# Crucible Versioning Policy
+# Luak Versioning Policy
 
 ## Three Versions Matter
 
@@ -8,7 +8,7 @@
 
 ## Current State
 
-The harness already records a Crucible code version in bundles.
+The harness already records a Luak code version in bundles.
 
 The benchmark corpus still needs a stricter release discipline for public publication. Until that lands, benchmark comparisons should always cite:
 

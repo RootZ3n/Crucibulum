@@ -79,7 +79,7 @@
     "tags": ["roleplay", "continuity", "experimental"],
     "diagnostic_purpose": "POC for scene_continuity rubric — model must remember Sunshard / riverside path / Mira across 4 turns and integrate a contradicting prompt without forgetting the original facts. Conservative scorer: Q2/Q3 are pure fact-match, Q1/Q4 are character-consistency. Subjective contradiction-handling quality is intentionally out of scope (would NEEDS_REVIEW in a future judge phase).",
     "benchmark_provenance": {
-      "source": "Crucible synthetic roleplay scenario",
+      "source": "Luak synthetic roleplay scenario",
       "public_status": "public",
       "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",

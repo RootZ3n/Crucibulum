@@ -1,6 +1,6 @@
-# Crucible artifact retention
+# Luak artifact retention
 
-Crucible writes every evidence bundle to disk, and the recent run-id /
+Luak writes every evidence bundle to disk, and the recent run-id /
 bundle-id uniqueness fixes mean those bundles no longer overwrite each
 other. That's correct for evidence integrity but it also means `runs/`
 grows without bound over time — failed runs, smoke tests, UI repeats and
@@ -28,11 +28,11 @@ and never traverses into subdirectories.
 
 | Class | Deleted? |
 | --- | --- |
-| `bundle_success` | When older than `CRUCIBLE_RETENTION_KEEP_SUCCESS_DAYS` (default 14) |
-| `bundle_failed` | When older than `CRUCIBLE_RETENTION_KEEP_FAILED_DAYS` (default 7) |
+| `bundle_success` | When older than `LUAK_RETENTION_KEEP_SUCCESS_DAYS` (default 14) |
+| `bundle_failed` | When older than `LUAK_RETENTION_KEEP_FAILED_DAYS` (default 7) |
 | `bundle_interrupted` | Same window as failed |
 | `bundle_unknown` (unparseable JSON) | **Never** — may carry evidence we don't yet understand |
-| Bundle marked `pinned: true` | **Never** (when `CRUCIBLE_RETENTION_KEEP_PINNED=true`, default) |
+| Bundle marked `pinned: true` | **Never** (when `LUAK_RETENTION_KEEP_PINNED=true`, default) |
 | Bundle whose `run_id` is in `activeRuns` | **Never** |
 | Anything outside `runs/` | **Never** |
 | Symlinks | **Never** (refused at scan time) |
@@ -47,14 +47,17 @@ starts in dry-run mode.
 
 | Env var | Default | Effect |
 | --- | --- | --- |
-| `CRUCIBLE_RETENTION_ENABLED` | `false` | Master switch. The server's POST `/api/storage/cleanup` refuses to delete unless this is `1` (or the request body sets `force: true`). |
-| `CRUCIBLE_RETENTION_DAYS` | `14` | Fallback retention window when the success/failed knobs are unset. |
-| `CRUCIBLE_RETENTION_KEEP_SUCCESS_DAYS` | `14` | Days to keep passing bundles. |
-| `CRUCIBLE_RETENTION_KEEP_FAILED_DAYS` | `7` | Days to keep failed / interrupted bundles. |
-| `CRUCIBLE_RETENTION_MAX_RUN_FILES` | `2000` | Hard cap on bundle count. Oldest exceeds-cap bundles get evicted, regardless of age. |
-| `CRUCIBLE_RETENTION_MAX_BYTES` | `1073741824` (1 GiB) | Hard cap on total bundle bytes. Oldest evictions walked until under cap. |
-| `CRUCIBLE_RETENTION_KEEP_PINNED` | `true` | When true, bundles with `bundle.pinned === true` are never deleted. |
-| `CRUCIBLE_RETENTION_DRY_RUN` | `true` | CLI default. The CLI script always honors this unless `--confirm` is passed. |
+| `LUAK_RETENTION_ENABLED` | `false` | Master switch. The server's POST `/api/storage/cleanup` refuses to delete unless this is `1` (or the request body sets `force: true`). |
+| `LUAK_RETENTION_DAYS` | `14` | Fallback retention window when the success/failed knobs are unset. |
+| `LUAK_RETENTION_KEEP_SUCCESS_DAYS` | `14` | Days to keep passing bundles. |
+| `LUAK_RETENTION_KEEP_FAILED_DAYS` | `7` | Days to keep failed / interrupted bundles. |
+| `LUAK_RETENTION_MAX_RUN_FILES` | `2000` | Hard cap on bundle count. Oldest exceeds-cap bundles get evicted, regardless of age. |
+| `LUAK_RETENTION_MAX_BYTES` | `1073741824` (1 GiB) | Hard cap on total bundle bytes. Oldest evictions walked until under cap. |
+| `LUAK_RETENTION_KEEP_PINNED` | `true` | When true, bundles with `bundle.pinned === true` are never deleted. |
+| `LUAK_RETENTION_DRY_RUN` | `true` | CLI default. The CLI script always honors this unless `--confirm` is passed. |
+
+> Legacy aliases `CRUCIBLE_RETENTION_*` are still honored for backward
+> compatibility. New deployments should use the `LUAK_RETENTION_*` names.
 
 ## How to run
 
@@ -68,7 +71,7 @@ This scans `runs/`, classifies every file, and prints the deletion plan and
 skip list. **No files are deleted.** Output format:
 
 ```
-Crucible retention — config:
+Luak retention — config:
   enabled:                false
   keep success days:      14
   keep failed days:       7
@@ -79,7 +82,7 @@ Crucible retention — config:
   mode:                   DRY RUN (no files will be deleted)
 
 ── Scan ──
-  root:                   /…/crucible/runs
+  root:                   /…/luak/runs
   files scanned:          488
   bytes scanned:          11,234,567 (10.71 MiB)
   oldest:                 2026-04-13T13:18:21.000Z
@@ -106,7 +109,7 @@ Crucible retention — config:
 
 ```bash
 # Both flags required: enable retention, and pass --confirm.
-CRUCIBLE_RETENTION_ENABLED=1 npm run retention:clean -- --confirm
+LUAK_RETENTION_ENABLED=1 npm run retention:clean -- --confirm
 
 # Or override the enabled-check explicitly (CI):
 npm run retention:clean -- --confirm --force
@@ -129,7 +132,7 @@ curl -s http://localhost:18791/api/storage/status | jq
 # Server-side cleanup (always dry-run unless body asks for confirm).
 curl -s -X POST http://localhost:18791/api/storage/cleanup \
      -H 'content-type: application/json' \
-     -d '{"confirm": true}'   # requires CRUCIBLE_RETENTION_ENABLED=1
+     -d '{"confirm": true}'   # requires LUAK_RETENTION_ENABLED=1
 
 # Bypass the env check for CI:
 curl -s -X POST http://localhost:18791/api/storage/cleanup \
@@ -160,19 +163,19 @@ run whose evidence was simply deleted.
 
 ```
 # .env (local-lab defaults — retention disabled)
-# Leave CRUCIBLE_RETENTION_ENABLED unset.
+# Leave LUAK_RETENTION_ENABLED unset.
 # Use `npm run retention:dry-run` periodically to see size.
 ```
 
 ### Local lab with active cleanup
 
 ```
-CRUCIBLE_RETENTION_ENABLED=1
-CRUCIBLE_RETENTION_KEEP_SUCCESS_DAYS=14
-CRUCIBLE_RETENTION_KEEP_FAILED_DAYS=7
-CRUCIBLE_RETENTION_MAX_RUN_FILES=2000
-CRUCIBLE_RETENTION_MAX_BYTES=1073741824
-CRUCIBLE_RETENTION_KEEP_PINNED=true
+LUAK_RETENTION_ENABLED=1
+LUAK_RETENTION_KEEP_SUCCESS_DAYS=14
+LUAK_RETENTION_KEEP_FAILED_DAYS=7
+LUAK_RETENTION_MAX_RUN_FILES=2000
+LUAK_RETENTION_MAX_BYTES=1073741824
+LUAK_RETENTION_KEEP_PINNED=true
 ```
 
 ### Release / public-facing instances
@@ -189,7 +192,7 @@ display "Evidence removed by retention" if the run id is recent enough to
 still be in `activeRuns`, or a generic "Run not found" otherwise.
 
 If you need to preserve a specific bundle, set `bundle.pinned = true` on
-disk before running cleanup (and leave `CRUCIBLE_RETENTION_KEEP_PINNED=true`).
+disk before running cleanup (and leave `LUAK_RETENTION_KEEP_PINNED=true`).
 The retention plan classifies pinned bundles under the `pinned` skip reason
 and never selects them for deletion.
 
@@ -198,7 +201,7 @@ and never selects them for deletion.
 | File | Role |
 | --- | --- |
 | `core/retention.ts` | Scan, classify, plan, apply. Pure functions modulo fs reads/unlinks; no shared state. |
-| `scripts/retention.mjs` | CLI driver. Always dry-run unless `--confirm` is passed. Requires `--force` or `CRUCIBLE_RETENTION_ENABLED=1` for actual deletes. |
+| `scripts/retention.mjs` | CLI driver. Always dry-run unless `--confirm` is passed. Requires `--force` or `LUAK_RETENTION_ENABLED=1` for actual deletes. |
 | `server/routes/storage.ts` | HTTP endpoints (`GET /api/storage/status`, `POST /api/storage/cleanup`). |
 | `server/routes/run.ts` (handleRunGet) | Retention-aware 404 for `/api/runs/<run_id>`. |
 | `tests/retention.test.ts` | 16 regressions covering every invariant. |

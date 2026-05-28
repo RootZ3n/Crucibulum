@@ -1,5 +1,5 @@
 /**
- * Crucible — Evidence-artifact retention
+ * Luak — Evidence-artifact retention
  *
  * The runId+bundleId fixes mean every test now mints distinct files instead
  * of overwriting. That's correct for evidence integrity, but it also means
@@ -21,15 +21,15 @@
  *   state/server.log, state/auth-*  runtime state — NEVER touched
  *   state/memory-sessions/*.json    cross-turn memory — NEVER touched
  *
- * Knobs (env, all optional):
- *   CRUCIBLE_RETENTION_ENABLED        default: false
- *   CRUCIBLE_RETENTION_DAYS           default: 14
- *   CRUCIBLE_RETENTION_KEEP_SUCCESS_DAYS  default: 14
- *   CRUCIBLE_RETENTION_KEEP_FAILED_DAYS   default: 7
- *   CRUCIBLE_RETENTION_MAX_RUN_FILES  default: 2000
- *   CRUCIBLE_RETENTION_MAX_BYTES      default: 1073741824 (1 GiB)
- *   CRUCIBLE_RETENTION_KEEP_PINNED    default: true
- *   CRUCIBLE_RETENTION_DRY_RUN        default: true (CLI override only)
+ * Knobs (env, all optional — LUAK_* primary, CRUCIBLE_* still honored):
+ *   LUAK_RETENTION_ENABLED        default: false
+ *   LUAK_RETENTION_DAYS           default: 14
+ *   LUAK_RETENTION_KEEP_SUCCESS_DAYS  default: 14
+ *   LUAK_RETENTION_KEEP_FAILED_DAYS   default: 7
+ *   LUAK_RETENTION_MAX_RUN_FILES  default: 2000
+ *   LUAK_RETENTION_MAX_BYTES      default: 1073741824 (1 GiB)
+ *   LUAK_RETENTION_KEEP_PINNED    default: true
+ *   LUAK_RETENTION_DRY_RUN        default: true (CLI override only)
  */
 
 import { readdirSync, statSync, readFileSync, unlinkSync, lstatSync } from "node:fs";
@@ -52,15 +52,23 @@ export interface RetentionConfig {
   dryRunDefault: boolean;
 }
 
+function envRaw(name: string): string | undefined {
+  // LUAK_* preferred; fall through to legacy CRUCIBLE_* if present.
+  const luakName = name.replace(/^CRUCIBLE_/, "LUAK_");
+  const luak = process.env[luakName];
+  if (luak != null && luak !== "") return luak;
+  return process.env[name];
+}
+
 function envInt(name: string, fallback: number): number {
-  const raw = process.env[name];
+  const raw = envRaw(name);
   if (raw == null || raw === "") return fallback;
   const parsed = Number(raw);
   return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : fallback;
 }
 
 function envBool(name: string, fallback: boolean): boolean {
-  const raw = process.env[name];
+  const raw = envRaw(name);
   if (raw == null) return fallback;
   return /^(1|true|yes|on)$/i.test(raw.trim());
 }

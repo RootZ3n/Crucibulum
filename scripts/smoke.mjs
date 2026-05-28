@@ -26,7 +26,7 @@ function run(command, args, options = {}) {
   });
 }
 
-const smokeRoot = mkdtempSync(join(tmpdir(), "crucible-smoke-"));
+const smokeRoot = mkdtempSync(join(tmpdir(), "luak-smoke-"));
 const runsDir = join(smokeRoot, "runs");
 const stateDir = join(smokeRoot, "state");
 mkdirSync(runsDir, { recursive: true });
@@ -34,14 +34,16 @@ mkdirSync(stateDir, { recursive: true });
 
 const env = {
   ...process.env,
+  LUAK_RUNS_DIR: runsDir,
   CRUCIBULUM_RUNS_DIR: runsDir,
+  LUAK_STATE_ROOT: stateDir,
   CRUCIBLE_STATE_ROOT: stateDir,
   CRUCIBULUM_STATE_DIR: stateDir,
-  CRUCIBLE_HMAC_KEY: "crucible-smoke-local-only-key",
+  LUAK_HMAC_KEY: "luak-smoke-local-only-key",
 };
 
 try {
-  console.log("Crucible smoke test: deterministic offline mock run.");
+  console.log("Luak smoke test: deterministic offline mock run.");
   console.log(`Smoke state: ${smokeRoot}`);
   await run(tsc, []);
   await run(process.execPath, [

@@ -66,7 +66,7 @@
     ],
     "diagnostic_purpose": "Tests whether the agent verifies its work by reading back written files before claiming success.",
     "benchmark_provenance": {
-      "source": "Crucible tool-calling suite (migrated from Colosseum)",
+      "source": "Luak tool-calling suite (migrated from Colosseum)",
       "public_status": "public",
       "oracle_visibility": "hidden",
       "gold_solution_visibility": "hidden",

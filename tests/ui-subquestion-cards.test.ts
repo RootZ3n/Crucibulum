@@ -1,5 +1,5 @@
 /**
- * Crucible — sub-question failure card pins
+ * Luak — sub-question failure card pins
  *
  * Follow-up to the 2026-05-25 "425 vs 6" audit: each failed
  * sub-question in the focused-run inspector must render as its own
@@ -17,7 +17,7 @@ const ROOT = process.cwd();
 const HTML = readFileSync(join(ROOT, 'ui', 'index.html'), 'utf-8');
 const CSS = readFileSync(join(ROOT, 'ui', 'crucibulum.css'), 'utf-8');
 
-describe('Crucible sub-question failure cards', () => {
+describe('Luak sub-question failure cards', () => {
   it('SQ1 · renderSubQuestionFailures function exists and is mounted into renderFocusedRun', () => {
     assert.ok(HTML.includes('function renderSubQuestionFailures'), 'renderSubQuestionFailures function missing');
     // Mounted in renderFocusedRun above the Test Review Explorer subpanel.

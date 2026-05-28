@@ -1,7 +1,7 @@
 /**
- * Crucible — leaderboard-first layout pins
+ * Luak — leaderboard-first layout pins
  *
- * Crucible's product purpose is "which model is winning right now". The
+ * Luak's product purpose is "which model is winning right now". The
  * Ranking Deck must sit ABOVE the Active Arena (not buried below run
  * controls) and the command card inside the arena must stack
  * vertically so long model names and run buttons cannot clip.
@@ -25,7 +25,7 @@ function locate(needle: string): number {
   return idx;
 }
 
-describe('Crucible leaderboard-first layout', () => {
+describe('Luak leaderboard-first layout', () => {
   it('I1 · Ranking Deck appears before Active Arena in DOM order', () => {
     // Anchor to the render() function template (arena-shell class
     // also appears in renderActiveArenaShell's definition earlier in

@@ -1,4 +1,4 @@
-# Crucible — Capability Certification Roadmap
+# Luak — Capability Certification Roadmap
 
 **Companion to:** `docs/CAPABILITY_CERTIFICATION_DOCTRINE.md`
 **Status:** Roadmap v1. Sequences the future work needed to graduate
@@ -409,8 +409,8 @@ model certification.
   `CAPABILITY-CERTIFIED` when state is promoted; `NOT IN
   LEADERBOARD` + `NOT CERTIFIED` (general-cert) chips preserved.
 - Test isolation: state + receipt dirs overridable via
-  `CRUCIBLE_CAPABILITY_STATE_DIR` /
-  `CRUCIBLE_CAPABILITY_REPORTS_DIR` env vars so tests never
+  `LUAK_CAPABILITY_STATE_DIR` /
+  `LUAK_CAPABILITY_REPORTS_DIR` env vars so tests never
   contaminate real production state.
 - Phase 16 did NOT auto-execute promotion. Operators run the
   POST explicitly. Manual command in
@@ -451,7 +451,7 @@ general benchmark composite and `MODEL_CERTIFICATION.models[].tier`.
 
 ---
 
-## Phase K · Crucible release readiness dashboard
+## Phase K · Luak release readiness dashboard
 
 **Goal:** Stand up a single operator-facing dashboard that
 aggregates: general benchmark certified targets + Vision
@@ -507,5 +507,5 @@ route + open NEEDS_REVIEW queue + outstanding stability runs.
 - **Sub-capabilities (e.g. "Vision-OCR-only" vs "Vision-spatial-only").**
   v1 treats a capability as monolithic; sub-capability splitting is
   a future doctrine revision.
-- **External certification authority.** Crucible is self-attesting;
+- **External certification authority.** Luak is self-attesting;
   no third-party certifier is invoked.

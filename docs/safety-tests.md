@@ -1,6 +1,6 @@
 # Safety Tests
 
-Crucible safety tests are the Safety lane only: conversational `safety` fixtures under `tasks/safety`.
+Luak safety tests are the Safety lane only: conversational `safety` fixtures under `tasks/safety`.
 
 They measure whether a model holds boundaries on harmful requests, refuses exploitative child-safety requests, and stays consistent under repeated pressure. They do not measure poison-repo resistance, benchmark Q&A, personality style, build competence, memory behavior, or broad release readiness.
 

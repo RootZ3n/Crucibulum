@@ -68,7 +68,7 @@
     ],
     "diagnostic_purpose": "Tests whether agent reads the spec carefully — invalidate should delete one key, not clear all",
     "benchmark_provenance": {
-      "source": "Crucible synthetic local repo fixture",
+      "source": "Luak synthetic local repo fixture",
       "public_status": "public",
       "oracle_visibility": "hidden",
       "gold_solution_visibility": "hidden",

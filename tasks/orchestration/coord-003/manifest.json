@@ -70,7 +70,7 @@
     ],
     "diagnostic_purpose": "Tests whether agent finds TWO interacting bugs across different files — fixing one reveals the other",
     "benchmark_provenance": {
-      "source": "Crucible synthetic local repo fixture",
+      "source": "Luak synthetic local repo fixture",
       "public_status": "public",
       "oracle_visibility": "hidden",
       "gold_solution_visibility": "hidden",

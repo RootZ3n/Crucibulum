@@ -1,4 +1,4 @@
-# Crucible Scoring
+# Luak Scoring
 
 ## Public vs Internal Scale
 

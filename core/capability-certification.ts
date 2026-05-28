@@ -1,5 +1,5 @@
 /**
- * Crucible — Capability Certification doctrine evaluator (v1).
+ * Luak — Capability Certification doctrine evaluator (v1).
  *
  * Implements the gate thresholds defined in
  * `docs/CAPABILITY_CERTIFICATION_DOCTRINE.md` for Vision and Roleplay.

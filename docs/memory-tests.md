@@ -1,4 +1,4 @@
-# Crucible Memory Tests
+# Luak Memory Tests
 
 Scope: the Memory lane covers conversational fixtures whose family is `memory`. It measures whether a model can recall provided facts, update remembered facts when the user corrects them, and honestly decline to invent facts that were never provided.
 

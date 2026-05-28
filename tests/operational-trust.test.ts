@@ -1,5 +1,5 @@
 /**
- * Crucible — Operational Trust Pack Tests
+ * Luak — Operational Trust Pack Tests
  *
  * Validates the operational-trust trial suite:
  * - Pack registration (family K, task family operational_trust)
@@ -146,7 +146,7 @@ describe("operational trust trial metadata", () => {
     const manifests = loadAllManifests();
     for (const m of manifests) {
       assert.ok(m.metadata.benchmark_provenance, `${m.id}: missing benchmark_provenance`);
-      assert.equal(m.metadata.benchmark_provenance.source, "Crucible operational trust suite");
+      assert.equal(m.metadata.benchmark_provenance.source, "Luak operational trust suite");
     }
   });
 });

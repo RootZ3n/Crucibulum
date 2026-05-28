@@ -1,5 +1,5 @@
 /**
- * Crucible — Anthropic Direct Adapter
+ * Luak — Anthropic Direct Adapter
  * Direct Anthropic Messages API integration.
  * Supports: claude-opus-4-6, claude-sonnet-4-6, claude-haiku-4-5-20251001
  *

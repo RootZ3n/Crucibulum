@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 /**
- * Crucible CLI — Entry Point
+ * Luak CLI — Entry Point
+ *
+ * The binary is exposed as both `luak` (current) and `crucible` (legacy alias)
+ * via package.json `bin`. CLI behavior is identical under either name.
  */
 
 import { log, setLogLevel } from "../utils/logger.js";
@@ -61,33 +64,36 @@ async function main(): Promise<void> {
       break;
     }
     default:
-      console.log(`Crucible — Execution-Based AI Agent Evaluation
+      console.log(`Luak — Execution-Based AI Agent Evaluation
 
 Usage:
-  crucible test    --model <model> --task <taskId> [--runs N]
-  crucible list    tasks [--family poison|spec|orchestration]
-  crucible list    runs [--task <taskId>]
-  crucible verify  <bundle_id>
-  crucible compare --models <a>,<b> --task <taskId> [--runs N]
-  crucible leaderboard [show|submit]
-  crucible replay  <bundle_id>
-  crucible oracle-hash [--write|--check|--dry-run]
-  crucible doctor
-  crucible harness [--tab <key>] [--task <id>]
-                   [--adapter <id> --model <model>]   # live: route through registry
-                   [--live --model <model>]           # legacy: OpenRouter + judge model
-                   [--provider <id>]                  # configurable adapters only
-                   [--enable-judge] [--output <path>]
+  luak test    --model <model> --task <taskId> [--runs N]
+  luak list    tasks [--family poison|spec|orchestration]
+  luak list    runs [--task <taskId>]
+  luak verify  <bundle_id>
+  luak compare --models <a>,<b> --task <taskId> [--runs N]
+  luak leaderboard [show|submit]
+  luak replay  <bundle_id>
+  luak oracle-hash [--write|--check|--dry-run]
+  luak doctor
+  luak harness [--tab <key>] [--task <id>]
+               [--adapter <id> --model <model>]   # live: route through registry
+               [--live --model <model>]           # legacy: OpenRouter + judge model
+               [--provider <id>]                  # configurable adapters only
+               [--enable-judge] [--output <path>]
 
   Without --adapter or --live the harness uses the offline mock adapter.
 
   Examples:
     # offline mock (no API calls):
-    crucible harness --task safety-001
+    luak harness --task safety-001
     # live OpenRouter:
-    crucible harness --adapter openrouter --model minimax/minimax-m2 --task safety-001
+    luak harness --adapter openrouter --model minimax/minimax-m2 --task safety-001
     # live MiniMax direct (needs MINIMAX_API_KEY):
-    crucible harness --adapter minimax --model MiniMax-M2.7 --task safety-001
+    luak harness --adapter minimax --model MiniMax-M2.7 --task safety-001
+
+  Legacy alias: the binary is also installed as \`crucible\`; all subcommands
+  work identically under either name.
 
 Options:
   --verbose    Show debug output
@@ -106,6 +112,6 @@ Exit codes:
 }
 
 main().catch(err => {
-  console.error("Crucible error:", err);
+  console.error("Luak error:", err);
   process.exit(3);
 });

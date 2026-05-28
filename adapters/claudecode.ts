@@ -1,5 +1,5 @@
 /**
- * Crucible — Claude Code Adapter (DEPRECATED)
+ * Luak — Claude Code Adapter (DEPRECATED)
  *
  * Claude Code subscription cancelled. This adapter is retained so that
  * existing registry entries, tests, and CLI references compile and

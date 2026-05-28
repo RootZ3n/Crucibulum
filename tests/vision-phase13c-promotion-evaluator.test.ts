@@ -1,8 +1,8 @@
 /**
- * Crucible — Vision Phase 13-C / Roadmap D: read-only promotion
+ * Luak — Vision Phase 13-C / Roadmap D: read-only promotion
  * evaluator endpoint (live HTTP tests + UI + regressions).
  *
- * Stands up the real Crucible app via createApp() on an ephemeral port
+ * Stands up the real Luak app via createApp() on an ephemeral port
  * and exercises the new GET /api/capabilities/vision/promotion-evaluation
  * route end-to-end. Covers:
  *

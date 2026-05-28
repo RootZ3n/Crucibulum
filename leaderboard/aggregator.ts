@@ -1,5 +1,5 @@
 /**
- * Crucible — Leaderboard Aggregator
+ * Luak — Leaderboard Aggregator
  * Aggregates evidence bundles into leaderboard entries.
  * Computes pass@k, failure taxonomy, performance metrics.
  */

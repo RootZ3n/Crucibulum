@@ -1,5 +1,5 @@
 /**
- * Crucible — Review Layer
+ * Luak — Review Layer
  * Advisory model-based review of sanitized evidence.
  *
  * Evidence truncation limits applied to keep review prompts bounded:
@@ -342,7 +342,7 @@ export function sanitizeReviewInput(bundle: EvidenceBundle, context: ReviewConte
 }
 
 export function buildSecondOpinionPrompt(evidence: string): string {
-  return `You are a second-opinion reviewer for Crucible.
+  return `You are a second-opinion reviewer for Luak.
 
 Role:
 - You are not the judge of record.
@@ -368,7 +368,7 @@ Output:
 }
 
 export function buildQCReviewPrompt(evidence: string): string {
-  return `You are a QC review challenger for Crucible.
+  return `You are a QC review challenger for Luak.
 
 Role:
 - You are not the judge of record.

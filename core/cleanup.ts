@@ -1,5 +1,5 @@
 /**
- * Crucible — Workspace Cleanup
+ * Luak — Workspace Cleanup
  * Conservative cleanup of stale run workspaces and artifacts.
  */
 

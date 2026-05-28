@@ -1,5 +1,5 @@
 /**
- * Crucible — Provider / Model registry routes
+ * Luak — Provider / Model registry routes
  *
  * Exposes the data-plane CRUD on top of core/provider-registry:
  *

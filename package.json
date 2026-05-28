@@ -1,5 +1,5 @@
 {
-  "name": "crucible",
+  "name": "luak",
   "version": "0.1.0",
   "private": true,
   "description": "Auditable scoreboard, receipt, and evidence viewer for model and agent trial outputs",
@@ -9,6 +9,7 @@
   },
   "main": "dist/server/api.js",
   "bin": {
+    "luak": "dist/cli/main.js",
     "crucible": "dist/cli/main.js"
   },
   "files": [
@@ -36,7 +37,8 @@
     "SECURITY.md",
     "LICENSE",
     ".env.example",
-    "crucible.service"
+    "crucible.service",
+    "luak.service"
   ],
   "scripts": {
     "build": "tsc",

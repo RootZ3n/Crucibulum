@@ -1,5 +1,5 @@
 /**
- * Crucible — Provider / Model Registry
+ * Luak — Provider / Model Registry
  *
  * Data-driven control plane for benchmark providers and their models. The
  * adapter layer (adapters/registry.ts) stays as-is — it knows how to TALK to

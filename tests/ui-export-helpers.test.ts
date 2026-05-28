@@ -1,5 +1,5 @@
 /**
- * Crucible — export helpers and defensive data handling tests
+ * Luak — export helpers and defensive data handling tests
  *
  * Tests the pure functions used for:
  *   - shapeExportRows: transforms reviewSummary rollups into export-ready rows
@@ -317,10 +317,10 @@ describe("shapeExportRows: export data shaping", () => {
 // ── export file name ───────────────────────────────────────────────────────
 
 describe("exportFileName: file naming", () => {
-  it("includes crucible prefix, lane, and timestamp", () => {
+  it("includes luak prefix, lane, and timestamp", () => {
     const ui = loadUi();
     const name = ui.exportFileName("dashboard", "json");
-    assert.match(name, /^crucible-/, "must start with crucible-");
+    assert.match(name, /^luak-/, "must start with luak-");
     assert.match(name, /\.json$/, "must end with .json");
     // Should contain a timestamp-like pattern
     assert.match(name, /\d{4}-\d{2}-\d{2}/, "must contain date");
@@ -329,7 +329,7 @@ describe("exportFileName: file naming", () => {
   it("sanitizes lane name for file safety", () => {
     const ui = loadUi();
     const name = ui.exportFileName("benchmark", "csv");
-    assert.match(name, /^crucible-benchmark-/, "benchmark lane in filename");
+    assert.match(name, /^luak-benchmark-/, "benchmark lane in filename");
     assert.match(name, /\.csv$/, "must end with .csv");
     // No spaces or special chars (T from ISO timestamp is acceptable)
     assert.ok(!/[^a-zA-Z0-9\-.]/.test(name), `filename must be safe: ${name}`);

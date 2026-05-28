@@ -1,5 +1,5 @@
 /**
- * Crucible — Observer (Flight Recorder)
+ * Luak — Observer (Flight Recorder)
  * Records every action during agent execution for the Judge.
  * The Observer is the source of truth — not the agent's narration.
  */

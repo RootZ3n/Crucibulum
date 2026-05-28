@@ -1,5 +1,5 @@
 /**
- * Crucible — Human-Readable Test Names
+ * Luak — Human-Readable Test Names
  *
  * Side table mapping internal task IDs (e.g. "spec-001") to short, plain-
  * language names that a non-engineer can scan ("Follows Output Format").

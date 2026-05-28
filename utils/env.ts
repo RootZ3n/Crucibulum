@@ -8,7 +8,9 @@ export function envValue(...keys: string[]): string | undefined {
   return undefined;
 }
 
-export function crucibleStateRoot(): string {
-  return resolve(envValue("CRUCIBLE_STATE_ROOT", "CRUCIBULUM_STATE_DIR") ?? join(process.cwd(), "state"));
+export function luakStateRoot(): string {
+  return resolve(envValue("LUAK_STATE_ROOT", "CRUCIBLE_STATE_ROOT", "CRUCIBULUM_STATE_DIR") ?? join(process.cwd(), "state"));
 }
+
+export const crucibleStateRoot = luakStateRoot;
 

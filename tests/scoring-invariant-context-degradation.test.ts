@@ -1,5 +1,5 @@
 /**
- * Crucible — context-degradation-001 scoring-invariant tests.
+ * Luak — context-degradation-001 scoring-invariant tests.
  *
  * Born from the 2026-05-27 Hermes audit of context-degradation-001
  * (see reports/scoring-integrity/context-degradation-001/). The
@@ -60,7 +60,7 @@ function fakeBundle(correctness: number, efficiency: number, total: number): { s
 
 function close(a: number, b: number, eps = 0.005): boolean { return Math.abs(a - b) < eps; }
 
-describe("Crucible scoring-invariant · context-degradation-001 (offline)", () => {
+describe("Luak scoring-invariant · context-degradation-001 (offline)", () => {
   // -------- manifest contract --------
 
   it("P1 · manifest declares 3 binary text_match_all questions, weight 3 each (total 9)", () => {

@@ -1,5 +1,5 @@
 /**
- * Crucible — Cleanup Tests
+ * Luak — Cleanup Tests
  *
  * Smoke coverage for `cleanupStaleArtifacts` / `getCleanupStats`. Originally
  * authored against vitest; ported to node:test so it actually runs in CI
@@ -26,7 +26,7 @@ describe("cleanupStaleArtifacts", () => {
   before(() => {
     // Self-contained temp runs/ directory — no contamination from the
     // production ./runs path or from parallel test writes.
-    tempRunsDir = mkdtempSync(join(tmpdir(), "crucible-cleanup-test-"));
+    tempRunsDir = mkdtempSync(join(tmpdir(), "luak-cleanup-test-"));
     // Seed deterministic content: one stale ws_*, one fresh ws_*, one
     // stale run_*.json, one fresh run_*.json, one unrelated file.
     mkdirSync(join(tempRunsDir, "ws_fresh"), { recursive: true });
@@ -78,7 +78,7 @@ describe("getCleanupStats", () => {
   it("returns stats without deleting", () => {
     // Use a temp directory here too so the production runs/ is never
     // mutated by the test process.
-    const dir = mkdtempSync(join(tmpdir(), "crucible-cleanup-stats-"));
+    const dir = mkdtempSync(join(tmpdir(), "luak-cleanup-stats-"));
     try {
       const result = getCleanupStats({ maxAgeMs: 1000, runsDir: dir });
       assert.equal(result.deleted, 0);

@@ -1196,12 +1196,12 @@ tr:hover td{background:rgba(139,92,246,.04)}
 .footer-label{font-size:var(--text-xs);color:var(--ink-dim);letter-spacing:.04em}
 
 /* ============================================================================
- * LUNA-STYLE COMMAND DECK — chunky game-window shell adapted for Crucible
+ * LUNA-STYLE COMMAND DECK — chunky game-window shell adapted for Luak
  *
  * Sits alongside the Symposium chrome. Adopted from Luna's game-window
  * design language (bevels, title plates, socket lights, neon rooms),
  * minus the cosmic background (no aurora, no planets, no nebulae). The
- * Crucible body still uses the calm indigo/violet gradient defined above.
+ * Luak body still uses the calm indigo/violet gradient defined above.
  *
  * Names mapped:
  *   "Test Families"        → "Evaluation Rooms"
@@ -1960,7 +1960,7 @@ tr:hover td{background:rgba(139,92,246,.04)}
 /* Suppress the redundant in-arena hero. The existing renderHero()
  * markup remains in the DOM (test contract pins setViewMode etc.) but
  * is visually replaced by the cmd-rail (top) + arena-header-strip
- * (per-tab). Without this rule the operator sees the giant "Crucible"
+ * (per-tab). Without this rule the operator sees the giant "Luak"
  * card twice and the right rail gets pushed below the fold. */
 .arena-shell .deck-body > .abyss-banner,
 .arena-shell .deck-body > .scope-note{display:none}
@@ -2159,7 +2159,7 @@ tr:hover td{background:rgba(139,92,246,.04)}
 .feed-item.warn .feed-score{color:var(--orange)}
 .feed-empty{padding:14px;color:var(--ink-dim);text-align:center;font-family:var(--mono);font-size:var(--text-xs);letter-spacing:.06em}
 
-/* ─── Deck footer (Crucible seal + tiny Squidley) ──────────────────── */
+/* ─── Deck footer (Luak seal + tiny Squidley) ──────────────────── */
 .deck-footer{
   display:flex;align-items:center;justify-content:space-between;
   flex-wrap:wrap;gap:10px;
@@ -2297,7 +2297,7 @@ tr:hover td{background:rgba(139,92,246,.04)}
 /* ============================================================================
  * LEADERBOARD-FIRST LAYOUT — Ranking Deck at top + restacked command card
  *
- * Crucible's product purpose is "which model is winning right now". The
+ * Luak's product purpose is "which model is winning right now". The
  * Ranking Deck (top of page) surfaces the champion + top-3 cards so the
  * operator sees the answer immediately instead of scrolling through run
  * controls to reach the leaderboard. The Active Arena's command card is
@@ -2547,7 +2547,7 @@ tr:hover td{background:rgba(139,92,246,.04)}
 }
 
 /* ============================================================
-   Crucible Atmosphere Pass — additive depth layers only.
+   Luak Atmosphere Pass — additive depth layers only.
    No layout changes, no DOM changes, no contrast loss.
    Layer model (back → front):
      L1  body bg base (existing violet/pink/cyan radials, untouched)
@@ -2592,7 +2592,7 @@ body::before {
   /* Very slow ambient pulse — a distant forge breathing. 14 s,
      alternate so it never visually resets. Tiny opacity delta
      (0.88 → 1.00) — perceptible only at the periphery. */
-  animation: crucibleEmberBreathe 14s ease-in-out infinite alternate;
+  animation: luakEmberBreathe 14s ease-in-out infinite alternate;
   will-change: opacity;
 }
 
@@ -2608,7 +2608,7 @@ body::after {
                     rgba(160, 70, 30, 0.06) 100%);
 }
 
-@keyframes crucibleEmberBreathe {
+@keyframes luakEmberBreathe {
   0%   { opacity: 0.88; }
   100% { opacity: 1.00; }
 }

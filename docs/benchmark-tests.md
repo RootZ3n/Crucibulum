@@ -1,6 +1,6 @@
 # Benchmark Tests
 
-Crucible benchmark tests measure task performance in the benchmark lane only:
+Luak benchmark tests measure task performance in the benchmark lane only:
 
 - `spec_discipline`: local repo tasks scored by deterministic public/hidden verification.
 - `truthfulness`: factual refusal, recall, extraction, reasoning, workflow, summarization, and code-answer tasks.

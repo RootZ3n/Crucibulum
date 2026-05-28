@@ -1,5 +1,5 @@
 /**
- * Crucible — Provider / Model registry tests
+ * Luak — Provider / Model registry tests
  *
  * Covers the data-plane directly:
  *   - add provider from preset (no code edits)

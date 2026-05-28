@@ -1,5 +1,5 @@
 /**
- * Crucible — Retention regression
+ * Luak — Retention regression
  *
  * Pins all the invariants from the retention design brief:
  *  1. dry-run deletes nothing,

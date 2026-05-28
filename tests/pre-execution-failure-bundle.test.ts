@@ -1,5 +1,5 @@
 /**
- * Crucible — Pre-execution failure bundle regression
+ * Luak — Pre-execution failure bundle regression
  *
  * Pins the "every run ends with durable evidence" invariant for runs that
  * never reach model execution (provider rate-limit at health_check,

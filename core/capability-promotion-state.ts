@@ -1,5 +1,5 @@
 /**
- * Crucible — capability-promotion state.
+ * Luak — capability-promotion state.
  *
  * Persistent state file (`data/capability-certifications.json`) and
  * immutable promotion receipts (`reports/capability-promotions/<cap>/<ts>.{json,md}`)
@@ -45,17 +45,22 @@ export const STATE_SCHEMA = "crucible.capability-certifications.v1";
 export const RECEIPT_SCHEMA = "crucible.capability-promotion-receipt.v1";
 
 /** Resolve the capability-state directory. Override with
- *  `CRUCIBLE_CAPABILITY_STATE_DIR` for test isolation; defaults to
- *  the repo's `data/` directory. */
+ *  `LUAK_CAPABILITY_STATE_DIR` (legacy: `CRUCIBLE_CAPABILITY_STATE_DIR`)
+ *  for test isolation; defaults to the repo's `data/` directory. */
 export function capabilityStateDir(): string {
-  return process.env["CRUCIBLE_CAPABILITY_STATE_DIR"] ?? join(process.cwd(), "data");
+  return process.env["LUAK_CAPABILITY_STATE_DIR"]
+    ?? process.env["CRUCIBLE_CAPABILITY_STATE_DIR"]
+    ?? join(process.cwd(), "data");
 }
 
 /** Resolve the capability-receipt root directory. Override with
- *  `CRUCIBLE_CAPABILITY_REPORTS_DIR` for test isolation; defaults to
- *  the repo's `reports/capability-promotions/` directory. */
+ *  `LUAK_CAPABILITY_REPORTS_DIR` (legacy: `CRUCIBLE_CAPABILITY_REPORTS_DIR`)
+ *  for test isolation; defaults to the repo's
+ *  `reports/capability-promotions/` directory. */
 export function capabilityReceiptRoot(): string {
-  return process.env["CRUCIBLE_CAPABILITY_REPORTS_DIR"] ?? join(process.cwd(), "reports", "capability-promotions");
+  return process.env["LUAK_CAPABILITY_REPORTS_DIR"]
+    ?? process.env["CRUCIBLE_CAPABILITY_REPORTS_DIR"]
+    ?? join(process.cwd(), "reports", "capability-promotions");
 }
 
 export function capabilityStatePath(): string {

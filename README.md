@@ -1,23 +1,23 @@
-# Crucible
+# Luak
 
-Crucible turns model and agent trial outputs into auditable scoreboards, receipts, and comparison views.
+Luak turns model and agent trial outputs into auditable scoreboards, receipts, and comparison views.
 
-It helps operators inspect observed behavior by task family, provider, model, adapter, and run evidence. Crucible is not a safety certification, not a universal model ranking, and not a replacement for Colosseum-style trial generation.
+It helps operators inspect observed behavior by task family, provider, model, adapter, and run evidence. Luak is not a safety certification, not a universal model ranking, and not a replacement for Colosseum-style trial generation.
 
-In the current release sequence, Crucible is the benchmark, scoreboard, and evidence-viewer layer. It can still run local harness flows for smoke testing and development, but its public role is to make existing run evidence understandable without overstating what the evidence can support.
+In the current release sequence, Luak is the benchmark, scoreboard, and evidence-viewer layer. It can still run local harness flows for smoke testing and development, but its public role is to make existing run evidence understandable without overstating what the evidence can support.
 
-## How Crucible Fits With The Other Tools
+## How Luak Fits With The Other Tools
 
 - **Colosseum** generates trial runs and receipts. Use it as the proving ground when you need to create fresh trial evidence.
-- **Crucible** views, compares, scores, and explains run evidence. Use it to inspect receipts, compare models/providers/adapters, and understand why a run is or is not ranked.
-- **Verum** is adversarial and probing-oriented. Its outputs can be normalized into Crucible score/evidence views when the integration path is used.
+- **Luak** views, compares, scores, and explains run evidence. Use it to inspect receipts, compare models/providers/adapters, and understand why a run is or is not ranked.
+- **Verum** is adversarial and probing-oriented. Its outputs can be normalized into Luak score/evidence views when the integration path is used.
 - **Aedis** is governed build orchestration. It can drive controlled workflows that later produce evidence for inspection.
-- **Squidley Public** is the broader user-facing AI control surface. Crucible is one evidence and scoreboard layer inside that wider release path.
-- **Crucibulum** appears in environment variables, schemas, and API names as the older/internal protocol name for Crucible-compatible run and score exchange. Public docs should treat it as compatibility naming, not a separate public product unless the project is split later.
+- **Squidley Public** is the broader user-facing AI control surface. Luak is one evidence and scoreboard layer inside that wider release path.
+- **Crucibulum** appears in environment variables, schemas, and API names as the older/internal protocol name for Luak-compatible run and score exchange. Public docs should treat it as compatibility naming, not a separate public product unless the project is split later.
 
-## What Crucible Is / Is Not
+## What Luak Is / Is Not
 
-Crucible is:
+Luak is:
 
 - a local scoreboard and evidence viewer
 - a lane-scoped comparison UI
@@ -25,7 +25,7 @@ Crucible is:
 - an observed-behavior comparison tool
 - a way to preserve adapter/provider/model identity while reviewing results
 
-Crucible is not:
+Luak is not:
 
 - a universal model benchmark
 - a safety certification
@@ -50,9 +50,9 @@ Current desktop and mobile screenshots are in `docs/screenshots/`. Additional GI
 
 ## Evidence Model
 
-Crucible is built around a narrow question: what did this model or agent do under a defined task, adapter, provider, and scoring policy, and what evidence supports that observation?
+Luak is built around a narrow question: what did this model or agent do under a defined task, adapter, provider, and scoring policy, and what evidence supports that observation?
 
-Crucible does not grade based on style, self-report, chain-of-thought, or polished explanations. It grades based on observable state:
+Luak does not grade based on style, self-report, chain-of-thought, or polished explanations. It grades based on observable state:
 
 - what files changed
 - what tests passed or failed
@@ -68,9 +68,9 @@ The core trust model is simple:
 - review models are advisory only
 - bundles are signed and auditable
 
-## What Crucible Does
+## What Luak Does
 
-Crucible ingests or creates model/agent run evidence, applies deterministic scoring where configured, and turns that evidence into local scoreboards, receipts, and comparison views.
+Luak ingests or creates model/agent run evidence, applies deterministic scoring where configured, and turns that evidence into local scoreboards, receipts, and comparison views.
 
 In practice, that means it can:
 
@@ -96,13 +96,13 @@ A lot of model evaluation still collapses into one of these failure modes:
 - leaderboards that show scores without evidence
 - review layers that quietly blur interpretation with authority
 
-Crucible is designed against that.
+Luak is designed against that.
 
 It treats evaluation as an evidence problem. The key question is not "did the model say the right thing?" It is "what behavior was observed, under what conditions, and can the evidence be inspected independently?"
 
 ## How It Works
 
-At a high level, Crucible follows this pipeline:
+At a high level, Luak follows this pipeline:
 
 1. Load a task manifest.
 2. Filter the manifest for the agent so the rubric and oracle stay hidden.
@@ -154,11 +154,11 @@ Conversational task families currently present in the corpus:
 - `thinking-mode`
 - `token-efficiency`
 
-This means Crucible can inspect both execution behavior and chat behavior. The current taxonomy is release-candidate level and versioned, but it should still be cited with the repository commit, task IDs, and scoring policy used for a given comparison. The test corpus is lightweight by design (intentional minimum for bootstrap); use `npm run oracle:hash -- --write` after adding oracles to register them in the corpus.
+This means Luak can inspect both execution behavior and chat behavior. The current taxonomy is release-candidate level and versioned, but it should still be cited with the repository commit, task IDs, and scoring policy used for a given comparison. The test corpus is lightweight by design (intentional minimum for bootstrap); use `npm run oracle:hash -- --write` after adding oracles to register them in the corpus.
 
 ## Scoring Model
 
-Crucible judges runs in a fixed order:
+Luak judges runs in a fixed order:
 
 1. Integrity
 2. Correctness
@@ -209,15 +209,15 @@ A bundle contains:
 
 Bundles are hash-signed so the result can be verified later. The API also produces structured summaries for downstream consumers.
 
-This is important because Crucible is not just trying to emit a score. It is trying to emit a score with an audit trail.
+This is important because Luak is not just trying to emit a score. It is trying to emit a score with an audit trail.
 
 ## Bundle Immutability and Scoring Honesty
 
-Crucible separates "what happened on this run" from "what the current leaderboard says about a model." Both are honest, but they answer different questions, and reading one as the other is the most common way to misinterpret a Crucible result.
+Luak separates "what happened on this run" from "what the current leaderboard says about a model." Both are honest, but they answer different questions, and reading one as the other is the most common way to misinterpret a Luak result.
 
 **Signed bundles are immutable evidence.** Once a run is written to `runs/<bundle_id>.json` and hash-signed, the file is not rewritten — not when scoring rules change, not when judges are upgraded, not when bugs are fixed. The bundle records what the run produced *at the moment it produced it*. Tampering breaks the hash check; the trust layer marks tampered bundles as not ranked.
 
-**Some older bundles carry historical stored scores.** Crucible's scoring discipline tightened during the May 2026 trust audit (see `tests/safety-scoring.test.ts`, `tests/lane-scoring.test.ts`). Bundles written before that audit may show a stored `score.total` that included regression / integrity / efficiency credit even when correctness was zero. Those numbers are correct as a record of what the *pre-audit* formula produced. They are not current trust claims.
+**Some older bundles carry historical stored scores.** Luak's scoring discipline tightened during the May 2026 trust audit (see `tests/safety-scoring.test.ts`, `tests/lane-scoring.test.ts`). Bundles written before that audit may show a stored `score.total` that included regression / integrity / efficiency credit even when correctness was zero. Those numbers are correct as a record of what the *pre-audit* formula produced. They are not current trust claims.
 
 **The leaderboard, UI warnings, recommendation cards, diagnostics, and exports all use the current trust rules.** Specifically:
 
@@ -229,9 +229,9 @@ Crucible separates "what happened on this run" from "what the current leaderboar
 
 **NC, provider, judge, and test failures stay visible as evidence.** They are not deleted, they are not hidden, and they do not vanish from the run history. They are excluded from *capability averages* because they did not measure the model. They remain counted in `nc_rate`, `failed_provider`, `failed_judge`, and the failure taxonomy.
 
-**Raw `score.total` is historical stored data.** A bundle's `score.total` is what the scoring formula produced when the bundle was written. For a current-discipline interpretation, read the leaderboard endpoint or the UI — both recompute against current rules and exclude bundles that should not count. Do not treat `score.total` from a raw bundle file as the current Crucible trust claim for a model.
+**Raw `score.total` is historical stored data.** A bundle's `score.total` is what the scoring formula produced when the bundle was written. For a current-discipline interpretation, read the leaderboard endpoint or the UI — both recompute against current rules and exclude bundles that should not count. Do not treat `score.total` from a raw bundle file as the current Luak trust claim for a model.
 
-**JSON and CSV exports carry honesty metadata.** Lane leaderboard exports (`crucible.lane.leaderboard.v2` schema) include:
+**JSON and CSV exports carry honesty metadata.** Lane leaderboard exports (`luak.lane.leaderboard.v2` schema) include:
 
 - `counts_in_leaderboard` — true only if the row contributed to the current composite
 - `nc_rate`, `model_failure_rate`, `completion_rate` — so you can tell "model never ran" from "model failed"
@@ -241,17 +241,17 @@ Crucible separates "what happened on this run" from "what the current leaderboar
 
 Drilldown exports add `counts_toward_leaderboard`, `is_pre_fix_historical`, and `exclusion_reasons` per run so a consumer can route each bundle to the right interpretation.
 
-**Read order for current trust.** If you want the current Crucible verdict for a model:
+**Read order for current trust.** If you want the current Luak verdict for a model:
 
 1. Use the UI (lane tab) or the `/api/leaderboard?task_families=<lane>` endpoint.
 2. Use the lane diagnostic: `node scripts/lane-diagnostic.mjs <lane>` — it prints leaderboard-equivalent averages with NC excluded and flags pre-fix bundles still in scope.
 3. Use the lane export (JSON/CSV) — the `note` and `counts_in_leaderboard` columns tell you exactly what each row means.
 
-Reading raw signed bundle files directly is fine for audit (verifying what a run produced) but is not the right surface for "what does Crucible currently say about this model."
+Reading raw signed bundle files directly is fine for audit (verifying what a run produced) but is not the right surface for "what does Luak currently say about this model."
 
 ## Security and Trust Model
 
-Crucible assumes prompt injection is a system problem, not just a model problem.
+Luak assumes prompt injection is a system problem, not just a model problem.
 
 That means:
 
@@ -292,7 +292,7 @@ Review models may summarize, flag concerns, or recommend reruns. They may not ov
 
 ## Review Layer
 
-Crucible supports optional review layers such as:
+Luak supports optional review layers such as:
 
 - Second Opinion
 - QC Review
@@ -320,8 +320,10 @@ Review inputs are sanitized and structured before model calls. Review outputs ar
 
 The advisory model judge defaults to **OpenRouter `xiaomi/mimo-v2.5-pro`**. Configure via `OPENROUTER_API_KEY`. Override with:
 
-- `CRUCIBLE_JUDGE_PROVIDER` — provider id (default `openrouter`)
-- `CRUCIBLE_JUDGE_MODEL` — model id (default `xiaomi/mimo-v2.5-pro`)
+- `LUAK_JUDGE_PROVIDER` — provider id (default `openrouter`)
+- `LUAK_JUDGE_MODEL` — model id (default `xiaomi/mimo-v2.5-pro`)
+
+Legacy aliases `CRUCIBLE_JUDGE_PROVIDER` / `CRUCIBLE_JUDGE_MODEL` are still honored; prefer the `LUAK_*` names for new setups.
 
 Fallback: when the configured judge provider is unreachable, only the deterministic scorer runs and the model judge is recorded as `judge_usage.kind = "skipped"`. The run is never silently re-routed to a different model.
 
@@ -350,7 +352,7 @@ Exit codes: `0` clean, `1` test failures only, `2` pipeline breakage, `3` conver
 
 ## Adapters and Providers
 
-Crucible is meant to evaluate models through adapters rather than binding itself to a single provider.
+Luak is meant to evaluate models through adapters rather than binding itself to a single provider.
 
 The repo already supports a provider-first flow through adapters and exposes provider/model metadata in the bundle and API. Supported adapters/providers currently include:
 
@@ -398,11 +400,11 @@ manual browser UI checklist pass for the scoped target set, but this remains
 ### Vision Capability-Certified (separate from the release-certification scope above)
 
 Vision is currently the one **capability** that has been formally
-promoted under Crucible's doctrine-gated capability-certification
+promoted under Luak's doctrine-gated capability-certification
 track (`docs/CAPABILITY_CERTIFICATION_DOCTRINE.md`). This is
 **separate from** the general release-certification scope above:
 
-- Vision capability certification is based on Crucible's 15-test
+- Vision capability certification is based on Luak's 15-test
   Vision suite run across **three independent route families**
   (MiMo, GPT-5, Anthropic) with aggregate pass rate ≥ 80% and no
   disallowed recurring measurement attribution.
@@ -430,7 +432,7 @@ multi-family evidence under the same doctrine.
 
 ## Methodology and Trust Docs
 
-Crucible is being documented as a public audit and evidence-inspection system rather than only a codebase. Start here:
+Luak is being documented as a public audit and evidence-inspection system rather than only a codebase. Start here:
 
 - [docs/methodology.md](docs/methodology.md)
 - [docs/scoring.md](docs/scoring.md)
@@ -443,7 +445,7 @@ Crucible is being documented as a public audit and evidence-inspection system ra
 
 ## UI and API
 
-Crucible includes a local API and browser UI for inspecting runs, receipts, bundles, quarantined evidence, and comparisons.
+Luak includes a local API and browser UI for inspecting runs, receipts, bundles, quarantined evidence, and comparisons.
 
 The API exposes:
 
@@ -479,7 +481,7 @@ This release has been verified on Linux with Node `v22.22.2` and npm `10.8.2`. L
 - **Docker image**: not published
 - **OS installers (deb/rpm/msi/pkg)**: not available
 
-The `crucible.service` file is a systemd example for advanced Linux operators only; it is not required for the local quickstart.
+The `luak.service` file is a systemd example for advanced Linux operators only; it is not required for the local quickstart.
 
 Install dependencies and build:
 
@@ -492,11 +494,11 @@ If anything fails, run `npm run doctor` for a read-only diagnostic of Node/npm v
 
 ## First 5 Minutes
 
-If you have never run Crucible before and just want to see it work, do this in order. It uses no API keys, no provider accounts, and no network calls beyond `npm ci`.
+If you have never run Luak before and just want to see it work, do this in order. It uses no API keys, no provider accounts, and no network calls beyond `npm ci`.
 
 ```bash
 git clone <this-repo>
-cd crucible
+cd luak
 npm ci
 npm run build
 npm run smoke
@@ -506,9 +508,9 @@ npm run serve
 Expected outcome:
 
 1. `npm run smoke` finishes with `Smoke passed.` This proves the deterministic offline pipeline works on your machine.
-2. `npm run serve` prints a banner that ends with `Crucible server running on http://127.0.0.1:18795` and `UI: http://127.0.0.1:18795/`.
-3. Open `http://127.0.0.1:18795/` in your browser. You will see the Crucible UI shell.
-4. The default public leaderboard view will be **empty**. That is expected on a fresh checkout — Crucible only ranks **verified eligible bundles**, and the smoke test produces deliberately quarantined mock/demo evidence. Empty here means "nothing has earned a public rank yet," not "broken."
+2. `npm run serve` prints a banner that ends with `Luak server running on http://127.0.0.1:18795` and `UI: http://127.0.0.1:18795/`.
+3. Open `http://127.0.0.1:18795/` in your browser. You will see the Luak UI shell.
+4. The default public leaderboard view will be **empty**. That is expected on a fresh checkout — Luak only ranks **verified eligible bundles**, and the smoke test produces deliberately quarantined mock/demo evidence. Empty here means "nothing has earned a public rank yet," not "broken."
 5. Quarantined / mock-or-demo evidence (including the smoke output) is visible from `/api/leaderboard/quarantine` and is labeled `NOT RANKED`. That is the correct first-run state.
 6. Stop the server with `Ctrl+C`. Run `npm run clean:state -- --confirm` if you want to wipe local runs before continuing.
 
@@ -547,8 +549,8 @@ npm run serve
 Expected smoke output includes:
 
 ```text
-Crucible smoke test: deterministic offline mock run.
-Crucible Harness - MOCK adapter
+Luak smoke test: deterministic offline mock run.
+Luak Harness - MOCK adapter
 Tests:    1 passed / 0 failed (1 total)
 Smoke passed.
 ```
@@ -560,30 +562,30 @@ By default, a fresh checkout has no verified public ranking data. The leaderboar
 `npm run serve` binds to `127.0.0.1` by default and prints the UI URL:
 
 ```text
-Crucible server running on http://127.0.0.1:18795
+Luak server running on http://127.0.0.1:18795
 UI: http://127.0.0.1:18795/
 API: http://127.0.0.1:18795/api/
 ```
 
-Set `CRUCIBLE_PORT` to use a different port. Set `CRUCIBLE_HOST=0.0.0.0` only when you intentionally want the server reachable beyond the local machine and have reviewed `SECURITY.md`.
+Set `LUAK_PORT` to use a different port. Set `LUAK_HOST=0.0.0.0` only when you intentionally want the server reachable beyond the local machine and have reviewed `SECURITY.md`. Legacy `CRUCIBLE_PORT` / `CRUCIBLE_HOST` are still honored as deprecated aliases.
 
 To stop the server, press `Ctrl+C` in the terminal where it is running. There is no separate stop command. State written to `runs/` and `state/` persists across restarts; use `npm run clean:state -- --confirm` to clear it.
 
 ## Security note
 
-**Crucible has no built-in authentication.** Anything that can reach the bound port can call the API. The default bind is `127.0.0.1`, which keeps the server reachable only from your own machine. This app assumes it is running on a trusted private network. Do not expose it directly to the public internet without adding your own access control.
+**Luak has no built-in authentication.** Anything that can reach the bound port can call the API. The default bind is `127.0.0.1`, which keeps the server reachable only from your own machine. This app assumes it is running on a trusted private network. Do not expose it directly to the public internet without adding your own access control.
 
-If you need access from another device, put a private-network gate in front of Crucible — pick whichever fits your setup:
+If you need access from another device, put a private-network gate in front of Luak — pick whichever fits your setup:
 
 - run it behind Tailscale or a VPN and rely on tailnet / VPN-level identity;
 - bind to `0.0.0.0` only when there is a firewall in front and the LAN is trusted;
-- run a reverse proxy (nginx, Caddy, Cloudflare Tunnel, etc.) that handles authentication before forwarding to Crucible.
+- run a reverse proxy (nginx, Caddy, Cloudflare Tunnel, etc.) that handles authentication before forwarding to Luak.
 
 There are no built-in tokens, sign-in screens, or pairing flows to configure. Securing the network path is the operator's responsibility.
 
-## Setting CRUCIBLE_HMAC_KEY
+## Setting LUAK_HMAC_KEY
 
-Crucible signs every evidence bundle with HMAC-SHA-256. The signing key is `CRUCIBLE_HMAC_KEY`. Without it:
+Luak signs every evidence bundle with HMAC-SHA-256. The signing key is `LUAK_HMAC_KEY` (legacy `CRUCIBLE_HMAC_KEY` is still honored as a deprecated alias). Without it:
 
 - bundles are still produced, but their `bundle_signature_status` is `unsigned_key_missing`;
 - the public leaderboard quarantines those bundles and labels them `NOT RANKED`;
@@ -593,13 +595,13 @@ To set a key for local development:
 
 ```bash
 # Linux / macOS / WSL2
-export CRUCIBLE_HMAC_KEY="$(openssl rand -hex 32)"
+export LUAK_HMAC_KEY="$(openssl rand -hex 32)"
 npm run serve
 ```
 
 ```powershell
 # Windows PowerShell
-$env:CRUCIBLE_HMAC_KEY = -join ((1..64) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
+$env:LUAK_HMAC_KEY = -join ((1..64) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
 npm run serve
 ```
 
@@ -657,13 +659,13 @@ npm run harness -- --adapter openrouter --model xiaomi/mimo-v2.5-pro --task safe
 npm run cli -- verify run_2026-04-05_poison-001_gemma4
 ```
 
-Crucible is an evidence viewer and local evaluation layer, not a guarantee of model safety. Passing a task means the model passed that task under this harness, with this adapter, at that time. It does not show that the model is universally safe or reliable.
+Luak is an evidence viewer and local evaluation layer, not a guarantee of model safety. Passing a task means the model passed that task under this harness, with this adapter, at that time. It does not show that the model is universally safe or reliable.
 
 Mock mode is for offline pipeline validation only. Mock results must not be cited as live model evidence.
 
 ## Clearing Local State
 
-Crucible writes local runs and state to ignored directories by default:
+Luak writes local runs and state to ignored directories by default:
 
 - `runs/` for generated evidence bundles and harness reports
 - `state/` for provider registry data
@@ -684,19 +686,19 @@ npm run clean:state -- --confirm
 
 Run `npm run doctor` first — it is read-only and reports most common issues.
 
-- **Port already in use:** run with a different port, for example `CRUCIBLE_PORT=18895 npm run serve` on Linux/macOS/WSL2 or `$env:CRUCIBLE_PORT=18895; npm run serve` in PowerShell. The default port is `18795`.
-- **`node: command not found` or wrong Node version:** Crucible requires Node 20+. Check with `node --version`. Install from [nodejs.org](https://nodejs.org/) or your package manager. `nvm install 22 && nvm use 22` works on Linux/macOS/WSL2.
+- **Port already in use:** run with a different port, for example `LUAK_PORT=18895 npm run serve` on Linux/macOS/WSL2 or `$env:LUAK_PORT=18895; npm run serve` in PowerShell. The default port is `18795`.
+- **`node: command not found` or wrong Node version:** Luak requires Node 20+. Check with `node --version`. Install from [nodejs.org](https://nodejs.org/) or your package manager. `nvm install 22 && nvm use 22` works on Linux/macOS/WSL2.
 - **`npm: command not found`:** npm ships with Node. If `node` works but `npm` does not, your Node install is broken — reinstall from the official source.
 - **Windows execution policy blocks `npm`:** PowerShell may refuse to run npm shims with `cannot be loaded because running scripts is disabled on this system`. Fix once per user: `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`. Use Windows Terminal (PowerShell 7+) for the commands in this README; cmd.exe is not tested.
 - **Empty leaderboard / "I see no data":** this is the correct fresh-checkout state. Default leaderboards rank only verified eligible evidence. Smoke output is mock/demo and is deliberately quarantined. Inspect `/api/leaderboard/quarantine` to confirm the data is there but `NOT RANKED`.
-- **`CRUCIBLE_HMAC_KEY is not set` warning:** expected on a first local run. Bundles you generate without a key will be quarantined as `unsigned_key_missing`. Set the key (see "Setting CRUCIBLE_HMAC_KEY") before generating evidence you intend to publish.
-- **Cannot reach the API from another device:** the default bind is `127.0.0.1`. Set `CRUCIBLE_HOST` to a routable address (your Tailscale IP, a LAN IP, or `0.0.0.0` when firewalled) and read the security note in `SECURITY.md` first. Crucible has no built-in auth — anything that can reach the bound port can call the API.
-- **Malformed or tampered runs:** Crucible quarantines them. Inspect safe metadata at `/api/leaderboard/quarantine`; do not cite them as public leaderboard evidence.
+- **`LUAK_HMAC_KEY is not set` warning:** expected on a first local run. Bundles you generate without a key will be quarantined as `unsigned_key_missing`. Set the key (see "Setting LUAK_HMAC_KEY") before generating evidence you intend to publish. Legacy `CRUCIBLE_HMAC_KEY` still works.
+- **Cannot reach the API from another device:** the default bind is `127.0.0.1`. Set `LUAK_HOST` to a routable address (your Tailscale IP, a LAN IP, or `0.0.0.0` when firewalled) and read the security note in `SECURITY.md` first. Luak has no built-in auth — anything that can reach the bound port can call the API.
+- **Malformed or tampered runs:** Luak quarantines them. Inspect safe metadata at `/api/leaderboard/quarantine`; do not cite them as public leaderboard evidence.
 - **Live adapter fails with "missing key":** offline `npm run smoke` needs no provider keys. Live adapters fail loudly and name the required key, such as `OPENROUTER_API_KEY` or `MINIMAX_API_KEY`.
 - **PowerShell path issues:** use npm scripts (`npm run smoke`, `npm run serve`, `npm run harness -- --task safety-001`) instead of invoking files under `dist/` directly.
 - **`npm ci` fails on registry / EAI_AGAIN / 403:** corporate proxies and outdated certificates are the usual cause. Try `npm config get registry` (should be `https://registry.npmjs.org/`), clear with `npm cache clean --force`, and rerun. `npm audit` warnings during install are advisory; `npm ci` will still complete.
 - **Need to start fresh:** stop the server, then `npm run clean:state -- --confirm` removes `runs/` and `state/`. This wipes generated bundles and the local provider registry. It does not touch tasks, oracles, or imported evidence stored elsewhere.
-- **Need remote access:** default binding is local-only. Set `CRUCIBLE_HOST=0.0.0.0` deliberately and put a private-network gate (Tailscale, VPN, firewall, reverse-proxy auth) in front of Crucible — read `SECURITY.md` first.
+- **Need remote access:** default binding is local-only. Set `LUAK_HOST=0.0.0.0` deliberately and put a private-network gate (Tailscale, VPN, firewall, reverse-proxy auth) in front of Luak — read `SECURITY.md` first.
 
 ## Live Adapter Setup
 
@@ -715,7 +717,7 @@ export MINIMAX_BASE_URL=https://api.minimax.io/v1   # optional
 node dist/cli/main.js harness --adapter minimax --model MiniMax-M2.7 --task safety-001
 ```
 
-Unknown adapters, missing keys, and missing required model ids fail loudly. Crucible does not silently fall back to mock when live mode was requested.
+Unknown adapters, missing keys, and missing required model ids fail loudly. Luak does not silently fall back to mock when live mode was requested.
 
 ## Interpreting Results
 
@@ -729,7 +731,7 @@ Every bundle and summary separates model failures from provider, runner, and jud
 
 Bundles include `interpretation` with a one-sentence reason, evidence summary, whether the result reflects model capability, retry/provider confidence notes, cost, duration, and recommended interpretation.
 
-Live runs may incur cost. Cost fields are transparent but provider-reported costs are only as accurate as the provider response; otherwise Crucible records an estimate.
+Live runs may incur cost. Cost fields are transparent but provider-reported costs are only as accurate as the provider response; otherwise Luak records an estimate.
 
 ## Adding Tasks and Adapters
 
@@ -741,7 +743,7 @@ To add an adapter, implement `CrucibulumAdapter` from `adapters/base.ts`, regist
 
 ## Release Limitations
 
-Crucible currently emphasizes deterministic, auditable evidence over broad benchmark coverage. Safety tasks are caveated diagnostics, not a certification or proof of universal safety. Provider behavior, model versions, pricing, and rate-limit behavior can change. Repeat runs are recommended before making claims.
+Luak currently emphasizes deterministic, auditable evidence over broad benchmark coverage. Safety tasks are caveated diagnostics, not a certification or proof of universal safety. Provider behavior, model versions, pricing, and rate-limit behavior can change. Repeat runs are recommended before making claims.
 
 Current release evidence supports scoped certification only: the platform/mock
 gate, representative repo-mode smoke, and broad real-provider smoke for
@@ -749,7 +751,7 @@ OpenRouter DeepSeek, OpenRouter Mimo, and Ollama `qwen3.5:9b`. It does not
 certify every UI-visible provider/model, every repo-mode task family, or the
 full all-provider/all-model release.
 
-See `SECURITY.md` for the public security policy and trust model, and `CHANGELOG.md` for release notes. The included `crucible.service` is an advanced Linux/systemd example only; it is not required for the local quickstart.
+See `SECURITY.md` for the public security policy and trust model, and `CHANGELOG.md` for release notes. The included `luak.service` is an advanced Linux/systemd example only; it is not required for the local quickstart.
 
 ## Exit Codes
 
@@ -762,7 +764,7 @@ See `SECURITY.md` for the public security policy and trust model, and `CHANGELOG
 
 ## Why This Is Different
 
-Crucible is not trying to be a generic "AI benchmark platform."
+Luak is not trying to be a generic "AI benchmark platform."
 
 Its differentiators are narrower and more technical:
 
@@ -778,7 +780,7 @@ If you care about whether a coding agent actually performed the task under contr
 
 ## Good Uses
 
-Crucible is a good fit for:
+Luak is a good fit for:
 
 - evaluating coding agents on realistic repo tasks
 - regression testing model/provider changes
@@ -798,7 +800,7 @@ It is less useful if what you want is:
 
 If you need a short description for GitHub, docs, or a project directory:
 
-> Crucible turns model and agent trial outputs into auditable scoreboards, receipts, and comparison views, with verified evidence gates for public rankings.
+> Luak turns model and agent trial outputs into auditable scoreboards, receipts, and comparison views, with verified evidence gates for public rankings.
 
 ## License
 

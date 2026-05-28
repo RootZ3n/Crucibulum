@@ -1,5 +1,5 @@
 /**
- * Crucible — Core Module Tests
+ * Luak — Core Module Tests
  * Covers: hashing, security/velum, observer, bundle verification, judge ordering, workspace.
  */
 
@@ -445,7 +445,7 @@ describe("judge diagnostics — hidden vs public test split", () => {
         decoys: [],
       },
     };
-    const tmp = mkdtempSync(join(tmpdir(), "crucible-diag-"));
+    const tmp = mkdtempSync(join(tmpdir(), "luak-diag-"));
     const result = judge(baseManifest(), oracle, diff(), execution(), tmp);
     assert.match(result.diagnosis.failure_mode ?? "", /hidden_test_failure_only/);
   });
@@ -469,7 +469,7 @@ describe("judge diagnostics — hidden vs public test split", () => {
         decoys: [],
       },
     };
-    const tmp = mkdtempSync(join(tmpdir(), "crucible-diag-"));
+    const tmp = mkdtempSync(join(tmpdir(), "luak-diag-"));
     const result = judge(baseManifest(), oracle, diff(), execution(), tmp);
     assert.match(result.diagnosis.failure_mode ?? "", /public_and_hidden_failed/);
   });
@@ -493,7 +493,7 @@ describe("judge diagnostics — hidden vs public test split", () => {
         decoys: [],
       },
     };
-    const tmp = mkdtempSync(join(tmpdir(), "crucible-diag-"));
+    const tmp = mkdtempSync(join(tmpdir(), "luak-diag-"));
     const result = judge(baseManifest(), oracle, diff(), execution(), tmp);
     // Touched only src/a.js → partial localization, missing src/b.js
     assert.match(result.diagnosis.failure_mode ?? "", /partial_localization/);
@@ -550,7 +550,7 @@ describe("judge integrity — max_lines_changed diagnostic", () => {
       tokens_in: 0, tokens_out: 0,
       adapter_metadata: { adapter_id: "m", adapter_version: "0", system_version: "0", model: "x", provider: "local" },
     };
-    const tmp = mkdtempSync(join(tmpdir(), "crucible-lines-"));
+    const tmp = mkdtempSync(join(tmpdir(), "luak-lines-"));
     const r = judge(manifest, oracle, diffOver, exec, tmp);
     const violations = r.verification.integrity.violations;
     assert.ok(

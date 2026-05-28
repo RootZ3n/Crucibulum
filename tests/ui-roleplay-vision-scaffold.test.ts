@@ -1,5 +1,5 @@
 /**
- * Crucible — Roleplay + Vision capability scaffold pins
+ * Luak — Roleplay + Vision capability scaffold pins
  *
  * Phase 8 of the capability-expansion plan. These tests lock in the
  * architecture/schema of the two experimental families so future
@@ -39,7 +39,7 @@ function loadManifest(family: string, id: string) {
   return JSON.parse(readFileSync(p, 'utf-8'));
 }
 
-describe('Crucible roleplay + vision capability scaffold', () => {
+describe('Luak roleplay + vision capability scaffold', () => {
   it('RV1 · Roleplay family appears in TAB_CONFIG as Experimental', () => {
     assert.ok(HTML.includes("roleplay:{key:'roleplay'"), 'TAB_CONFIG missing roleplay entry');
     assert.ok(/roleplay:\{[^}]*experimental:true/.test(HTML), 'roleplay tab must declare experimental:true');

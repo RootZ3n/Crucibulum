@@ -1,5 +1,5 @@
 /**
- * Crucible — Retry-After parsing + backoff regression
+ * Luak — Retry-After parsing + backoff regression
  *
  * These pins live with the helpers because the UI cooldown logic and any
  * future server-side retry policy both consume them. Tests stay

@@ -1,5 +1,5 @@
 /**
- * Crucible — Roleplay Phase 2: adversarial stress (offline).
+ * Luak — Roleplay Phase 2: adversarial stress (offline).
  *
  * 15 deterministic source/contract assertions covering Phase 2's
  * scope: 5 new POC fixtures + severity markers in the two scorers +

@@ -1,6 +1,6 @@
 # Model Certification
 
-Crucible's leaderboard is only as honest as its claims about which
+Luak's leaderboard is only as honest as its claims about which
 model is **really** ready for which kind of use. This document defines
 the certification tiers, how to earn (and re-earn) each one, and how
 the UI surfaces them.

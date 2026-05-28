@@ -1,7 +1,7 @@
-# Crucible UI Style Source: Symposium Design Language
+# Luak UI Style Source: Symposium Design Language
 
 This document captures the Symposium-aligned design tokens and conventions
-used by Crucible's UI. All operator-facing projects should converge on
+used by Luak's UI. All operator-facing projects should converge on
 these values for a consistent visual language.
 
 ## Colors

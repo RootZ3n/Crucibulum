@@ -1,5 +1,5 @@
 /**
- * Crucible — Adapter Tests
+ * Luak — Adapter Tests
  * Covers: mock adapter contract, OllamaAdapter construction.
  */
 

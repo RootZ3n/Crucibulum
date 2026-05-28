@@ -1,5 +1,5 @@
 /**
- * Crucible — Rate-limit end-to-end shape regression
+ * Luak — Rate-limit end-to-end shape regression
  *
  * Pins:
  *  - makeHttpProviderError parses Retry-After and surfaces it on the

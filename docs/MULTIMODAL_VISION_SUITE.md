@@ -333,7 +333,7 @@ tier are evaluated separately by the doctrine.
   `reports/capability-expansion/vision-phase13a-mimo-v25-replacement/`.
 
 **Observed cost.** Average **$0.000169 per 5-test Vision run** on
-Crucible Phase 13-A spend. Cost-at-scale estimates (Crucible spend
+Luak Phase 13-A spend. Cost-at-scale estimates (Luak spend
 only, not guaranteed provider pricing): ~$0.017 / 100 runs ·
 ~$0.169 / 1,000 runs · ~$1.69 / 10,000 runs. About **9× cheaper**
 than v2-omni at the same stability level on this 5-test profile.
@@ -464,7 +464,7 @@ The suite serves three audiences:
 ## What this suite does NOT measure
 
 - Photo aesthetics, art critique, or generative image quality
-  (Crucible doesn't generate images).
+  (Luak doesn't generate images).
 - Video / motion understanding (out of scope for this suite).
 - Audio transcription / multi-modal beyond image-input (the existing
   `supportsAudio` flag exists for future expansion but no suite yet).
@@ -487,7 +487,7 @@ The suite serves three audiences:
     "mime": "image/png",
     "width": 600,
     "height": 800,
-    "license": "CC0 / synthetic / Crucible-owned",
+    "license": "CC0 / synthetic / Luak-owned",
     "notes": "Hand-typed mock receipt; no real PII"
   },
   "prompt": "Read the total amount on this receipt. Reply with ONLY the dollar amount.",
@@ -599,7 +599,7 @@ Vision-Certified requires:
 - Every image fixture has a recorded sha256 and a stable
   license/origin
 - No private / sensitive images committed to the repo — only
-  synthetic / public / Crucible-owned fixtures
+  synthetic / public / Luak-owned fixtures
 - Re-running the same bundle does not flap on infrastructure
   artifacts (image-encoding format changes, etc.)
 

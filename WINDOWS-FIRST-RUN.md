@@ -1,4 +1,4 @@
-# Crucible Windows First Run
+# Luak Windows First Run
 
 This RC uses a portable source zip or checkout. There is no MSI, native executable, Docker image, or Electron/Tauri installer.
 
@@ -10,7 +10,7 @@ Build a Windows RC zip from a checkout:
 powershell -ExecutionPolicy Bypass -File scripts\package-windows-zip.ps1
 ```
 
-The zip is written to `release\crucible-0.1.0-windows-rc.zip`. A tester can also clone the repo directly and run the same commands below.
+The zip is written to `release\luak-0.1.0-windows-rc.zip`. A tester can also clone the repo directly and run the same commands below.
 
 ## Prerequisites
 
@@ -34,7 +34,7 @@ Copy-Item .env.example .env
 For publishable local evidence, set a signing key before `npm run serve`:
 
 ```powershell
-$env:CRUCIBLE_HMAC_KEY = -join ((1..64) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
+$env:LUAK_HMAC_KEY = -join ((1..64) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
 ```
 
 ## Exact test commands
@@ -63,14 +63,14 @@ npm run doctor
 `npm run smoke` should include:
 
 ```text
-Crucible smoke test: deterministic offline mock run.
+Luak smoke test: deterministic offline mock run.
 Smoke passed.
 ```
 
 `npm run serve` should print:
 
 ```text
-Crucible server running on http://127.0.0.1:18795
+Luak server running on http://127.0.0.1:18795
 UI: http://127.0.0.1:18795/
 ```
 

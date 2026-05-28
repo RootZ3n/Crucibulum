@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Crucible test-validity audit
+ * Luak test-validity audit
  * =============================
  *
  * Scans run bundles + task manifests and produces a "suspect failures"
@@ -47,7 +47,7 @@ const arg = (name, def = null) => {
 };
 
 const HELP = `
-test-validity-audit — Crucible suspect-failure extractor
+test-validity-audit — Luak suspect-failure extractor
 
   --recent-failures        Scan the most recent failed/needs-review bundles.
   --all-strict             Scan every bundle whose scorer is regex/numeric/exact.

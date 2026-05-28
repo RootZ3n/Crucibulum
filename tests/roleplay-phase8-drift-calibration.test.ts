@@ -1,5 +1,5 @@
 /**
- * Crucible — Roleplay Phase 8: drift scoring calibration (offline).
+ * Luak — Roleplay Phase 8: drift scoring calibration (offline).
  *
  * 15 deterministic source/contract assertions covering Phase 8's
  * scope: classifyPersonaVoice helper + 6 voice classes + non-refusal

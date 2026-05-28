@@ -1,5 +1,5 @@
 /**
- * Crucible — Leaderboard & Scores Routes
+ * Luak — Leaderboard & Scores Routes
  * Score queries, leaderboard, synthesis, verum ingest.
  */
 

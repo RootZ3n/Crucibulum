@@ -1,5 +1,5 @@
 /**
- * Crucible — Roleplay Phase 1: live two-test smoke (offline).
+ * Luak — Roleplay Phase 1: live two-test smoke (offline).
  *
  * 15 deterministic source/contract assertions covering Phase 1's
  * scope: two roleplay POC tests live with conservative deterministic

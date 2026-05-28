@@ -1,6 +1,6 @@
 /**
- * Crucible CLI — doctor command
- * crucible doctor
+ * Luak CLI — doctor command
+ * luak doctor
  * Reports provider availability, configuration status, and blockers.
  */
 

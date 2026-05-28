@@ -1,5 +1,5 @@
 /**
- * Crucible — Phase 5 numeric_fact_match scorer pins
+ * Luak — Phase 5 numeric_fact_match scorer pins
  *
  * Recalibration of vision-object-count-001's scoring contract.
  * The previous regex_match (maxLength:12) was the wrong tool for a

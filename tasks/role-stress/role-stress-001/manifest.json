@@ -142,7 +142,7 @@
     ],
     "diagnostic_purpose": "Tests format discipline under rapid-fire volume — 10 consecutive single-word classifications to detect drift or elaboration",
     "benchmark_provenance": {
-      "source": "Crucible synthetic conversational task",
+      "source": "Luak synthetic conversational task",
       "public_status": "public",
       "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",

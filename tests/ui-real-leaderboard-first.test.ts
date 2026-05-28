@@ -1,5 +1,5 @@
 /**
- * Crucible — REAL leaderboard above run controls
+ * Luak — REAL leaderboard above run controls
  *
  * The previous teaser-only 3-up "Ranking Deck" let the actual full
  * leaderboard stay buried inside the arena (Ranked Model Comparison
@@ -24,7 +24,7 @@ const ROOT = process.cwd();
 const HTML = readFileSync(join(ROOT, 'ui', 'index.html'), 'utf-8');
 const CSS = readFileSync(join(ROOT, 'ui', 'crucibulum.css'), 'utf-8');
 
-describe('Crucible REAL leaderboard above run controls', () => {
+describe('Luak REAL leaderboard above run controls', () => {
   it('R1 · the full leaderboard component is mounted above Active Arena', () => {
     // Anchor the order check to the render() template literal — the
     // arena-shell class string also appears in the

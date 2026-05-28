@@ -161,7 +161,7 @@
     ],
     "diagnostic_purpose": "Tests code generation, functional refactoring, debugging, and tradeoff analysis with verifiable outputs",
     "benchmark_provenance": {
-      "source": "Crucible synthetic conversational task",
+      "source": "Luak synthetic conversational task",
       "public_status": "public",
       "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",

@@ -1,6 +1,6 @@
 /**
  * UI HEALTH / RATE-LIMIT REGRESSION — pins the 2026-05-24 broad browser
- * sweep finding where /api/health returned 429 (Crucible's own RATE_READ),
+ * sweep finding where /api/health returned 429 (Luak's own RATE_READ),
  * the UI silently flipped to "offline", every cloud preset was marked
  * `down`, and `gateSelectedModels()` blocked dispatch with NO operator-
  * visible signal. The remaining lanes silently no-op'd.

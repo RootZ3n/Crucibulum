@@ -1,5 +1,5 @@
 /**
- * Crucible — Luna-style command deck UI structure pins
+ * Luak — Luna-style command deck UI structure pins
  *
  * Section J of the redesign brief requires 12 specific structural
  * assertions on the new "Evaluation Arena / Judge Deck" shell. This file
@@ -8,7 +8,7 @@
  * of silently shipping a half-redesigned UI.
  *
  * The assertions look at the inline render(...) script in ui/index.html
- * because Crucible's UI is server-rendered into the page from JS strings
+ * because Luak's UI is server-rendered into the page from JS strings
  * (no JSDOM, no real browser in CI). The class names checked here are
  * stable contract names — render helpers MUST keep them in their output.
  */
@@ -95,7 +95,7 @@ describe('Luna command-deck UI structure', () => {
     const hasHeaderMascot = HTML.includes('cmd-rail-mascot') && CSS.includes('.cmd-rail-mascot');
     const hasFooterMascot = HTML.includes('footer-squid') && CSS.includes('.footer-squid');
     assert.ok(hasHeaderMascot || hasFooterMascot, 'no small mascot found in header OR footer');
-    assert.ok(HTML.includes('Crucible Evaluation Lattice'), 'missing footer lattice seal text');
+    assert.ok(HTML.includes('Luak Evaluation Lattice'), 'missing footer lattice seal text');
     // Whichever mascot is present must be small (<= 64 px).
     const mCheck = (selector: string) => {
       const m = CSS.match(new RegExp(`${selector}\\{[^}]*width:\\s*(\\d+)px`));

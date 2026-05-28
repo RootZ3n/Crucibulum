@@ -1,5 +1,5 @@
 /**
- * Crucible — Vision routes
+ * Luak — Vision routes
  *
  * Surface the latest vision smoke report (path-proven, experimental).
  * Backed by reports/capability-expansion/vision-smoke/latest.json,

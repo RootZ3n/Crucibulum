@@ -1,6 +1,6 @@
 # Test validity policy
 
-Crucible's leaderboard is only as honest as the tests behind it. This
+Luak's leaderboard is only as honest as the tests behind it. This
 document defines:
 
 1. How a model failure is audited.

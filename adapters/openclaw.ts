@@ -1,8 +1,8 @@
 /**
- * Crucible — OpenClaw Adapter
+ * Luak — OpenClaw Adapter
  * Invokes OpenClaw as a subprocess in the workspace.
  * OpenClaw operates autonomously — reads files, runs commands, writes fixes.
- * Crucible observes its actions via stdout/file system monitoring.
+ * Luak observes its actions via stdout/file system monitoring.
  */
 
 import { spawn } from "node:child_process";

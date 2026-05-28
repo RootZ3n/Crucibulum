@@ -1,8 +1,8 @@
-# Continue Without Claude — Crucible
+# Continue Without Claude — Luak
 
 ## What this repo does
 
-Crucible is the model evaluation harness. Runs structured tests against
+Luak is the model evaluation harness. Runs structured tests against
 LLM models, compares outputs, scores accuracy, generates reports.
 
 ## Common commands
@@ -26,7 +26,7 @@ npm run dev       # tsc --watch
 - `src/engine/` — evaluation engine core
 
 ## Top 5 future tasks
-1. Add systemd unit for crucible
+1. Add systemd unit for luak
 2. Commit or document 35 uncommitted files
 3. Add startup health endpoint
 4. Document evaluation template format

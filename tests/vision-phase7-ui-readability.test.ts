@@ -1,5 +1,5 @@
 /**
- * Crucible — Vision Phase 7: UI readability tests (offline)
+ * Luak — Vision Phase 7: UI readability tests (offline)
  *
  * 14 deterministic source-level assertions that the Vision tab
  * surfaces:

@@ -1,5 +1,5 @@
 /**
- * Crucible — MiniMax routing / clarity regression tests
+ * Luak — MiniMax routing / clarity regression tests
  *
  * Pins three load-bearing facts the operator needs:
  *
@@ -9,7 +9,7 @@
  *    ChatCompletion v2 catalog and pin "no placeholder M2.7* survives".
  *
  * 2. MiniMax models in the curated list route DIRECTLY through the minimax
- *    adapter. Crucible is a standalone product and must not silently depend
+ *    adapter. Luak is a standalone product and must not silently depend
  *    on the Squidley gateway for MiniMax runs.
  *
  * 3. When the UI dispatches a curated MiniMax model, the provider hint stays
@@ -95,7 +95,7 @@ describe("MiniMax routing: direct path is the default", () => {
     const ui = loadUi();
     const minimaxGroup = ui.DEFAULT_MODEL_GROUPS.find((g) => g.key === "minimax");
     assert.ok(minimaxGroup);
-    assert.equal(minimaxGroup!.adapterId, "minimax", "MiniMax in Crucible must route directly, not through Squidley");
+    assert.equal(minimaxGroup!.adapterId, "minimax", "MiniMax in Luak must route directly, not through Squidley");
     assert.equal(minimaxGroup!.providerId, "minimax", "provider hint must stay minimax for the direct adapter");
   });
 

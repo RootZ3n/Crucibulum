@@ -125,7 +125,7 @@ describe("evaluation contracts", () => {
     const summary = summarizeBundle(
       bundle,
       3,
-      { profile_id: "crucible:model-1", benchmark_score: 71, benchmark_label: "Crucible April" },
+      { profile_id: "crucible:model-1", benchmark_score: 71, benchmark_label: "Luak April" },
       [bundle, repeatPeer],
     );
     assert.equal(summary.schema, "crucibulum.evaluation.summary.v1");
@@ -244,18 +244,18 @@ describe("evaluation contracts", () => {
     assert.equal(runSet.reliability.assessment, "mixed");
   });
 
-  it("stores and reloads crucible validation links", () => {
+  it("stores and reloads luak validation links", () => {
     const dir = mkdtempSync(join(tmpdir(), "crucibulum-links-"));
     process.env["CRUCIBULUM_LINKS_DIR"] = dir;
     writeCrucibleLink("run_test_contracts", {
       profile_id: "crucible:model-1",
       benchmark_score: 88,
-      benchmark_label: "Crucible local benchmark",
+      benchmark_label: "Luak local benchmark",
     });
     assert.deepEqual(readCrucibleLink("run_test_contracts"), {
       profile_id: "crucible:model-1",
       benchmark_score: 88,
-      benchmark_label: "Crucible local benchmark",
+      benchmark_label: "Luak local benchmark",
     });
     delete process.env["CRUCIBULUM_LINKS_DIR"];
   });

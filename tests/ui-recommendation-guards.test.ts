@@ -1,5 +1,5 @@
 /**
- * Crucible — UI recommendation card + honesty guard regression suite.
+ * Luak — UI recommendation card + honesty guard regression suite.
  *
  * The trust audit hardened the recommendation cards so a model that did
  * not actually demonstrate capability can never appear as Best Overall,

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Crucible — Roleplay stability runner (Phase 7)
+ * Luak — Roleplay stability runner (Phase 7)
  *
  * Runs the same 7-test Roleplay POC profile N times against one
  * text-capable provider/model under a hard cost cap, then
@@ -90,7 +90,7 @@ const arg = (n, def = null) => {
 
 if (flag("-h") || flag("--help")) {
   console.log(`
-roleplay-stability — Crucible Phase 7 N-run stability profile
+roleplay-stability — Luak Phase 7 N-run stability profile
 
   --provider <id>          openrouter | openai (default: openrouter)
   --model <id>             exact model id (required)

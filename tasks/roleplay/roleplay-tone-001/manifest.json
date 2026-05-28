@@ -53,7 +53,7 @@
     "tags": ["roleplay", "tone", "experimental"],
     "diagnostic_purpose": "POC for tone_control rubric — model must keep cozy/whimsical voice even when a corporate-jargon question is injected mid-scene.",
     "benchmark_provenance": {
-      "source": "Crucible synthetic tone scenario",
+      "source": "Luak synthetic tone scenario",
       "public_status": "public",
       "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",

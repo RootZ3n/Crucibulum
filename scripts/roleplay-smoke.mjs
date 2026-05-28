@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Crucible — Roleplay smoke runner (Phase 1: two POC tests by default)
+ * Luak — Roleplay smoke runner (Phase 1: two POC tests by default)
  *
  * Runs the experimental Roleplay POC tests against one text-capable
  * provider/model under a hard cost cap. Roleplay stays Experimental
@@ -74,7 +74,7 @@ const arg = (n, def = null) => {
 
 if (flag("-h") || flag("--help")) {
   console.log(`
-roleplay-smoke — Crucible Phase 1 roleplay POC (two tests by default)
+roleplay-smoke — Luak Phase 1 roleplay POC (two tests by default)
 
   --provider <id>          openrouter | openai (default: openrouter)
   --model <id>             exact model id (required)

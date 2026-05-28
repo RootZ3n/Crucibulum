@@ -1,10 +1,10 @@
 /**
- * Crucible — Eligibility Synthesis
+ * Luak — Eligibility Synthesis
  *
  * Deterministic, transparent capability eligibility from raw scores.
  * No hidden heuristics. Every decision is explained.
  *
- * This is a standalone Crucible feature. It translates benchmark evidence
+ * This is a standalone Luak feature. It translates benchmark evidence
  * into capability flags that any downstream consumer can use for routing,
  * auditing, or display. The output format is generic JSON — no assumptions
  * about any particular consumer.

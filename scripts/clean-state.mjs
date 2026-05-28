@@ -1,7 +1,7 @@
 /**
- * Crucible — safely clear local-only state.
+ * Luak — safely clear local-only state.
  *
- * Removes only the directories Crucible writes to during local runs:
+ * Removes only the directories Luak writes to during local runs:
  *   runs/   evidence bundles and harness reports
  *   state/  auth tokens, sessions, provider registry data
  *
@@ -17,7 +17,7 @@ const targets = ["runs", "state"];
 const confirm = process.argv.includes("--confirm");
 
 if (!confirm) {
-  console.log("Crucible clean:state — preview mode (no deletion).\n");
+  console.log("Luak clean:state — preview mode (no deletion).\n");
   console.log("This will remove the following local directories:");
   for (const t of targets) console.log(`  ${join(root, t)}`);
   console.log("\nThis deletes generated evidence bundles, auth tokens, and the");

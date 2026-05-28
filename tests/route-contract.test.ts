@@ -1,7 +1,7 @@
 /**
- * Crucible — HTTP route contract tests
+ * Luak — HTTP route contract tests
  *
- * Stands up the real Crucible app via createApp() bound to an ephemeral
+ * Stands up the real Luak app via createApp() bound to an ephemeral
  * port, then hits endpoints with fetch. Covers the public API contract the
  * UI and external consumers rely on, and pins the runtime validation on
  * malformed payloads.
@@ -49,7 +49,7 @@ function makeBundle(overrides: { taskId?: string; family?: string; model?: strin
       scoring: { weights: { correctness: 1, regression: 0, integrity: 0, efficiency: 0 }, pass_threshold: 0.5 },
       verification: {},
       task: { title: "t", description: "d" },
-      metadata: { author: "crucible-test", created: "2026-04-01", tags: [], diagnostic_purpose: "test", benchmark_provenance: "route-contract" },
+      metadata: { author: "luak-test", created: "2026-04-01", tags: [], diagnostic_purpose: "test", benchmark_provenance: "route-contract" },
     } as never,
     oracle: {
       checks: { correctness: [], regression: [], integrity: [], decoys: [], anti_cheat: { forbidden_code_patterns: [] } },

@@ -1,5 +1,5 @@
 /**
- * Crucible CLI — replay command
+ * Luak CLI — replay command
  * Replays a completed run, showing the full evidence trail.
  */
 
@@ -11,7 +11,7 @@ import type { EvidenceBundle, TimelineEvent } from "../../adapters/base.js";
 export async function replayCommand(args: string[]): Promise<void> {
   const bundleId = args[0];
   if (!bundleId) {
-    console.error("Usage: crucible replay <run_id>");
+    console.error("Usage: luak replay <run_id>");
     process.exit(3);
   }
 

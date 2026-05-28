@@ -1,5 +1,5 @@
 /**
- * Crucible — Cost Estimation
+ * Luak — Cost Estimation
  */
 
 const COST_PER_M: Record<string, { input: number; output: number }> = {

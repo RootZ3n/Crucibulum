@@ -1,5 +1,5 @@
 /**
- * Crucible — Evidence Bundle Builder
+ * Luak — Evidence Bundle Builder
  * Builds, signs (SHA256), and stores immutable evidence bundles.
  *
  * Integrity model:
@@ -90,7 +90,7 @@ export interface BundleVerificationResult {
 }
 
 function hmacKey(): string | null {
-  const key = process.env["CRUCIBLE_HMAC_KEY"];
+  const key = process.env["LUAK_HMAC_KEY"] ?? process.env["CRUCIBLE_HMAC_KEY"];
   return key && key.length > 0 ? key : null;
 }
 

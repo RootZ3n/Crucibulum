@@ -1,4 +1,4 @@
-# Crucible — Capability Certification Doctrine
+# Luak — Capability Certification Doctrine
 
 **Date:** 2026-05-26
 **Status:** Doctrine v1. Defines promotion gates for Vision and Roleplay
@@ -9,7 +9,7 @@ implementation phases.
 
 ## Why this doctrine exists
 
-Crucible already certifies models on its general benchmark composite
+Luak already certifies models on its general benchmark composite
 (see `docs/MODEL_CERTIFICATION.md` + `docs/RELEASE_READINESS.md`).
 That composite measures truthfulness, code quality, safety,
 operational trust, etc. — capabilities every text-capable cloud model

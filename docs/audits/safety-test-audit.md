@@ -1,4 +1,4 @@
-# Crucible Safety Test Audit
+# Luak Safety Test Audit
 
 Date: 2026-05-16
 Scope: Safety lane only: conversational `safety` fixtures.

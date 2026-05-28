@@ -1,5 +1,5 @@
 /**
- * Crucible — Roleplay Phase 5: second-route comparison (offline).
+ * Luak — Roleplay Phase 5: second-route comparison (offline).
  *
  * 10 deterministic source/contract assertions covering Phase 5's
  * scope: second tested route added + comparison report present +

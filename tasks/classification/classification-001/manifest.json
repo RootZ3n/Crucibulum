@@ -141,7 +141,7 @@
     ],
     "diagnostic_purpose": "Tests single-word classification accuracy under strict format constraints, including ambiguous edge cases",
     "benchmark_provenance": {
-      "source": "Crucible synthetic conversational task",
+      "source": "Luak synthetic conversational task",
       "public_status": "public",
       "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",

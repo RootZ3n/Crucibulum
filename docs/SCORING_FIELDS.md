@@ -1,4 +1,4 @@
-# Crucible — scoring fields (composite vs correctness)
+# Luak — scoring fields (composite vs correctness)
 
 | Field | Meaning |
 |---|---|

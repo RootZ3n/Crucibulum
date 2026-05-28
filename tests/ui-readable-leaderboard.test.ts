@@ -1,7 +1,7 @@
 /**
- * Crucible — readable-leaderboard pins
+ * Luak — readable-leaderboard pins
  *
- * Crucible IS a model-ranking product. The leaderboard rows must show
+ * Luak IS a model-ranking product. The leaderboard rows must show
  * the full model id (or wrap it) — never collapse `deepseek/deepseek-
  * v4-pro` into `deepseek/de…`. These pins enforce minimum column
  * widths, kill single-line ellipsis on desktop, and require the full
@@ -34,7 +34,7 @@ function hasDesktopMinmaxFloor(selector: string, minPx: number): boolean {
   return false;
 }
 
-describe('Crucible readable leaderboard', () => {
+describe('Luak readable leaderboard', () => {
   it('R1 · ranking deck spans full content width (no narrow wrapper)', () => {
     // The deck-ranking-zone sits outside <main class="deck-grid"> and
     // inherits the wide .app-shell.deck-shell width. Confirm the deck

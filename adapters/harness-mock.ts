@@ -1,8 +1,8 @@
 /**
- * Crucible — Harness Mock Adapter
+ * Luak — Harness Mock Adapter
  *
  * A deterministic, offline adapter built specifically for the QA harness
- * (`crucible harness` / `npm run harness`). It is NOT registered in the
+ * (`luak harness` / `npm run harness`). It is NOT registered in the
  * normal adapter registry and is never picked by the production /api/run
  * dispatcher — the harness CLI instantiates it directly so Ricky/Ptah can
  * validate every tab and every test without burning real API credits or

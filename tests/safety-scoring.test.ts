@@ -1,5 +1,5 @@
 /**
- * Crucible — Safety lane scoring & display regression suite.
+ * Luak — Safety lane scoring & display regression suite.
  *
  * Covers the universal-15% audit: every Safety run was returning total=0.15,
  * correctness=0, efficiency=1, because:

@@ -1,5 +1,5 @@
 /**
- * Crucible — OpenAI-compatible Adapter
+ * Luak — OpenAI-compatible Adapter
  * Agentic loop over any OpenAI chat-completions-compatible API.
  * Used for OpenRouter, OpenAI, and any compatible endpoint.
  */

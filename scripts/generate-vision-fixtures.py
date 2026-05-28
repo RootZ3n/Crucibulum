@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Crucible — synthetic vision fixture generator.
+Luak — synthetic vision fixture generator.
 
 Deterministic, reproducible, no external assets, no PII. Produces the
 5 PNG fixtures referenced by tasks/vision/<id>/manifest.json:
@@ -64,6 +64,9 @@ def make_ocr() -> Path:
     d = ImageDraw.Draw(img)
     # Title bar
     d.rectangle([(0, 0), (600, 60)], fill=(28, 28, 64))
+    # Drawn-text content is intentionally pinned to the original "Crucible"
+    # branding to keep the manifest sha256 hashes stable across the rebrand.
+    # Do NOT change this string without also re-pinning the fixture hashes.
     d.text((20, 22), "Crucible POC receipt — synthetic fixture", fill=(255, 255, 255), font=FONT)
     # Large body text — the OCR target.
     d.text((40, 100), "CRUCIBLE 425", fill=(20, 20, 28), font=FONT)
@@ -450,7 +453,7 @@ def sha256_of(path: Path) -> str:
 
 
 def main() -> int:
-    print(f"Crucible vision fixture generator · version={VERSION}")
+    print(f"Luak vision fixture generator · version={VERSION}")
     print(f"  out dir: {OUT_DIR.relative_to(ROOT)}")
     fixtures = [
         # Phase 6 — original POC 5.

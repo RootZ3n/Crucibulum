@@ -1,5 +1,5 @@
 /**
- * Crucible — Roleplay routes
+ * Luak — Roleplay routes
  *
  * Surface the latest roleplay smoke report (path-proven, experimental).
  * Backed by reports/capability-expansion/roleplay-smoke/latest.json,

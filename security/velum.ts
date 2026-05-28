@@ -1,5 +1,5 @@
 /**
- * Crucible — Security: Injection Scanner + Anti-Cheat
+ * Luak — Security: Injection Scanner + Anti-Cheat
  * Velum-grade prompt injection detection.
  *
  * Patterns are loaded from security/injection-patterns.json at startup.
@@ -55,7 +55,7 @@ const INJECTION_PATTERNS: RegExp[] = [
   /disregard\s+(all\s+)?(prior|previous)/i,
   /new\s+instructions?\s*:/i,
   /override\s+(system|safety)/i,
-  // Crucible-specific
+  // Luak-specific
   /reveal\s+(the\s+)?oracle/i,
   /show\s+(me\s+)?(the\s+)?hidden\s+tests/i,
   /what\s+are\s+the\s+scoring\s+weights/i,

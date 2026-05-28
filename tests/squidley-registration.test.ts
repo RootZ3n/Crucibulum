@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 describe("squidley crucibulum tool registration", () => {
-  it("documents the local Crucible tool contract without reading the Squidley repo", () => {
+  it("documents the local Luak tool contract without reading the Squidley repo", () => {
     const toolIds = [
       "crucibulum.adapters",
       "crucibulum.tasks",

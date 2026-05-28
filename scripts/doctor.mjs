@@ -1,5 +1,5 @@
 /**
- * Crucible — environment doctor.
+ * Luak — environment doctor.
  *
  * Read-only beginner diagnostic. Reports node/npm versions, repo state,
  * required directories, env keys, and whether the build artifacts exist.
@@ -39,7 +39,7 @@ function readVersion(cmd, args) {
   return null;
 }
 
-console.log("Crucible doctor — environment audit (read-only).\n");
+console.log("Luak doctor — environment audit (read-only).\n");
 
 section("Runtime");
 const nodeMajor = parseInt(process.versions.node.split(".")[0], 10);
@@ -60,7 +60,7 @@ ok(`Platform: ${process.platform} (${process.arch})`);
 section("Repository");
 const pkgPath = join(root, "package.json");
 if (existsSync(pkgPath)) ok("package.json present");
-else fail("package.json missing — are you in the Crucible repo?");
+else fail("package.json missing — are you in the Luak repo?");
 
 const nodeModules = join(root, "node_modules");
 if (existsSync(nodeModules)) ok("node_modules present (dependencies installed)");
@@ -91,18 +91,23 @@ for (const dir of ["runs", "state"]) {
 
 section("Environment");
 const envKeys = [
-  ["CRUCIBLE_HOST", "default 127.0.0.1"],
-  ["CRUCIBLE_PORT", "default 18795"],
-  ["CRUCIBLE_HMAC_KEY", "required for verified rankings"],
+  ["LUAK_HOST", "CRUCIBLE_HOST", "default 127.0.0.1"],
+  ["LUAK_PORT", "CRUCIBLE_PORT", "default 18795"],
+  ["LUAK_HMAC_KEY", "CRUCIBLE_HMAC_KEY", "required for verified rankings"],
 ];
-for (const [key, hint] of envKeys) {
-  const value = process.env[key];
+for (const [primary, legacy, hint] of envKeys) {
+  const value = process.env[primary] ?? process.env[legacy];
+  const usedKey = process.env[primary] ? primary : (process.env[legacy] ? legacy : primary);
   if (value && value.length > 0) {
-    ok(`${key} is set (${hint})`);
-  } else if (key === "CRUCIBLE_HMAC_KEY") {
-    warn(`${key} is not set — bundles will not be eligible for public ranking (${hint})`);
+    if (usedKey === legacy) {
+      warn(`${legacy} is set (deprecated — rename to ${primary}; legacy still honored) (${hint})`);
+    } else {
+      ok(`${primary} is set (${hint})`);
+    }
+  } else if (primary === "LUAK_HMAC_KEY") {
+    warn(`${primary} is not set — bundles will not be eligible for public ranking (${hint})`);
   } else {
-    ok(`${key} is unset (${hint})`);
+    ok(`${primary} is unset (${hint})`);
   }
 }
 
@@ -119,7 +124,7 @@ if (problems > 0) {
   console.log(`Doctor: ${problems} blocker(s), ${warnings} warning(s).`);
   process.exit(1);
 } else if (warnings > 0) {
-  console.log(`Doctor: 0 blockers, ${warnings} warning(s). Crucible should run; see warnings above.`);
+  console.log(`Doctor: 0 blockers, ${warnings} warning(s). Luak should run; see warnings above.`);
   process.exit(0);
 } else {
   console.log("Doctor: all checks passed.");

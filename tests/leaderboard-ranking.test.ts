@@ -1,5 +1,5 @@
 /**
- * Crucible — Leaderboard Ranking Tests
+ * Luak — Leaderboard Ranking Tests
  *
  * Reliability-aware ranking + reporting fields. Originally written against
  * vitest; ported to node:test so the project's `node --test` runner picks

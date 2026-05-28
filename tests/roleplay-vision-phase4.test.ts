@@ -1,5 +1,5 @@
 /**
- * Crucible — Roleplay/Vision Phase 4 pins
+ * Luak — Roleplay/Vision Phase 4 pins
  *
  *   P1  · focused-run inspector renders skip cards distinctly from fail cards
  *   P2  · skip cards say "Skipped, not failed"

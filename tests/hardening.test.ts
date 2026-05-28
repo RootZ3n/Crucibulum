@@ -1,5 +1,5 @@
 /**
- * Crucible — Hardening regression tests
+ * Luak — Hardening regression tests
  * Covers the pre-production hardening pass fixes:
  * - safe bundle-id validation (path traversal defense)
  * - bounded JSON body parsing

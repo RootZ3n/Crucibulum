@@ -1,4 +1,4 @@
-# Crucible Benchmark Test Audit
+# Luak Benchmark Test Audit
 
 Date: 2026-05-16
 Scope: benchmark lane only: `spec_discipline`, `truthfulness`, and `cost_efficiency`.

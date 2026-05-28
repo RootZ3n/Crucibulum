@@ -13,7 +13,7 @@
     "mime": "image/png",
     "width": 640,
     "height": 360,
-    "license": "Crucible-owned synthetic chart; rendered by scripts/generate-vision-fixtures.py",
+    "license": "Luak-owned synthetic chart; rendered by scripts/generate-vision-fixtures.py",
     "notes": "Five bars labelled Mon..Fri (35/52/87/41/60). Peak (87, red) on Wednesday. Generator version 2026-05-25.v1."
   },
   "questions": [
@@ -40,7 +40,7 @@
     "tags": ["vision", "chart", "experimental"],
     "diagnostic_purpose": "POC for vision_chart_facts using numeric_fact_match. Pass if the response contains the peak value 87 AND mentions Wednesday (substring 'wed'). Accepts 'Wednesday at 87', 'Wed 87', 'The peak is Wednesday with 87.' etc.",
     "benchmark_provenance": {
-      "source": "Crucible synthetic chart",
+      "source": "Luak synthetic chart",
       "public_status": "public",
       "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",

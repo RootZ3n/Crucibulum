@@ -1,5 +1,5 @@
 /**
- * Crucible — Roleplay Phase 6: refusal-voice scoring calibration (offline).
+ * Luak — Roleplay Phase 6: refusal-voice scoring calibration (offline).
  *
  * 14 deterministic source/contract assertions covering Phase 6's
  * scope: classifyRoleplayRefusalIntent helper + 7 intent classes +

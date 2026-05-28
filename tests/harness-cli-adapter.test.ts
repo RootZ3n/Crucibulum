@@ -1,5 +1,5 @@
 /**
- * Crucible — harness CLI adapter selection regression tests.
+ * Luak — harness CLI adapter selection regression tests.
  *
  * Pins the user-visible contract:
  *

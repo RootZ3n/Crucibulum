@@ -1,5 +1,5 @@
 /**
- * Crucible — Vision Phase 6: all-5 POC smoke (offline assertions)
+ * Luak — Vision Phase 6: all-5 POC smoke (offline assertions)
  *
  * 14 deterministic tests covering the Phase-6 scope of work:
  *   - new uncertainty_honesty scorer (recognition + classification)
@@ -65,7 +65,7 @@ describe('Vision Phase 6 · all-5 POC smoke (offline)', () => {
   });
 
   it('P5 · uncertainty_honesty FAILS when response asserts content with no uncertainty hedge', () => {
-    const r = scoreConversationalQuestion(makeUncertaintyQ(), 'The image shows a sign with the text Crucible 425.');
+    const r = scoreConversationalQuestion(makeUncertaintyQ(), 'The image shows a sign with the text Luak 425.');
     assert.equal(r.passed, false);
     assert.match(String(r.failure_reason ?? ''), /without admitting uncertainty/);
   });

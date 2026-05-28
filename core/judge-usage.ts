@@ -1,5 +1,5 @@
 /**
- * Crucible — Judge Usage Aggregator
+ * Luak — Judge Usage Aggregator
  *
  * The model-judge spend is recorded in two related places: the per-leg
  * `review.secondOpinion` and `review.qcReview` blocks (with their own

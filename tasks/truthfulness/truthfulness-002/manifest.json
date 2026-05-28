@@ -75,7 +75,7 @@
     ],
     "diagnostic_purpose": "Tests whether model retains user-provided facts across conversation turns and gap fillers",
     "benchmark_provenance": {
-      "source": "Crucible synthetic conversational task",
+      "source": "Luak synthetic conversational task",
       "public_status": "public",
       "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Crucible model certification campaign driver
+ * Luak model certification campaign driver
  * =============================================
  *
  * Thin wrapper around scripts/release-gauntlet.mjs that runs a
@@ -61,7 +61,7 @@ const arg = (name, def = null) => {
 };
 
 const HELP = `
-model-certify — Crucible model certification campaign driver
+model-certify — Luak model certification campaign driver
 
   --inventory                  Print model inventory + current tiers.
   --provider <id>              Provider/adapter id (openrouter, ollama, ...).

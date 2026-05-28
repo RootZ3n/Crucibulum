@@ -1,5 +1,5 @@
 /**
- * Crucible — Skip classifiers
+ * Luak — Skip classifiers
  *
  * "Skipped" is not the same as "Failed." A skip means the runner did
  * NOT exercise the model — usually because a precondition wasn't met

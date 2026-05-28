@@ -1,5 +1,5 @@
 /**
- * Crucible — MiniMax-M2.7 calibration regression tests.
+ * Luak — MiniMax-M2.7 calibration regression tests.
  *
  * Locks the four classes of failures Ricky's MiniMax-M2.7 audit flagged:
  *

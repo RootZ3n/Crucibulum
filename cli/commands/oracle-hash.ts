@@ -4,7 +4,7 @@ export async function oracleHashCommand(args: string[]): Promise<void> {
   const write = args.includes("--write");
   const check = args.includes("--check");
   if (!write && !check && !args.includes("--dry-run")) {
-    console.error("Usage: crucible oracle-hash [--write|--check|--dry-run]");
+    console.error("Usage: luak oracle-hash [--write|--check|--dry-run]");
     process.exit(3);
   }
 

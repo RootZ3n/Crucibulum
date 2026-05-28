@@ -1,7 +1,7 @@
 /**
- * Crucible CLI — leaderboard command
- * crucible leaderboard show
- * crucible leaderboard submit [bundle_id]
+ * Luak CLI — leaderboard command
+ * luak leaderboard show
+ * luak leaderboard submit [bundle_id]
  */
 
 import { loadBundles, aggregateByModel, buildLeaderboardEntry, saveSubmission, loadSubmissions } from "../../leaderboard/aggregator.js";
@@ -44,7 +44,7 @@ export async function leaderboardCommand(args: string[]): Promise<void> {
     return;
   }
 
-  console.log("Usage: crucible leaderboard show | crucible leaderboard submit");
+  console.log("Usage: luak leaderboard show | luak leaderboard submit");
 }
 
 function printLeaderboard(entries: Array<{ agent: { model: string; adapter: string }; scores: { total: number }; tasks_attempted: number; tasks_passed: number; performance: { median_time_sec: number; total_cost_usd: number }; failure_taxonomy: Record<string, number> }>): void {

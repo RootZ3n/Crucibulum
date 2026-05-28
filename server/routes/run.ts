@@ -1,5 +1,5 @@
 /**
- * Crucible — Run Routes
+ * Luak — Run Routes
  * Single task execution, run queries, SSE streaming.
  */
 
@@ -803,7 +803,9 @@ export async function handleRunLive(req: IncomingMessage, res: ServerResponse, p
 }
 
 export async function handleCrucibleLink(req: IncomingMessage, res: ServerResponse, path: string): Promise<void> {
-  const id = path.slice("/api/runs/".length, -"/crucible-link".length);
+  // Accept both /crucible-link (legacy alias) and /luak-link (current).
+  const suffix = path.endsWith("/luak-link") ? "/luak-link" : "/crucible-link";
+  const id = path.slice("/api/runs/".length, -suffix.length);
   // Defense in depth: even though the ID must resolve to a real bundle on disk,
   // never write a file at a path derived from unsanitized user input.
   if (!isSafeId(id)) {
@@ -818,7 +820,7 @@ export async function handleCrucibleLink(req: IncomingMessage, res: ServerRespon
   const parsed = await parseJsonBody<unknown>(req);
   if (!parsed.ok) { sendJSON(res, 400, { error: parsed.error }); return; }
   const v = validateCrucibleLinkRequest(parsed.value);
-  if (!v.ok) { sendJSON(res, 400, { error: "Invalid crucible link", details: v.errors }); return; }
+  if (!v.ok) { sendJSON(res, 400, { error: "Invalid luak link", details: v.errors }); return; }
   const link: CrucibleLink = v.value;
   // Use the resolved bundle's canonical id, not the raw path segment, for the filename.
   writeCrucibleLink(bundle.bundle_id, link);

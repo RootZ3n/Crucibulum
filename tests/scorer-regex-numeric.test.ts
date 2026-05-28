@@ -1,5 +1,5 @@
 /**
- * Crucible — scorer correctness for regex_match numeric tests
+ * Luak — scorer correctness for regex_match numeric tests
  *
  * Pins the contract on `^\s*N\s*$`-style scorers used by the
  * token-efficiency family. After the 2026-05-25 audit (where an
@@ -60,7 +60,7 @@ function compilePattern(p: string): RegExp {
   return new RegExp(p);
 }
 
-describe('Crucible scorer: regex_match (numeric, token-efficiency)', () => {
+describe('Luak scorer: regex_match (numeric, token-efficiency)', () => {
   it('S1 · every TE1-QN manifest pattern accepts its canonical numeric answer', () => {
     for (const q of QUESTIONS) {
       const re = compilePattern(q.pattern);

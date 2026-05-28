@@ -121,7 +121,7 @@
     "tags": ["roleplay", "drift", "adversarial", "experimental"],
     "diagnostic_purpose": "Phase 2 adversarial stress: persona drift over 10 turns. Distractor turns (weather, anachronistic movie question, math problem) probe whether the model slips out of voice. Q09 is a continuity check (must recall own name). Conservative scorer; subjective voice quality stays out of scope.",
     "benchmark_provenance": {
-      "source": "Crucible synthetic roleplay scenario (Phase 2 adversarial)",
+      "source": "Luak synthetic roleplay scenario (Phase 2 adversarial)",
       "public_status": "public",
       "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",

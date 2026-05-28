@@ -1,5 +1,5 @@
 /**
- * Crucible — Scorer Registry
+ * Luak — Scorer Registry
  * Loads, validates, and manages custom scorer plugins from the /scorers/ directory.
  * Invalid plugins fail loudly at load time — no silent swallowing.
  */

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Crucible — Vision stability runner (Roadmap Phase B, 2026-05-26).
+ * Luak — Vision stability runner (Roadmap Phase B, 2026-05-26).
  *
  * Runs the 5-test Vision POC profile N times against one
  * image-capable provider/model under a hard cost cap, then
@@ -107,7 +107,7 @@ const arg = (n, def = null) => {
 
 if (flag("-h") || flag("--help")) {
   console.log(`
-vision-stability — Crucible Roadmap Phase B Vision N-run stability profile
+vision-stability — Luak Roadmap Phase B Vision N-run stability profile
 
   --provider <id>          openrouter | openai (default: openrouter)
   --model <id>             exact model id (required)

@@ -1,6 +1,6 @@
 /**
- * Crucible — Squidley Gateway Adapter
- * Routes all model calls through the Squidley API, giving Crucible access
+ * Luak — Squidley Gateway Adapter
+ * Routes all model calls through the Squidley API, giving Luak access
  * to every model Squidley knows: ModelStudio (qwen3.5-plus, qwen3.6-plus),
  * OpenRouter (MiMo, Trinity), Anthropic (Opus, Sonnet), MiniMax, Ollama, etc.
  *

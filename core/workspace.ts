@@ -1,5 +1,5 @@
 /**
- * Crucible — Workspace Manager
+ * Luak — Workspace Manager
  * Git-based isolation. Clone task repo, reset between runs, snapshot state.
  */
 

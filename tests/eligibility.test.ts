@@ -1,5 +1,5 @@
 /**
- * Crucible — Eligibility synthesis tests
+ * Luak — Eligibility synthesis tests
  *
  * Validates:
  * - Deterministic capability synthesis from scores

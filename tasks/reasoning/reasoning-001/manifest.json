@@ -140,7 +140,7 @@
     ],
     "diagnostic_purpose": "Tests verifiable reasoning across math, logic chains, code bug detection, architecture decisions, and logical fallacies",
     "benchmark_provenance": {
-      "source": "Crucible synthetic conversational task",
+      "source": "Luak synthetic conversational task",
       "public_status": "public",
       "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",

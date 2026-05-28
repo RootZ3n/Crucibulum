@@ -1,5 +1,5 @@
 /**
- * Crucible — SHA256 Hashing
+ * Luak — SHA256 Hashing
  */
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";

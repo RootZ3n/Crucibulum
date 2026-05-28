@@ -1,5 +1,5 @@
 /**
- * Crucible — MiniMax Direct Adapter
+ * Luak — MiniMax Direct Adapter
  * Direct MiniMax API integration via OpenAI-compatible endpoint.
  * Supported: MiniMax-M2.7, abab6.5s-chat
  *
@@ -26,7 +26,7 @@ import { log } from "../utils/logger.js";
 // MiniMax runs two distinct platforms with separate accounts and keys:
 //   • International: api.minimax.io — current global API host
 //   • Domestic (CN): api.minimax.chat
-// We default to the international endpoint for standalone Crucible users.
+// We default to the international endpoint for standalone Luak users.
 // Override via MINIMAX_BASE_URL or the Providers tab base URL.
 const MINIMAX_BASE_DEFAULT = "https://api.minimax.io/v1";
 const MODEL_TIMEOUT_MS = 300_000;

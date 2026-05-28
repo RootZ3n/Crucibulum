@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Crucible release-readiness gauntlet
+ * Luak release-readiness gauntlet
  * =====================================
  *
  * Drives the real HTTP server through a deterministic matrix of failure
@@ -61,7 +61,7 @@ const opts = {
 };
 
 if (argv.includes("--help") || argv.includes("-h")) {
-  console.log(`Crucible release-readiness gauntlet.
+  console.log(`Luak release-readiness gauntlet.
 
 Modes:
   --dry-run-inventory          Walk tasks/ and adapters and print the inventory only.
@@ -559,7 +559,7 @@ async function runMockGauntlet({ inventory }) {
 
     // Classification: PASS / FAIL_PRODUCT / FAIL_PROVIDER / FAIL_CONFIG.
     // Mock-only scenarios should never produce FAIL_PROVIDER; if our test
-    // adapter behaved as intended, any divergence is a Crucible bug.
+    // adapter behaved as intended, any divergence is a Luak bug.
     let classification = "PASS";
     const failures = [];
     if (sc.expect.terminal !== observed.terminal) { failures.push(`expected terminal '${sc.expect.terminal}', got '${observed.terminal}'`); }
@@ -917,9 +917,9 @@ async function runRealProviderGauntlet({ inventory, provider, model, family, max
         totalCostUsd += Number(u.estimated_cost_usd ?? 0);
       }
     } else if (terminal.event === "error") {
-      // Provider failure path. Classify as FAIL_PROVIDER when Crucible
+      // Provider failure path. Classify as FAIL_PROVIDER when Luak
       // handled it honestly (structured reason + bundle on disk); promote
-      // to FAIL_PRODUCT only when Crucible mishandled it.
+      // to FAIL_PRODUCT only when Luak mishandled it.
       const cls = terminal.data?.classification ?? null;
       const stage = terminal.data?.stage ?? null;
       const reasonText = terminal.data?.error ?? terminal.data?.reason ?? "";
@@ -980,7 +980,7 @@ function renderMetadataMarkdown(metadata) {
 
 function renderRealProviderMarkdown(real, metadata = null) {
   if (real.blocker) {
-    return `# Crucible Real-Provider Gauntlet
+    return `# Luak Real-Provider Gauntlet
 _Generated: ${new Date().toISOString()}_
 
 **Provider:** \`${real.provider}\` · **Model:** \`${real.model}\`
@@ -990,7 +990,7 @@ _Generated: ${new Date().toISOString()}_
   }
   const tally = real.results.reduce((acc, r) => { acc[r.classification] = (acc[r.classification] ?? 0) + 1; return acc; }, {});
   const productFails = (tally.FAIL_PRODUCT ?? 0) === 0;
-  const head = `# Crucible Real-Provider Gauntlet
+  const head = `# Luak Real-Provider Gauntlet
 _Generated: ${new Date().toISOString()}_
 
 **Provider:** \`${real.provider}\` · **Model:** \`${real.model}\` · **Profile:** \`${real.profile ?? "compact"}\`
@@ -1044,7 +1044,7 @@ function decide(report) {
 
 function renderMarkdown(report, decision, inventory, metadata = null) {
   const ts = new Date().toISOString();
-  const head = `# Crucible Release Gauntlet
+  const head = `# Luak Release Gauntlet
 _Generated: ${ts}_
 
 **Release-ready:** ${decision.ready ? "**YES** ✅" : "**NO** ❌"}
@@ -1101,7 +1101,7 @@ ${decision.ready ? "" : `\n**Blockers:**\n${decision.blockers.map((b) => `- ${b}
   const inventory = walkInventory();
 
   if (flags.dryRunInventory) {
-    console.log(`Crucible inventory:\n`);
+    console.log(`Luak inventory:\n`);
     console.log(`  families:            ${Object.keys(inventory.families).length}`);
     console.log(`  tasks total:         ${inventory.totalTasks}`);
     console.log(`  conversational:      ${inventory.totalConversational}`);

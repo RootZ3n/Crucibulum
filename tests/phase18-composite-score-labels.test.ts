@@ -1,5 +1,5 @@
 /**
- * Crucible — Phase 18: composite-vs-correctness label clarity tests.
+ * Luak — Phase 18: composite-vs-correctness label clarity tests.
  *
  * Born from the operator-facing audit risk that a blended
  * conversational composite score (e.g. 43 on context-degradation-001)
@@ -47,7 +47,7 @@ const REPORTING_FILES = [
   "core/memory-reporting.ts",
 ];
 
-describe("Crucible Phase 18 · composite-vs-correctness label clarity (offline)", () => {
+describe("Luak Phase 18 · composite-vs-correctness label clarity (offline)", () => {
   // -------- UI focused-run inspector --------
 
   it("P1 · renderFocusedRun shows COMPOSITE as the big score label (replacing the older OVERALL wording in the score block)", () => {

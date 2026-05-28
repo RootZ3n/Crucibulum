@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Crucible — Atmosphere pass screenshot helper.
+ * Luak — Atmosphere pass screenshot helper.
  *
  * Captures Dashboard-tab full-page screenshots at three viewports
  * (desktop 1920×1080, desktop 1440×900, mobile 390×844). Used for
@@ -37,7 +37,7 @@ const VIEWPORTS = [
   { name: "mobile-390x844",    width:  390, height:  844 },
 ];
 
-const profile = `/tmp/crucible-atmo-chrome-${Date.now()}`;
+const profile = `/tmp/luak-atmo-chrome-${Date.now()}`;
 mkdirSync(profile, { recursive: true });
 
 async function fetchJSON(url, retries = 30) {

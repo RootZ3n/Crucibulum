@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# crux-restart.sh — safe Crucible restart with verification.
+# crux-restart.sh — safe Luak restart with verification.
 #
-# Replaces the bare `sudo systemctl restart crucible && echo "Crucible
+# Replaces the bare `sudo systemctl restart luak && echo "Luak
 # restarted"` alias in ~/.bashrc. The old alias printed success
 # whenever `systemctl restart` exited 0, even in failure modes the
 # operator cared about:
@@ -17,7 +17,7 @@
 #
 # This script captures pre-restart PID + /api/health uptime, runs
 # the restart, then polls up to ~10s for a new PID with a low
-# uptime. Only prints "Crucible restarted" when ALL three are true:
+# uptime. Only prints "Luak restarted" when ALL three are true:
 #
 #   1. A process is bound on the port post-restart.
 #   2. Its PID is different from the pre-restart PID.
@@ -36,7 +36,7 @@
 set -euo pipefail
 
 PORT="${CRUX_RESTART_PORT:-18795}"
-SERVICE="${CRUX_RESTART_SERVICE:-crucible}"
+SERVICE="${CRUX_RESTART_SERVICE:-luak}"
 HEALTH_URL="http://127.0.0.1:${PORT}/api/health"
 
 pid_on_port() {
@@ -103,4 +103,4 @@ if ! is_low_uptime "${post_uptime}"; then
   exit 5
 fi
 
-echo "✓ Crucible restarted on :${PORT} (pid ${pre_pid:-?} → ${post_pid}; uptime ${pre_uptime:-?}s → ${post_uptime}s)"
+echo "✓ Luak restarted on :${PORT} (pid ${pre_pid:-?} → ${post_pid}; uptime ${pre_uptime:-?}s → ${post_uptime}s)"

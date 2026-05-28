@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * Crucible retention CLI.
+ * Luak retention CLI.
  *
  * Usage:
  *   npm run retention:dry-run                     — scan, report, delete nothing
  *   npm run retention:clean -- --confirm          — actually delete (still
- *                                                    requires CRUCIBLE_RETENTION_ENABLED=1 or --force)
+ *                                                    requires LUAK_RETENTION_ENABLED=1 or --force;
+ *                                                    legacy CRUCIBLE_RETENTION_ENABLED also honored)
  *   node scripts/retention.mjs --runs-dir <path>  — scan a custom dir
  *
  * Always prints a dry-run report first; deletion only proceeds when both
@@ -24,7 +25,7 @@ if (runsArgIdx !== -1) runsDir = process.argv[runsArgIdx + 1];
 const cfg = resolveRetentionConfig();
 const config = force ? { ...cfg, enabled: true } : cfg;
 
-console.log(`Crucible retention — config:`);
+console.log(`Luak retention — config:`);
 console.log(`  enabled:                ${config.enabled}${force ? " (forced via --force)" : ""}`);
 console.log(`  keep success days:      ${config.keepSuccessDays}`);
 console.log(`  keep failed days:       ${config.keepFailedDays}`);
@@ -36,8 +37,9 @@ console.log(`  mode:                   ${dryRunFlag ? "DRY RUN (no files will be
 console.log("");
 
 if (!dryRunFlag && !config.enabled && !force) {
-  console.error("retention: refusing to delete — CRUCIBLE_RETENTION_ENABLED is not set and --force was not passed.");
-  console.error("           pass --force to override, or set CRUCIBLE_RETENTION_ENABLED=1 in the environment.");
+  console.error("retention: refusing to delete — LUAK_RETENTION_ENABLED is not set and --force was not passed.");
+  console.error("           pass --force to override, or set LUAK_RETENTION_ENABLED=1 in the environment");
+  console.error("           (legacy CRUCIBLE_RETENTION_ENABLED is also honored).");
   process.exit(2);
 }
 

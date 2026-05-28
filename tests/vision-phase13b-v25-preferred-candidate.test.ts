@@ -1,5 +1,5 @@
 /**
- * Crucible — Vision Phase 13-B: prefer MiMo-V2.5 as Vision daily-driver
+ * Luak — Vision Phase 13-B: prefer MiMo-V2.5 as Vision daily-driver
  * candidate, keep Omni as legacy/proven fallback (offline tests).
  *
  * 16 deterministic offline assertions covering:

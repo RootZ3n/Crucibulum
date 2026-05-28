@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Crucible — Lane Diagnostic
+ * Luak — Lane Diagnostic
  *
  * Reads existing bundle files under runs/ for a chosen lane and prints
  * per-model counters that surface the kind of pipeline drift the

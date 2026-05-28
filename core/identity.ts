@@ -1,5 +1,5 @@
 /**
- * Crucible — ID generation utilities
+ * Luak — ID generation utilities
  *
  * Every server-visible identifier (run id, suite id, batch id, evidence
  * bundle id) used to be `${prefix}_${Date.now().toString(36)}` or worse,

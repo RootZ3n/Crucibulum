@@ -1,5 +1,5 @@
 /**
- * Crucible — Capability Certification types (Doctrine v1).
+ * Luak — Capability Certification types (Doctrine v1).
  *
  * Type contracts for the capability-certification doctrine defined in
  * `docs/CAPABILITY_CERTIFICATION_DOCTRINE.md`. These types are
@@ -17,7 +17,7 @@
  *      docs/CAPABILITY_CERTIFICATION_ROADMAP.md
  */
 
-/** Capability lanes Crucible currently recognises. Open for future
+/** Capability lanes Luak currently recognises. Open for future
  *  additions (e.g. tool-use, repo-editing) — but each new capability
  *  must define its own gate spec before the union is extended. */
 export type CapabilityId = "vision" | "roleplay";

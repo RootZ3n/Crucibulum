@@ -1,5 +1,5 @@
 /**
- * Crucible — Release gauntlet smoke
+ * Luak — Release gauntlet smoke
  *
  * The gauntlet script is itself release-critical infrastructure: if it
  * silently misclassifies, a real product failure can ship green. Pin the
@@ -22,7 +22,7 @@ const GAUNTLET = join(REPO_ROOT, "scripts", "release-gauntlet.mjs");
 function run(args: string[], opts: { allowNonZero?: boolean } = {}): { stdout: string; status: number } {
   // Merge stdout + stderr so tests can grep error-channel messages
   // (`console.error(...)` lands on stderr but we want to assert against it).
-  const dir = mkdtempSync(join(tmpdir(), "crucible-gauntlet-test-"));
+  const dir = mkdtempSync(join(tmpdir(), "luak-gauntlet-test-"));
   const outPath = join(dir, "child.log");
   const outFd = openSync(outPath, "w+");
   try {
@@ -121,7 +121,7 @@ describe("release-gauntlet: real-provider report archive (when present)", () => 
     const latest = join(REPO_ROOT, "reports", "release-gauntlet", "latest-real-provider.md");
     if (!existsSync(latest)) return;
     const md = readFileSync(latest, "utf-8");
-    assert.match(md, /# Crucible Real-Provider Gauntlet/);
+    assert.match(md, /# (?:Luak|Crucible) Real-Provider Gauntlet/);
     assert.match(md, /\*\*Provider:\*\*\s+`/);
     assert.match(md, /\*\*Model:\*\*\s+`/);
     assert.match(md, /\*\*Real-provider .*certified:\*\*\s+\*\*(YES|NO)\*\*/);
@@ -159,7 +159,7 @@ describe("release-gauntlet: latest report shape (when present)", () => {
       return;
     }
     const md = readFileSync(latest, "utf-8");
-    assert.match(md, /^# Crucible Release Gauntlet/);
+    assert.match(md, /^# (?:Luak|Crucible) Release Gauntlet/);
     assert.match(md, /\*\*Release-ready:\*\*\s+\*\*(YES|NO)\*\*/);
     assert.match(md, /Counts:.*PASS:/);
     assert.match(md, /## Inventory/);

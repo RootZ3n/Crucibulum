@@ -1,5 +1,5 @@
 /**
- * Crucible — SSE lifecycle coverage
+ * Luak — SSE lifecycle coverage
  *
  * Real HTTP + SSE tests. Stands up the server via createApp(), binds to an
  * ephemeral port, issues a POST /api/run, then parses the live SSE stream

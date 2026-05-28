@@ -1,6 +1,6 @@
-# Crucible Verdict Policy
+# Luak Verdict Policy
 
-Crucible stores two related but different verdicts:
+Luak stores two related but different verdicts:
 
 - **Normalized verdict**: execution taxonomy used for evidence and aggregation (`PASS`, `FAIL`, `NC`, plus failure origin and reason code).
 - **Presentation verdict**: score/trust tier shown to operators in UI/API/export fields.

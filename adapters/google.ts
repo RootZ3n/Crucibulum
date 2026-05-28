@@ -1,5 +1,5 @@
 /**
- * Crucible — Google AI Direct Adapter
+ * Luak — Google AI Direct Adapter
  * Direct Gemini API integration via generativelanguage.googleapis.com.
  * Uses Google's native content format (role: "model", parts: [{text}]).
  * API key passed as URL query parameter, not auth header.

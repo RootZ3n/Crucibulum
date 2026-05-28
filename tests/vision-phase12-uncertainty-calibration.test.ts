@@ -1,5 +1,5 @@
 /**
- * Crucible — Vision Phase 12: uncertainty scorer calibration + post-
+ * Luak — Vision Phase 12: uncertainty scorer calibration + post-
  * calibration stability rerun (offline tests).
  *
  * 15 deterministic offline assertions covering:
@@ -124,7 +124,7 @@ describe("Vision Phase 12 · uncertainty scorer calibration (offline)", () => {
   });
 
   it("P7 · narrative claim without uncertainty and without quoted text FAILs with [UNCERTAINTY=NO_ADMISSION_NO_QUOTE]", () => {
-    const r = scoreConversationalQuestion(makeUncertaintyQ(), "The image shows a sign with the text Crucible 425.");
+    const r = scoreConversationalQuestion(makeUncertaintyQ(), "The image shows a sign with the text Luak 425.");
     assert.equal(r.passed, false);
     assert.match(String(r.failure_reason ?? ""), /\[UNCERTAINTY=NO_ADMISSION_NO_QUOTE\]/);
   });

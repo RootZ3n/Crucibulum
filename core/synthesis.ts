@@ -1,5 +1,5 @@
 /**
- * Crucible — Synthesis Layer (Veritor Mode)
+ * Luak — Synthesis Layer (Veritor Mode)
  *
  * Multi-model comparative analysis engine.
  * Extracts structured claims from evidence bundles, identifies consensus,

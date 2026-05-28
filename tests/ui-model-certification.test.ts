@@ -1,5 +1,5 @@
 /**
- * Crucible — model certification registry pins
+ * Luak — model certification registry pins
  *
  * The 2026-05-25 OpenRouter campaign expanded the registry from 3 to
  * 8 entries across 5 tiers. This file pins:
@@ -28,7 +28,7 @@ const HTML = readFileSync(join(ROOT, 'ui', 'index.html'), 'utf-8');
 const SCRIPT = readFileSync(join(ROOT, 'scripts', 'model-certify.mjs'), 'utf-8');
 const REGISTRY_PATH = join(ROOT, 'reports', 'model-certification', 'certified-models.json');
 
-describe('Crucible model certification', () => {
+describe('Luak model certification', () => {
   it('C1 · MODEL_CERTIFICATION exists with all 5 tiers + UNKNOWN fallback', () => {
     assert.ok(HTML.includes('const MODEL_CERTIFICATION'), 'missing MODEL_CERTIFICATION constant in ui/index.html');
     for (const t of ['RELEASE_CERTIFIED', 'PROVIDER_TESTED', 'EXPERIMENTAL', 'BLOCKED_CONFIG', 'UNSUPPORTED_CAPABILITY', 'UNKNOWN']) {

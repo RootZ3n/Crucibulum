@@ -5,7 +5,7 @@
   "execution_mode": "conversational",
   "difficulty": "medium",
   "experimental": true,
-  "description": "POC: UI screenshot diagnosis — identify the clipped button in a Crucible-like dashboard mock. Measures element identification, NOT exact phrasing. Pass if the model names the RUN BENCHMARK element (in any reasonable casing).",
+  "description": "POC: UI screenshot diagnosis — identify the clipped button in a Luak-like dashboard mock. Measures element identification, NOT exact phrasing. Pass if the model names the RUN BENCHMARK element (in any reasonable casing).",
   "requires_capability": ["supportsVision", "supportsImageInput"],
   "image_fixture": {
     "path": "fixtures/vision/vision-ui-001.png",
@@ -13,7 +13,7 @@
     "mime": "image/png",
     "width": 800,
     "height": 400,
-    "license": "Crucible-owned synthetic UI mock; rendered by scripts/generate-vision-fixtures.py",
+    "license": "Luak-owned synthetic UI mock; rendered by scripts/generate-vision-fixtures.py",
     "notes": "Mock dashboard with a 'RUN BENCHMARK >>' button visibly overflowing the Active Arena card boundary into the Provider Bay panel. Generator version 2026-05-25.v1."
   },
   "questions": [
@@ -37,7 +37,7 @@
     "tags": ["vision", "ui", "diagnosis", "experimental"],
     "diagnostic_purpose": "POC for vision_ui_diagnosis. Test uses text_match (ANY-of) so 'RUN BENCHMARK' / 'Run Benchmark' / 'run benchmark' all pass; the case-insensitive contains check makes the test about element identification, not exact casing.",
     "benchmark_provenance": {
-      "source": "Crucible synthetic UI mock",
+      "source": "Luak synthetic UI mock",
       "public_status": "public",
       "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",

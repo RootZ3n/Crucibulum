@@ -1,5 +1,5 @@
 /**
- * Crucible — Grimoire Codex Adapter
+ * Luak — Grimoire Codex Adapter
  * Routes tasks through Squidley's Grimoire Codex mode.
  * Codex Mode = iterative inspect/edit/verify loop.
  *

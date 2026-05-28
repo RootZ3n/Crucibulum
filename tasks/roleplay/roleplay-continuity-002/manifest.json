@@ -88,7 +88,7 @@
     "tags": ["roleplay", "continuity", "adversarial", "experimental"],
     "diagnostic_purpose": "Phase 2 adversarial: 3 core facts + 2 distractor facts across 5 turns. Q3 tests three-fact simultaneous recall (the hardest single turn). Q5 tests isolated recall under repeated pressure. Q4 is a distractor-recall turn — partial vague recollection is acceptable, full distractor recall is not required. Partial-recall PATH (some facts present + at least one optional) returns NEEDS_REVIEW.",
     "benchmark_provenance": {
-      "source": "Crucible synthetic roleplay scenario (Phase 2 adversarial)",
+      "source": "Luak synthetic roleplay scenario (Phase 2 adversarial)",
       "public_status": "public",
       "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",

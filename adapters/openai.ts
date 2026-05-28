@@ -1,5 +1,5 @@
 /**
- * Crucible — OpenAI Direct Adapter
+ * Luak — OpenAI Direct Adapter
  * Direct OpenAI Chat Completions API integration.
  * Handles reasoning models (o1, o3) which require max_completion_tokens
  * and do not support temperature.

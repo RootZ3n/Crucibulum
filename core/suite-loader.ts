@@ -1,5 +1,5 @@
 /**
- * Crucible — Suite Loader
+ * Luak — Suite Loader
  * Loads suite manifests with scoring weight defaults.
  */
 

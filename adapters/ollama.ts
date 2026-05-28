@@ -1,5 +1,5 @@
 /**
- * Crucible — Ollama Adapter
+ * Luak — Ollama Adapter
  * Direct Ollama API integration for local model evaluation.
  * Implements an agentic loop with lenient command parsing and structured logging.
  */

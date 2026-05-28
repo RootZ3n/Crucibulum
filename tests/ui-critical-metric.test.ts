@@ -1,5 +1,5 @@
 /**
- * Crucible — Critical Failure Rate banner guards
+ * Luak — Critical Failure Rate banner guards
  *
  * Pins the product-integrity fix where the top-level strip was showing an
  * ambiguous "CRITICAL 15%" that fused a verdict-band word with an unrelated

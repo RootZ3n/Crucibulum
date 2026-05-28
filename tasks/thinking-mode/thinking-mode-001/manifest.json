@@ -85,7 +85,7 @@
     ],
     "diagnostic_purpose": "Measures thinking-mode delta by comparing score, token usage, and latency between thinking-enabled and thinking-disabled runs. Five independent puzzles of equivalent shape.",
     "benchmark_provenance": {
-      "source": "Crucible synthetic conversational task",
+      "source": "Luak synthetic conversational task",
       "public_status": "public",
       "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",

@@ -1,5 +1,5 @@
 /**
- * Crucible — mascot placement pins
+ * Luak — mascot placement pins
  *
  * Squidley was moved out of the dark footer (where the operator could
  * not see it) into the top command rail next to the CRUCIBLE title.
@@ -17,7 +17,7 @@ import { join } from 'node:path';
 const HTML = readFileSync(join(process.cwd(), 'ui', 'index.html'), 'utf-8');
 const CSS = readFileSync(join(process.cwd(), 'ui', 'crucibulum.css'), 'utf-8');
 
-describe('Crucible mascot placement', () => {
+describe('Luak mascot placement', () => {
   it('M1 · large hero mascot is still absent', () => {
     // Legacy hero mascot hook stays hidden by CSS.
     assert.ok(CSS.includes('.ab-squid{display:none}'), 'legacy .ab-squid hero mascot is no longer suppressed');
@@ -76,7 +76,7 @@ describe('Crucible mascot placement', () => {
     // remains.
     const footerHasImg = /<footer[^>]*deck-footer[^>]*>[\s\S]*?<img[^>]*footer-squid/.test(HTML);
     assert.ok(!footerHasImg, 'footer still contains a redundant Squidley image — should be removed since the header now hosts the primary mascot');
-    assert.ok(HTML.includes('Crucible Evaluation Lattice'), 'footer seal text must remain even without the image');
+    assert.ok(HTML.includes('Luak Evaluation Lattice'), 'footer seal text must remain even without the image');
   });
 
   it('M5 · header card does not use oversized mascot classes', () => {

@@ -1,5 +1,5 @@
 /**
- * Crucible — Roleplay Phase 3: persona-break scorer calibration (offline).
+ * Luak — Roleplay Phase 3: persona-break scorer calibration (offline).
  *
  * 14 deterministic source/contract assertions covering Phase 3's
  * scope: classifyForbiddenPhraseContext helper + HARD vs SOFT

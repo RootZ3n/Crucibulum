@@ -1,5 +1,5 @@
 /**
- * Crucible — Retry-After parsing + provider-rate-limit backoff
+ * Luak — Retry-After parsing + provider-rate-limit backoff
  *
  * When a provider rate-limits us, two questions matter:
  *   1. how long did *they* ask us to wait? (RFC 9110 `Retry-After`)

@@ -1,5 +1,5 @@
 /**
- * Crucible — Run start failure classification regression
+ * Luak — Run start failure classification regression
  *
  * Operator-reported symptom: Personality lane, DeepSeek V4 Pro, 10 selected
  * tests; 3 ran, 7 marked "Could not start · STREAM · Run stream interrupted —

@@ -1,5 +1,5 @@
 /**
- * Crucible — Suite-Level Scoring Weights Tests
+ * Luak — Suite-Level Scoring Weights Tests
  *
  * Suite-level weight resolution and precedence. Originally written against
  * vitest; ported to node:test so the project's `node --test` runner picks

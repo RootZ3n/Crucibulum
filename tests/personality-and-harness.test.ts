@@ -222,7 +222,7 @@ describe("end-to-end personality run with HarnessMockAdapter", () => {
   it("personality-001 produces a scored bundle with judge_usage defined", async () => {
     const adapter = new HarnessMockAdapter();
     await adapter.init({});
-    const tmp = mkdtempSync(join(tmpdir(), "crucible-harness-test-"));
+    const tmp = mkdtempSync(join(tmpdir(), "luak-harness-test-"));
     const prevRunsDir = process.env["CRUCIBULUM_RUNS_DIR"];
     process.env["CRUCIBULUM_RUNS_DIR"] = tmp;
     try {

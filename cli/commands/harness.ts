@@ -1,5 +1,5 @@
 /**
- * Crucible CLI — `harness` command
+ * Luak CLI — `harness` command
  *
  * Comprehensive QA / regression harness for Ricky, Ptah, and any other
  * verifying agent. Walks every tab/lane, every test in each lane, runs each
@@ -226,6 +226,7 @@ export function planAdapter(args: HarnessArgs): AdapterPlan {
     // Legacy `--live` form: OpenRouter + judge default.
     const judgeModel =
       args.model
+      ?? process.env["LUAK_JUDGE_MODEL"]?.trim()
       ?? process.env["CRUCIBLE_JUDGE_MODEL"]?.trim()
       ?? process.env["OPENROUTER_JUDGE_MODEL"]?.trim()
       ?? "xiaomi/mimo-v2.5-pro";
@@ -701,7 +702,7 @@ export async function harnessCommand(rawArgs: string[]): Promise<void> {
   }
 
   console.log("=".repeat(72));
-  console.log(` Crucible Harness — ${mode === "live" ? "LIVE" : "MOCK"} adapter (${adapter.name} / ${model})`);
+  console.log(` Luak Harness — ${mode === "live" ? "LIVE" : "MOCK"} adapter (${adapter.name} / ${model})`);
   console.log(`   adapter id : ${adapterId}`);
   console.log(`   provider   : ${provider}`);
   console.log(`   model      : ${model}`);

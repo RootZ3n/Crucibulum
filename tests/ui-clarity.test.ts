@@ -1,5 +1,5 @@
 /**
- * Crucible — UI clarity (operator-trust) tests
+ * Luak — UI clarity (operator-trust) tests
  *
  * Pins the scope/verdict/live-status/sparse-state cues added during the
  * "UI truthfulness + operator clarity" pass. The goal these tests protect:

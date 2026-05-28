@@ -1,5 +1,5 @@
 /**
- * Crucible — release audit wrapper.
+ * Luak — release audit wrapper.
  *
  * Runs `npm audit --json --audit-level=moderate` with retries to handle
  * transient npm registry failures (the deprecated quick advisory endpoint

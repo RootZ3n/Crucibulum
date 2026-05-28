@@ -1,5 +1,5 @@
 /**
- * Crucible — UI layout regression guard
+ * Luak — UI layout regression guard
  *
  * A browser harness (Playwright / Puppeteer) would be the right tool to
  * visually assert "the Coverage card's lower content is reachable", but it
@@ -266,7 +266,7 @@ describe("ui-layout-regression: Providers tab is wired and backed by the registr
 });
 
 describe("ui-layout-regression: no built-in auth gate", () => {
-  // Crucible has no built-in auth — the UI must boot directly with no
+  // Luak has no built-in auth — the UI must boot directly with no
   // sign-in screen, pairing flow, or Authorization header. These pins
   // catch a regression that re-introduces a token gate in the default
   // boot path.

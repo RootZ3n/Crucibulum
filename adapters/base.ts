@@ -1,5 +1,5 @@
 /**
- * Crucible — Adapter Interface
+ * Luak — Adapter Interface
  * Every adapter implements this contract. No exceptions.
  */
 

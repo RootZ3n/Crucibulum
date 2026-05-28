@@ -1,5 +1,5 @@
 /**
- * Crucible — Shared Route Helpers
+ * Luak — Shared Route Helpers
  * Common utilities for route handlers.
  */
 
@@ -16,13 +16,13 @@ import { loadVerifiedBundle } from "../../core/bundle.js";
 import { normalizeBundleVerdict } from "../../core/verdict.js";
 import { resolveDisplayName } from "../../core/test-names.js";
 
-const RUNS_DIR = process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs");
+const RUNS_DIR = process.env["LUAK_RUNS_DIR"] ?? process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs");
 const UI_PATH = join(import.meta.dirname, "..", "..", "ui", "index.html");
 
 export function setCorsHeaders(req: IncomingMessage, res: ServerResponse): void {
   const origin = req.headers.origin ?? "";
   const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-  const allowed = (process.env["CRUCIBLE_ALLOWED_ORIGINS"] ?? "")
+  const allowed = (process.env["LUAK_ALLOWED_ORIGINS"] ?? process.env["CRUCIBLE_ALLOWED_ORIGINS"] ?? "")
     .split(",").map(o => o.trim()).filter(Boolean);
   if (isLocal || allowed.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
@@ -234,7 +234,7 @@ export function listSuites(): Array<Record<string, unknown>> {
   }
   return [{
     id: "v1",
-    label: "Crucible v1",
+    label: "Luak v1",
     task_count: tasks.length,
     families: Array.from(byFamily.entries()).map(([family, count]) => ({ family, count })),
   }];

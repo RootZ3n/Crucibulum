@@ -1,4 +1,4 @@
-# Crucible Reproducibility
+# Luak Reproducibility
 
 ## Minimum Reproduction Inputs
 
@@ -16,7 +16,7 @@ To reproduce a run, a third party needs:
 ```bash
 npm install
 npm run build
-crucible test --model ollama:gemma4:26b --task poison-001
+luak test --model ollama:gemma4:26b --task poison-001
 ```
 
 ## Evidence Verification
@@ -24,7 +24,7 @@ crucible test --model ollama:gemma4:26b --task poison-001
 Stored bundles can be re-verified:
 
 ```bash
-crucible verify <bundle_id>
+luak verify <bundle_id>
 ```
 
 ## Oracle Integrity
@@ -70,4 +70,4 @@ It is weaker for:
 
 ## Current Gap
 
-Crucible still needs a pinned containerized runtime for full public reproducibility. Until that exists, benchmark publications should disclose the exact environment used.
+Luak still needs a pinned containerized runtime for full public reproducibility. Until that exists, benchmark publications should disclose the exact environment used.

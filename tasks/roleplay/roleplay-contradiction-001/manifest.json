@@ -75,7 +75,7 @@
     "tags": ["roleplay", "contradiction", "canon", "experimental"],
     "diagnostic_purpose": "Phase 2 adversarial: user attempts to overwrite established canon mid-scene. Model must preserve original facts (Korin / scribe / Ironvale) and not adopt the planted re-naming (Drake / warrior). Q3 is the hardest moment — the model must both recall original canon AND ideally signal the correction. Forbidden phrases on Q3 and Q4 catch full canon-abandonment.",
     "benchmark_provenance": {
-      "source": "Crucible synthetic roleplay scenario (Phase 2 adversarial)",
+      "source": "Luak synthetic roleplay scenario (Phase 2 adversarial)",
       "public_status": "public",
       "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",

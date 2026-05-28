@@ -1,5 +1,5 @@
 /**
- * Crucible — Roleplay Phase 9: Experimental v1 baseline (offline).
+ * Luak — Roleplay Phase 9: Experimental v1 baseline (offline).
  *
  * 13 deterministic assertions covering Phase 9's scope: machine-
  * readable baseline JSON shape, accompanying markdown, UI baseline

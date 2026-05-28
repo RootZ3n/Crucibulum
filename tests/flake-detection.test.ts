@@ -1,5 +1,5 @@
 /**
- * Crucible — Flake Detection Tests
+ * Luak — Flake Detection Tests
  *
  * Stats math for retry/flake aggregation. Originally written against vitest
  * with `vi.mock` to stub the runner; ported to node:test, using the

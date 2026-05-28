@@ -1,5 +1,5 @@
 /**
- * Crucible — Capability promotion-evaluator endpoint (Vision)
+ * Luak — Capability promotion-evaluator endpoint (Vision)
  *
  * Read-only Vision promotion evaluator. Surfaces the doctrine
  * evaluator's PROVIDER_TESTED / STABLE / CAPABILITY_CERTIFIED
@@ -64,14 +64,14 @@ const DEFAULT_STABILITY_DIR = join(REPO_ROOT, "reports", "capability-expansion",
 const CERTIFIED_MODELS_JSON = join(REPO_ROOT, "reports", "model-certification", "certified-models.json");
 
 /** Resolve the Vision stability evidence directory. Overridable via
- *  `CRUCIBLE_VISION_STABILITY_DIR` so tests that need to simulate
- *  "no evidence on disk" can point at an empty tmp path WITHOUT
- *  renaming the real `reports/capability-expansion/vision-stability/`
- *  directory. The rename approach was Phase 13c P14's original
- *  implementation and was the source of the cross-file test race
- *  Phase 18-B fixed. */
+ *  `LUAK_VISION_STABILITY_DIR` (legacy alias: `CRUCIBLE_VISION_STABILITY_DIR`)
+ *  so tests that need to simulate "no evidence on disk" can point at an
+ *  empty tmp path WITHOUT renaming the real
+ *  `reports/capability-expansion/vision-stability/` directory. */
 function stabilityDir(): string {
-  return process.env["CRUCIBLE_VISION_STABILITY_DIR"] ?? DEFAULT_STABILITY_DIR;
+  return process.env["LUAK_VISION_STABILITY_DIR"]
+    ?? process.env["CRUCIBLE_VISION_STABILITY_DIR"]
+    ?? DEFAULT_STABILITY_DIR;
 }
 
 type VisionRouteRole =
@@ -554,7 +554,7 @@ export async function handlePromotionEvaluation(
 
 function renderReceiptMarkdown(receipt: CapabilityPromotionReceipt): string {
   const lines: string[] = [];
-  lines.push(`# Crucible — Vision capability promotion receipt`);
+  lines.push(`# Luak — Vision capability promotion receipt`);
   lines.push("");
   lines.push(`| Field | Value |`);
   lines.push(`|---|---|`);

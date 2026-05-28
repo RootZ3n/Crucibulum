@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Crucible</title>
+<title>Luak</title>
 <link rel="stylesheet" href="/crucibulum.css?v=20260525-mascot">
 </head>
 <body>
@@ -261,7 +261,7 @@ const DEFAULT_MODEL_GROUPS=[
     {id:'gpt-5.4-mini',label:'gpt-5.4-mini'},
     {id:'gpt-5.4-nano',label:'gpt-5.4-nano'}
   ]},
-  // MiniMax routes DIRECTLY in Crucible. This is a standalone product and
+  // MiniMax routes DIRECTLY in Luak. This is a standalone product and
   // should use the operator's own MiniMax key instead of silently hopping
   // through Squidley. The model ids are from MiniMax's published
   // ChatCompletion v2 catalog; register extra/account-scoped ids via the
@@ -342,7 +342,7 @@ const state={
   // and grey out unreachable model groups. `summary` collapses the details
   // into a single traffic-light state used by the global strip.
   // `lastSuccessAt` / `lastSuccessNet` / `lastSuccessProviders` capture the
-  // last good probe so a transient /api/health 429 (Crucible's own read-rate
+  // last good probe so a transient /api/health 429 (Luak's own read-rate
   // limit during a broad browser sweep) does not silently flip the UI to
   // "offline" and silently block cloud dispatch. See `runHealthChecks`.
   health:{
@@ -454,7 +454,7 @@ function exportFileName(tabKey,ext){
   const scope=laneScopeDescriptor(tabKey);
   const lane=scope.tabLabel.toLowerCase().replace(/[^a-z0-9]+/g,'-');
   const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
-  return`crucible-${lane}-${ts}.${ext}`;
+  return`luak-${lane}-${ts}.${ext}`;
 }
 
 function exportAsJSON(tabKey){
@@ -3277,7 +3277,7 @@ async function runHealthChecks(opts){
         state.health.lastSuccessAt=completedAt;
         state.health.rateLimit=null;
       }else if(res.status===429){
-        // Crucible's own RATE_READ kicked in (broad browser sweep, polling
+        // Luak's own RATE_READ kicked in (broad browser sweep, polling
         // fallback storm, etc.). Treat as transient: if we have a recent
         // last-known-good snapshot, keep using it and surface a visible
         // "rate-limited; using last known health" warning. If we have no
@@ -3925,11 +3925,11 @@ function renderLeaderboardEmpty(tabKey){
 
 function errorGuidance(err){
   const kind=err?.kind||'other';
-  if(kind==='rate_limited')return'Crucible was rate-limited while loading this view. Cached/local content may be incomplete. Wait a moment, then refresh this lane.';
+  if(kind==='rate_limited')return'Luak was rate-limited while loading this view. Cached/local content may be incomplete. Wait a moment, then refresh this lane.';
   if(kind==='auth')return'This request needs a valid session. Sign in again, then refresh the view.';
   if(kind==='network')return'The local API could not be reached. Confirm the server is still running and refresh.';
   if(kind==='timeout')return'The local API did not respond before the timeout. The view may be incomplete; retry after the server settles.';
-  return'Crucible could not load this view completely. Existing data is preserved, but rankings may be incomplete until refresh succeeds.';
+  return'Luak could not load this view completely. Existing data is preserved, but rankings may be incomplete until refresh succeeds.';
 }
 
 function renderDataErrorState(tabKey,err){
@@ -4135,7 +4135,7 @@ function renderHero(){
   const topChip=hasRanking
     ? `<div class="chip orange">TOP ${esc(String(topModel).slice(0,16).toUpperCase())}${topScore!=null?' · '+topScore+'%':''}</div>`
     : `<div class="chip orange">NO RANK YET</div>`;
-  return`<section class="abyss-banner"><div class="ab-callsign"><div class="ab-mark">${esc(activeLaneLabel)}</div><div class="ab-title">Crucible</div><div class="ab-sub">Evaluation Lattice</div><div class="ab-score-inline"><div class="ab-score-row"><span class="ab-score-label">${scoreLabel}</span><span class="ab-score-inline-num">${score}</span><span class="ab-score-runs">${totalRuns} run${totalRuns===1?'':'s'} indexed</span></div><div class="ab-score-bar"><div class="ab-score-fill" style="width:${scoreWidth}%"></div></div></div><div class="view-toggle"><button class="${state.viewMode==='simple'?'active':''}" onclick="setViewMode('simple')">Simple</button><button class="${isAdvancedView()?'active':''}" onclick="setViewMode('advanced')">Advanced Lab</button></div></div><div class="ab-telemetry">${scopeChip}${provisionalChip}<div class="chip ${statusCls}">● ${esc(status.toUpperCase())}</div><div class="chip teal">PASS ${passRate}%</div>${topChip}<div class="chip dim">${totalRuns} RUNS</div></div></section>`;
+  return`<section class="abyss-banner"><div class="ab-callsign"><div class="ab-mark">${esc(activeLaneLabel)}</div><div class="ab-title">Luak</div><div class="ab-sub">Evaluation Lattice</div><div class="ab-score-inline"><div class="ab-score-row"><span class="ab-score-label">${scoreLabel}</span><span class="ab-score-inline-num">${score}</span><span class="ab-score-runs">${totalRuns} run${totalRuns===1?'':'s'} indexed</span></div><div class="ab-score-bar"><div class="ab-score-fill" style="width:${scoreWidth}%"></div></div></div><div class="view-toggle"><button class="${state.viewMode==='simple'?'active':''}" onclick="setViewMode('simple')">Simple</button><button class="${isAdvancedView()?'active':''}" onclick="setViewMode('advanced')">Advanced Lab</button></div></div><div class="ab-telemetry">${scopeChip}${provisionalChip}<div class="chip ${statusCls}">● ${esc(status.toUpperCase())}</div><div class="chip teal">PASS ${passRate}%</div>${topChip}<div class="chip dim">${totalRuns} RUNS</div></div></section>`;
 }
 function evidenceValue(label,value){
   if(value===undefined||value===null||value==='')return'';
@@ -4620,10 +4620,10 @@ function renderDashboard(){
   // overview numbers for a specific lane's performance.
   const dashScope=laneScopeDescriptor('dashboard');
   const dashScopeNote=`<div class="scope-note" data-scope-kind="global"><span class="chip cyan hot scope-chip" data-scope-kind="global">SCOPE · ${esc(dashScope.scopeLabel)}</span><span class="scope-note-body">Aggregates every lane. ${dashScope.sampleSize} total run${dashScope.sampleSize===1?'':'s'} indexed. Switch tabs for a lane-scoped view.</span></div>`;
-  // Simple-mode welcome card — explains Crucible in plain English
+  // Simple-mode welcome card — explains Luak in plain English
   const simpleWelcome=isSimpleView()?`<section class="panel simple-welcome" style="padding:18px">
-    <h2 style="margin:0 0 6px;font-size:16px;color:var(--ink)">What is Crucible?</h2>
-    <p style="margin:0 0 12px;color:var(--ink-soft);font-size:13px;line-height:1.5">Crucible tests AI models on real tasks and tells you which one to trust. It checks accuracy, speed, cost, and safety so you can pick the right model without guessing.</p>
+    <h2 style="margin:0 0 6px;font-size:16px;color:var(--ink)">What is Luak?</h2>
+    <p style="margin:0 0 12px;color:var(--ink-soft);font-size:13px;line-height:1.5">Luak tests AI models on real tasks and tells you which one to trust. It checks accuracy, speed, cost, and safety so you can pick the right model without guessing.</p>
     ${stats.totalRuns>0?`<div class="simple-insights">
       <div class="simple-insight"><span class="si-label">Overall Trust Score</span><span class="si-value ${avgScore>=80?'teal':avgScore>=55?'orange':'red'}" title="${esc(friendlyTip('composite'))}">${avgScore}%</span></div>
       <div class="simple-insight"><span class="si-label">Accuracy</span><span class="si-value" title="${esc(friendlyTip('pass_rate'))}">${passRate}%</span></div>
@@ -4666,7 +4666,7 @@ function renderDashboard(){
     <aside class="side-column">
       <!-- Best Model Recommendations (Quick Picks) hoisted to left-rail deck (renderQuickPicksRailDeck). -->
       <section class="panel" style="padding:14px">
-        <div class="section-head"><div><div class="mini-label">HOW TO USE CRUCIBLE</div><h3>How To Read Results</h3></div></div>
+        <div class="section-head"><div><div class="mini-label">HOW TO USE LUAK</div><h3>How To Read Results</h3></div></div>
         <div class="review-flow">
           <div class="flow-step"><span class="chip teal">1</span><div><strong>Check Recommendations</strong><span>See the best overall, best value, and fastest model.</span></div></div>
           <div class="flow-step"><span class="chip orange">2</span><div><strong>Compare Models</strong><span>Look at the leaderboard to see how models rank against each other.</span></div></div>
@@ -4987,7 +4987,7 @@ function renderVisionLanePanel(tabKey){
       <div class="vision-status-block">
         <div class="vs-label">FIXTURES</div>
         <div class="vs-value"><span class="chip teal hot">15 / 15 ready</span> <span class="dim">· sha256 pinned per manifest · Phase 14 expansion</span></div>
-        <div class="vs-sub dim">Synthetic Crucible-owned PNGs under <span class="mono">fixtures/vision/</span>. 5 POC + 10 Phase-14 (small-text, noisy-text, spatial × 2, visual-contradiction, hallucination-resistance, multi-object-compare, ui-state, chart-trend, table).</div>
+        <div class="vs-sub dim">Synthetic Luak-owned PNGs under <span class="mono">fixtures/vision/</span>. 5 POC + 10 Phase-14 (small-text, noisy-text, spatial × 2, visual-contradiction, hallucination-resistance, multi-object-compare, ui-state, chart-trend, table).</div>
       </div>
       <div class="vision-status-block">
         <div class="vs-label">UNSUPPORTED MODELS</div>
@@ -5970,7 +5970,7 @@ function renderEvidenceFeed(){
 }
 
 function renderCommandRail(){
-  // Top command rail — Crucible brand mark + scope/score chips + Simple/
+  // Top command rail — Luak brand mark + scope/score chips + Simple/
   // Advanced toggle. Replaces the standalone hero strip with a Luna-style
   // game-window-strip. The internal renderHero() output is preserved as
   // the "trust score" block so existing tests pinning view-toggle and
@@ -5991,7 +5991,7 @@ function renderCommandRail(){
       <img class="cmd-rail-mascot" src="squidley.png" alt="" aria-hidden="true" width="52" height="52">
       <div class="cmd-rail-title-stack">
         <span class="cmd-rail-mark">${esc(scope.tabLabel)} · Judge Deck</span>
-        <span class="cmd-rail-title">Crucible</span>
+        <span class="cmd-rail-title">Luak</span>
         <span class="cmd-rail-sub">Evaluation Arena</span>
       </div>
     </div>
@@ -6145,7 +6145,7 @@ function render(){
   // (the tab body wrapped in a deck-window with a glowing title plate).
   // Left rail: Evaluation Rooms (tab navigator as cards). Right rail:
   // Failure Board + Provider Bay + Evidence Vault + Release Gate. Bottom:
-  // Evidence Feed. Footer: small Squidley seal + "Crucible Evaluation
+  // Evidence Feed. Footer: small Squidley seal + "Luak Evaluation
   // Lattice". The system status bar and offline banner remain above the
   // command rail because they are global signals.
   // Global signals (verdict/mission banner) sit between the command rail
@@ -6167,7 +6167,7 @@ function render(){
     <section class="deck-rail-center">${leaderboardZone}${renderActiveArenaShell()}</section>
     <aside class="deck-rail-right" aria-label="Evidence and telemetry rail">${renderEvidenceDeck()}</aside>
     <section class="deck-floor">${renderEvidenceFeed()}</section>
-  </main><nav class="nav-band" hidden aria-hidden="true"><div class="tabbar">${renderTabs()}</div></nav><footer class="deck-footer app-footer" role="contentinfo"><span class="deck-footer-seal"><span class="footer-label">Crucible Evaluation Lattice</span></span><span class="deck-footer-meta">Judge Deck · Luna shell · ${esc(String(state.activeTab).toUpperCase())}</span></footer></div>`;
+  </main><nav class="nav-band" hidden aria-hidden="true"><div class="tabbar">${renderTabs()}</div></nav><footer class="deck-footer app-footer" role="contentinfo"><span class="deck-footer-seal"><span class="footer-label">Luak Evaluation Lattice</span></span><span class="deck-footer-meta">Judge Deck · Luna shell · ${esc(String(state.activeTab).toUpperCase())}</span></footer></div>`;
 }
 
 // Lightweight elapsed-time ticker — only touches text nodes marked with
@@ -6254,7 +6254,7 @@ function bootErrorMarkup(err){
   const mark=rateLimited?'CRCB · 429':'CRCB · ERR';
   const guidance=rateLimited
     ? 'The local API returned RATE_LIMITED during boot. The app shell is safe, but ranking data may be incomplete. Wait a moment and refresh.'
-    : 'Crucible could not finish loading all first-run data. Check the local server, then refresh.';
+    : 'Luak could not finish loading all first-run data. Check the local server, then refresh.';
   const detail=String(err&&err.message||err||'unknown error').slice(0,180);
   return`<div class="app-shell"><section class="abyss-banner boot-soft" style="grid-template-columns:1fr"><div class="ab-callsign"><div class="ab-mark">${esc(mark)}</div><div class="ab-title">${esc(title)}</div><div class="ab-sub">${esc(guidance)}</div><div class="inline-warn data-error">DETAIL · ${esc(detail)}</div><button class="button secondary" onclick="boot()">RETRY LOAD</button></div></section></div>`;
 }

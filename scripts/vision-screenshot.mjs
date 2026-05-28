@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Crucible — Vision Phase 8 browser screenshot driver
+ * Luak — Vision Phase 8 browser screenshot driver
  *
  * Boots a headless Chromium with the DevTools Protocol exposed,
  * seeds localStorage so the Vision tab is the active room, and
@@ -66,11 +66,11 @@ const VARIANTS = [
   },
 ];
 
-const profile = `/tmp/crucible-phase8-chrome-${Date.now()}`;
+const profile = `/tmp/luak-phase8-chrome-${Date.now()}`;
 mkdirSync(profile, { recursive: true });
 
 function debugPort() {
-  // Pick a port unlikely to collide with the Crucible API.
+  // Pick a port unlikely to collide with the Luak API.
   return 9333 + Math.floor(Math.random() * 200);
 }
 

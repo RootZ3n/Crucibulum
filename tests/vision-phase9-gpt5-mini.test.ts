@@ -1,5 +1,5 @@
 /**
- * Crucible — Vision Phase 9: GPT-5.4-mini second route (offline)
+ * Luak — Vision Phase 9: GPT-5.4-mini second route (offline)
  *
  * 14 deterministic source/contract assertions covering Phase 9's
  * scope: registering OpenAI gpt-5.4-mini as the second vision-
@@ -33,7 +33,7 @@ describe("Vision Phase 9 · GPT-5.4-mini second route (offline)", () => {
   });
 
   it("P2 · gpt-5.4-mini capability metadata declares vision honestly", () => {
-    // Must declare supportsVision + supportsImageInput true (Crucible's
+    // Must declare supportsVision + supportsImageInput true (Luak's
     // OpenAI adapter forwards image_url content parts unchanged and the
     // openai adapterImageTransport entry supports openai_image_url), and
     // must NOT claim release-certified status.

@@ -1,5 +1,5 @@
 /**
- * Crucible — Phase 19: public/portfolio readiness invariants.
+ * Luak — Phase 19: public/portfolio readiness invariants.
  *
  * Lightweight document/UI invariants that protect the trust posture
  * Phase 19's audit established. These tests will fail loudly if a
@@ -30,7 +30,7 @@ const ROOT = process.cwd();
 const README = readFileSync(join(ROOT, "README.md"), "utf-8");
 const HTML = readFileSync(join(ROOT, "ui", "index.html"), "utf-8");
 
-describe("Crucible Phase 19 · public/portfolio readiness invariants (offline)", () => {
+describe("Luak Phase 19 · public/portfolio readiness invariants (offline)", () => {
   // -------- README content invariants --------
 
   it("P1 · README does not claim Vision is 'model-certified' or 'release-certified'", () => {

@@ -1,5 +1,5 @@
 /**
- * Crucible — Z.AI Direct Adapter (GLM / Zhipu)
+ * Luak — Z.AI Direct Adapter (GLM / Zhipu)
  * Direct BigModel API integration (OpenAI-compatible).
  * Supported: glm-4-plus, glm-5.1, glm-z1-flash, glm-4-air
  *

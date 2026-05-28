@@ -1,5 +1,5 @@
 /**
- * Crucible — Capability Export Routes
+ * Luak — Capability Export Routes
  *
  * Generic capability summary and eligibility exports.
  * Format is standalone JSON — useful with or without any downstream consumer.

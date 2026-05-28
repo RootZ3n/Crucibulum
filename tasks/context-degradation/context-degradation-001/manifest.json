@@ -70,7 +70,7 @@
     ],
     "diagnostic_purpose": "Tests ability to extract specific facts as context length and noise increase — detects attention degradation",
     "benchmark_provenance": {
-      "source": "Crucible synthetic conversational task",
+      "source": "Luak synthetic conversational task",
       "public_status": "public",
       "oracle_visibility": "public",
       "gold_solution_visibility": "not_applicable",
