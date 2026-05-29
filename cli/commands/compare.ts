@@ -67,7 +67,7 @@ interface ModelResult {
 export async function compareCommand(args: string[]): Promise<void> {
   const opts = parseArgs(args);
 
-  console.log(`\nCrucible Compare: ${opts.task}`);
+  console.log(`\nLuak Compare: ${opts.task}`);
   console.log(`Models: ${opts.models.join(" vs ")}`);
   console.log(`Runs per model: ${opts.runs}\n`);
 
