@@ -2638,7 +2638,7 @@ body::after {
    world-map / theme-park hub with tappable hotspot pins and full-screen
    bottom-sheet workspaces. Desktop (≥880px) gains docked side/bottom/
    fullscreen panels and a multi-tile dashboard grid. All colour comes
-   from the per-realm --peh-accent / --peh-accent2 set inline on .peh-shell.
+   from the active product's --peh-accent / --peh-accent2 set inline on .peh-shell.
    ══════════════════════════════════════════════════════════════════════ */
 #app:has(.peh-shell){padding:0}
 
@@ -2705,7 +2705,7 @@ body::after {
   background-size:34px 34px;opacity:.5;mix-blend-mode:screen;
 }
 .peh-scene-caption{position:relative;z-index:2;padding:18px 16px 4px;max-width:560px}
-.peh-scene-realm{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--peh-accent)}
+.peh-scene-tag{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--peh-accent)}
 .peh-scene-title{font-size:clamp(24px,7vw,40px);line-height:1.05;margin:4px 0 6px;font-weight:800}
 .peh-scene-desc{font-size:14px;color:var(--ink-soft);margin:0;max-width:46ch}
 
@@ -2735,7 +2735,7 @@ body::after {
 .peh-hotspot:focus-visible{outline:none}
 .peh-hotspot:focus-visible .peh-hotspot-label{outline:2px solid var(--peh-accent);outline-offset:2px}
 
-/* ── Waypoints (intra-realm scene hops) ────────────────────────────── */
+/* ── Waypoints (intra-product scene hops) ──────────────────────────── */
 .peh-waypoints{
   position:absolute;left:0;right:0;bottom:10px;z-index:4;
   display:flex;gap:8px;padding:0 12px;overflow-x:auto;scrollbar-width:none;
@@ -2799,7 +2799,7 @@ body::after {
 /* ── Dashboard mode ────────────────────────────────────────────────── */
 .peh-dash{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow:auto}
 .peh-dash-head{padding:14px 14px 6px;border-bottom:1px solid var(--border-subtle)}
-.peh-dash-here .peh-scene-realm{display:block}
+.peh-dash-here .peh-scene-tag{display:block}
 .peh-dash-here h1{font-size:clamp(20px,5vw,28px);margin:2px 0 4px;font-weight:800}
 .peh-dash-here p{margin:0 0 8px;color:var(--ink-soft);font-size:13px;max-width:56ch}
 .peh-dash .peh-waypoints{position:static;padding:0;margin-top:4px}
@@ -2868,22 +2868,13 @@ body::after {
 .peh-ft-hint{flex:1 1 auto;font-size:11px;color:var(--ink-dim);letter-spacing:.04em}
 .peh-ft-close{width:34px;height:34px;border-radius:10px;border:1px solid var(--border-subtle);background:transparent;color:var(--ink);font-size:18px;cursor:pointer}
 .peh-ft-close:hover{background:rgba(236,72,153,.2)}
-.peh-ft-realms{display:grid;grid-template-columns:1fr;gap:12px;padding:14px 16px}
-.peh-ft-realm{border:1px solid var(--border-subtle);border-radius:16px;padding:12px;background:linear-gradient(160deg,color-mix(in srgb,var(--peh-accent) 10%,transparent),rgba(12,10,26,.3))}
-.peh-ft-realm.here{border-color:color-mix(in srgb,var(--peh-accent) 60%,var(--border-subtle))}
-.peh-ft-realm-head{display:flex;align-items:center;gap:11px;width:100%;cursor:pointer;background:transparent;border:0;color:var(--ink);text-align:left;padding:2px}
-.peh-ft-mark{color:var(--peh-accent);display:inline-flex}
-.peh-ft-mark .peh-glyph{width:28px;height:28px}
-.peh-ft-realm-name{display:flex;flex-direction:column;line-height:1.2}
-.peh-ft-realm-name b{font-size:16px;font-weight:800}
-.peh-ft-realm-name i{font-style:normal;font-size:11px;color:var(--ink-dim);letter-spacing:.04em}
+/* Fast travel is product-LOCAL: a flat list of the active product's scenes.
+   (The Phase 1 multi-product .peh-ft-realm* rules were removed in 1.2 — fast
+   travel never enumerates products.) */
 .peh-ft-scenes{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
 .peh-ft-scene{font:inherit;font-size:12px;padding:6px 11px;border-radius:999px;cursor:pointer;background:rgba(12,10,26,.6);border:1px solid var(--border-subtle);color:var(--ink-soft)}
 .peh-ft-scene:hover{color:var(--ink);border-color:var(--peh-accent)}
 .peh-ft-scene.active{background:linear-gradient(120deg,var(--peh-accent),var(--peh-accent2));color:#0c0a1a;font-weight:700;border-color:transparent}
-.peh-ft-future{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 18px 22px}
-.peh-ft-future-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
-.peh-ft-soon{font-size:11px;padding:5px 10px;border-radius:999px;border:1px dashed var(--border-subtle);color:var(--ink-dim)}
 
 /* ══════════════════════════════════════════════════════════════════════
    DESKTOP (≥880px) — docked panels, multi-tile dashboard, expanded chrome
@@ -2910,7 +2901,6 @@ body::after {
 
   .peh-ft-overlay{align-items:center}
   .peh-ft{border-radius:20px;max-height:82vh}
-  .peh-ft-realms{grid-template-columns:1fr 1fr}
   .peh-task-name{max-width:180px}
 }
 

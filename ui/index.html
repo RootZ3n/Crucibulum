@@ -6191,7 +6191,7 @@ const PRODUCT_REGISTRY=[
    tagline:'Test · Prove · Tune', blurb:'Drive a model hard, measure it, tune it, and bank the proof.',
    accent:'#22d3ee', accent2:'#8b5cf6', peh:'wrench', defaultScene:'garage'},
   // trials product — displayName is data-driven ("Kobli" or "Colosseum").
-  // A standalone product, NOT a realm sitting beside Luak in one app.
+  // A standalone product — NOT a sub-area sitting beside Luak in one shared app.
   {id:'trials', displayName:'Kobli', status:'public', order:1,
    tagline:'Endure · Survive · Repeat', blurb:'Trials, pressure, and the scars that prove endurance.',
    accent:'#ec4899', accent2:'#f59e0b', peh:'shield', defaultScene:'arena-gate'},
@@ -6480,8 +6480,8 @@ function pehGlyph(key){
 }
 
 // ── PehverseShell: top-level renderer (called by render()) ─────────────
-// Everything below is scoped to the single active product. No realm grid,
-// no cross-product runtime — one product's scenes, hotspots, and workspaces.
+// Everything below is scoped to the single active product. No multi-product
+// grid, no cross-product runtime — one product's scenes, hotspots, workspaces.
 function renderPehverse(deckMarkup){
   const pv=state.pehverse;
   const product=pehActiveProduct();
@@ -6525,7 +6525,7 @@ function renderPehImmersive(product,scene,deckMarkup){
   return `<div class="peh-scene" data-scene="${scene?scene.id:''}">
     <div class="peh-scene-atmos" aria-hidden="true"></div>
     <div class="peh-scene-caption">
-      <span class="peh-scene-realm">${esc(product.displayName)} · ${esc(product.tagline)}</span>
+      <span class="peh-scene-tag">${esc(product.displayName)} · ${esc(product.tagline)}</span>
       <h1 class="peh-scene-title">${esc(scene?scene.title:product.displayName)}</h1>
       <p class="peh-scene-desc">${esc(scene?scene.desc:product.blurb)}</p>
     </div>
@@ -6544,7 +6544,7 @@ function renderPehDashboard(product,scene,deckMarkup){
     : pehWorkspaceChooser(product);
   return `<div class="peh-dash">
     <div class="peh-dash-head">
-      <div class="peh-dash-here"><span class="peh-scene-realm">${esc(product.displayName)}</span><h1>${esc(scene?scene.title:product.displayName)}</h1><p>${esc(scene?scene.desc:product.blurb)}</p></div>
+      <div class="peh-dash-here"><span class="peh-scene-tag">${esc(product.displayName)}</span><h1>${esc(scene?scene.title:product.displayName)}</h1><p>${esc(scene?scene.desc:product.blurb)}</p></div>
       ${renderPehWaypoints(product,scene)}
     </div>
     <div class="peh-grid ${open.length>1?'multi':''}">${grid}</div>

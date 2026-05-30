@@ -214,4 +214,122 @@ describe('Pehverse product isolation — runtime guards (source)', () => {
     assert.ok(!/function pehTravel\(/.test(HTML), 'legacy cross-product pehTravel must be removed');
     assert.ok(!HTML.includes('REALM_REGISTRY'), 'legacy REALM_REGISTRY must be renamed to PRODUCT_REGISTRY');
   });
+
+  it('"realm" is gone from the engine as routing architecture', () => {
+    // Phase 1.2 terminology cleanup: the engine block must not use "realm".
+    const engine = HTML.slice(HTML.indexOf('PEHVERSE WORLD ENGINE'));
+    assert.ok(!/\brealm\b/i.test(engine.replace(/\.peh-ft-realm/g, '')),
+      'engine code/comments must not use "realm" as routing architecture');
+  });
+});
+
+// ── Behavioural sandbox ────────────────────────────────────────────────
+// Extract the pure isolation functions + registries and execute them with
+// stubbed globals, so we prove the actual runtime guarantees (not just that
+// the source mentions a guard). The functions reference `state`, `window`,
+// `location`, `localStorage` — we supply those as constructor params (their
+// names are not reserved), giving each scenario fresh closures.
+function extractFn(name: string): string {
+  const anchor = HTML.indexOf('function ' + name + '(');
+  assert.ok(anchor > -1, `function ${name} not found`);
+  let i = anchor;
+  while (i < HTML.length && HTML[i] !== '{') i++;
+  let depth = 0;
+  let str: string | null = null;
+  let line = false;
+  let block = false;
+  for (; i < HTML.length; i++) {
+    const c = HTML[i];
+    const n = HTML[i + 1];
+    if (line) { if (c === '\n') line = false; continue; }
+    if (block) { if (c === '*' && n === '/') { block = false; i++; } continue; }
+    if (str) { if (c === '\\') { i++; continue; } if (c === str) str = null; continue; }
+    if (c === '/' && n === '/') { line = true; i++; continue; }
+    if (c === '/' && n === '*') { block = true; i++; continue; }
+    if (c === '"' || c === "'" || c === '`') { str = c; continue; }
+    if (c === '{') depth++;
+    else if (c === '}') { depth--; if (depth === 0) return HTML.slice(anchor, i + 1); }
+  }
+  throw new Error(`could not balance function ${name}`);
+}
+
+function makeStorage(seed: Record<string, string> = {}) {
+  const m = new Map<string, string>(Object.entries(seed));
+  return {
+    getItem: (k: string) => (m.has(k) ? m.get(k)! : null),
+    setItem: (k: string, v: string) => { m.set(k, String(v)); },
+    removeItem: (k: string) => { m.delete(k); },
+  };
+}
+
+const ENGINE_SRC = [
+  'const PRODUCT_REGISTRY=' + extractLiteral('PRODUCT_REGISTRY') + ';',
+  'const SCENE_REGISTRY=' + extractLiteral('SCENE_REGISTRY') + ';',
+  'const WORKSPACE_REGISTRY=' + extractLiteral('WORKSPACE_REGISTRY') + ';',
+  (HTML.match(/const PEH_DEFAULT_PRODUCT='[^']+';/) || ['const PEH_DEFAULT_PRODUCT=\'luak\';'])[0],
+  extractFn('pehProduct'),
+  extractFn('pehPublicProducts'),
+  extractFn('pehFutureProducts'),
+  extractFn('pehScenes'),
+  extractFn('pehScene'),
+  extractFn('pehWorkspaceDef'),
+  extractFn('pehDevMode'),
+  extractFn('pehResolveActiveProduct'),
+  extractFn('pehActiveProduct'),
+  extractFn('pehActiveProductId'),
+  extractFn('pehWorkspaceBelongsToActive'),
+].join('\n');
+
+// eslint-disable-next-line @typescript-eslint/no-implied-eval
+const makeEngine = new Function(
+  'state', 'window', 'location', 'localStorage',
+  ENGINE_SRC + '\nreturn {pehResolveActiveProduct,pehActiveProductId,pehWorkspaceBelongsToActive,pehDevMode};',
+) as (state: any, window: any, location: any, localStorage: any) => any;
+
+function engine(opts: { product?: string; win?: any; ls?: Record<string, string> } = {}) {
+  const state = { pehverse: { product: opts.product ?? 'luak' } };
+  return makeEngine(state, opts.win ?? {}, undefined, makeStorage(opts.ls));
+}
+
+describe('Pehverse product isolation — runtime behaviour (sandbox)', () => {
+  it('default runtime resolves to the single default product (luak)', () => {
+    const e = engine();
+    assert.equal(e.pehResolveActiveProduct(), 'luak');
+    assert.equal(e.pehDevMode(), false, 'dev mode must be off by default → no switcher in release');
+  });
+
+  it('a private product can NEVER become active (build flag ignored)', () => {
+    assert.equal(engine({ win: { PEHVERSE_PRODUCT: 'symposium' } }).pehResolveActiveProduct(), 'luak');
+    // Even if state is tampered to a private product, the active accessor falls back.
+    assert.equal(engine({ product: 'symposium' }).pehActiveProductId(), 'luak');
+  });
+
+  it('a future product can NEVER become active (build flag ignored)', () => {
+    assert.equal(engine({ win: { PEHVERSE_PRODUCT: 'kokuli' } }).pehResolveActiveProduct(), 'luak');
+    assert.equal(engine({ product: 'toba' }).pehActiveProductId(), 'luak');
+  });
+
+  it('the dev localStorage override is IGNORED unless dev mode is on', () => {
+    // Saved product but no dev flag → stays default.
+    assert.equal(engine({ ls: { 'pehverse-product': 'trials' } }).pehResolveActiveProduct(), 'luak');
+    // Dev flag on → override honored (dev/demo only).
+    const dev = engine({ ls: { 'pehverse-dev': '1', 'pehverse-product': 'trials' } });
+    assert.equal(dev.pehDevMode(), true);
+    assert.equal(dev.pehResolveActiveProduct(), 'trials');
+  });
+
+  it('a valid build flag selects the product (Option A, one per runtime)', () => {
+    assert.equal(engine({ win: { PEHVERSE_PRODUCT: 'trials' } }).pehResolveActiveProduct(), 'trials');
+  });
+
+  it('cross-product workspace ownership is enforced both directions', () => {
+    const luak = engine({ product: 'luak' });
+    assert.equal(luak.pehWorkspaceBelongsToActive(WORKSPACES['benchmark-runs']), true);
+    assert.equal(luak.pehWorkspaceBelongsToActive(WORKSPACES['adversarial-trials']), false, 'Luak must not open a Kobli workspace');
+    assert.equal(luak.pehWorkspaceBelongsToActive(WORKSPACES['console']), true, 'null-product console is per-product');
+
+    const trials = engine({ product: 'trials' });
+    assert.equal(trials.pehWorkspaceBelongsToActive(WORKSPACES['adversarial-trials']), true);
+    assert.equal(trials.pehWorkspaceBelongsToActive(WORKSPACES['benchmark-runs']), false, 'Kobli must not open a Luak workspace');
+  });
 });

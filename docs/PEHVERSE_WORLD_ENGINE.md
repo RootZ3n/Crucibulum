@@ -5,19 +5,33 @@ navigation shell that wraps a product's functional UI. It replaces the
 SaaS-dashboard feel with a sense of *visiting a place*: the world is
 navigation, the windows are work.
 
-> **Product isolation (Phase 1.1).** Each public product (Luak, Kobli, …) is a
-> **completely standalone app**. Products belong to the Pehverse ecosystem by
-> name, theme, design language, and purpose **only** — there is **no
-> cross-product runtime navigation**. Exactly **one** product is live per
-> runtime. Luak cannot open Kobli's workspaces and vice versa; Fast Travel
-> jumps between *areas (scenes) inside the active product* only.
->
-> This is a reusable *pattern*, not a global multi-product runtime. Future
-> products are **config/doc examples**, not runtime destinations, until each
-> ships as its own product.
+## Pehverse is an ecosystem pattern, not a runtime router
+
+**Pehverse is the shared ecosystem — naming, design language, UX philosophy,
+and mythology — NOT a runtime that routes between products.** Each product
+**owns its own world-shell**: it instantiates this engine with its own
+products-of-one config, scenes, and workspaces, and ships standalone.
+
+- **Each product is a completely standalone app.** Luak and Kobli launch
+  together, but they are still **separate products** — separate shells,
+  separate deployments.
+- **No cross-product navigation in release.** Exactly **one** product is live
+  per runtime. Luak cannot open Kobli's workspaces and vice versa; Fast Travel
+  jumps only between *areas (scenes) inside the active product*.
+- **The dev switcher is not a public feature.** It exists purely for local
+  development/demo convenience and is hidden whenever dev mode is off.
+- **Future products copy/instantiate the pattern** — they are **not** plugged
+  into one shared public shell. The terms below define the vocabulary:
+  - **product** — a standalone app / the product boundary.
+  - **scene / area** — a place *inside* the current product.
+  - **workspace** — a functional panel opened *inside* the current product.
+  - **Pehverse** — the ecosystem & design language (lore/branding), never a
+    runtime router. The word *realm* belongs to lore/branding copy, never to
+    routing architecture.
 
 > **Public release / build order** (informational — each ships as its own
-> standalone product, not as a realm added to one shared app):
+> standalone product, instantiating this pattern, never plugged into one
+> shared app):
 > Luak + Kobli/Colosseum (`trials`) → Kokuli → Toba → Nusika → Aiiska +
 > Peh-pub → **Symposium / name TBD** (lab-only, `private`, built last; must
 > **reuse this engine, never define it**, and is absent from all navigation).
@@ -92,8 +106,17 @@ one-field data edit that breaks nothing.
 
 ## How to add the next product (e.g. Kokuli) — as a STANDALONE product
 
-Each product is its own standalone app. Adding one is data; it does **not**
-make it reachable from inside another product at runtime.
+Each product is its own standalone app. The right model is to **copy /
+instantiate the pattern** for the new product (its own world-shell, ideally
+its own deployment) — **never plug it into one shared public shell**. Adding
+a product to the registries is config; it does **not** make it reachable from
+inside another product at runtime.
+
+> The steps below show how the registries hold a product's data. In a
+> standalone deployment that product would be the one selected by
+> `window.PEHVERSE_PRODUCT` / `PEH_DEFAULT_PRODUCT`; the others remain
+> `future` config examples. Co-registering Luak and Kobli here is the
+> launch-together pair plus dev convenience — not a shared public runtime.
 
 ### 1. Flip the product from `future` to `public` in `PRODUCT_REGISTRY`
 
