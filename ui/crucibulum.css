@@ -2924,3 +2924,22 @@ body::after {
   .peh-pin::after{animation:none}
   .peh-panel,.peh-ft,.peh-ft-overlay{animation:none}
 }
+
+/* ── Pehverse Phase 1.1: product isolation (single-product shell) ─────── */
+/* Dev badge in the top bar — only rendered when dev mode is on. */
+.peh-dev-badge{
+  font-size:9px;font-weight:800;letter-spacing:.12em;padding:2px 6px;border-radius:6px;
+  color:#0c0a1a;background:linear-gradient(120deg,#fbbf24,#ec4899);margin-left:2px;
+}
+/* Fast travel is now product-local: a flat list of the active product's
+   scenes (areas). Reuses .peh-ft-scene chips. */
+.peh-ft-scenes-main{display:flex;flex-wrap:wrap;gap:8px;padding:16px}
+.peh-ft-empty{font-size:13px;color:var(--ink-dim);padding:4px}
+/* Dev-only product switcher — clearly fenced off; never shown in release. */
+.peh-ft-dev{margin:4px 16px 20px;padding:12px;border:1px dashed var(--border-subtle);border-radius:14px;background:rgba(251,191,36,.05)}
+.peh-ft-dev-label{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#fbbf24;margin-bottom:9px}
+.peh-ft-dev-products{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.peh-ft-dev-product{font:inherit;font-size:12px;padding:6px 12px;border-radius:999px;cursor:pointer;background:rgba(12,10,26,.6);border:1px solid var(--border-subtle);color:var(--ink-soft)}
+.peh-ft-dev-product:hover{color:var(--ink);border-color:var(--peh-accent)}
+.peh-ft-dev-product.active{background:linear-gradient(120deg,var(--peh-accent),var(--peh-accent2));color:#0c0a1a;font-weight:700;border-color:transparent}
+.peh-ft-dev-soon{font-size:11px;padding:5px 10px;border-radius:999px;border:1px dashed var(--border-subtle);color:var(--ink-dim);opacity:.8}

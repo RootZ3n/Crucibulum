@@ -306,13 +306,14 @@ const state={
   drilldownPage:1,
   drilldownSort:'newest',
   // ── Pehverse world engine ────────────────────────────────────────
-  // Navigation state for the place-based shell. `realm`/`scene` are
-  // internal ids (stable across displayName renames). `workspaces` is
-  // the open-panel stack (last = top of z-order / focus). `mode` is
-  // immersive (scene-first) vs dashboard (workspace-first). Persisted
-  // to localStorage so a reload returns the operator to where they were.
+  // Navigation state for the place-based shell. Exactly ONE product is
+  // live per runtime (product isolation): `product` is the active product
+  // id, finalized by pehInitProduct() at module load (build flag → dev
+  // override → default). `scene` is an area *inside that product* — there
+  // is no cross-product navigation at runtime. `workspaces` is the open-
+  // panel stack (last = focus); `mode` is immersive vs dashboard.
   pehverse:{
-    realm:localStorage.getItem('pehverse-realm')||'luak',
+    product:'luak',  // active product id — finalized by pehInitProduct()
     scene:localStorage.getItem('pehverse-scene')||null,
     mode:localStorage.getItem('pehverse-mode')||'immersive',
     workspaces:[],   // [{uid, defId, dock:'right'|'bottom'|'fullscreen', min}]
@@ -6161,45 +6162,60 @@ function renderActiveArenaShell(){
 // should feel like they are *visiting a place*, not opening a SaaS tab.
 // Anything is reachable in 2-3 seconds via Fast Travel; no slow walking.
 //
-// Modules (all reusable; NONE depend on the lab-only Symposium realm):
-//   RealmRegistry   — public realms (+ future/private placeholders)
-//   SceneRegistry   — scenes per realm (title, desc, peh variant, hotspots)
-//   HotspotLayer    — % positioned tappable hotspots → open workspaces
-//   WorkspaceManager— open/close/dock/minimize workspace panels
-//   FastTravelMenu  — instant jump to any public realm/scene
-//   PehverseShell   — owns realm/scene, open workspaces, mode, layout
+// PRODUCT ISOLATION (Phase 1.1): each public product is a STANDALONE app.
+// Products share the Pehverse ecosystem by name, theme, design language and
+// purpose ONLY — there is NO cross-product runtime navigation. Exactly one
+// product is live per runtime. Luak cannot open Kobli workspaces and vice
+// versa; Fast Travel jumps between areas (scenes) INSIDE the active product
+// only. Future products are config/doc examples, not runtime destinations.
 //
-// Public-launch order drives build order. Symposium is marked `private`
-// and is ABSENT from Fast Travel; it must reuse this engine, never define
-// it. See docs/PEHVERSE_WORLD_ENGINE.md for how to add the next realm.
+// Modules (reusable single-product world-shell; NONE depend on Symposium):
+//   ProductRegistry — standalone products (active / future / private)
+//   SceneRegistry   — scenes (areas) per product (title, desc, peh, hotspots)
+//   HotspotLayer    — % positioned hotspots → open this product's workspaces
+//   WorkspaceManager— open/close/dock/minimize; product-scoped ownership
+//   FastTravelMenu  — instant jump between THIS product's scenes only
+//   PehverseShell   — owns active product, scene, workspaces, mode, layout
+//
+// A dev-only product switcher (hidden in public/release) can flip the live
+// product for demos. See docs/PEHVERSE_WORLD_ENGINE.md.
 // ══════════════════════════════════════════════════════════════════════
 
-// ── RealmRegistry ──────────────────────────────────────────────────────
+// ── ProductRegistry ────────────────────────────────────────────────────
 // displayName is configurable; internal `id` is the stable routing key, so
 // renaming "Kobli" ⇄ "Colosseum" never breaks a hotspot or saved link.
-const REALM_REGISTRY=[
+// `status`: 'public' (a shippable standalone product), 'future' (config
+// placeholder — NOT a runtime destination), 'private' (lab-only, hidden).
+const PRODUCT_REGISTRY=[
   {id:'luak',  displayName:'Luak',  status:'public', order:1,
    tagline:'Test · Prove · Tune', blurb:'Drive a model hard, measure it, tune it, and bank the proof.',
    accent:'#22d3ee', accent2:'#8b5cf6', peh:'wrench', defaultScene:'garage'},
-  // trials realm — displayName is data-driven ("Kobli" or "Colosseum").
+  // trials product — displayName is data-driven ("Kobli" or "Colosseum").
+  // A standalone product, NOT a realm sitting beside Luak in one app.
   {id:'trials', displayName:'Kobli', status:'public', order:1,
    tagline:'Endure · Survive · Repeat', blurb:'Trials, pressure, and the scars that prove endurance.',
    accent:'#ec4899', accent2:'#f59e0b', peh:'shield', defaultScene:'arena-gate'},
-  // ── Future public realms — registered as placeholders, launch in order ──
+  // ── Future products — CONFIG/DOC EXAMPLES ONLY. Not reachable at runtime
+  //    (no fast travel, no switch) until each ships as its own product. ──
   {id:'kokuli', displayName:'Kokuli', status:'future', order:2, tagline:'Opening soon', blurb:'', accent:'#34d399', accent2:'#22d3ee', peh:'seed',  defaultScene:null},
   {id:'toba',   displayName:'Toba',   status:'future', order:3, tagline:'Opening soon', blurb:'', accent:'#60a5fa', accent2:'#8b5cf6', peh:'wave',  defaultScene:null},
   {id:'nusika', displayName:'Nusika', status:'future', order:4, tagline:'Opening soon', blurb:'', accent:'#f472b6', accent2:'#fb7185', peh:'star',  defaultScene:null},
   {id:'aiiska', displayName:'Aiiska', status:'future', order:5, tagline:'Opening soon', blurb:'', accent:'#a78bfa', accent2:'#22d3ee', peh:'orbit', defaultScene:null},
   {id:'peh-pub',displayName:'Peh-pub',status:'future', order:5, tagline:'Opening soon', blurb:'', accent:'#fbbf24', accent2:'#ec4899', peh:'mug',   defaultScene:null},
   // ── Lab-only. NOT public. Built last; must reuse this engine, not define
-  //    it. `hidden` keeps it out of Fast Travel and the public world. ──
+  //    it. `private`+`hidden` keep it out of all navigation and switching. ──
   {id:'symposium', displayName:'Symposium', status:'private', order:99, tagline:'Lab only', blurb:'', accent:'#8b5cf6', accent2:'#22d3ee', peh:'mask', defaultScene:null, hidden:true}
 ];
 
+// Product isolation config. Exactly one product is live per runtime.
+const PEH_DEFAULT_PRODUCT='luak';
+
 // ── SceneRegistry ──────────────────────────────────────────────────────
-// One entry per public realm. Each scene: id, title, desc, peh variant,
-// and hotspots (% positioned). A hotspot may open a workspace, travel to a
-// sibling scene, or both. Future realms have no scenes yet (placeholders).
+// One entry per public product, keyed by product id. Each scene is an AREA
+// inside that product: id, title, desc, peh variant, hotspots (% positioned).
+// A hotspot may open one of THIS product's workspaces, travel to a sibling
+// scene in THIS product, or both. Never references another product. Future
+// products have no scenes yet (config placeholders).
 const SCENE_REGISTRY={
   luak:[
     {id:'garage', title:'Garage', desc:'Roll a model onto the lift and open the bay doors.', peh:'wrench', hotspots:[
@@ -6251,59 +6267,120 @@ const SCENE_REGISTRY={
 
 // ── WorkspaceManager: definitions ──────────────────────────────────────
 // A WorkspaceDefinition declares how a hotspot's panel behaves and what it
-// hosts. kind:'lane' wraps an existing functional TAB_CONFIG lane (real,
-// interactive); kind:'placeholder' is an atmospheric stub; kind:'deck' is
-// the full classic console (preserves every legacy access path). `dock` is
-// the default desktop placement; mobile always forces a bottom sheet.
+// hosts. `product` is the OWNING product id — the isolation boundary: a
+// workspace only opens when its product is the active one (product:null is
+// the per-product legacy console). kind:'lane' wraps an existing functional
+// TAB_CONFIG lane (real, interactive); kind:'placeholder' is an atmospheric
+// stub; kind:'deck' is the full classic console (preserves legacy paths).
+// `dock` is the default desktop placement; mobile always forces a sheet.
 const WORKSPACE_REGISTRY={
-  // ── Luak ──
-  'benchmark-runs':      {realm:'luak', title:'Benchmark Runs',       kind:'lane', tab:'benchmark', dock:'right',      peh:'gauge'},
-  'model-comparison':    {realm:'luak', title:'Model Comparison',     kind:'lane', tab:'dashboard', dock:'right',      peh:'chart'},
-  'timing-results':      {realm:'luak', title:'Timing Results',       kind:'placeholder', dock:'bottom', peh:'gauge', relatedTab:'benchmark', blurb:'Lap times, throughput, and tokens-per-second land here when the timing pipeline ships.'},
-  'tuning-notes':        {realm:'luak', title:'Tuning Notes',         kind:'placeholder', dock:'right',  peh:'wrench', relatedTab:'benchmark', blurb:'A per-model tuning log — what you changed and what it moved.'},
-  'performance-receipts':{realm:'luak', title:'Performance Receipts', kind:'lane', tab:'dashboard', dock:'fullscreen', peh:'trophy'},
-  // ── Kobli / trials ──
-  'stress-tests':        {realm:'trials', title:'Stress Tests',       kind:'lane', tab:'safety', dock:'right',      peh:'shield'},
-  'adversarial-trials':  {realm:'trials', title:'Adversarial Trials', kind:'lane', tab:'poison', dock:'right',      peh:'bug'},
-  'regression-trials':   {realm:'trials', title:'Regression Trials',  kind:'placeholder', dock:'bottom', peh:'shield', relatedTab:'build', blurb:'Re-run the gauntlet against a known-good baseline to catch backslides.'},
-  'failure-analysis':    {realm:'trials', title:'Failure Analysis',   kind:'lane', tab:'trust',  dock:'right',      peh:'bug'},
-  'endurance-receipts':  {realm:'trials', title:'Endurance Receipts', kind:'placeholder', dock:'fullscreen', peh:'trophy', relatedTab:'trust', blurb:'Long-haul survival receipts — how a model held up over repeated pressure.'},
-  // ── Global ── full classic console; preserves every legacy access path.
-  'console':             {realm:null, title:'Full Console', kind:'deck', dock:'fullscreen', peh:'orbit'}
+  // ── Luak (product:'luak') ──
+  'benchmark-runs':      {product:'luak', title:'Benchmark Runs',       kind:'lane', tab:'benchmark', dock:'right',      peh:'gauge'},
+  'model-comparison':    {product:'luak', title:'Model Comparison',     kind:'lane', tab:'dashboard', dock:'right',      peh:'chart'},
+  'timing-results':      {product:'luak', title:'Timing Results',       kind:'placeholder', dock:'bottom', peh:'gauge', relatedTab:'benchmark', blurb:'Lap times, throughput, and tokens-per-second land here when the timing pipeline ships.'},
+  'tuning-notes':        {product:'luak', title:'Tuning Notes',         kind:'placeholder', dock:'right',  peh:'wrench', relatedTab:'benchmark', blurb:'A per-model tuning log — what you changed and what it moved.'},
+  'performance-receipts':{product:'luak', title:'Performance Receipts', kind:'lane', tab:'dashboard', dock:'fullscreen', peh:'trophy'},
+  // ── Kobli / trials (product:'trials') ──
+  'stress-tests':        {product:'trials', title:'Stress Tests',       kind:'lane', tab:'safety', dock:'right',      peh:'shield'},
+  'adversarial-trials':  {product:'trials', title:'Adversarial Trials', kind:'lane', tab:'poison', dock:'right',      peh:'bug'},
+  'regression-trials':   {product:'trials', title:'Regression Trials',  kind:'placeholder', dock:'bottom', peh:'shield', relatedTab:'build', blurb:'Re-run the gauntlet against a known-good baseline to catch backslides.'},
+  'failure-analysis':    {product:'trials', title:'Failure Analysis',   kind:'lane', tab:'trust',  dock:'right',      peh:'bug'},
+  'endurance-receipts':  {product:'trials', title:'Endurance Receipts', kind:'placeholder', dock:'fullscreen', peh:'trophy', relatedTab:'trust', blurb:'Long-haul survival receipts — how a model held up over repeated pressure.'},
+  // ── Per-product legacy console (product:null = available to whichever
+  //    product is active; it shows that runtime's own classic deck). ──
+  'console':             {product:null, title:'Full Console', kind:'deck', dock:'fullscreen', peh:'orbit'}
 };
 
 // ── Registry lookups ───────────────────────────────────────────────────
-function pehRealm(id){return REALM_REGISTRY.find((r)=>r.id===id)||null}
-function pehPublicRealms(){return REALM_REGISTRY.filter((r)=>r.status==='public').sort((a,b)=>a.order-b.order)}
-function pehFutureRealms(){return REALM_REGISTRY.filter((r)=>r.status==='future').sort((a,b)=>a.order-b.order)}
-function pehScenes(realmId){return SCENE_REGISTRY[realmId]||[]}
-function pehScene(realmId,sceneId){return pehScenes(realmId).find((s)=>s.id===sceneId)||null}
-function pehCurrentRealm(){
-  const r=pehRealm(state.pehverse.realm);
-  // Never strand the shell on a missing/private realm — fall back to Luak.
-  return (r&&r.status==='public')?r:pehRealm('luak');
-}
-function pehCurrentScene(){
-  const r=pehCurrentRealm(); if(!r)return null;
-  const sid=state.pehverse.scene||r.defaultScene;
-  return pehScene(r.id,sid)||pehScenes(r.id)[0]||null;
-}
+function pehProduct(id){return PRODUCT_REGISTRY.find((p)=>p.id===id)||null}
+function pehPublicProducts(){return PRODUCT_REGISTRY.filter((p)=>p.status==='public').sort((a,b)=>a.order-b.order)}
+function pehFutureProducts(){return PRODUCT_REGISTRY.filter((p)=>p.status==='future').sort((a,b)=>a.order-b.order)}
+function pehScenes(productId){return SCENE_REGISTRY[productId]||[]}
+function pehScene(productId,sceneId){return pehScenes(productId).find((s)=>s.id===sceneId)||null}
 function pehWorkspaceDef(defId){return WORKSPACE_REGISTRY[defId]||null}
 
-// ── Navigation (Fast Travel + scene waypoints + mode) ──────────────────
-function pehTravel(realmId,sceneId){
-  const r=pehRealm(realmId);
-  if(!r||r.status!=='public')return; // future/private realms are not travelable yet
-  state.pehverse.realm=r.id;
-  state.pehverse.scene=sceneId||r.defaultScene||(pehScenes(r.id)[0]&&pehScenes(r.id)[0].id)||null;
-  state.pehverse.fastTravel=false;
-  localStorage.setItem('pehverse-realm',state.pehverse.realm);
-  if(state.pehverse.scene)localStorage.setItem('pehverse-scene',state.pehverse.scene);
-  render();
+// ── Product isolation: dev mode + active-product resolution ────────────
+// Dev mode is OFF in public/release. It is the ONLY thing that exposes the
+// product switcher. Enable for demos via ?peh-dev=1 (persists) or by setting
+// window.PEHVERSE_DEV=true before this script.
+function pehDevMode(){
+  try{
+    if(typeof window!=='undefined'&&window.PEHVERSE_DEV===true)return true;
+    if(typeof location!=='undefined'&&/[?&]peh-dev=1(?:&|$)/.test(location.search||'')){
+      try{localStorage.setItem('pehverse-dev','1')}catch(e){}
+    }
+    return (typeof localStorage!=='undefined'&&localStorage.getItem('pehverse-dev')==='1');
+  }catch(e){return false}
 }
+// Which single product is live? Option A (build/deploy): window.PEHVERSE_PRODUCT
+// wins. Option B (dev only): a localStorage override honored ONLY in dev mode.
+// Otherwise the default. Never resolves to a future/private product.
+function pehResolveActiveProduct(){
+  let injected=null,devSel=null;
+  try{injected=(typeof window!=='undefined'&&window.PEHVERSE_PRODUCT)||null}catch(e){}
+  try{devSel=pehDevMode()?localStorage.getItem('pehverse-product'):null}catch(e){}
+  const want=injected||devSel||PEH_DEFAULT_PRODUCT;
+  const p=pehProduct(want);
+  return (p&&p.status==='public')?p.id:PEH_DEFAULT_PRODUCT;
+}
+function pehActiveProduct(){
+  const p=pehProduct(state.pehverse.product);
+  return (p&&p.status==='public')?p:pehProduct(PEH_DEFAULT_PRODUCT);
+}
+function pehActiveProductId(){const p=pehActiveProduct();return p?p.id:PEH_DEFAULT_PRODUCT}
+function pehCurrentScene(){
+  const p=pehActiveProduct(); if(!p)return null;
+  const sid=state.pehverse.scene||p.defaultScene;
+  return pehScene(p.id,sid)||pehScenes(p.id)[0]||null;
+}
+// Finalize the active product + scene at module load. Drops any saved scene
+// that doesn't belong to the active product, so a reload / product switch
+// can never strand the shell on another product's area.
+function pehInitProduct(){
+  const pid=pehResolveActiveProduct();
+  state.pehverse.product=pid;
+  const prod=pehProduct(pid);
+  if(!state.pehverse.scene||!pehScene(pid,state.pehverse.scene)){
+    state.pehverse.scene=(prod&&prod.defaultScene)||(pehScenes(pid)[0]&&pehScenes(pid)[0].id)||null;
+  }
+}
+// THE isolation boundary: a workspace opens only when it belongs to the
+// active product (product:null = the active product's own legacy console).
+function pehWorkspaceBelongsToActive(def){
+  if(!def)return false;
+  return def.product==null||def.product===pehActiveProductId();
+}
+
+// ── Navigation (product-local scene travel + mode) ─────────────────────
+// Scene travel is product-local ONLY. A scene id is honored solely when it
+// belongs to the active product — there is no cross-product jump.
 function pehSetScene(sceneId){
+  if(!pehScene(pehActiveProductId(),sceneId))return; // isolation: own areas only
   state.pehverse.scene=sceneId;
   localStorage.setItem('pehverse-scene',sceneId);
+  render();
+}
+// Fast-travel variant: same product-local guard, then close the overlay.
+function pehGoScene(sceneId){
+  if(!pehScene(pehActiveProductId(),sceneId))return;
+  state.pehverse.scene=sceneId;
+  state.pehverse.fastTravel=false;
+  localStorage.setItem('pehverse-scene',sceneId);
+  render();
+}
+// Dev-only product switch (Option B). NEVER runs in public/release, only
+// switches between PUBLIC products, and clears workspaces (they are
+// product-local) so no other product's panels survive the switch.
+function pehDevSwitchProduct(productId){
+  if(!pehDevMode())return;
+  const p=pehProduct(productId);
+  if(!p||p.status!=='public')return;
+  state.pehverse.product=p.id;
+  state.pehverse.scene=p.defaultScene||(pehScenes(p.id)[0]&&pehScenes(p.id)[0].id)||null;
+  state.pehverse.workspaces=[];
+  state.pehverse.focus=null;
+  state.pehverse.fastTravel=false;
+  try{localStorage.setItem('pehverse-product',p.id);if(state.pehverse.scene)localStorage.setItem('pehverse-scene',state.pehverse.scene)}catch(e){}
   render();
 }
 function pehSetMode(mode){
@@ -6321,6 +6398,13 @@ function pehToggleFastTravel(force){
 // ── WorkspaceManager: open/close/dock/focus/minimize ───────────────────
 function pehOpenWorkspace(defId,opts){
   const def=pehWorkspaceDef(defId); if(!def)return;
+  // Product isolation boundary — refuse to open another product's workspace.
+  if(!pehWorkspaceBelongsToActive(def)){
+    if(typeof console!=='undefined'&&console.warn){
+      console.warn('[pehverse] blocked cross-product workspace open:',defId,'(owned by',def.product,'· active',pehActiveProductId()+')');
+    }
+    return;
+  }
   let ws=state.pehverse.workspaces.find((w)=>w.defId===defId); // de-dupe
   if(!ws){
     ws={uid:'ws'+(++state.pehverse.wsSeq),defId,dock:(opts&&opts.dock)||def.dock||'right',min:false};
@@ -6330,9 +6414,13 @@ function pehOpenWorkspace(defId,opts){
   pehFocusWorkspace(ws.uid,true);
   render();
 }
-// Hotspot click: optionally travel to a sub-scene, then open the workspace.
+// Hotspot click: optionally travel to a sub-scene (product-local), then open
+// the workspace (isolation-guarded). Hotspots only reference their own
+// product's data, but both calls re-validate so the boundary holds anyway.
 function pehHotspot(defId,sceneId){
-  if(sceneId){state.pehverse.scene=sceneId;localStorage.setItem('pehverse-scene',sceneId)}
+  if(sceneId&&pehScene(pehActiveProductId(),sceneId)){
+    state.pehverse.scene=sceneId;localStorage.setItem('pehverse-scene',sceneId);
+  }
   pehOpenWorkspace(defId);
 }
 function pehFocusWorkspace(uid,skipRender){
@@ -6392,26 +6480,29 @@ function pehGlyph(key){
 }
 
 // ── PehverseShell: top-level renderer (called by render()) ─────────────
+// Everything below is scoped to the single active product. No realm grid,
+// no cross-product runtime — one product's scenes, hotspots, and workspaces.
 function renderPehverse(deckMarkup){
   const pv=state.pehverse;
-  const realm=pehCurrentRealm();
+  const product=pehActiveProduct();
   const scene=pehCurrentScene();
-  const styleVars=`--peh-accent:${realm.accent};--peh-accent2:${realm.accent2||realm.accent}`;
-  return `<div class="peh-shell peh-mode-${pv.mode} peh-realm-${realm.id}" style="${styleVars}">
-    ${renderPehTopBar(realm,scene)}
-    <div class="peh-stage">${renderPehStage(realm,scene,deckMarkup)}</div>
+  const styleVars=`--peh-accent:${product.accent};--peh-accent2:${product.accent2||product.accent}`;
+  return `<div class="peh-shell peh-mode-${pv.mode} peh-product-${product.id}" data-product="${product.id}" style="${styleVars}">
+    ${renderPehTopBar(product,scene)}
+    <div class="peh-stage">${renderPehStage(product,scene,deckMarkup)}</div>
     ${renderPehTaskbar()}
     ${renderFastTravelMenu()}
   </div>`;
 }
 
-function renderPehTopBar(realm,scene){
+function renderPehTopBar(product,scene){
   const pv=state.pehverse;
+  const dev=pehDevMode();
   return `<header class="peh-topbar">
-    <div class="peh-brand"><span class="peh-brand-mark">PEH</span><span class="peh-brand-word">Pehverse</span></div>
-    <button class="peh-travel-btn" type="button" onclick="pehToggleFastTravel()" aria-haspopup="dialog" aria-expanded="${pv.fastTravel?'true':'false'}" title="Fast travel (Alt+T)">
+    <div class="peh-brand"><span class="peh-brand-mark" title="Pehverse ecosystem">PEH</span><span class="peh-brand-word">${esc(product.displayName)}</span>${dev?'<span class="peh-dev-badge" title="Dev mode — product switcher enabled (hidden in release)">DEV</span>':''}</div>
+    <button class="peh-travel-btn" type="button" onclick="pehToggleFastTravel()" aria-haspopup="dialog" aria-expanded="${pv.fastTravel?'true':'false'}" title="Fast travel — areas in ${esc(product.displayName)} (Alt+T)">
       <span class="peh-travel-glyph" aria-hidden="true">✦</span>
-      <span class="peh-here"><b>${esc(realm.displayName)}</b><i>${esc(scene?scene.title:realm.tagline)}</i></span>
+      <span class="peh-here"><b>${esc(product.displayName)}</b><i>${esc(scene?scene.title:product.tagline)}</i></span>
       <span class="peh-travel-cta">Fast travel</span>
     </button>
     <div class="peh-mode-toggle" role="group" aria-label="View mode (Alt+M to toggle)">
@@ -6421,39 +6512,40 @@ function renderPehTopBar(realm,scene){
   </header>`;
 }
 
-function renderPehStage(realm,scene,deckMarkup){
+function renderPehStage(product,scene,deckMarkup){
   return state.pehverse.mode==='dashboard'
-    ? renderPehDashboard(realm,scene,deckMarkup)
-    : renderPehImmersive(realm,scene,deckMarkup);
+    ? renderPehDashboard(product,scene,deckMarkup)
+    : renderPehImmersive(product,scene,deckMarkup);
 }
 
 // Immersive: scene-first. Background atmosphere + caption + hotspots, with
-// open workspaces docking over the scene (or as mobile bottom sheets).
-function renderPehImmersive(realm,scene,deckMarkup){
+// open workspaces docking over the scene (or as mobile bottom sheets). Only
+// the active product's scene/hotspots are ever shown.
+function renderPehImmersive(product,scene,deckMarkup){
   return `<div class="peh-scene" data-scene="${scene?scene.id:''}">
     <div class="peh-scene-atmos" aria-hidden="true"></div>
     <div class="peh-scene-caption">
-      <span class="peh-scene-realm">${esc(realm.displayName)} · ${esc(realm.tagline)}</span>
-      <h1 class="peh-scene-title">${esc(scene?scene.title:realm.displayName)}</h1>
-      <p class="peh-scene-desc">${esc(scene?scene.desc:realm.blurb)}</p>
+      <span class="peh-scene-realm">${esc(product.displayName)} · ${esc(product.tagline)}</span>
+      <h1 class="peh-scene-title">${esc(scene?scene.title:product.displayName)}</h1>
+      <p class="peh-scene-desc">${esc(scene?scene.desc:product.blurb)}</p>
     </div>
     ${renderHotspotLayer(scene)}
-    ${renderPehWaypoints(realm,scene)}
+    ${renderPehWaypoints(product,scene)}
     ${renderWorkspaceOverlays(deckMarkup)}
   </div>`;
 }
 
 // Dashboard: workspace-first. Thin scene strip on top, open workspaces tile
-// in a grid. When nothing is open, show a chooser of this realm's spaces.
-function renderPehDashboard(realm,scene,deckMarkup){
+// in a grid. When nothing is open, show a chooser of THIS product's spaces.
+function renderPehDashboard(product,scene,deckMarkup){
   const open=state.pehverse.workspaces;
   const grid=open.length
     ? open.map((w)=>renderWorkspaceTile(w,deckMarkup)).join('')
-    : pehWorkspaceChooser(realm);
+    : pehWorkspaceChooser(product);
   return `<div class="peh-dash">
     <div class="peh-dash-head">
-      <div class="peh-dash-here"><span class="peh-scene-realm">${esc(realm.displayName)}</span><h1>${esc(scene?scene.title:realm.displayName)}</h1><p>${esc(scene?scene.desc:realm.blurb)}</p></div>
-      ${renderPehWaypoints(realm,scene)}
+      <div class="peh-dash-here"><span class="peh-scene-realm">${esc(product.displayName)}</span><h1>${esc(scene?scene.title:product.displayName)}</h1><p>${esc(scene?scene.desc:product.blurb)}</p></div>
+      ${renderPehWaypoints(product,scene)}
     </div>
     <div class="peh-grid ${open.length>1?'multi':''}">${grid}</div>
   </div>`;
@@ -6474,12 +6566,12 @@ function renderHotspotLayer(scene){
   }).join('')}</div>`;
 }
 
-// Scene-to-scene waypoints (fast intra-realm hops; Fast Travel still jumps
-// across realms). Hidden when a realm has fewer than two scenes.
-function renderPehWaypoints(realm,scene){
-  const scenes=pehScenes(realm.id);
+// Scene-to-scene waypoints — fast hops between the active product's own
+// areas. Hidden when the product has fewer than two scenes.
+function renderPehWaypoints(product,scene){
+  const scenes=pehScenes(product.id);
   if(scenes.length<2)return'';
-  return `<nav class="peh-waypoints" aria-label="${esc(realm.displayName)} scenes">${scenes.map((s)=>`<button type="button" class="peh-waypoint ${scene&&s.id===scene.id?'active':''}" aria-current="${scene&&s.id===scene.id?'true':'false'}" onclick="pehSetScene('${s.id}')">${esc(s.title)}</button>`).join('')}</nav>`;
+  return `<nav class="peh-waypoints" aria-label="${esc(product.displayName)} areas">${scenes.map((s)=>`<button type="button" class="peh-waypoint ${scene&&s.id===scene.id?'active':''}" aria-current="${scene&&s.id===scene.id?'true':'false'}" onclick="pehSetScene('${s.id}')">${esc(s.title)}</button>`).join('')}</nav>`;
 }
 
 // ── WorkspaceManager: panel + tile + body renderers ────────────────────
@@ -6546,16 +6638,25 @@ function pehPlaceholderBody(def){
   </div>`;
 }
 
-// Dashboard chooser — shown when no workspace is open. Cards for every
-// space registered to the current realm.
-function pehWorkspaceChooser(realm){
-  const defs=Object.keys(WORKSPACE_REGISTRY).filter((id)=>WORKSPACE_REGISTRY[id].realm===realm.id);
+// Workspaces owned by a product (its own + the per-product legacy console).
+// This is the ONLY list the workspace manager / chooser ever shows — another
+// product's workspaces are never enumerable here.
+function pehProductWorkspaces(productId){
+  return Object.keys(WORKSPACE_REGISTRY).filter((id)=>{
+    const d=WORKSPACE_REGISTRY[id];
+    return d.product===productId||d.product==null;
+  });
+}
+// Dashboard chooser — shown when no workspace is open. Cards for every space
+// owned by the active product only.
+function pehWorkspaceChooser(product){
+  const defs=pehProductWorkspaces(product.id);
   return `<div class="peh-chooser">${defs.map((id)=>{
     const d=WORKSPACE_REGISTRY[id];
     return `<button class="peh-choice" type="button" onclick="pehOpenWorkspace('${id}')">
       <span class="peh-choice-glyph">${pehGlyph(d.peh)}</span>
       <span class="peh-choice-title">${esc(d.title)}</span>
-      <span class="peh-choice-kind">${d.kind==='lane'?'live lane':'placeholder'}</span>
+      <span class="peh-choice-kind">${d.kind==='lane'?'live lane':d.kind==='deck'?'console':'placeholder'}</span>
     </button>`;
   }).join('')}</div>`;
 }
@@ -6574,21 +6675,33 @@ function renderPehTaskbar(){
 }
 
 // ── FastTravelMenu ─────────────────────────────────────────────────────
+// Product-LOCAL only: lists the active product's scenes (areas). There is no
+// cross-product list. A dev-only product switcher (hidden in release) is the
+// sole exception, and it lives in a clearly-labelled dev section.
 function renderFastTravelMenu(){
   if(!state.pehverse.fastTravel)return'';
-  const realms=pehPublicRealms();
-  const future=pehFutureRealms();
+  const product=pehActiveProduct();
   const here=pehCurrentScene();
+  const scenes=pehScenes(product.id);
   return `<div class="peh-ft-overlay" role="dialog" aria-modal="true" aria-label="Fast travel" onclick="if(event.target===this)pehToggleFastTravel(false)">
     <div class="peh-ft">
-      <header class="peh-ft-head"><h2>Fast travel</h2><span class="peh-ft-hint">Reach anywhere in a tap</span><button class="peh-ft-close" type="button" onclick="pehToggleFastTravel(false)" aria-label="Close fast travel">×</button></header>
-      <div class="peh-ft-realms">${realms.map((r)=>`
-        <div class="peh-ft-realm ${state.pehverse.realm===r.id?'here':''}" style="--peh-accent:${r.accent};--peh-accent2:${r.accent2||r.accent}">
-          <button class="peh-ft-realm-head" type="button" onclick="pehTravel('${r.id}')"><span class="peh-ft-mark">${pehGlyph(r.peh)}</span><span class="peh-ft-realm-name"><b>${esc(r.displayName)}</b><i>${esc(r.tagline)}</i></span></button>
-          <div class="peh-ft-scenes">${pehScenes(r.id).map((s)=>`<button class="peh-ft-scene ${state.pehverse.realm===r.id&&here&&here.id===s.id?'active':''}" type="button" onclick="pehTravel('${r.id}','${s.id}')">${esc(s.title)}</button>`).join('')}</div>
-        </div>`).join('')}
-      </div>
-      <div class="peh-ft-future"><span class="peh-ft-future-label">Opening later</span>${future.map((r)=>`<span class="peh-ft-soon" title="${esc(r.displayName)} — ${esc(r.tagline)}">${esc(r.displayName)}</span>`).join('')}</div>
+      <header class="peh-ft-head"><h2>Fast travel</h2><span class="peh-ft-hint">Within ${esc(product.displayName)} · jump to any area</span><button class="peh-ft-close" type="button" onclick="pehToggleFastTravel(false)" aria-label="Close fast travel">×</button></header>
+      <div class="peh-ft-scenes peh-ft-scenes-main">${scenes.length?scenes.map((s)=>`<button class="peh-ft-scene ${here&&here.id===s.id?'active':''}" aria-current="${here&&here.id===s.id?'true':'false'}" type="button" onclick="pehGoScene('${s.id}')">${esc(s.title)}</button>`).join(''):`<span class="peh-ft-empty">No additional areas in ${esc(product.displayName)} yet.</span>`}</div>
+      ${pehDevMode()?renderPehDevSwitcher(product):''}
+    </div>
+  </div>`;
+}
+// Dev-only product switcher. Rendered ONLY when pehDevMode() is true, so it
+// never appears in the public/release UI. Future products are shown as inert
+// "config only" chips — never as runtime destinations.
+function renderPehDevSwitcher(active){
+  const pub=pehPublicProducts();
+  const future=pehFutureProducts();
+  return `<div class="peh-ft-dev">
+    <span class="peh-ft-dev-label">⚙ Dev only · product switcher (hidden in release)</span>
+    <div class="peh-ft-dev-products">
+      ${pub.map((p)=>`<button class="peh-ft-dev-product ${p.id===active.id?'active':''}" type="button" onclick="pehDevSwitchProduct('${p.id}')">${esc(p.displayName)}</button>`).join('')}
+      ${future.map((p)=>`<span class="peh-ft-dev-soon" title="Config example only — not a runtime destination">${esc(p.displayName)} · config only</span>`).join('')}
     </div>
   </div>`;
 }
@@ -6604,6 +6717,8 @@ function pehBindKeys(){
   });
 }
 pehBindKeys();
+// Finalize which single product is live before the first render.
+pehInitProduct();
 
 function render(){
   // Luna-style command deck composition. Top: command rail with brand,
