@@ -4,7 +4,7 @@ import { OllamaAdapter } from "./ollama.js";
 import { OpenRouterAdapter } from "./openrouter.js";
 import { OpenClawAdapter } from "./openclaw.js";
 import { ClaudeCodeAdapter } from "./claudecode.js";
-import { SquidleyAdapter } from "./squidley.js";
+import { PehAdapter } from "./peh.js";
 import { GrimoireCCAdapter } from "./grimoire-cc.js";
 import { GrimoireCodexAdapter } from "./grimoire-codex.js";
 import { AnthropicAdapter } from "./anthropic.js";
@@ -287,18 +287,18 @@ const REGISTRY: RegistryDefinition[] = [
     },
   },
   {
-    id: "squidley",
-    name: "Squidley Gateway",
+    id: "peh",
+    name: "Peh Gateway",
     kind: "cloud",
     provider_mode: "configurable",
     fixed_provider: null,
     supports_custom_model: true,
-    create: () => new SquidleyAdapter(),
-    provider_options: [{ id: "squidley", name: "Squidley (all providers)", kind: "cloud", configurable: true }],
+    create: () => new PehAdapter(),
+    provider_options: [{ id: "peh", name: "Peh (all providers)", kind: "cloud", configurable: true }],
     async listModels() {
-      const squidleyUrl = process.env["SQUIDLEY_URL"] ?? "http://localhost:18791";
+      const pehUrl = process.env["PEH_URL"] ?? "http://localhost:18791";
       try {
-        const res = await fetch(`${squidleyUrl}/nous/models`, { signal: AbortSignal.timeout(5000) });
+        const res = await fetch(`${pehUrl}/nous/models`, { signal: AbortSignal.timeout(5000) });
         if (!res.ok) return [];
         const data = await res.json() as Array<{ model?: string; name?: string; provider?: string; active?: boolean }>;
         return data
@@ -306,7 +306,7 @@ const REGISTRY: RegistryDefinition[] = [
           .map((m) => ({
             id: m.model ?? m.name ?? "unknown",
             name: m.name ?? m.model ?? "unknown",
-            provider: m.provider ?? "squidley",
+            provider: m.provider ?? "peh",
             kind: "cloud" as const,
             available: true,
             reason: null,
@@ -319,7 +319,7 @@ const REGISTRY: RegistryDefinition[] = [
       return {
         model: input.model,
         provider: input.provider || undefined,
-        squidley_url: process.env["SQUIDLEY_URL"] || undefined,
+        peh_url: process.env["PEH_URL"] || undefined,
       } as AdapterConfig;
     },
   },
@@ -331,12 +331,12 @@ const REGISTRY: RegistryDefinition[] = [
     fixed_provider: null,
     supports_custom_model: true,
     create: () => new GrimoireCCAdapter(),
-    provider_options: [{ id: "grimoire-cc", name: "Grimoire CC (Squidley)", kind: "cloud", configurable: true }],
+    provider_options: [{ id: "grimoire-cc", name: "Grimoire CC (Peh)", kind: "cloud", configurable: true }],
     async listModels() { return []; },
     makeConfig(input) {
       return {
         model: input.model,
-        squidley_url: process.env["SQUIDLEY_URL"] || undefined,
+        peh_url: process.env["PEH_URL"] || undefined,
       } as AdapterConfig;
     },
   },
@@ -348,12 +348,12 @@ const REGISTRY: RegistryDefinition[] = [
     fixed_provider: null,
     supports_custom_model: true,
     create: () => new GrimoireCodexAdapter(),
-    provider_options: [{ id: "grimoire-codex", name: "Grimoire Codex (Squidley)", kind: "cloud", configurable: true }],
+    provider_options: [{ id: "grimoire-codex", name: "Grimoire Codex (Peh)", kind: "cloud", configurable: true }],
     async listModels() { return []; },
     makeConfig(input) {
       return {
         model: input.model,
-        squidley_url: process.env["SQUIDLEY_URL"] || undefined,
+        peh_url: process.env["PEH_URL"] || undefined,
       } as AdapterConfig;
     },
   },
@@ -571,7 +571,7 @@ const ADAPTER_BASE_URL_ENV: Record<string, string> = {
   openrouter: "OPENROUTER_BASE_URL",
   openai: "OPENAI_BASE_URL",
   anthropic: "ANTHROPIC_BASE_URL",
-  squidley: "SQUIDLEY_URL",
+  peh: "PEH_URL",
   google: "GOOGLE_AI_BASE_URL",
 };
 function hydrateEnvFromRegistry(adapterId: string): void {
@@ -602,7 +602,7 @@ const ENV_KEYS: Record<string, string> = {
   openrouter: "OPENROUTER_API_KEY",
   openclaw: "OPENCLAW_BINARY",
   claudecode: "CLAUDE_CODE_BINARY",
-  squidley: "SQUIDLEY_URL",
+  peh: "PEH_URL",
   minimax: "MINIMAX_API_KEY",
   zai: "ZAI_API_KEY",
   google: "GOOGLE_AI_API_KEY",

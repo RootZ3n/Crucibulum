@@ -12,7 +12,7 @@ In the current release sequence, Luak is the benchmark, scoreboard, and evidence
 - **Luak** views, compares, scores, and explains run evidence. Use it to inspect receipts, compare models/providers/adapters, and understand why a run is or is not ranked.
 - **Verum** is adversarial and probing-oriented. Its outputs can be normalized into Luak score/evidence views when the integration path is used.
 - **Aedis** is governed build orchestration. It can drive controlled workflows that later produce evidence for inspection.
-- **Squidley Public** is the broader user-facing AI control surface. Luak is one evidence and scoreboard layer inside that wider release path.
+- **Peh Public** is the broader user-facing AI control surface. Luak is one evidence and scoreboard layer inside that wider release path.
 - **Crucibulum** appears in environment variables, schemas, and API names as the older/internal protocol name for Luak-compatible run and score exchange. Public docs should treat it as compatibility naming, not a separate public product unless the project is split later.
 
 ## What Luak Is / Is Not
@@ -362,7 +362,7 @@ The repo already supports a provider-first flow through adapters and exposes pro
 - `openrouter`
 - `openclaw`
 - `claudecode`
-- `squidley`
+- `peh`
 - `grimoire-cc`
 - `grimoire-codex`
 - `minimax`
@@ -555,7 +555,7 @@ Tests:    1 passed / 0 failed (1 total)
 Smoke passed.
 ```
 
-The smoke path uses a deterministic mock adapter and writes temporary smoke state under the operating system temp directory. It does not require provider API keys, Colosseum, Squidley, private services, or pre-existing `runs/` data. Smoke output is mock/demo evidence and is excluded from public ranking.
+The smoke path uses a deterministic mock adapter and writes temporary smoke state under the operating system temp directory. It does not require provider API keys, Colosseum, Peh, private services, or pre-existing `runs/` data. Smoke output is mock/demo evidence and is excluded from public ranking.
 
 By default, a fresh checkout has no verified public ranking data. The leaderboard may be empty until you import or generate verified eligible evidence. Old local runs do not silently become public rankings; tampered, unsigned, legacy, mock/demo, malformed, or unverified bundles are quarantined and labeled `NOT RANKED`.
 

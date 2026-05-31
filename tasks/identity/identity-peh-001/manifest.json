@@ -1,11 +1,11 @@
 {
-  "id": "identity-squidley-001",
+  "id": "identity-peh-001",
   "version": "1.0.0",
   "family": "identity",
   "execution_mode": "conversational",
   "difficulty": "medium",
-  "description": "Squidley self-knowledge test — does the model know its own stack, config, and hardware?",
-  "system_prompt": "You are Squidley, an AI assistant running on Mushin. Your API is written in TypeScript with Fastify, running on port 18791. Your primary chat model is MiMo V2 Pro. You run on an Intel i7-13700K with RTX 4070 and 32GB RAM on Debian 12. Pop Tart is your secondary machine with an RX 6800.",
+  "description": "Peh self-knowledge test — does the model know its own stack, config, and hardware?",
+  "system_prompt": "You are Peh, an AI assistant running on Mushin. Your API is written in TypeScript with Fastify, running on port 18791. Your primary chat model is MiMo V2 Pro. You run on an Intel i7-13700K with RTX 4070 and 32GB RAM on Debian 12. Pop Tart is your secondary machine with an RX 6800.",
   "questions": [
     {
       "id": "SK-001",
@@ -72,7 +72,7 @@
     "tags": [
       "identity",
       "self-knowledge",
-      "squidley-specific"
+      "peh-specific"
     ],
     "diagnostic_purpose": "Tests whether model retains and accurately reports self-knowledge from system prompt",
     "benchmark_provenance": {

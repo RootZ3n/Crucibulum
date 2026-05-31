@@ -1,6 +1,6 @@
 /**
  * Luak — Grimoire Codex Adapter
- * Routes tasks through Squidley's Grimoire Codex mode.
+ * Routes tasks through Peh's Grimoire Codex mode.
  * Codex Mode = iterative inspect/edit/verify loop.
  *
  * CLI usage:
@@ -17,12 +17,12 @@ import { Observer } from "../core/observer.js";
 import { makeHttpProviderError, makeProviderFailureError, normalizeProviderError, providerErrorSummary } from "../core/provider-errors.js";
 import { log } from "../utils/logger.js";
 
-const DEFAULT_SQUIDLEY_URL = process.env["SQUIDLEY_URL"] ?? "http://localhost:18791";
+const DEFAULT_PEH_URL = process.env["PEH_URL"] ?? "http://localhost:18791";
 const SUBMIT_TIMEOUT_MS = 30_000;
 const POLL_INTERVAL_MS = 3_000;
 
 interface GrimoireCodexConfig extends AdapterConfig {
-  squidley_url?: string | undefined;
+  peh_url?: string | undefined;
   model?: string | undefined;
 }
 
@@ -45,7 +45,7 @@ export class GrimoireCodexAdapter implements CrucibulumAdapter {
   name = "Grimoire Codex";
   version = "1.0.0";
 
-  private url: string = DEFAULT_SQUIDLEY_URL;
+  private url: string = DEFAULT_PEH_URL;
   private model: string = "qwen3.6-plus";
 
   supports(_family: "poison" | "spec" | "orchestration"): boolean {
@@ -62,7 +62,7 @@ export class GrimoireCodexAdapter implements CrucibulumAdapter {
 
   async init(config: AdapterConfig): Promise<void> {
     const c = config as GrimoireCodexConfig;
-    if (c.squidley_url) this.url = c.squidley_url;
+    if (c.peh_url) this.url = c.peh_url;
     if (c.model) this.model = c.model;
   }
 
@@ -178,7 +178,7 @@ export class GrimoireCodexAdapter implements CrucibulumAdapter {
         adapter_metadata: {
           adapter_id: this.id,
           adapter_version: this.version,
-          system_version: "squidley-v2",
+          system_version: "peh-v2",
           model: this.model,
           provider: "grimoire-codex",
         },
@@ -214,7 +214,7 @@ export class GrimoireCodexAdapter implements CrucibulumAdapter {
       adapter_metadata: {
         adapter_id: this.id,
         adapter_version: this.version,
-        system_version: "squidley-v2",
+        system_version: "peh-v2",
         model: this.model,
         provider: "grimoire-codex",
       },
@@ -248,7 +248,7 @@ function buildErrorResult(observer: Observer, startMs: number, adapter: Grimoire
     adapter_metadata: {
       adapter_id: adapter.id,
       adapter_version: adapter.version,
-      system_version: "squidley-v2",
+      system_version: "peh-v2",
       model: "unknown",
       provider: "grimoire-codex",
     },

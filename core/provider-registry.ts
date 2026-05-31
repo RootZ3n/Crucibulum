@@ -129,7 +129,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
   {
     id: "modelstudio",
     label: "Model Studio (Alibaba DashScope)",
-    adapter: "squidley",
+    adapter: "peh",
     kind: "cloud",
     defaultBaseUrl: "https://dashscope-intl.aliyuncs.com/api/v1",
     envKey: "MODELSTUDIO_API_KEY",
@@ -716,7 +716,7 @@ export function resolveByModelId(modelId: string): ResolvedRunTarget | null {
 /**
  * Resolve a raw model id while honoring the caller's provider hint when one is
  * present. This closes the stale-client gap where the browser can post an old
- * adapter id (for example `squidley`) for a model that is now registered under
+ * adapter id (for example `peh`) for a model that is now registered under
  * a direct preset (`minimax`). The provider hint is treated as the operator's
  * intended lane; within that lane we still resolve to the concrete configured
  * provider/model entry.

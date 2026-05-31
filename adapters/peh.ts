@@ -1,16 +1,16 @@
 /**
- * Luak — Squidley Gateway Adapter
- * Routes all model calls through the Squidley API, giving Luak access
- * to every model Squidley knows: ModelStudio (qwen3.5-plus, qwen3.6-plus),
+ * Luak — Peh Gateway Adapter
+ * Routes all model calls through the Peh API, giving Luak access
+ * to every model Peh knows: ModelStudio (qwen3.5-plus, qwen3.6-plus),
  * OpenRouter (MiMo, Trinity), Anthropic (Opus, Sonnet), MiniMax, Ollama, etc.
  *
  * Implements the same agentic loop as ollama.ts:
  *   send task prompt → parse READ_FILE/WRITE_FILE/SHELL/DONE → execute tools → loop
  *
  * CLI usage:
- *   --model squidley:qwen3.6-plus
- *   --model squidley:claude-opus-4-6
- *   --model squidley:xiaomi/mimo-v2.5-pro
+ *   --model peh:qwen3.6-plus
+ *   --model peh:claude-opus-4-6
+ *   --model peh:xiaomi/mimo-v2.5-pro
  */
 
 import { execSync } from "node:child_process";
@@ -29,22 +29,22 @@ import { Observer } from "../core/observer.js";
 import { makeEmptyResponseError, makeHttpProviderError, makeInvalidResponseError, normalizeProviderError, providerErrorSummary } from "../core/provider-errors.js";
 import { log } from "../utils/logger.js";
 
-const DEFAULT_SQUIDLEY_URL = process.env["SQUIDLEY_URL"] ?? "http://localhost:18791";
+const DEFAULT_PEH_URL = process.env["PEH_URL"] ?? "http://localhost:18791";
 const MODEL_TIMEOUT_MS = 120_000;
 const HEALTH_TIMEOUT_MS = 10_000;
 
-interface SquidleyConfig extends AdapterConfig {
-  squidley_url?: string | undefined;
+interface PehConfig extends AdapterConfig {
+  peh_url?: string | undefined;
   model?: string | undefined;
   provider?: string | undefined;
 }
 
-export class SquidleyAdapter implements CrucibulumAdapter {
-  id = "squidley";
-  name = "Squidley Gateway";
+export class PehAdapter implements CrucibulumAdapter {
+  id = "peh";
+  name = "Peh Gateway";
   version = "1.0.0";
 
-  private url: string = DEFAULT_SQUIDLEY_URL;
+  private url: string = DEFAULT_PEH_URL;
   private model: string = "qwen3.6-plus";
   private provider: string | undefined;
 
@@ -62,7 +62,7 @@ export class SquidleyAdapter implements CrucibulumAdapter {
 
   async chat(messages: ChatMessage[], _options?: ChatOptions): Promise<ChatResult> {
     const start = Date.now();
-    const result = await callSquidley(this.url, this.model, this.provider, messages);
+    const result = await callPeh(this.url, this.model, this.provider, messages);
     return {
       text: result.text,
       tokens_in: result.tokensIn,
@@ -72,8 +72,8 @@ export class SquidleyAdapter implements CrucibulumAdapter {
   }
 
   async init(config: AdapterConfig): Promise<void> {
-    const c = config as SquidleyConfig;
-    if (c.squidley_url) this.url = c.squidley_url;
+    const c = config as PehConfig;
+    if (c.peh_url) this.url = c.peh_url;
     if (c.model) this.model = c.model;
     if (c.provider) this.provider = c.provider;
   }
@@ -84,12 +84,12 @@ export class SquidleyAdapter implements CrucibulumAdapter {
         signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
       });
       if (!res.ok) {
-        const providerError = makeHttpProviderError(res, await res.text().catch(() => ""), { provider: this.provider ?? "squidley-routed", adapter: this.id }).structured;
+        const providerError = makeHttpProviderError(res, await res.text().catch(() => ""), { provider: this.provider ?? "peh-routed", adapter: this.id }).structured;
         return { ok: false, reason: providerErrorSummary(providerError), providerError };
       }
       return { ok: true };
     } catch (err) {
-      const providerError = normalizeProviderError(err, { provider: this.provider ?? "squidley-routed", adapter: this.id });
+      const providerError = normalizeProviderError(err, { provider: this.provider ?? "peh-routed", adapter: this.id });
       return { ok: false, reason: providerErrorSummary(providerError), providerError };
     }
   }
@@ -130,24 +130,24 @@ export class SquidleyAdapter implements CrucibulumAdapter {
 
     for (let step = 0; step < maxSteps; step++) {
       if (Date.now() - startMs > timeLimitMs) {
-        log("warn", "squidley", `[step ${step + 1}/${maxSteps}] Time budget exceeded (${Math.round((Date.now() - startMs) / 1000)}s)`);
+        log("warn", "peh", `[step ${step + 1}/${maxSteps}] Time budget exceeded (${Math.round((Date.now() - startMs) / 1000)}s)`);
         observer.recordError("Time budget exceeded");
         exitReason = "timeout";
         break;
       }
 
-      log("info", "squidley", `[step ${step + 1}/${maxSteps}] Calling ${this.model} via Squidley...`);
+      log("info", "peh", `[step ${step + 1}/${maxSteps}] Calling ${this.model} via Peh...`);
 
       let response: string;
       try {
-        const result = await callSquidley(this.url, this.model, this.provider, messages);
+        const result = await callPeh(this.url, this.model, this.provider, messages);
         response = stripModelArtifacts(result.text);
         totalTokensIn += result.tokensIn;
         totalTokensOut += result.tokensOut;
-        log("info", "squidley", `[step ${step + 1}/${maxSteps}] Response (${response.length} chars, ${result.tokensOut} tok): ${response.slice(0, 300).replace(/\n/g, "\\n")}${response.length > 300 ? "..." : ""}`);
+        log("info", "peh", `[step ${step + 1}/${maxSteps}] Response (${response.length} chars, ${result.tokensOut} tok): ${response.slice(0, 300).replace(/\n/g, "\\n")}${response.length > 300 ? "..." : ""}`);
       } catch (err) {
-        const providerError = normalizeProviderError(err, { provider: this.provider ?? "squidley-routed", adapter: this.id });
-        log("error", "squidley", `[step ${step + 1}/${maxSteps}] Model call failed: ${providerError.rawMessage.slice(0, 200)}`);
+        const providerError = normalizeProviderError(err, { provider: this.provider ?? "peh-routed", adapter: this.id });
+        log("error", "peh", `[step ${step + 1}/${maxSteps}] Model call failed: ${providerError.rawMessage.slice(0, 200)}`);
         observer.recordError(`Model call failed: ${providerError.rawMessage.slice(0, 200)}`, providerError);
         exitReason = "error";
         break;
@@ -165,7 +165,7 @@ export class SquidleyAdapter implements CrucibulumAdapter {
         messages.push(systemMsg, taskMsg);
         messages.push({ role: "user", content: "Previous steps summarized to save context. Continue with the task. You were investigating and fixing a bug." });
         messages.push(...recentMsgs);
-        log("info", "squidley", `[step ${step + 1}] Context compressed: ${totalTokens} tokens, kept ${messages.length} messages`);
+        log("info", "peh", `[step ${step + 1}] Context compressed: ${totalTokens} tokens, kept ${messages.length} messages`);
       }
 
       // Time pressure warning
@@ -175,28 +175,28 @@ export class SquidleyAdapter implements CrucibulumAdapter {
           role: "user",
           content: "You are running low on time. Make your fix now and signal DONE. Do not investigate further — apply your best fix, run the tests, and complete.",
         });
-        log("warn", "squidley", `[step ${step + 1}] Time pressure warning injected at ${Math.round(elapsedMs / 1000)}s`);
+        log("warn", "peh", `[step ${step + 1}] Time pressure warning injected at ${Math.round(elapsedMs / 1000)}s`);
       }
 
       // Parse and execute tool calls
       const toolResult = executeToolCalls(response, input.workspace_path, observer, input.budget.max_file_edits);
 
       if (toolResult.done) {
-        log("info", "squidley", `[step ${step + 1}/${maxSteps}] Agent signaled DONE`);
+        log("info", "peh", `[step ${step + 1}/${maxSteps}] Agent signaled DONE`);
         observer.taskComplete();
         break;
       }
 
       if (toolResult.commandsFound === 0) {
         consecutiveNoCommand++;
-        log("warn", "squidley", `[step ${step + 1}/${maxSteps}] No commands parsed (${consecutiveNoCommand} consecutive)`);
+        log("warn", "peh", `[step ${step + 1}/${maxSteps}] No commands parsed (${consecutiveNoCommand} consecutive)`);
       } else {
         consecutiveNoCommand = 0;
-        log("info", "squidley", `[step ${step + 1}/${maxSteps}] Executed ${toolResult.commandsFound} commands`);
+        log("info", "peh", `[step ${step + 1}/${maxSteps}] Executed ${toolResult.commandsFound} commands`);
       }
 
       if (consecutiveNoCommand >= 3) {
-        log("warn", "squidley", `[step ${step + 1}/${maxSteps}] Re-anchoring — model not following protocol`);
+        log("warn", "peh", `[step ${step + 1}/${maxSteps}] Re-anchoring — model not following protocol`);
         messages.push({ role: "user", content: RE_ANCHOR_MESSAGE });
         consecutiveNoCommand = 0;
       } else if (toolResult.feedback) {
@@ -204,14 +204,14 @@ export class SquidleyAdapter implements CrucibulumAdapter {
       }
 
       if (step === maxSteps - 1) {
-        log("warn", "squidley", `Step budget exhausted (${maxSteps} steps)`);
+        log("warn", "peh", `Step budget exhausted (${maxSteps} steps)`);
         observer.recordError("Step budget exceeded");
         exitReason = "budget_exceeded";
       }
     }
 
     const totalDuration = Date.now() - startMs;
-    log("info", "squidley", `Run complete: ${exitReason} in ${Math.round(totalDuration / 1000)}s, ${observer.getStepCount()} steps, ${totalTokensIn}→${totalTokensOut} tokens`);
+    log("info", "peh", `Run complete: ${exitReason} in ${Math.round(totalDuration / 1000)}s, ${observer.getStepCount()} steps, ${totalTokensIn}→${totalTokensOut} tokens`);
 
     return {
       exit_reason: exitReason,
@@ -226,9 +226,9 @@ export class SquidleyAdapter implements CrucibulumAdapter {
       adapter_metadata: {
         adapter_id: this.id,
         adapter_version: this.version,
-        system_version: "squidley-v2",
+        system_version: "peh-v2",
         model: this.model,
-        provider: this.provider ?? "squidley-routed",
+        provider: this.provider ?? "peh-routed",
       },
     };
   }
@@ -254,14 +254,14 @@ DONE
 
 Issue one of these commands now.`;
 
-// ── Squidley API call ──────────────────────────────────────────────────────
+// ── Peh API call ──────────────────────────────────────────────────────
 
-async function callSquidley(
+async function callPeh(
   url: string,
   model: string,
   provider: string | undefined,
   // content widened to align with the multimodal-capable ChatMessage
-  // type. Squidley currently forwards verbatim; multimodal support
+  // type. Peh currently forwards verbatim; multimodal support
   // depends on the upstream adapter the user has configured.
   messages: Array<{ role: string; content: unknown }>,
 ): Promise<{ text: string; tokensIn: number; tokensOut: number; costUsd: number }> {
@@ -280,7 +280,7 @@ async function callSquidley(
   });
 
   if (!res.ok) {
-    throw makeHttpProviderError(res, await res.text().catch(() => ""), { provider: provider ?? "squidley-routed", adapter: "squidley" });
+    throw makeHttpProviderError(res, await res.text().catch(() => ""), { provider: provider ?? "peh-routed", adapter: "peh" });
   }
 
   const rawBody = await res.text();
@@ -294,13 +294,13 @@ async function callSquidley(
   try {
     data = JSON.parse(rawBody) as typeof data;
   } catch {
-    throw makeInvalidResponseError({ provider: provider ?? "squidley-routed", adapter: "squidley" }, `Squidley returned non-JSON body: ${rawBody.slice(0, 400)}`);
+    throw makeInvalidResponseError({ provider: provider ?? "peh-routed", adapter: "peh" }, `Peh returned non-JSON body: ${rawBody.slice(0, 400)}`);
   }
 
-  // Squidley may return { text } or OpenAI-shaped { choices }
+  // Peh may return { text } or OpenAI-shaped { choices }
   const text = data.text ?? data.choices?.[0]?.message?.content ?? "";
   if (!text.trim()) {
-    throw makeEmptyResponseError({ provider: provider ?? "squidley-routed", adapter: "squidley" }, `Squidley returned empty response for model ${model}`);
+    throw makeEmptyResponseError({ provider: provider ?? "peh-routed", adapter: "peh" }, `Peh returned empty response for model ${model}`);
   }
 
   return {
@@ -413,7 +413,7 @@ function executeToolCalls(
     return { done: true, feedback: "", commandsFound: 1 };
   }
   if (isDone && !hasWork) {
-    log("warn", "squidley", "DONE rejected — no file changes made yet");
+    log("warn", "peh", "DONE rejected — no file changes made yet");
     return {
       done: false,
       feedback: "You have signaled DONE but have not made any changes to the codebase. You must write a fix before completing. Use WRITE_FILE to modify the file containing the bug with your fix, then run the tests to verify.",
@@ -640,7 +640,7 @@ function doWriteFile(
     mkdirSync(dirname(absPath), { recursive: true });
     writeFileSync(absPath, content, "utf-8");
     feedback.push(`WRITTEN: ${filePath}`);
-    log("info", "squidley", `WRITE_FILE ${filePath}: SUCCESS (${Buffer.byteLength(content, "utf-8")} bytes)`);
+    log("info", "peh", `WRITE_FILE ${filePath}: SUCCESS (${Buffer.byteLength(content, "utf-8")} bytes)`);
     return true;
   } catch (err) {
     feedback.push(`ERROR writing ${filePath}: ${String(err).slice(0, 150)}`);

@@ -216,11 +216,11 @@ describe("provider-registry: routing / resolveByModelId", () => {
     const minimax = registry.addProvider({ presetId: "minimax", label: "MiniMax Direct", apiKey: "sk-mini" });
     registry.addModel({ providerConfigId: minimax.id, modelId: "abab6.5s-chat" });
 
-    const dispatch = runRoutes.resolveRequestedDispatch("squidley", "minimax", "abab6.5s-chat");
+    const dispatch = runRoutes.resolveRequestedDispatch("peh", "minimax", "abab6.5s-chat");
     assert.equal(dispatch.adapter, "minimax");
     assert.equal(dispatch.provider, "minimax");
     assert.equal(dispatch.model, "abab6.5s-chat");
-    assert.equal(dispatch.requested_adapter, "squidley");
+    assert.equal(dispatch.requested_adapter, "peh");
     assert.equal(dispatch.requested_provider, "minimax");
     assert.equal(dispatch.requested_model, "abab6.5s-chat");
     assert.equal(dispatch.resolved_by_registry, true);

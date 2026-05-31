@@ -10,7 +10,7 @@ _Generated: 2026-05-24T00:35:42.322Z_
 
 - Task families: 21
 - Tasks total: 62 (conversational: 37, repo: 25)
-- Registered adapters: 12 (ollama, anthropic, openai, openrouter, openclaw, claudecode, squidley, grimoire-cc, grimoire-codex, minimax, zai, google)
+- Registered adapters: 12 (ollama, anthropic, openai, openrouter, openclaw, claudecode, peh, grimoire-cc, grimoire-codex, minimax, zai, google)
 
 ## Scenario matrix (mock-only)
 

@@ -43,8 +43,8 @@ describe("harness CLI — argv parsing", () => {
   });
 
   it("parses --provider for configurable adapters", () => {
-    const a = parseArgs(["--adapter", "squidley", "--provider", "minimax", "--model", "MiniMax-M2.7"]);
-    assert.equal(a.adapter, "squidley");
+    const a = parseArgs(["--adapter", "peh", "--provider", "minimax", "--model", "MiniMax-M2.7"]);
+    assert.equal(a.adapter, "peh");
     assert.equal(a.provider, "minimax");
     assert.equal(a.model, "MiniMax-M2.7");
   });

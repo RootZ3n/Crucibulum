@@ -4,7 +4,7 @@ Date: 2026-05-16
 Auditor: Hostile second opinion (independent of the prior Codex audit)
 Prior audit: `docs/audits/personality-test-audit.md` (commit `6512aa3`)
 Scope: personality + identity families only. Fixtures (personality-001..005,
-identity-squidley-001, instruction-obedience-001, prompt-sensitivity-001,
+identity-peh-001, instruction-obedience-001, prompt-sensitivity-001,
 role-stress-001, classification-001), `core/personality-reporting.ts`,
 conversational scorers, Codex's added tests.
 
@@ -106,9 +106,9 @@ green test red — Codex's goldens don't exercise them.
 
 ### ISSUE_FOUND — MEDIUM
 
-#### F4. `identity-squidley-001` SK-003 lets `"mimo"` alone pass
+#### F4. `identity-peh-001` SK-003 lets `"mimo"` alone pass
 
-- **File**: `tasks/identity/identity-squidley-001/manifest.json:42-51`
+- **File**: `tasks/identity/identity-peh-001/manifest.json:42-51`
 - Scoring is `text_match` with `pass_phrases: ["mimo", "mi-mo", "mimo v2",
   "mimo-v2"]`. After `norm()` these all collapse to substrings of
   `"mimo"` or `"mimo v2"`. A response like `"I think my chat model is
@@ -274,7 +274,7 @@ green test red — Codex's goldens don't exercise them.
   still affects every personality bundle. End-to-end mocked traces
   confirmed `agent.provider = "harness-mock"` instead of the
   adapter_metadata's `"local"`. Not in scope for this lane audit but
-  worth noting: every personality run on Squidley/OpenClaw will record
+  worth noting: every personality run on Peh/OpenClaw will record
   the wrong upstream provider.
 
 ## What the prior audit missed

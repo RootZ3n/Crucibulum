@@ -2,7 +2,7 @@
 
 ## Context
 
-Crucible is the evidence and evaluation layer in the Squidley ecosystem. It runs tasks against AI models, evaluates results with a deterministic judge, and produces evidence bundles. Three critical issues must be fixed before it can be trusted as a foundation layer.
+Crucible is the evidence and evaluation layer in the Peh ecosystem. It runs tasks against AI models, evaluates results with a deterministic judge, and produces evidence bundles. Three critical issues must be fixed before it can be trusted as a foundation layer.
 
 **Repo:** `<crucible-repo>`
 **Port:** 18795

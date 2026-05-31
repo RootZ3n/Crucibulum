@@ -243,7 +243,7 @@ const DEFAULT_MODEL_GROUPS=[
     {id:'deepseek/deepseek-v4-pro',label:'deepseek/deepseek-v4-pro (DeepSeek V4 Pro)'},
     {id:'deepseek/deepseek-v4-flash',label:'deepseek/deepseek-v4-flash (DeepSeek V4 Flash)'}
   ]},
-  {key:'modelstudio',label:'ModelStudio',providerId:'modelstudio',adapterId:'squidley',kind:'cloud',models:[
+  {key:'modelstudio',label:'ModelStudio',providerId:'modelstudio',adapterId:'peh',kind:'cloud',models:[
     {id:'qwen3.6-plus',label:'qwen3.6-plus'},
     {id:'glm-4',label:'glm-4'}
   ]},
@@ -263,7 +263,7 @@ const DEFAULT_MODEL_GROUPS=[
   ]},
   // MiniMax routes DIRECTLY in Luak. This is a standalone product and
   // should use the operator's own MiniMax key instead of silently hopping
-  // through Squidley. The model ids are from MiniMax's published
+  // through Peh. The model ids are from MiniMax's published
   // ChatCompletion v2 catalog; register extra/account-scoped ids via the
   // Providers tab.
   {key:'minimax',label:'MiniMax',providerId:'minimax',adapterId:'minimax',kind:'cloud',models:[
@@ -1257,7 +1257,7 @@ function catalogMap(){
     }
     // Registered models are the operator's explicit routing choice and must
     // override curated defaults with the same raw id. This matters for
-    // MiniMax: a registered direct model must beat the curated Squidley route.
+    // MiniMax: a registered direct model must beat the curated Peh route.
     if(entry.inventoryMode==='registered'&&existing.inventoryMode!=='registered'){
       byId.set(key,entry);
     }
@@ -6004,7 +6004,7 @@ function renderCommandRail(){
   // hidden below for that contract.
   return`<header class="cmd-rail" role="banner">
     <div class="cmd-rail-brand">
-      <img class="cmd-rail-mascot" src="squidley.png" alt="" aria-hidden="true" width="52" height="52">
+      <img class="cmd-rail-mascot" src="peh.png" alt="" aria-hidden="true" width="52" height="52">
       <div class="cmd-rail-title-stack">
         <span class="cmd-rail-mark">${esc(scope.tabLabel)} · Judge Deck</span>
         <span class="cmd-rail-title">Luak</span>
@@ -6726,7 +6726,7 @@ function render(){
   // (the tab body wrapped in a deck-window with a glowing title plate).
   // Left rail: Evaluation Rooms (tab navigator as cards). Right rail:
   // Failure Board + Provider Bay + Evidence Vault + Release Gate. Bottom:
-  // Evidence Feed. Footer: small Squidley seal + "Luak Evaluation
+  // Evidence Feed. Footer: small Peh seal + "Luak Evaluation
   // Lattice". The system status bar and offline banner remain above the
   // command rail because they are global signals.
   // Global signals (verdict/mission banner) sit between the command rail

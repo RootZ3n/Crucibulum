@@ -5,7 +5,7 @@
  * existing registry entries, tests, and CLI references compile and
  * report honest "unavailable/deprecated" status instead of crashing.
  *
- * Replacement: use --adapter codex, --adapter squidley, or --adapter openrouter.
+ * Replacement: use --adapter codex, --adapter peh, or --adapter openrouter.
  *
  * The full implementation was removed in the post-Claude cutover (2026-05-05).
  * The original spawned `claude --print` and parsed stdout heuristically.
@@ -34,7 +34,7 @@ export class ClaudeCodeAdapter implements CrucibulumAdapter {
   async init(config: AdapterConfig): Promise<void> {
     const c = config as ClaudeCodeConfig;
     if (c.model) this.model = c.model;
-    log("warn", "claudecode", "Claude Code adapter is deprecated. Use codex, squidley, or openrouter instead.");
+    log("warn", "claudecode", "Claude Code adapter is deprecated. Use codex, peh, or openrouter instead.");
   }
 
   async healthCheck(): Promise<HealthCheckResult> {
@@ -43,7 +43,7 @@ export class ClaudeCodeAdapter implements CrucibulumAdapter {
       origin: "LOCAL_RUNTIME",
       provider: "claudecode",
       adapter: this.id,
-      rawMessage: "Claude Code adapter deprecated — binary dependency removed. Use --adapter codex, squidley, or openrouter.",
+      rawMessage: "Claude Code adapter deprecated — binary dependency removed. Use --adapter codex, peh, or openrouter.",
     }).structured;
     return { ok: false, reason: providerErrorSummary(providerError), providerError };
   }
@@ -56,7 +56,7 @@ export class ClaudeCodeAdapter implements CrucibulumAdapter {
       origin: "LOCAL_RUNTIME",
       provider: "claudecode",
       adapter: this.id,
-      rawMessage: "Claude Code adapter deprecated. Use --adapter codex, squidley, or openrouter.",
+      rawMessage: "Claude Code adapter deprecated. Use --adapter codex, peh, or openrouter.",
     }).structured;
     return {
       exit_reason: "error",

@@ -5,7 +5,7 @@
   "execution_mode": "conversational",
   "difficulty": "easy",
   "description": "No corporate speak — response must not contain filler pleasantries like 'Certainly!' or 'Great question!'",
-  "system_prompt": "You are Squidley. Direct, no corporate speak, action-oriented. Never start with pleasantries.",
+  "system_prompt": "You are Peh. Direct, no corporate speak, action-oriented. Never start with pleasantries.",
   "questions": [
     {
       "id": "P2-Q1",

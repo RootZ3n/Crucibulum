@@ -305,7 +305,7 @@ describe("route: POST /api/run — selection integrity", () => {
     assert.equal(body.request!.task, "spec-002", "the queued task id must equal the posted task id — no family fallback");
   });
 
-  it("rewrites stale squidley MiniMax requests to the direct minimax adapter when the model is registered", async () => {
+  it("rewrites stale peh MiniMax requests to the direct minimax adapter when the model is registered", async () => {
     registry.__wipeForTests();
     const provider = registry.addProvider({ presetId: "minimax", label: "MiniMax Direct", apiKey: "sk-mini" });
     registry.addModel({ providerConfigId: provider.id, modelId: "abab6.5s-chat" });
@@ -315,7 +315,7 @@ describe("route: POST /api/run — selection integrity", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         task: "truthfulness-001",
-        adapter: "squidley",
+        adapter: "peh",
         provider: "minimax",
         model: "abab6.5s-chat",
         count: 1,
@@ -328,7 +328,7 @@ describe("route: POST /api/run — selection integrity", () => {
     assert.equal(status.status, 200);
     const body = await status.json() as { request: { adapter: string; provider: string | null; model: string } | null };
     assert.ok(body.request, "resolved request must be visible in status");
-    assert.equal(body.request!.adapter, "minimax", "server must rewrite stale squidley path to direct minimax");
+    assert.equal(body.request!.adapter, "minimax", "server must rewrite stale peh path to direct minimax");
     assert.equal(body.request!.provider, "minimax");
     assert.equal(body.request!.model, "abab6.5s-chat");
   });
@@ -343,7 +343,7 @@ describe("route: /api/adapters — chat capability is advertised for every cloud
     const body = await res.json() as { adapters: Array<{ id: string; supports_chat: boolean; supports_tool_calls: boolean }> };
     const byId = new Map(body.adapters.map((a) => [a.id, a]));
     // Every cloud HTTP adapter must now advertise chat.
-    for (const id of ["openrouter", "openai", "anthropic", "minimax", "zai", "squidley", "google"]) {
+    for (const id of ["openrouter", "openai", "anthropic", "minimax", "zai", "peh", "google"]) {
       const entry = byId.get(id);
       assert.ok(entry, `adapter ${id} must be listed in /api/adapters`);
       assert.equal(entry!.supports_chat, true, `adapter ${id} must advertise supports_chat=true after the chat() implementation landed`);

@@ -1,6 +1,6 @@
 /**
  * Luak — Unified Score Schema
- * Shared between the Squidley Luak module and the standalone Luak product.
+ * Shared between the Peh Luak module and the standalone Luak product.
  *
  * Public score APIs use 0-100 percentages.
  * Internal run bundles still use 0-1 fractions until the bundle schema is migrated.

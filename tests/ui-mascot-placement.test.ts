@@ -1,10 +1,10 @@
 /**
  * Luak — mascot placement pins
  *
- * Squidley was moved out of the dark footer (where the operator could
+ * Peh was moved out of the dark footer (where the operator could
  * not see it) into the top command rail next to the CRUCIBLE title.
  * This file pins the new placement so a future cleanup cannot re-bury
- * Squidley or re-introduce a giant hero mascot.
+ * Peh or re-introduce a giant hero mascot.
  *
  * Six required pins (M1-M6) from the mascot-placement spec.
  */
@@ -75,7 +75,7 @@ describe('Luak mascot placement', () => {
     // primary. The img tag is gone from the deck-footer; the seal text
     // remains.
     const footerHasImg = /<footer[^>]*deck-footer[^>]*>[\s\S]*?<img[^>]*footer-squid/.test(HTML);
-    assert.ok(!footerHasImg, 'footer still contains a redundant Squidley image — should be removed since the header now hosts the primary mascot');
+    assert.ok(!footerHasImg, 'footer still contains a redundant Peh image — should be removed since the header now hosts the primary mascot');
     assert.ok(HTML.includes('Luak Evaluation Lattice'), 'footer seal text must remain even without the image');
   });
 

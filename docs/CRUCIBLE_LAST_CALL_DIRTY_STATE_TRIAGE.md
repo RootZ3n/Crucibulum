@@ -16,7 +16,7 @@ Date: 2026-05-23
 | --- | --- | --- |
 | `adapters/base.ts` | conversational-behavior eval work / evidence schema | Commit. Adds `currentQuestion` harness hint, `operational_trust` family, and optional `run_id` on evidence bundles. |
 | `adapters/harness-mock.ts` | conversational-behavior eval work | Commit. Uses current question metadata for deterministic scorer-aware mock replies. No live provider calls. |
-| `adapters/anthropic.ts`, `adapters/google.ts`, `adapters/minimax.ts`, `adapters/ollama.ts`, `adapters/openai.ts`, `adapters/openrouter.ts`, `adapters/squidley.ts`, `adapters/zai.ts` | adapter/runner work | Commit. Allows `DONE` without file edits only when task manifest sets `max_file_edits: 0`. Preserves evidence-backed no-edit task semantics. |
+| `adapters/anthropic.ts`, `adapters/google.ts`, `adapters/minimax.ts`, `adapters/ollama.ts`, `adapters/openai.ts`, `adapters/openrouter.ts`, `adapters/peh.ts`, `adapters/zai.ts` | adapter/runner work | Commit. Allows `DONE` without file edits only when task manifest sets `max_file_edits: 0`. Preserves evidence-backed no-edit task semantics. |
 | `core/identity.ts` | runner/execution work | Commit. Centralizes collision-resistant run, suite, batch, and bundle id generation. |
 | `core/bundle.ts` | runner/evidence work | Commit. Uses random-suffixed bundle ids, stores optional `run_id`, and prevents silent overwrite on collision. |
 | `core/runner.ts`, `core/conversational-runner.ts` | runner/evidence work | Commit. Threads server `runId` into repo and conversational evidence bundles. |

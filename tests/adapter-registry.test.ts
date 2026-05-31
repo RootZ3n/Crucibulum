@@ -30,7 +30,7 @@ describe("adapter registry", () => {
       "openai",
       "openclaw",
       "openrouter",
-      "squidley",
+      "peh",
       "zai",
     ]);
   });

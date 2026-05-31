@@ -19,7 +19,7 @@ provider when the adapter proxies to multiple backends. The conversational
 runner short-circuits `adapter_metadata.provider` and writes
 `agent.provider = adapter.id` instead, which silently mislabels every
 conversational bundle that goes through a multi-provider adapter
-(Squidley, OpenClaw, ClaudeCode). Personality / Safety / Memory lanes are
+(Peh, OpenClaw, ClaudeCode). Personality / Safety / Memory lanes are
 100% conversational, so 100% of their bundles inherit this bug whenever the
 adapter ≠ provider.
 
@@ -36,13 +36,13 @@ leaderboard grouping key, the drilldown export, and the
 
 - **File**: `core/conversational-runner.ts:643` (also `:747`, `:704-705`,
   `:422`, `:451`, `:498`)
-- **Why it matters**: Squidley, OpenClaw, and ClaudeCode are multi-backend
+- **Why it matters**: Peh, OpenClaw, and ClaudeCode are multi-backend
   adapters. The non-conversational runner (`core/bundle.ts:170`) reads
   `executionResult.adapter_metadata.provider`, which adapters set to the
-  actual upstream provider (e.g. `this.provider ?? "squidley-routed"` in
-  `adapters/squidley.ts:231`). The conversational runner ignores that and
+  actual upstream provider (e.g. `this.provider ?? "peh-routed"` in
+  `adapters/peh.ts:231`). The conversational runner ignores that and
   hard-codes `adapter.id`. Result: a personality run on `qwen3.6-plus` via
-  Squidley → ModelStudio is stored as `agent.provider = "squidley"` instead
+  Peh → ModelStudio is stored as `agent.provider = "peh"` instead
   of `"modelstudio"`. The leaderboard aggregator
   (`leaderboard/aggregator.ts:82`) keys runs by
   `adapter:provider:model`, so the same model splits into different
@@ -50,14 +50,14 @@ leaderboard grouping key, the drilldown export, and the
   spec-based. The prior audit's release doc claims "Bundle metadata records
   actual provider/model used"; this assertion is false for ~half the lane
   surface.
-- **Reproduction**: build a conversational run through Squidley. Inspect the
+- **Reproduction**: build a conversational run through Peh. Inspect the
   stored bundle:
   ```
   jq '.agent.provider, .agent.adapter' runs/<conv-bundle>.json
   ```
   Compare against a non-conversational (`core/runner.ts`) run through the
   same adapter; the latter records `modelstudio`/`minimax`/etc., the former
-  records `squidley`.
+  records `peh`.
 - **Scope of impact**: Personality lane (all conversational), Safety lane
   (all conversational), Memory lane (all conversational), and the
   `truthfulness` / `cost_efficiency` task families on Benchmark. Build and
@@ -149,7 +149,7 @@ leaderboard grouping key, the drilldown export, and the
 - **File**: `tests/provider-registry.test.ts`,
   `tests/provider-flow.test.ts`, `tests/route-contract.test.ts`,
   `tests/personality-and-harness.test.ts`
-- **Why it matters**: Codex's "stale squidley → direct minimax" rewrite
+- **Why it matters**: Codex's "stale peh → direct minimax" rewrite
   test (`tests/route-contract.test.ts:307`) verifies that the dispatch
   *request record* shows `provider: "minimax"`. It does **not** drive a
   conversational task through the rewritten adapter and re-read the
@@ -159,7 +159,7 @@ leaderboard grouping key, the drilldown export, and the
   asserted only on synthesized fixtures (`tests/leaderboard.test.ts`),
   never against the output of `buildConversationalBundle`.
 - **Recommended fix**: add an integration-style test that runs
-  `runConversationalTask` with a stub Squidley adapter whose
+  `runConversationalTask` with a stub Peh adapter whose
   `adapter_metadata.provider` is `"modelstudio"`, and assert the returned
   bundle's `agent.provider === "modelstudio"`.
 
@@ -222,7 +222,7 @@ leaderboard grouping key, the drilldown export, and the
 - C6. Adapter-side bundle preservation works on the
   *non-conversational* path: `core/bundle.ts:170` correctly reads
   `executionResult.adapter_metadata.provider`, and every adapter
-  populates this field (verified at `adapters/{ollama,squidley,…}.ts`
+  populates this field (verified at `adapters/{ollama,peh,…}.ts`
   `adapter_metadata:` sites).
 - C7. Drilldown export carries `provider` from the stored bundle
   (`ui/index.html:438, 481`). Its accuracy depends entirely on F1: the
@@ -284,6 +284,6 @@ point of T1–T4.
 Ship the request-side hardening (Codex's work in `25b704f`) — it is
 sound. Before any release that publishes leaderboards or shareable
 drilldown exports through a non-OpenRouter / non-direct adapter
-(Squidley, OpenClaw, ClaudeCode), fix F1 so the receipt agrees with
+(Peh, OpenClaw, ClaudeCode), fix F1 so the receipt agrees with
 the dispatch. F2 should ride the same change. F3 is cosmetic. F4 / T3
 are drift-prevention work for the next maintenance window.

@@ -80,13 +80,13 @@ describe("provider flow validation", () => {
       assert.equal(openai.id, "openai");
     });
 
-    it("squidley is configurable rather than fixed to one provider", async () => {
+    it("peh is configurable rather than fixed to one provider", async () => {
       mockFetch();
       const catalog = await getAdapterCatalog();
-      const squidley = catalog.find((e) => e.id === "squidley");
-      assert.ok(squidley);
-      assert.equal(squidley.provider_mode, "configurable");
-      assert.equal(squidley.fixed_provider, null);
+      const peh = catalog.find((e) => e.id === "peh");
+      assert.ok(peh);
+      assert.equal(peh.provider_mode, "configurable");
+      assert.equal(peh.fixed_provider, null);
     });
   });
 

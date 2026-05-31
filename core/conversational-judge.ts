@@ -1,7 +1,7 @@
 /**
  * Luak — Conversational Judge
  * Deterministic scoring for chat-based tasks.
- * Ported from Squidley Veritor's scorer — same logic, standalone.
+ * Ported from Peh Veritor's scorer — same logic, standalone.
  *
  * Scoring types:
  *   text_match      — response contains ANY of pass_phrases

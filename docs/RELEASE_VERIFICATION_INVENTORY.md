@@ -46,9 +46,9 @@ existing `core.test.ts` suite + scenario harness.
 | `openrouter` | cloud | fixed | Multi-publisher routing hub |
 | `openclaw` | subprocess | configurable | Subprocess agent runtime |
 | `claudecode` | subprocess | fixed | Deprecated Claude Code subprocess |
-| `squidley` | cloud | configurable | Gateway routing |
-| `grimoire-cc` | cloud | configurable | Squidley + Claude Code |
-| `grimoire-codex` | cloud | configurable | Squidley + Codex |
+| `peh` | cloud | configurable | Gateway routing |
+| `grimoire-cc` | cloud | configurable | Peh + Claude Code |
+| `grimoire-codex` | cloud | configurable | Peh + Codex |
 | `minimax` | cloud | fixed | Direct API |
 | `zai` | cloud | fixed | Z.AI / GLM |
 | `google` | cloud | fixed | Google AI Direct |

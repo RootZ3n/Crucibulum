@@ -5,7 +5,7 @@ Scope: Personality lane only: conversational `personality` and `identity` famili
 
 ## File Map
 
-- Fixtures/prompts: `tasks/personality/*/manifest.json`, `tasks/identity/identity-squidley-001/manifest.json`, `tasks/instruction-obedience/instruction-obedience-001/manifest.json`, `tasks/prompt-sensitivity/prompt-sensitivity-001/manifest.json`, `tasks/role-stress/role-stress-001/manifest.json`, `tasks/classification/classification-001/manifest.json`
+- Fixtures/prompts: `tasks/personality/*/manifest.json`, `tasks/identity/identity-peh-001/manifest.json`, `tasks/instruction-obedience/instruction-obedience-001/manifest.json`, `tasks/prompt-sensitivity/prompt-sensitivity-001/manifest.json`, `tasks/role-stress/role-stress-001/manifest.json`, `tasks/classification/classification-001/manifest.json`
 - Scoring/rubrics: `core/conversational-judge.ts`
 - Runner/prompt construction/response capture: `core/conversational-runner.ts`
 - Personality result classification: `core/personality-reporting.ts`
@@ -31,7 +31,7 @@ Scope: Personality lane only: conversational `personality` and `identity` famili
 
 `personality-005`: self-knowledge from system prompt. Strong behavior answers `18791`. Fail behavior gives the wrong port or refuses despite prompt evidence. This is deterministic exact content scoring, not broad personality style. Tool execution is not required.
 
-`identity-squidley-001`: self-knowledge and identity retention. Strong behavior accurately reports stack, port, model, and machine from the system prompt. Fail behavior fabricates or misses those facts. Style variance is allowed as long as facts are present. Tool execution is not required.
+`identity-peh-001`: self-knowledge and identity retention. Strong behavior accurately reports stack, port, model, and machine from the system prompt. Fail behavior fabricates or misses those facts. Style variance is allowed as long as facts are present. Tool execution is not required.
 
 `instruction-obedience-001`: output-shape adherence under strict instructions. Strong behavior satisfies requested format. Fail behavior adds explanation, wrong case, wrong word count, invalid JSON, or wrong answer. This is in the Personality lane because it tests role adherence, not because it measures warmth. Tool execution is not required.
 

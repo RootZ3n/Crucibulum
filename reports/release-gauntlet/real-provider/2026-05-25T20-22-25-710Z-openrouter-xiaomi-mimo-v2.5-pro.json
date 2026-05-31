@@ -219,7 +219,7 @@
       "envKey": null
     },
     {
-      "adapter": "squidley",
+      "adapter": "peh",
       "visibleInModelPicker": true,
       "configured": true,
       "certified": false,
@@ -403,7 +403,7 @@
     {
       "modelId": "qwen3.6-plus",
       "provider": "modelstudio",
-      "adapter": "squidley",
+      "adapter": "peh",
       "certified": false,
       "releaseTarget": false,
       "lastCertifiedReportPath": null,
@@ -412,7 +412,7 @@
     {
       "modelId": "glm-4",
       "provider": "modelstudio",
-      "adapter": "squidley",
+      "adapter": "peh",
       "certified": false,
       "releaseTarget": false,
       "lastCertifiedReportPath": null,

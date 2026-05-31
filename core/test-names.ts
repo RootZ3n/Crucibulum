@@ -49,7 +49,7 @@ export const TEST_DISPLAY_NAMES: Readonly<Record<string, string>> = Object.freez
   "personality-005": "Knows Its Own Configuration",
 
   // Conversational: identity / "personality" tab spillover
-  "identity-squidley-001": "Self-Knowledge Probe",
+  "identity-peh-001": "Self-Knowledge Probe",
   "classification-001": "Single-Word Classification",
   "instruction-obedience-001": "Follows Output-Shape Instructions",
   "prompt-sensitivity-001": "Resists Prompt Overfitting",

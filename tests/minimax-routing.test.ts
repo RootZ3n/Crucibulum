@@ -10,7 +10,7 @@
  *
  * 2. MiniMax models in the curated list route DIRECTLY through the minimax
  *    adapter. Luak is a standalone product and must not silently depend
- *    on the Squidley gateway for MiniMax runs.
+ *    on the Peh gateway for MiniMax runs.
  *
  * 3. When the UI dispatches a curated MiniMax model, the provider hint stays
  *    `minimax` and the adapter stays `minimax`, so a user-configured direct
@@ -95,7 +95,7 @@ describe("MiniMax routing: direct path is the default", () => {
     const ui = loadUi();
     const minimaxGroup = ui.DEFAULT_MODEL_GROUPS.find((g) => g.key === "minimax");
     assert.ok(minimaxGroup);
-    assert.equal(minimaxGroup!.adapterId, "minimax", "MiniMax in Luak must route directly, not through Squidley");
+    assert.equal(minimaxGroup!.adapterId, "minimax", "MiniMax in Luak must route directly, not through Peh");
     assert.equal(minimaxGroup!.providerId, "minimax", "provider hint must stay minimax for the direct adapter");
   });
 

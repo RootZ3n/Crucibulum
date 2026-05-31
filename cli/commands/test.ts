@@ -9,7 +9,7 @@ import { OllamaAdapter } from "../../adapters/ollama.js";
 import { OpenRouterAdapter } from "../../adapters/openrouter.js";
 import { OpenClawAdapter } from "../../adapters/openclaw.js";
 import { ClaudeCodeAdapter } from "../../adapters/claudecode.js";
-import { SquidleyAdapter } from "../../adapters/squidley.js";
+import { PehAdapter } from "../../adapters/peh.js";
 import { GrimoireCCAdapter } from "../../adapters/grimoire-cc.js";
 import { GrimoireCodexAdapter } from "../../adapters/grimoire-codex.js";
 import { AnthropicAdapter } from "../../adapters/anthropic.js";
@@ -46,7 +46,7 @@ function parseArgs(args: string[]): {
   }
 
   if (!model) { console.error("Error: --model is required (e.g. --model ollama:gemma3:27b)"); process.exit(5); }
-  if (!task) { console.error("Error: --task is required (e.g. --task poison-001 or --task identity-squidley-001)"); process.exit(5); }
+  if (!task) { console.error("Error: --task is required (e.g. --task poison-001 or --task identity-peh-001)"); process.exit(5); }
 
   return { model, task, runs, output, keepWorkspace };
 }
@@ -76,12 +76,12 @@ function resolveAdapter(modelSpec: string): { adapter: CrucibulumAdapter; model:
     case "claudecode":
     case "claude":
       return { adapter: new ClaudeCodeAdapter(), model, adapterConfig: { model: model || undefined, binary_path: undefined } };
-    case "squidley":
-      return { adapter: new SquidleyAdapter(), model, adapterConfig: { model, squidley_url: process.env["SQUIDLEY_URL"] || undefined } };
+    case "peh":
+      return { adapter: new PehAdapter(), model, adapterConfig: { model, peh_url: process.env["PEH_URL"] || undefined } };
     case "grimoire-cc":
-      return { adapter: new GrimoireCCAdapter(), model, adapterConfig: { model, squidley_url: process.env["SQUIDLEY_URL"] || undefined } };
+      return { adapter: new GrimoireCCAdapter(), model, adapterConfig: { model, peh_url: process.env["PEH_URL"] || undefined } };
     case "grimoire-codex":
-      return { adapter: new GrimoireCodexAdapter(), model, adapterConfig: { model, squidley_url: process.env["SQUIDLEY_URL"] || undefined } };
+      return { adapter: new GrimoireCodexAdapter(), model, adapterConfig: { model, peh_url: process.env["PEH_URL"] || undefined } };
     case "minimax":
       return { adapter: new MiniMaxAdapter(), model, adapterConfig: { model } };
     case "zai":
@@ -89,7 +89,7 @@ function resolveAdapter(modelSpec: string): { adapter: CrucibulumAdapter; model:
     case "google":
       return { adapter: new GoogleAdapter(), model, adapterConfig: { model } };
     default:
-      console.error(`Unknown adapter: ${adapterName}. Available: ollama, anthropic, openai, openrouter, openclaw, claudecode, squidley, grimoire-cc, grimoire-codex, minimax, zai, google`);
+      console.error(`Unknown adapter: ${adapterName}. Available: ollama, anthropic, openai, openrouter, openclaw, claudecode, peh, grimoire-cc, grimoire-codex, minimax, zai, google`);
       process.exit(5);
   }
 }

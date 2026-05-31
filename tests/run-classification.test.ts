@@ -60,7 +60,7 @@ const COPY_PAIRS: Array<[string, string]> = [
   ["prompt-sensitivity", "prompt-sensitivity-001"],
   ["truthfulness", "truthfulness-001"],
   ["truthfulness", "truthfulness-002"],
-  ["identity", "identity-squidley-001"],
+  ["identity", "identity-peh-001"],
 ];
 for (const [family, id] of COPY_PAIRS) {
   const src = join(import.meta.dirname, "..", "..", "tasks", family, id, "manifest.json");
@@ -224,7 +224,7 @@ async function settleViaStatus(runId: string): Promise<UiClassification> {
 describe("run classification: operator-shape 10-test launch", () => {
   it("sequential 10 tests, all pass: every test gets a complete frame with a bundle_id (regression for the 3/10 baseline)", async () => {
     const tasks = ["personality-001", "personality-002", "personality-003", "personality-004", "personality-005",
-                   "identity-squidley-001", "role-stress-001", "prompt-sensitivity-001",
+                   "identity-peh-001", "role-stress-001", "prompt-sensitivity-001",
                    "truthfulness-001", "truthfulness-002"];
     const outcomes = [];
     for (const task of tasks) {
@@ -249,7 +249,7 @@ describe("run classification: operator-shape 10-test launch", () => {
     failMode = { mode: "healthCheck", reason: "Provider rate limited (429) — slow down" };
     healthCheckLimit = 3;
     const tasks = ["personality-001", "personality-002", "personality-003", "personality-004", "personality-005",
-                   "identity-squidley-001", "role-stress-001", "prompt-sensitivity-001",
+                   "identity-peh-001", "role-stress-001", "prompt-sensitivity-001",
                    "truthfulness-001", "truthfulness-002"];
     const outcomes = [];
     for (const task of tasks) {

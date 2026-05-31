@@ -14,7 +14,7 @@ Registered models win over curated defaults with the same raw model id because t
 
 ## Routing Fields
 
-- `adapter`: implementation used to talk to the provider API, such as `openrouter`, `anthropic`, `ollama`, `minimax`, or `squidley`.
+- `adapter`: implementation used to talk to the provider API, such as `openrouter`, `anthropic`, `ollama`, `minimax`, or `peh`.
 - `provider`: provider preset or configured provider route, such as `openrouter`, `anthropic`, `ollama`, `minimax`, `zai`, or `modelstudio`.
 - `model`: raw model id sent to that provider.
 - `requested_target`: adapter/provider/model posted by the UI.

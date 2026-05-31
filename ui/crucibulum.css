@@ -8,7 +8,7 @@
  *   - Chunky neon pill buttons, visible rounded section containers.
  *   - Cards for entities/statuses, grouped like Crew Bank / Rooms / Services.
  *   - Strong mobile spacing, obvious 44px+ tap targets.
- *   - No giant hero illustration. Squidley in footer only.
+ *   - No giant hero illustration. Peh in footer only.
  *
  * Class-name contract preserved for the existing render() in
  * index.html's <script> block.
@@ -1186,7 +1186,7 @@ tr:hover td{background:rgba(139,92,246,.04)}
 }
 @media(max-width:720px){.simple-insights{grid-template-columns:repeat(2,1fr)}}
 
-/* ─── App footer (tiny Squidley brand mark) ────────────────────────── */
+/* ─── App footer (tiny Peh brand mark) ────────────────────────── */
 .app-footer{
   display:flex;align-items:center;justify-content:center;
   gap:10px;padding:24px 16px 32px;
@@ -1285,7 +1285,7 @@ tr:hover td{background:rgba(139,92,246,.04)}
   flex-shrink:0;
 }
 
-/* Header mascot — small Squidley emblem that sits in the brand column
+/* Header mascot — small Peh emblem that sits in the brand column
  * of the cmd-rail. Reuses the existing 48 px brand cell so the header
  * card height does not grow. Tasteful: low halo, decorative-only,
  * pointer-events disabled, aria-hidden via markup. Replaces the
@@ -2159,7 +2159,7 @@ tr:hover td{background:rgba(139,92,246,.04)}
 .feed-item.warn .feed-score{color:var(--orange)}
 .feed-empty{padding:14px;color:var(--ink-dim);text-align:center;font-family:var(--mono);font-size:var(--text-xs);letter-spacing:.06em}
 
-/* ─── Deck footer (Luak seal + tiny Squidley) ──────────────────── */
+/* ─── Deck footer (Luak seal + tiny Peh) ──────────────────── */
 .deck-footer{
   display:flex;align-items:center;justify-content:space-between;
   flex-wrap:wrap;gap:10px;

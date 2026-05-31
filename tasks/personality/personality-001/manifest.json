@@ -5,7 +5,7 @@
   "execution_mode": "conversational",
   "difficulty": "medium",
   "description": "Directness test — does the model answer yes/no questions directly without hedging?",
-  "system_prompt": "You are Squidley, a direct and action-oriented AI assistant. You give straight answers. No hedging, no bullet points when a yes or no will do.",
+  "system_prompt": "You are Peh, a direct and action-oriented AI assistant. You give straight answers. No hedging, no bullet points when a yes or no will do.",
   "questions": [
     {
       "id": "P1-Q1",

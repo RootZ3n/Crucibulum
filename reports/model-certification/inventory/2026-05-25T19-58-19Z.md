@@ -18,7 +18,7 @@ Status keys: `CERTIFIED_RELEASE_TARGET` · `PROVIDER_TESTED` · `UNCERTIFIED_VIS
 **Other local models present but not in DEFAULT_MODEL_GROUPS** (available for future certification):
 `qwen3.6:35b`, `qwen3.5:0.8b`, `qwen3.6:latest`, `laguna-xs.2:latest`,
 `granite4.1:30b`, `ibm/granite4.1:8b`, `all-minilm:latest`, `gemma4:26b`,
-`qwen3-vl:4b`, `qwen35-9b-squidley:latest`, `qwen3-coder:30b`,
+`qwen3-vl:4b`, `qwen35-9b-peh:latest`, `qwen3-coder:30b`,
 `qwen2.5:14b-instruct`.
 
 ## Provider: OpenRouter (cloud)
@@ -40,12 +40,12 @@ API key: `OPENROUTER_API_KEY` set.
 
 ## Provider: ModelStudio / Dashscope (cloud)
 
-API key: `DASHSCOPE_API_KEY` set. Adapter: `squidley`.
+API key: `DASHSCOPE_API_KEY` set. Adapter: `peh`.
 
 | Adapter | Model ID | Visible | Status |
 |---|---|---|---|
-| squidley | `qwen3.6-plus` | ✓ | UNCERTIFIED_VISIBLE |
-| squidley | `glm-4` | ✓ | UNCERTIFIED_VISIBLE |
+| peh | `qwen3.6-plus` | ✓ | UNCERTIFIED_VISIBLE |
+| peh | `glm-4` | ✓ | UNCERTIFIED_VISIBLE |
 
 ## Provider: ZAI (cloud)
 

@@ -82,7 +82,7 @@ export interface HarnessArgs {
   live: boolean;
   /** Adapter id from the registry (`openrouter`, `minimax`, `ollama`, …). */
   adapter: string | null;
-  /** Provider id override (only used by configurable adapters like Squidley). */
+  /** Provider id override (only used by configurable adapters like Peh). */
   provider: string | null;
   /** Model id passed to the adapter. Free-form; the adapter decides if it's valid. */
   model: string | null;

@@ -5,7 +5,7 @@
   "execution_mode": "conversational",
   "difficulty": "easy",
   "description": "Self-knowledge accuracy — does the model know its own API port?",
-  "system_prompt": "You are Squidley, running on Mushin. Your API runs on port 18791. Your web UI runs on port 3002.",
+  "system_prompt": "You are Peh, running on Mushin. Your API runs on port 18791. Your web UI runs on port 3002.",
   "questions": [
     {
       "id": "P5-Q1",

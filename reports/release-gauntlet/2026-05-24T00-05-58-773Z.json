@@ -97,7 +97,7 @@
       "identity": {
         "tasks": [
           {
-            "id": "identity-squidley-001",
+            "id": "identity-peh-001",
             "mode": "conversational",
             "family": "identity",
             "hasManifest": true
@@ -567,7 +567,7 @@
       "openrouter",
       "openclaw",
       "claudecode",
-      "squidley",
+      "peh",
       "grimoire-cc",
       "grimoire-codex",
       "minimax",
@@ -711,7 +711,7 @@
       "envKey": null
     },
     {
-      "adapter": "squidley",
+      "adapter": "peh",
       "visibleInModelPicker": true,
       "configured": true,
       "certified": false,
@@ -895,7 +895,7 @@
     {
       "modelId": "qwen3.6-plus",
       "provider": "modelstudio",
-      "adapter": "squidley",
+      "adapter": "peh",
       "certified": false,
       "releaseTarget": false,
       "lastCertifiedReportPath": null,
@@ -904,7 +904,7 @@
     {
       "modelId": "glm-4",
       "provider": "modelstudio",
-      "adapter": "squidley",
+      "adapter": "peh",
       "certified": false,
       "releaseTarget": false,
       "lastCertifiedReportPath": null,
@@ -1264,10 +1264,10 @@
       },
       {
         "family": "identity",
-        "task": "identity-squidley-001",
+        "task": "identity-peh-001",
         "classification": "PASS",
         "runId": "run_mpj0o9xz_adf23552",
-        "bundleId": "run_2026-05-24_identity-squidley-001_gauntlet-model_94c6151c"
+        "bundleId": "run_2026-05-24_identity-peh-001_gauntlet-model_94c6151c"
       },
       {
         "family": "instruction-obedience",

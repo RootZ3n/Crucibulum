@@ -75,7 +75,7 @@ describe("adapter and selection catalog", () => {
     mockFetch();
     const catalog = await getAdapterCatalog();
     const ids = catalog.map((entry) => entry.id);
-    for (const id of ["ollama", "openrouter", "openai", "openclaw", "claudecode", "squidley"]) {
+    for (const id of ["ollama", "openrouter", "openai", "openclaw", "claudecode", "peh"]) {
       assert.ok(ids.includes(id), `expected adapter ${id} in catalog`);
     }
   });
