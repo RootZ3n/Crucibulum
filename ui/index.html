@@ -6165,7 +6165,7 @@ function renderActiveArenaShell(){
 // PRODUCT ISOLATION (Phase 1.1): each public product is a STANDALONE app.
 // Products share the Pehverse ecosystem by name, theme, design language and
 // purpose ONLY — there is NO cross-product runtime navigation. Exactly one
-// product is live per runtime. Luak cannot open Kobli workspaces and vice
+// product is live per runtime. Luak cannot open Howa workspaces and vice
 // versa; Fast Travel jumps between areas (scenes) INSIDE the active product
 // only. Future products are config/doc examples, not runtime destinations.
 //
@@ -6183,16 +6183,16 @@ function renderActiveArenaShell(){
 
 // ── ProductRegistry ────────────────────────────────────────────────────
 // displayName is configurable; internal `id` is the stable routing key, so
-// renaming "Kobli" ⇄ "Colosseum" never breaks a hotspot or saved link.
+// renaming the displayName never breaks a hotspot or saved link.
 // `status`: 'public' (a shippable standalone product), 'future' (config
 // placeholder — NOT a runtime destination), 'private' (lab-only, hidden).
 const PRODUCT_REGISTRY=[
   {id:'luak',  displayName:'Luak',  status:'public', order:1,
    tagline:'Test · Prove · Tune', blurb:'Drive a model hard, measure it, tune it, and bank the proof.',
    accent:'#22d3ee', accent2:'#8b5cf6', peh:'wrench', defaultScene:'garage'},
-  // trials product — displayName is data-driven ("Kobli" or "Colosseum").
+  // howa product — displayName is data-driven ("Howa").
   // A standalone product — NOT a sub-area sitting beside Luak in one shared app.
-  {id:'trials', displayName:'Kobli', status:'public', order:1,
+  {id:'howa', displayName:'Howa', status:'public', order:1,
    tagline:'Endure · Survive · Repeat', blurb:'Trials, pressure, and the scars that prove endurance.',
    accent:'#ec4899', accent2:'#f59e0b', peh:'shield', defaultScene:'arena-gate'},
   // ── Future products — CONFIG/DOC EXAMPLES ONLY. Not reachable at runtime
@@ -6240,7 +6240,7 @@ const SCENE_REGISTRY={
       {id:'h-compare',  label:'Model Comparison',     x:72, y:60, workspace:'model-comparison'}
     ]}
   ],
-  trials:[
+  howa:[
     {id:'arena-gate', title:'Arena Gate', desc:'Past this gate, every model is tested until it breaks.', peh:'shield', hotspots:[
       {id:'a-stress', label:'Stress Tests',       x:30, y:60, workspace:'stress-tests'},
       {id:'a-adv',    label:'Adversarial Trials', x:62, y:50, workspace:'adversarial-trials'},
@@ -6280,12 +6280,12 @@ const WORKSPACE_REGISTRY={
   'timing-results':      {product:'luak', title:'Timing Results',       kind:'placeholder', dock:'bottom', peh:'gauge', relatedTab:'benchmark', blurb:'Lap times, throughput, and tokens-per-second land here when the timing pipeline ships.'},
   'tuning-notes':        {product:'luak', title:'Tuning Notes',         kind:'placeholder', dock:'right',  peh:'wrench', relatedTab:'benchmark', blurb:'A per-model tuning log — what you changed and what it moved.'},
   'performance-receipts':{product:'luak', title:'Performance Receipts', kind:'lane', tab:'dashboard', dock:'fullscreen', peh:'trophy'},
-  // ── Kobli / trials (product:'trials') ──
-  'stress-tests':        {product:'trials', title:'Stress Tests',       kind:'lane', tab:'safety', dock:'right',      peh:'shield'},
-  'adversarial-trials':  {product:'trials', title:'Adversarial Trials', kind:'lane', tab:'poison', dock:'right',      peh:'bug'},
-  'regression-trials':   {product:'trials', title:'Regression Trials',  kind:'placeholder', dock:'bottom', peh:'shield', relatedTab:'build', blurb:'Re-run the gauntlet against a known-good baseline to catch backslides.'},
-  'failure-analysis':    {product:'trials', title:'Failure Analysis',   kind:'lane', tab:'trust',  dock:'right',      peh:'bug'},
-  'endurance-receipts':  {product:'trials', title:'Endurance Receipts', kind:'placeholder', dock:'fullscreen', peh:'trophy', relatedTab:'trust', blurb:'Long-haul survival receipts — how a model held up over repeated pressure.'},
+  // ── Howa (product:'howa') ──
+  'stress-tests':        {product:'howa', title:'Stress Tests',       kind:'lane', tab:'safety', dock:'right',      peh:'shield'},
+  'adversarial-trials':  {product:'howa', title:'Adversarial Trials', kind:'lane', tab:'poison', dock:'right',      peh:'bug'},
+  'regression-trials':   {product:'howa', title:'Regression Trials',  kind:'placeholder', dock:'bottom', peh:'shield', relatedTab:'build', blurb:'Re-run the gauntlet against a known-good baseline to catch backslides.'},
+  'failure-analysis':    {product:'howa', title:'Failure Analysis',   kind:'lane', tab:'trust',  dock:'right',      peh:'bug'},
+  'endurance-receipts':  {product:'howa', title:'Endurance Receipts', kind:'placeholder', dock:'fullscreen', peh:'trophy', relatedTab:'trust', blurb:'Long-haul survival receipts — how a model held up over repeated pressure.'},
   // ── Per-product legacy console (product:null = available to whichever
   //    product is active; it shows that runtime's own classic deck). ──
   'console':             {product:null, title:'Full Console', kind:'deck', dock:'fullscreen', peh:'orbit'}

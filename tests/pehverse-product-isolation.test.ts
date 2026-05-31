@@ -74,18 +74,18 @@ const publicIds = PRODUCTS.filter((p) => p.status === 'public').map((p) => p.id)
 
 describe('Pehverse product isolation — data model', () => {
   it('registries parsed and non-empty', () => {
-    assert.ok(PRODUCTS.length >= 2, 'expected at least Luak + trials products');
+    assert.ok(PRODUCTS.length >= 2, 'expected at least Luak + howa products');
     assert.ok(Object.keys(SCENES).length >= 2, 'expected scenes for at least two products');
     assert.ok(Object.keys(WORKSPACES).length >= 10, 'expected the full workspace set');
   });
 
-  it('public products are exactly luak + trials (Kobli)', () => {
-    assert.deepEqual(publicIds, ['luak', 'trials']);
-    const kobli = PRODUCTS.find((p) => p.id === 'trials');
-    assert.ok(kobli, 'trials product missing');
-    // displayName stays configurable (Kobli / Colosseum) — internal id stable.
-    assert.equal(typeof kobli.displayName, 'string');
-    assert.ok(kobli.displayName.length > 0);
+  it('public products are exactly luak + howa', () => {
+    assert.deepEqual(publicIds, ['howa', 'luak']);
+    const howa = PRODUCTS.find((p) => p.id === 'howa');
+    assert.ok(howa, 'howa product missing');
+    // displayName stays configurable — internal id stable.
+    assert.equal(typeof howa.displayName, 'string');
+    assert.ok(howa.displayName.length > 0);
   });
 
   it('Symposium is private + hidden (no Pehverse-runtime dependency on it)', () => {
@@ -147,13 +147,13 @@ describe('Pehverse product isolation — data model', () => {
     }
   });
 
-  it('Luak owns Luak workspaces; Kobli/trials owns trials workspaces', () => {
+  it('Luak owns Luak workspaces; Howa owns Howa workspaces', () => {
     const luak = Object.entries(WORKSPACES).filter(([, d]) => d.product === 'luak').map(([id]) => id);
-    const trials = Object.entries(WORKSPACES).filter(([, d]) => d.product === 'trials').map(([id]) => id);
+    const howa = Object.entries(WORKSPACES).filter(([, d]) => d.product === 'howa').map(([id]) => id);
     assert.ok(luak.includes('benchmark-runs'));
-    assert.ok(trials.includes('adversarial-trials'));
+    assert.ok(howa.includes('adversarial-trials'));
     // The two products share NO workspace ids.
-    assert.equal(luak.filter((id) => trials.includes(id)).length, 0);
+    assert.equal(luak.filter((id) => howa.includes(id)).length, 0);
   });
 });
 
@@ -311,25 +311,25 @@ describe('Pehverse product isolation — runtime behaviour (sandbox)', () => {
 
   it('the dev localStorage override is IGNORED unless dev mode is on', () => {
     // Saved product but no dev flag → stays default.
-    assert.equal(engine({ ls: { 'pehverse-product': 'trials' } }).pehResolveActiveProduct(), 'luak');
+    assert.equal(engine({ ls: { 'pehverse-product': 'howa' } }).pehResolveActiveProduct(), 'luak');
     // Dev flag on → override honored (dev/demo only).
-    const dev = engine({ ls: { 'pehverse-dev': '1', 'pehverse-product': 'trials' } });
+    const dev = engine({ ls: { 'pehverse-dev': '1', 'pehverse-product': 'howa' } });
     assert.equal(dev.pehDevMode(), true);
-    assert.equal(dev.pehResolveActiveProduct(), 'trials');
+    assert.equal(dev.pehResolveActiveProduct(), 'howa');
   });
 
   it('a valid build flag selects the product (Option A, one per runtime)', () => {
-    assert.equal(engine({ win: { PEHVERSE_PRODUCT: 'trials' } }).pehResolveActiveProduct(), 'trials');
+    assert.equal(engine({ win: { PEHVERSE_PRODUCT: 'howa' } }).pehResolveActiveProduct(), 'howa');
   });
 
   it('cross-product workspace ownership is enforced both directions', () => {
     const luak = engine({ product: 'luak' });
     assert.equal(luak.pehWorkspaceBelongsToActive(WORKSPACES['benchmark-runs']), true);
-    assert.equal(luak.pehWorkspaceBelongsToActive(WORKSPACES['adversarial-trials']), false, 'Luak must not open a Kobli workspace');
+    assert.equal(luak.pehWorkspaceBelongsToActive(WORKSPACES['adversarial-trials']), false, 'Luak must not open a Howa workspace');
     assert.equal(luak.pehWorkspaceBelongsToActive(WORKSPACES['console']), true, 'null-product console is per-product');
 
-    const trials = engine({ product: 'trials' });
-    assert.equal(trials.pehWorkspaceBelongsToActive(WORKSPACES['adversarial-trials']), true);
-    assert.equal(trials.pehWorkspaceBelongsToActive(WORKSPACES['benchmark-runs']), false, 'Kobli must not open a Luak workspace');
+    const howa = engine({ product: 'howa' });
+    assert.equal(howa.pehWorkspaceBelongsToActive(WORKSPACES['adversarial-trials']), true);
+    assert.equal(howa.pehWorkspaceBelongsToActive(WORKSPACES['benchmark-runs']), false, 'Howa must not open a Luak workspace');
   });
 });

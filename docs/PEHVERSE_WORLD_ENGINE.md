@@ -12,11 +12,11 @@ and mythology — NOT a runtime that routes between products.** Each product
 **owns its own world-shell**: it instantiates this engine with its own
 products-of-one config, scenes, and workspaces, and ships standalone.
 
-- **Each product is a completely standalone app.** Luak and Kobli launch
+- **Each product is a completely standalone app.** Luak and Howa launch
   together, but they are still **separate products** — separate shells,
   separate deployments.
 - **No cross-product navigation in release.** Exactly **one** product is live
-  per runtime. Luak cannot open Kobli's workspaces and vice versa; Fast Travel
+  per runtime. Luak cannot open Howa's workspaces and vice versa; Fast Travel
   jumps only between *areas (scenes) inside the active product*.
 - **The dev switcher is not a public feature.** It exists purely for local
   development/demo convenience and is hidden whenever dev mode is off.
@@ -32,7 +32,7 @@ products-of-one config, scenes, and workspaces, and ships standalone.
 > **Public release / build order** (informational — each ships as its own
 > standalone product, instantiating this pattern, never plugged into one
 > shared app):
-> Luak + Kobli/Colosseum (`trials`) → Kokuli → Toba → Nusika → Aiiska +
+> Luak + Howa (`howa`) → Kokuli → Toba → Nusika → Aiiska +
 > Peh-pub → **Symposium / name TBD** (lab-only, `private`, built last; must
 > **reuse this engine, never define it**, and is absent from all navigation).
 
@@ -86,10 +86,10 @@ runtime**.
 
 ### Why ids, not names
 
-`Colosseum` may be renamed `Kobli` (or back). The product is registered under
-the stable internal id **`trials`** with a configurable `displayName`.
-Hotspots, saved links, and `localStorage` all reference ids, so a rename is a
-one-field data edit that breaks nothing.
+A product's public `displayName` (e.g. `Howa`) may change without touching its
+stable internal `id` (e.g. **`howa`**). Hotspots, saved links, and
+`localStorage` all reference ids, so a display-name change is a one-field data
+edit that breaks nothing.
 
 ### Mode & responsive behaviour
 
@@ -115,7 +115,7 @@ inside another product at runtime.
 > The steps below show how the registries hold a product's data. In a
 > standalone deployment that product would be the one selected by
 > `window.PEHVERSE_PRODUCT` / `PEH_DEFAULT_PRODUCT`; the others remain
-> `future` config examples. Co-registering Luak and Kobli here is the
+> `future` config examples. Co-registering Luak and Howa here is the
 > launch-together pair plus dev convenience — not a shared public runtime.
 
 ### 1. Flip the product from `future` to `public` in `PRODUCT_REGISTRY`
