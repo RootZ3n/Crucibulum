@@ -2788,13 +2788,57 @@ body::after {
 .peh-ph-blurb{margin:0;max-width:42ch;font-size:14px}
 .peh-ph-tag{font-size:10px;letter-spacing:.16em;color:var(--ink-dim);border:1px dashed var(--border-subtle);padding:4px 9px;border-radius:8px}
 
-/* ── Mobile (base): focused workspace = full-bleed bottom sheet ─────── */
+/* ── Peh placeholder slot (data-driven squirrel visitor/guide) ─────── */
+/* Positioned over the world map by the location's pehSlot{x,y,anchor}.
+   The medallion is a SQUIRREL SILHOUETTE PLACEHOLDER — swapped for real
+   per-location/era Peh art later. */
+.peh-slot{position:absolute;z-index:5;display:flex;flex-direction:column;align-items:center;gap:5px;pointer-events:none}
+.peh-slot-center{transform:translate(-50%,-50%)}
+.peh-slot-top{transform:translate(-50%,0)}
+.peh-slot-bottom{transform:translate(-50%,-100%)}
+.peh-slot-right{transform:translate(0,-50%)}
+.peh-slot-left{transform:translate(-100%,-50%)}
+.peh-slot-medallion{
+  width:clamp(46px,8vw,72px);height:clamp(46px,8vw,72px);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;padding:9px;
+  color:#3a2a18;
+  background:radial-gradient(circle at 50% 32%,#f6ecd2 0%,#e8d6ab 60%,#cdb37e 100%);
+  border:2px solid #b8965b;
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--peh-accent) 26%,transparent),0 8px 22px rgba(0,0,0,.5);
+}
+.peh-squirrel{display:block;opacity:.92}
+.peh-slot-tag{
+  font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+  color:var(--ink);background:rgba(12,10,26,.82);border:1px solid var(--border-subtle);
+  padding:2px 8px;border-radius:999px;backdrop-filter:blur(4px);
+}
+/* Inline variant — sits in the dashboard/mobile card header, not positioned. */
+.peh-slot-inline{position:static;transform:none;float:right;margin:0 0 6px 12px}
+.peh-slot-inline .peh-slot-medallion{width:48px;height:48px;padding:7px}
+
+/* ── Back-to-map affordance (persistent on the workspace sheet) ─────── */
+.peh-backmap{
+  flex:0 0 auto;display:inline-flex;align-items:center;gap:3px;
+  font:inherit;font-size:12px;font-weight:600;line-height:1;
+  min-height:34px;padding:6px 11px;border-radius:10px;cursor:pointer;
+  background:rgba(139,92,246,.12);border:1px solid var(--border-subtle);color:var(--ink-soft);
+}
+.peh-backmap:hover{color:var(--ink);border-color:var(--peh-accent)}
+.peh-backmap span{font-size:16px;line-height:1}
+
+/* ── Mobile (base): focused workspace = full-screen sheet over the map ─ */
+/* No tiny draggable windows on mobile — the workspace opens as a clean
+   near-full-screen sheet/card; the map stays one tap away via ‹ Map and the
+   taskbar. Docked/floating panels are a DESKTOP-only treatment (≥880px). */
 .peh-panel{
-  position:absolute;left:0;right:0;bottom:0;top:8%;
+  position:absolute;left:0;right:0;bottom:0;top:6%;
   border-radius:18px 18px 0 0;
   animation:pehSheet .22s ease-out;
 }
 @keyframes pehSheet{from{transform:translateY(8%);opacity:.6}to{transform:translateY(0);opacity:1}}
+/* Large touch targets on mobile for the sheet's header controls. */
+.peh-panel .peh-dockbtn{width:34px;height:34px;font-size:15px}
+.peh-panel .peh-task-x{width:22px;height:22px}
 
 /* ── Dashboard mode ────────────────────────────────────────────────── */
 .peh-dash{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow:auto}

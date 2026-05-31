@@ -6189,7 +6189,7 @@ function renderActiveArenaShell(){
 const PRODUCT_REGISTRY=[
   {id:'luak',  displayName:'Luak',  status:'public', order:1,
    tagline:'Test · Prove · Tune', blurb:'Drive a model hard, measure it, tune it, and bank the proof.',
-   accent:'#22d3ee', accent2:'#8b5cf6', peh:'wrench', defaultScene:'garage'},
+   accent:'#22d3ee', accent2:'#8b5cf6', peh:'flag', defaultScene:'speedway'},
   // howa product — displayName is data-driven ("Howa").
   // A standalone product — NOT a sub-area sitting beside Luak in one shared app.
   {id:'howa', displayName:'Howa', status:'public', order:1,
@@ -6217,27 +6217,65 @@ const PEH_DEFAULT_PRODUCT='luak';
 // scene in THIS product, or both. Never references another product. Future
 // products have no scenes yet (config placeholders).
 const SCENE_REGISTRY={
+  // ── Luak — 1920s Racetrack Speedway ──────────────────────────────────
+  // EXACTLY the seven doctrine locations from PEHVERSE_WORLD_MAP.md, in
+  // doctrine order. Each location is a place on the world map AND a page:
+  //   - `purpose`  — the doctrine purpose (what the page is for)
+  //   - `route`    — the page/route the location opens
+  //   - `pehSlot`  — the data-driven Peh placeholder slot {x,y,anchor,variant}.
+  //                  Peh appears here as a 1920s racing-squirrel visitor/guide;
+  //                  the medallion is a placeholder, swapped for real Peh art
+  //                  per location/era later.
+  // `speedway` is the hub map: its hotspots open every location, so the world
+  // map is the single navigation hub (desktop AND mobile use this same data).
+  // NO game-economy locations (no Daily Goals / Collection / etc).
   luak:[
-    {id:'garage', title:'Garage', desc:'Roll a model onto the lift and open the bay doors.', peh:'wrench', hotspots:[
-      {id:'g-bench',   label:'Benchmark Runs',   x:24, y:62, workspace:'benchmark-runs'},
-      {id:'g-compare', label:'Model Comparison', x:54, y:48, workspace:'model-comparison'},
-      {id:'g-tune',    label:'To the Tuning Bench', x:82, y:66, scene:'tuning-bench'}
+    {id:'speedway', title:'The Speedway', purpose:'Dashboard / overview', route:'/dashboard',
+     desc:'The heart of Luak. Legendary races, roaring engines, and the proof that never fades.', peh:'flag',
+     pehSlot:{x:50, y:55, anchor:'center', variant:'driver'}, hotspots:[
+      {id:'sp-overview', label:'Dashboard',         x:24, y:42, workspace:'speedway-overview', scene:'speedway'},
+      {id:'sp-track',    label:'The Racetrack',     x:50, y:47, workspace:'benchmark-runs',     scene:'racetrack'},
+      {id:'sp-stand',    label:'The Grandstand',    x:40, y:18, workspace:'grandstand-results', scene:'grandstand'},
+      {id:'sp-tower',    label:'The Timing Tower',  x:82, y:24, workspace:'timing-metrics',     scene:'timing-tower'},
+      {id:'sp-pit',      label:'The Pit Lane',      x:84, y:48, workspace:'pit-lane-config',    scene:'pit-lane'},
+      {id:'sp-victory',  label:'The Victory Circle',x:78, y:64, workspace:'victory-achievements',scene:'victory-circle'},
+      {id:'sp-shop',     label:'The Workshop',      x:62, y:80, workspace:'workshop-diagnostics',scene:'workshop'}
     ]},
-    {id:'proving-grounds', title:'Proving Grounds', desc:'Open track. Push for clean laps under load.', peh:'gauge', hotspots:[
-      {id:'p-bench',  label:'Benchmark Runs',  x:30, y:58, workspace:'benchmark-runs'},
-      {id:'p-timing', label:'Timing Results',  x:68, y:52, workspace:'timing-results'}
+    {id:'racetrack', title:'The Racetrack', purpose:'Active benchmarks', route:'/racetrack',
+     desc:'Where the cars race. Push a model hard and watch it run, lap after lap, under load.', peh:'gauge',
+     pehSlot:{x:50, y:62, anchor:'center', variant:'driver'}, hotspots:[
+      {id:'rt-runs',  label:'Active Benchmarks', x:46, y:54, workspace:'benchmark-runs'},
+      {id:'rt-hub',   label:'Back to the Speedway', x:84, y:78, scene:'speedway'}
     ]},
-    {id:'timing-tower', title:'Timing Tower', desc:'Lap charts, throughput, and the running clock.', peh:'gauge', hotspots:[
-      {id:'t-timing',  label:'Timing Results', x:50, y:46, workspace:'timing-results'},
-      {id:'t-compare', label:'Model Comparison', x:78, y:64, workspace:'model-comparison'}
+    {id:'grandstand', title:'The Grandstand', purpose:'Results & rankings', route:'/results',
+     desc:'Where the spectators watch. Final standings, head-to-head results, and who took the flag.', peh:'trophy',
+     pehSlot:{x:42, y:30, anchor:'top', variant:'spectator'}, hotspots:[
+      {id:'gs-results', label:'Results & Rankings', x:48, y:52, workspace:'grandstand-results'},
+      {id:'gs-hub',     label:'Back to the Speedway', x:84, y:80, scene:'speedway'}
     ]},
-    {id:'tuning-bench', title:'Tuning Bench', desc:'Tighten the bolts. Note what moved the numbers.', peh:'wrench', hotspots:[
-      {id:'b-notes',   label:'Tuning Notes',     x:34, y:60, workspace:'tuning-notes'},
-      {id:'b-compare', label:'Model Comparison', x:70, y:52, workspace:'model-comparison'}
+    {id:'timing-tower', title:'The Timing Tower', purpose:'Performance metrics', route:'/metrics',
+     desc:'Where the times are recorded. Lap charts, throughput, tokens-per-second, the running clock.', peh:'gauge',
+     pehSlot:{x:80, y:34, anchor:'top', variant:'timekeeper'}, hotspots:[
+      {id:'tt-metrics', label:'Performance Metrics', x:50, y:52, workspace:'timing-metrics'},
+      {id:'tt-hub',     label:'Back to the Speedway', x:84, y:80, scene:'speedway'}
     ]},
-    {id:'trophy-hall', title:'Trophy Hall', desc:'Signed receipts and the records that held up.', peh:'trophy', hotspots:[
-      {id:'h-receipts', label:'Performance Receipts', x:40, y:54, workspace:'performance-receipts'},
-      {id:'h-compare',  label:'Model Comparison',     x:72, y:60, workspace:'model-comparison'}
+    {id:'pit-lane', title:'The Pit Lane', purpose:'Configuration & tuning', route:'/config',
+     desc:'Where the cars are serviced. Set the parameters, tighten the bolts, dial it in for the next run.', peh:'wrench',
+     pehSlot:{x:82, y:56, anchor:'right', variant:'mechanic'}, hotspots:[
+      {id:'pl-config', label:'Configuration & Tuning', x:46, y:52, workspace:'pit-lane-config'},
+      {id:'pl-hub',    label:'Back to the Speedway', x:84, y:82, scene:'speedway'}
+    ]},
+    {id:'victory-circle', title:'The Victory Circle', purpose:'Achievement tracking', route:'/achievements',
+     desc:'Where the winners celebrate. Milestones, records that held up, and the trophies earned in trial.', peh:'trophy',
+     pehSlot:{x:78, y:70, anchor:'bottom', variant:'champion'}, hotspots:[
+      {id:'vc-ach', label:'Achievements', x:48, y:50, workspace:'victory-achievements'},
+      {id:'vc-hub', label:'Back to the Speedway', x:84, y:82, scene:'speedway'}
+    ]},
+    {id:'workshop', title:'The Workshop', purpose:'Tools & diagnostics', route:'/diagnostics',
+     desc:'Where the mechanics work. Diagnostics, system health, and the tools that keep the fleet running.', peh:'wrench',
+     pehSlot:{x:62, y:84, anchor:'bottom', variant:'mechanic'}, hotspots:[
+      {id:'ws-diag', label:'Tools & Diagnostics', x:48, y:50, workspace:'workshop-diagnostics'},
+      {id:'ws-hub',  label:'Back to the Speedway', x:84, y:82, scene:'speedway'}
     ]}
   ],
   howa:[
@@ -6274,12 +6312,18 @@ const SCENE_REGISTRY={
 // stub; kind:'deck' is the full classic console (preserves legacy paths).
 // `dock` is the default desktop placement; mobile always forces a sheet.
 const WORKSPACE_REGISTRY={
-  // ── Luak (product:'luak') ──
-  'benchmark-runs':      {product:'luak', title:'Benchmark Runs',       kind:'lane', tab:'benchmark', dock:'right',      peh:'gauge'},
-  'model-comparison':    {product:'luak', title:'Model Comparison',     kind:'lane', tab:'dashboard', dock:'right',      peh:'chart'},
-  'timing-results':      {product:'luak', title:'Timing Results',       kind:'placeholder', dock:'bottom', peh:'gauge', relatedTab:'benchmark', blurb:'Lap times, throughput, and tokens-per-second land here when the timing pipeline ships.'},
-  'tuning-notes':        {product:'luak', title:'Tuning Notes',         kind:'placeholder', dock:'right',  peh:'wrench', relatedTab:'benchmark', blurb:'A per-model tuning log — what you changed and what it moved.'},
-  'performance-receipts':{product:'luak', title:'Performance Receipts', kind:'lane', tab:'dashboard', dock:'fullscreen', peh:'trophy'},
+  // ── Luak (product:'luak') — one workspace (page) per doctrine location.
+  //    `route` mirrors the location's route so a hotspot, the location, and
+  //    its page all agree. kind:'lane' wraps a real functional lane;
+  //    kind:'placeholder' is an atmospheric stub that still reaches a live
+  //    console via relatedTab. ──
+  'speedway-overview':   {product:'luak', title:'Dashboard',          kind:'lane', tab:'dashboard',  route:'/dashboard',    dock:'fullscreen', peh:'flag'},
+  'benchmark-runs':      {product:'luak', title:'Active Benchmarks',  kind:'lane', tab:'benchmark',  route:'/racetrack',    dock:'right',      peh:'gauge'},
+  'grandstand-results':  {product:'luak', title:'Results & Rankings', kind:'lane', tab:'dashboard',  route:'/results',      dock:'right',      peh:'trophy'},
+  'timing-metrics':      {product:'luak', title:'Performance Metrics',kind:'placeholder', route:'/metrics',  dock:'bottom', peh:'gauge',  relatedTab:'benchmark', blurb:'Lap times, throughput, and tokens-per-second land here when the timing pipeline ships.'},
+  'pit-lane-config':     {product:'luak', title:'Configuration & Tuning', kind:'lane', tab:'config', route:'/config',     dock:'right',      peh:'wrench'},
+  'victory-achievements':{product:'luak', title:'Achievements',       kind:'placeholder', route:'/achievements', dock:'right', peh:'trophy', relatedTab:'dashboard', blurb:'Milestones and records that held up under trial are tracked here.'},
+  'workshop-diagnostics':{product:'luak', title:'Tools & Diagnostics',kind:'placeholder', route:'/diagnostics', dock:'bottom', peh:'wrench', relatedTab:'info', blurb:'System health, diagnostics, and the mechanic’s toolbox for the fleet.'},
   // ── Howa (product:'howa') ──
   'stress-tests':        {product:'howa', title:'Stress Tests',       kind:'lane', tab:'safety', dock:'right',      peh:'shield'},
   'adversarial-trials':  {product:'howa', title:'Adversarial Trials', kind:'lane', tab:'poison', dock:'right',      peh:'bug'},
@@ -6455,6 +6499,18 @@ function pehMinimizeWorkspace(uid){
 function pehCloseAllWorkspaces(){
   state.pehverse.workspaces=[]; state.pehverse.focus=null; render();
 }
+// Persistent "back to the map" affordance — especially important on mobile,
+// where a workspace opens as a full-screen sheet over the world map. Closes
+// the focused workspace (revealing the scene/map underneath) and ensures we
+// are in immersive (map-first) mode.
+function pehBackToMap(uid){
+  if(uid)state.pehverse.workspaces=state.pehverse.workspaces.filter((w)=>w.uid!==uid);
+  const stack=state.pehverse.workspaces;
+  state.pehverse.focus=stack.length?stack[stack.length-1].uid:null;
+  state.pehverse.mode='immersive';
+  try{localStorage.setItem('pehverse-mode','immersive')}catch(e){}
+  render();
+}
 // Placeholder "open the related console" affordance — keeps the legacy
 // lane reachable from an atmospheric stub without breaking the world.
 function pehOpenRelatedLane(tab){if(tab)state.activeTab=tab;pehOpenWorkspace('console')}
@@ -6474,9 +6530,37 @@ function pehGlyph(key){
     orbit:'<circle cx="12" cy="12" r="3"/><path d="M5 5c4-2 10 4 8 8M19 19c-4 2-10-4-8-8"/>',
     mug:'<path d="M5 7h11v8a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3zM16 9h2a2 2 0 0 1 0 4h-2"/>',
     mask:'<path d="M5 6c4-1 10-1 14 0 0 7-3 12-7 12S5 13 5 6zM9 11h.01M15 11h.01"/>',
-    spark:'<path d="M12 3v6M12 15v6M3 12h6M15 12h6"/>'
+    spark:'<path d="M12 3v6M12 15v6M3 12h6M15 12h6"/>',
+    flag:'<path d="M5 21V4M5 4c3-1.6 6 1.6 9 0v8c-3 1.6-6-1.6-9 0"/>'
   };
   return `<svg class="peh-glyph" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[key]||'<circle cx="12" cy="12" r="7"/>'}</svg>`;
+}
+
+// ── Peh placeholder slot (data-driven squirrel visitor/guide) ──────────
+// Each location carries a `pehSlot:{x,y,anchor,variant}`. Peh visits as a
+// 1920s racing-squirrel guide; for now we render a squirrel SILHOUETTE
+// MEDALLION placeholder, swapped for real per-location/era Peh art later.
+// Rendering is fully driven by the location's pehSlot — no hardcoding.
+function pehSquirrelSilhouette(){
+  // Sitting squirrel silhouette (filled) — big plume tail, perked ears.
+  return `<svg class="peh-squirrel" viewBox="0 0 64 64" width="100%" height="100%" aria-hidden="true"><path fill="currentColor" d="M40 9c2.2 0 4 2 4 4.6 0 2-1 3.6-2.4 4.4 3 2.4 4.8 6 4.8 10.2 0 3-1 5.7-2.7 7.9 5.7 2.5 9.7 8.1 9.7 14.6 0 1.7-1.3 3-3 3H22c-7.2 0-13-5.8-13-13 0-6.8 5.2-12.4 11.9-13 .3-4 2.3-7.5 5.3-9.8-.7-1-1.1-2.2-1.1-3.5C25 11 28 8 31.8 8c1.9 0 3.6.8 4.8 2 1-1.2 2.4-1 3.4-1z"/><circle cx="30" cy="24" r="1.7" fill="#0c0a1a"/></svg>`;
+}
+function pehSlotMarkup(slot,opts){
+  if(!slot)return'';
+  const o=opts||{};
+  const variant=slot.variant||'guide';
+  const inline=o.inline; // dashboard/mobile card → static medallion, no % position
+  const pos=inline?'' : `left:${slot.x}%;top:${slot.y}%;`;
+  const anchor=slot.anchor||'center';
+  return `<div class="peh-slot peh-slot-${anchor} ${inline?'peh-slot-inline':''}" style="${pos}" data-variant="${esc(variant)}" data-anchor="${esc(anchor)}" title="Peh — your guide here (${esc(variant)})" aria-label="Peh placeholder — ${esc(variant)}">
+    <span class="peh-slot-medallion" aria-hidden="true">${pehSquirrelSilhouette()}</span>
+    ${inline?'':'<span class="peh-slot-tag">Peh</span>'}
+  </div>`;
+}
+// Immersive scene Peh slot — positioned over the world map by pehSlot{x,y}.
+function renderPehSlot(scene){
+  if(!scene||!scene.pehSlot)return'';
+  return pehSlotMarkup(scene.pehSlot,{inline:false});
 }
 
 // ── PehverseShell: top-level renderer (called by render()) ─────────────
@@ -6529,6 +6613,7 @@ function renderPehImmersive(product,scene,deckMarkup){
       <h1 class="peh-scene-title">${esc(scene?scene.title:product.displayName)}</h1>
       <p class="peh-scene-desc">${esc(scene?scene.desc:product.blurb)}</p>
     </div>
+    ${renderPehSlot(scene)}
     ${renderHotspotLayer(scene)}
     ${renderPehWaypoints(product,scene)}
     ${renderWorkspaceOverlays(deckMarkup)}
@@ -6544,7 +6629,7 @@ function renderPehDashboard(product,scene,deckMarkup){
     : pehWorkspaceChooser(product);
   return `<div class="peh-dash">
     <div class="peh-dash-head">
-      <div class="peh-dash-here"><span class="peh-scene-tag">${esc(product.displayName)}</span><h1>${esc(scene?scene.title:product.displayName)}</h1><p>${esc(scene?scene.desc:product.blurb)}</p></div>
+      <div class="peh-dash-here">${scene&&scene.pehSlot?pehSlotMarkup(scene.pehSlot,{inline:true}):''}<span class="peh-scene-tag">${esc(product.displayName)}</span><h1>${esc(scene?scene.title:product.displayName)}</h1><p>${esc(scene?scene.desc:product.blurb)}</p></div>
       ${renderPehWaypoints(product,scene)}
     </div>
     <div class="peh-grid ${open.length>1?'multi':''}">${grid}</div>
@@ -6605,6 +6690,7 @@ function renderWorkspaceHeader(w,def,isTile){
   const kindTag=def.kind==='lane'?'LIVE':def.kind==='deck'?'CONSOLE':'PLACEHOLDER';
   const dockBtn=(d,glyph,label)=>`<button class="peh-dockbtn ${w.dock===d?'on':''}" type="button" title="Dock ${label}" aria-label="Dock ${label}" onclick="event.stopPropagation();pehDockWorkspace('${w.uid}','${d}')">${glyph}</button>`;
   return `<header class="peh-panel-head">
+    ${isTile?'':`<button class="peh-backmap" type="button" title="Back to the map" aria-label="Back to the world map" onclick="event.stopPropagation();pehBackToMap('${w.uid}')"><span aria-hidden="true">‹</span> Map</button>`}
     <span class="peh-panel-glyph">${pehGlyph(def.peh)}</span>
     <span class="peh-panel-title">${esc(def.title||w.defId)}</span>
     <span class="peh-panel-kind k-${kindTag.toLowerCase()}">${kindTag}</span>
