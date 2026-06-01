@@ -4,6 +4,22 @@ All notable public-release changes for Luak are tracked here.
 
 ## Unreleased
 
+### Added
+
+- **Auditable failure evidence for experimental benchmark cells.** Every failed
+  cell in a MiniMax-M3 experimental run now carries a safe `failureEvidence`
+  block (taskId, model, bundleId, failureOrigin/Code, score, failed turn id,
+  redacted prompt/response excerpts, judge/scorer reason, and a
+  `transcriptPath`) in both the JSON report and the always-written receipt. A
+  minimal redacted per-turn transcript is written to
+  `reports/experimental/minimax-m3/transcripts/<ts>-<taskId>-<model>.json`,
+  built from the conversational runner's sanitized turn outputs
+  (`core/failure-evidence.ts`). Everything is passed through `redactSecrets()`
+  before terminal, report, receipt, or transcript output; raw provider error
+  objects, request headers, and env values are never persisted. The markdown
+  report gained a **Failure evidence** section (failed turn, judge reason,
+  response excerpt, transcript link).
+
 ### Fixed
 
 - **MiniMax-M3 benchmark: provider failures no longer masquerade as a REJECT

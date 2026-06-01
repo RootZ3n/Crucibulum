@@ -19,6 +19,11 @@
       "ruleId": "secret-generic-api-key",
       "path": "tests/redact.test.ts",
       "reason": "Intentional fake OpenRouter key ('sk-or-v1-0123456789abcdef...') used to verify redactSecrets()/safeProviderError() strip credentials before terminal/report/receipt output."
+    },
+    {
+      "ruleId": "secret-generic-api-key",
+      "path": "tests/failure-evidence.test.ts",
+      "reason": "Intentional fake OpenRouter key ('sk-or-v1-0123456789abcdef...') planted in synthetic bundle fields to verify failureEvidence/transcript redaction."
     }
   ]
 }

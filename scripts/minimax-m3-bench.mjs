@@ -56,6 +56,7 @@ import {
   buildVerdict,
 } from "../dist/core/experimental-targets.js";
 import { redactSecrets, safeProviderError } from "../dist/core/redact.js";
+import { extractFailureEvidence } from "../dist/core/failure-evidence.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_DIR = join(ROOT, "reports", "experimental", "minimax-m3");
@@ -259,6 +260,24 @@ function summarize(taskId, bundle, durationMs, model) {
     : (providerFailure
         ? { provider: "openrouter", model, kind: "UNKNOWN", origin: failureOrigin ?? "PROVIDER", statusCode: null, code: failureCode ? redactSecrets(failureCode) : null, message: redactSecrets(verdict.summary ?? "Provider call did not complete"), requestId: null, retryable: false }
         : null);
+
+  // Auditable failure evidence for every failed cell: a small redacted block in
+  // the report/receipt plus an optional per-turn transcript artifact. Built from
+  // the bundle's sanitized conversational results — never from raw errors/headers.
+  let failureEvidence = null;
+  let transcript = null;
+  if (!pass) {
+    const ev = extractFailureEvidence(bundle, {
+      taskId,
+      model,
+      failureOrigin,
+      failureCode,
+      providerMessage: providerError ? providerError.message : null,
+    });
+    failureEvidence = ev.evidence;
+    transcript = ev.transcript;
+  }
+
   return {
     taskId,
     model,
@@ -276,6 +295,9 @@ function summarize(taskId, bundle, durationMs, model) {
     providerError,
     bundleId: bundle?.bundle_id ?? null,
     categories: categoriesOfTask(taskId),
+    failureEvidence,
+    // Sidecar payload for the transcript writer; stripped before serialization.
+    _transcript: transcript,
   };
 }
 
@@ -342,6 +364,20 @@ function dirtyTree() {
   return (r.stdout || "").trim().length > 0;
 }
 
+/** Short, secret-redacted failure summary for the terminal (req. 6/7). */
+function logFailureSummary(cell) {
+  const fe = cell?.failureEvidence;
+  if (!fe) return;
+  if (fe.failedTurnId) console.log(`   failed turn   : ${redactSecrets(fe.failedTurnId)}`);
+  if (fe.judgeReason) console.log(`   judge reason  : ${redactSecrets(fe.judgeReason).slice(0, 160)}`);
+  if (fe.responseExcerpt) console.log(`   response excpt: ${redactSecrets(fe.responseExcerpt).slice(0, 160)}`);
+}
+
+/** OpenRouter slug → filename-safe token. */
+function modelSafe(model) {
+  return String(model).replace(/[/:]/g, "-");
+}
+
 async function main() {
   const ts = nowStamp();
   console.log("=".repeat(72));
@@ -393,6 +429,7 @@ async function main() {
     console.error("Aborting before the benchmark matrix — the provider route is not healthy; do NOT treat this as a model verdict.");
     process.exit(1);
   }
+  if (!smoke.pass) logFailureSummary(smoke);
   // The smoke doubles as the candidate's safety-001 cell (avoids double spend).
   cells.push(smoke);
 
@@ -423,9 +460,11 @@ async function main() {
               stopped = true; stopReason = `provider:${redactSecrets(cell.providerErrorKind || "PROVIDER_ERROR")}`;
               break outer;
             }
+            if (!cell.pass) logFailureSummary(cell);
           } catch (err) {
             console.log(`   ERROR: ${redactSecrets(String(err?.message || err)).slice(0, 200)}`);
-            cells.push({ taskId, model, pass: false, durationMs: 0, tokensIn: 0, tokensOut: 0, accurateCostUsd: 0, bundleReportedCostUsd: 0, providerCostNote: null, failureOrigin: "HARNESS", failureCode: "HARNESS_ERROR", providerFailure: false, providerErrorKind: null, providerError: null, bundleId: null, categories: categoriesOfTask(taskId) });
+            const ev = extractFailureEvidence(null, { taskId, model, failureOrigin: "HARNESS", failureCode: "HARNESS_ERROR", providerMessage: redactSecrets(String(err?.message || err)).slice(0, 200) });
+            cells.push({ taskId, model, pass: false, durationMs: 0, tokensIn: 0, tokensOut: 0, accurateCostUsd: 0, bundleReportedCostUsd: 0, providerCostNote: null, failureOrigin: "HARNESS", failureCode: "HARNESS_ERROR", providerFailure: false, providerErrorKind: null, providerError: null, bundleId: null, categories: categoriesOfTask(taskId), failureEvidence: ev.evidence, _transcript: ev.transcript });
             stopped = true; stopReason = "harness_error";
             break outer;
           }
@@ -452,6 +491,29 @@ async function main() {
   // An invalid run is NOT a model verdict. Surface it in the receipt + exit code
   // so no downstream reader (or human) mistakes a provider outage for REJECT.
   const runInvalid = verdict.recommendation === "PROVIDER_FAILURE" || verdict.recommendation === "INVALID_RUN";
+
+  // ── Auditable transcripts (one per failed cell) ─────────────────────────────
+  // Write a minimal redacted transcript artifact for every failed cell so the
+  // report/receipt can POINT at the underlying turns instead of discarding them.
+  mkdirSync(OUT_DIR, { recursive: true });
+  const TRANS_DIR = join(OUT_DIR, "transcripts");
+  let transcriptsWritten = false;
+  const usedNames = new Set();
+  for (const cell of cells) {
+    if (cell.pass || !cell._transcript || !cell.failureEvidence) continue;
+    if (!transcriptsWritten) { mkdirSync(TRANS_DIR, { recursive: true }); transcriptsWritten = true; }
+    let base = `${ts}-${cell.taskId}-${modelSafe(cell.model)}`;
+    let name = `${base}.json`;
+    for (let n = 2; usedNames.has(name); n++) name = `${base}-${n}.json`;
+    usedNames.add(name);
+    // The transcript was redacted at build time; redact the serialized form once
+    // more as a belt-and-braces guarantee before it ever touches disk (req. 6).
+    writeFileSync(join(TRANS_DIR, name), redactSecrets(JSON.stringify(cell._transcript, null, 2)) + "\n");
+    cell.failureEvidence.transcriptPath = `transcripts/${name}`;
+  }
+  // Drop the sidecar payload so it never lands in the report/receipt JSON.
+  for (const cell of cells) delete cell._transcript;
+  const failureEvidence = cells.filter((c) => !c.pass && c.failureEvidence).map((c) => c.failureEvidence);
 
   // ── Receipt (always written) ────────────────────────────────────────────────
   const actualTokens = cells.reduce((a, c) => a + c.tokensIn + c.tokensOut, 0);
@@ -495,9 +557,11 @@ async function main() {
       providerFailures: v.providerFailures,
       failureModes: v.failureModes,
     }])),
+    // Safe, auditable evidence for every failed cell — points at the redacted
+    // transcript artifacts and carries no raw errors/headers/env (req. 1-6).
+    failureEvidence,
   };
 
-  mkdirSync(OUT_DIR, { recursive: true });
   const receiptPath = join(OUT_DIR, `${ts}.receipt.json`);
   writeFileSync(receiptPath, JSON.stringify(receipt, null, 2) + "\n");
   writeFileSync(join(OUT_DIR, "latest.receipt.json"), JSON.stringify(receipt, null, 2) + "\n");
@@ -553,6 +617,20 @@ function renderMd(j) {
     `| ${m} | ${v.tasksPassed}/${v.tasksRun} | ${Math.round(v.passRate * 100)}% | ${v.avgLatencyMs} ms | ${Math.round(v.toolJsonReliability * 100)}% | ${fmtUsd(v.totalCostUsd)} | ${v.costPerUsefulUsd == null ? "n/a" : fmtUsd(v.costPerUsefulUsd)} |`
   ).join("\n");
   const notEval = j.categories.notEvaluated.map((c) => `- \`${c.key}\` — ${c.reason}`).join("\n") || "(none)";
+  const mdInline = (s) => String(s ?? "").replace(/\r?\n+/g, " ").replace(/`/g, "'").trim();
+  const fe = Array.isArray(j.failureEvidence) ? j.failureEvidence : [];
+  const failureEvidenceMd = fe.length
+    ? fe.map((e) => {
+        const lines = [`### ${e.taskId} · \`${e.model}\``];
+        if (e.failedTurnId) lines.push(`- **Failed turn:** ${mdInline(e.failedTurnId)}`);
+        lines.push(`- **Failure:** ${e.failureOrigin ?? "?"} / ${e.failureCode ?? "?"}${typeof e.score === "number" ? ` (score ${e.score.toFixed(2)})` : ""}`);
+        if (e.judgeReason) lines.push(`- **Judge reason:** ${mdInline(e.judgeReason)}`);
+        if (e.responseExcerpt) lines.push(`- **Response excerpt:** ${mdInline(e.responseExcerpt)}`);
+        if (e.promptExcerpt) lines.push(`- **Prompt excerpt:** ${mdInline(e.promptExcerpt)}`);
+        lines.push(`- **Transcript:** ${e.transcriptPath ? "`" + e.transcriptPath + "`" : "(none written)"}`);
+        return lines.join("\n");
+      }).join("\n\n")
+    : "(no failed cells)";
   return `# MiniMax-M3 experimental benchmark
 
 - **Timestamp (UTC):** ${j.timestamp}
@@ -579,6 +657,10 @@ ${j.verdict.rationale}
 - **Tool/JSON reliability:** ${j.verdict.toolJsonReliability}
 - **Failure modes:** ${j.verdict.failureModes.join(", ")}
 - **Cost per useful result:** ${j.verdict.costPerUsefulResult}
+
+## Failure evidence
+
+${failureEvidenceMd}
 
 ## Categories not evaluated
 
