@@ -14,6 +14,11 @@
       "ruleId": "secret-generic-api-key",
       "path": "tests/route-contract.test.ts",
       "reason": "Intentional fake API key ('sk-or-v1-ZZZZYYYY9999') used to verify API response masking in route contract test."
+    },
+    {
+      "ruleId": "secret-generic-api-key",
+      "path": "tests/redact.test.ts",
+      "reason": "Intentional fake OpenRouter key ('sk-or-v1-0123456789abcdef...') used to verify redactSecrets()/safeProviderError() strip credentials before terminal/report/receipt output."
     }
   ]
 }

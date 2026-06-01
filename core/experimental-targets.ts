@@ -279,7 +279,12 @@ export type Recommendation =
   | "FALLBACK"
   | "SPECIALIST"
   | "EXPERIMENTAL"
-  | "REJECT";
+  | "REJECT"
+  // The run never produced a model-quality signal. These are NOT verdicts about
+  // the model — they mark the run itself as unusable, so they must never be
+  // confused with REJECT (which means "measured and found wanting").
+  | "PROVIDER_FAILURE"
+  | "INVALID_RUN";
 
 /** Aggregate metrics for one model route across a benchmark run. */
 export interface RouteMetrics {
@@ -300,6 +305,55 @@ export interface RouteMetrics {
   toolJsonReliability: number;
   /** Observed failure-mode codes/summaries (deduped). */
   failureModes: string[];
+  /**
+   * Tasks whose provider call completed enough to grade the *model* — i.e. the
+   * provider returned a (possibly failing) model response. Provider/network/
+   * harness failures do NOT count. When this is 0 the run carries no
+   * model-quality signal.
+   */
+  completedCalls: number;
+  /** Tasks that failed at the provider or network layer (no model response). */
+  providerFailures: number;
+  /** Total tokens (in + out) actually observed across the run. */
+  tokensObserved: number;
+  /** Total USD actually spent/estimated across the run. */
+  spendObserved: number;
+}
+
+/**
+ * Decide whether a route's metrics constitute a usable model-quality signal.
+ * A run is invalid when no provider call completed, or when every task failed
+ * at the provider, or when nothing was actually spent or tokenised. These are
+ * run-health problems, never model-quality verdicts.
+ */
+export function assessRunValidity(m: RouteMetrics): {
+  valid: boolean;
+  recommendation: "PROVIDER_FAILURE" | "INVALID_RUN" | null;
+  reason: string;
+} {
+  if (m.tasksRun === 0) {
+    return { valid: false, recommendation: "INVALID_RUN", reason: "No tasks ran." };
+  }
+  const providerDominated = m.providerFailures >= m.tasksRun;
+  if (m.completedCalls === 0 && (m.providerFailures > 0 || providerDominated)) {
+    return {
+      valid: false,
+      recommendation: "PROVIDER_FAILURE",
+      reason:
+        `Provider calls did not complete (${m.providerFailures}/${m.tasksRun} tasks failed at the ` +
+        `provider; ${m.tokensObserved} tokens, ${fmtUsd(m.spendObserved)} spend). ` +
+        `Re-run after the provider route is healthy.`,
+    };
+  }
+  if (m.completedCalls === 0 || (m.tokensObserved === 0 && m.spendObserved === 0)) {
+    return {
+      valid: false,
+      recommendation: "INVALID_RUN",
+      reason:
+        `Zero tokens and zero spend across ${m.tasksRun} task(s) — no measurable model output.`,
+    };
+  }
+  return { valid: true, recommendation: null, reason: "" };
 }
 
 export interface VerdictInput {
@@ -353,6 +407,16 @@ export function classifyRecommendation(input: VerdictInput): { recommendation: R
     return { recommendation: "EXPERIMENTAL", rationale: "Insufficient data — no gradable candidate results." };
   }
 
+  // Run-health gate — comes BEFORE the reliability floor. A run with no
+  // completed provider calls (provider_error-only, or 0 tokens / 0 spend) is
+  // not a model-quality verdict: it must surface as PROVIDER_FAILURE /
+  // INVALID_RUN, never as REJECT, and must not be compared against the MiMo
+  // family (that comparison would be meaningless).
+  const validity = assessRunValidity(candidate);
+  if (!validity.valid && validity.recommendation) {
+    return { recommendation: validity.recommendation, rationale: validity.reason };
+  }
+
   // Tool/JSON reliability only counts as evidence when those tasks actually
   // ran — a smoke or category-filtered run must not be REJECTed for a 0% that
   // simply means "not measured".
@@ -404,16 +468,28 @@ export function classifyRecommendation(input: VerdictInput): { recommendation: R
 export function buildVerdict(input: VerdictInput): Verdict {
   const { candidate, mimo, mimoPro } = input;
   const { recommendation, rationale } = classifyRecommendation(input);
+
+  // When the run produced no model-quality signal we must NOT compare the
+  // candidate against the MiMo family — a delta against an equally-broken (or
+  // un-run) baseline is noise that reads like a real quality judgement.
+  const incomparable =
+    recommendation === "PROVIDER_FAILURE" || recommendation === "INVALID_RUN";
+  const noCompare = "not compared — provider calls did not complete";
+
   return {
     recommendation,
     rationale,
-    qualityVsMimo: describeDelta("MiMo v2.5", candidate.passRate, mimo),
-    qualityVsMimoPro: describeDelta("MiMo v2.5 Pro", candidate.passRate, mimoPro),
-    latency: candidate.tasksRun ? `${Math.round(candidate.avgLatencyMs)} ms/task avg` : "no runs",
-    toolJsonReliability: candidate.toolJsonTasksRun > 0
-      ? `${fmtPct(candidate.toolJsonReliability)} pass on tool-call + JSON categories (${candidate.toolJsonTasksRun} tasks)`
-      : "not measured (no tool-call / JSON tasks in this run)",
+    qualityVsMimo: incomparable ? noCompare : describeDelta("MiMo v2.5", candidate.passRate, mimo),
+    qualityVsMimoPro: incomparable ? noCompare : describeDelta("MiMo v2.5 Pro", candidate.passRate, mimoPro),
+    latency: incomparable
+      ? "not measured (provider calls did not complete)"
+      : candidate.tasksRun ? `${Math.round(candidate.avgLatencyMs)} ms/task avg` : "no runs",
+    toolJsonReliability: incomparable
+      ? "not measured (provider calls did not complete)"
+      : candidate.toolJsonTasksRun > 0
+        ? `${fmtPct(candidate.toolJsonReliability)} pass on tool-call + JSON categories (${candidate.toolJsonTasksRun} tasks)`
+        : "not measured (no tool-call / JSON tasks in this run)",
     failureModes: candidate.failureModes.length ? candidate.failureModes : ["none observed"],
-    costPerUsefulResult: fmtUsd(candidate.costPerUsefulUsd),
+    costPerUsefulResult: incomparable ? "n/a (run invalid)" : fmtUsd(candidate.costPerUsefulUsd),
   };
 }

@@ -4,6 +4,31 @@ All notable public-release changes for Luak are tracked here.
 
 ## Unreleased
 
+### Fixed
+
+- **MiniMax-M3 benchmark: provider failures no longer masquerade as a REJECT
+  verdict.** A full comparison run where every OpenRouter call failed
+  (provider_error, 0 tokens, $0.0000 spend) was previously scored REJECT — a
+  bogus model-quality verdict computed from provider-failed cells. The runner
+  now derives provider failure from the *verdict* (`failureOrigin`
+  PROVIDER/NETWORK or a `provider_*`/`network_*` code), not just the often-null
+  `bundle.provider_error`, so the mandatory smoke and the matrix abort
+  correctly. A new run-health gate (`assessRunValidity` in
+  `core/experimental-targets.ts`) classifies provider-error-only or
+  zero-token/zero-spend runs as `PROVIDER_FAILURE` / `INVALID_RUN` *before* the
+  reliability floor, and `buildVerdict` refuses to compare such runs against the
+  MiMo v2.5 / v2.5-Pro family. Invalid runs now exit non-zero and are flagged
+  `runValid: false` in the always-written receipt.
+- **Secret redaction on all benchmark output paths.** New `core/redact.ts`
+  (`redactSecrets`, `safeProviderError`) strips `Authorization` headers, bare
+  `Bearer` tokens, `OPENROUTER_API_KEY` and other env values, `sk-or-v1-*`
+  keys, and `apiKey`/`api_key`/`token`/`secret` fields from every string written
+  to the terminal, receipts, and reports. Provider errors are persisted only via
+  the safe projection (provider, model, status code, bucketed message, error
+  code, and a request id kept only when demonstrably opaque) — never the raw
+  message, request headers, cause, or env values. The 2026-06-01 comparison
+  artifacts are annotated `INVALID_RUN`.
+
 ### Added
 
 - **Experimental benchmark target: OpenRouter MiniMax-M3.** Registered in

@@ -30,6 +30,11 @@ function route(partial: Partial<RouteMetrics>): RouteMetrics {
     toolJsonTasksRun: 4,
     toolJsonReliability: 0.9,
     failureModes: [],
+    // Defaults describe a healthy, completed run; validity tests override these.
+    completedCalls: 10,
+    providerFailures: 0,
+    tokensObserved: 50_000,
+    spendObserved: 0.1,
     ...partial,
   };
 }

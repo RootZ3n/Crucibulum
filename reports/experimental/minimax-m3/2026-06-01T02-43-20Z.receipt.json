@@ -40,7 +40,9 @@
     "costUsd": 0.000319,
     "cellsRun": 1,
     "stopped": false,
-    "stopReason": null
+    "stopReason": null,
+    "runValid": false,
+    "recommendation": "INVALID_RUN"
   },
   "perModel": {
     "minimax/minimax-m3": {
@@ -53,5 +55,7 @@
       "toolJsonReliability": 0,
       "failureModes": []
     }
-  }
+  },
+  "invalidRun": true,
+  "invalidReason": "INVALID_RUN \u2014 provider_error-only run (0 tokens, $0.0000 spend, 0 completed provider calls). This is a provider-route failure, NOT a model-quality verdict. The original REJECT was a bug (low pass-rate computed from provider-failed cells). Superseded by the run-validity gate added on experiment/minimax-m3-benchmark. Do not cite for MiniMax-M3 vs MiMo v2.5/v2.5-Pro quality."
 }

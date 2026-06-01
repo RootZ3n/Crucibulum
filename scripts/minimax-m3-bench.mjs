@@ -55,6 +55,7 @@ import {
   pricingFor,
   buildVerdict,
 } from "../dist/core/experimental-targets.js";
+import { redactSecrets, safeProviderError } from "../dist/core/redact.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_DIR = join(ROOT, "reports", "experimental", "minimax-m3");
@@ -204,6 +205,40 @@ function preflightEstimate() {
 
 // ── Run one task on one adapter, capturing usage + outcome ──────────────────
 
+/**
+ * Pull a structured provider error off a bundle wherever it landed: the
+ * top-level `provider_error`, the last failed provider attempt, or a timeline
+ * `error` event. The runner records the failure in the *verdict* (origin
+ * PROVIDER/NETWORK) even when `bundle.provider_error` stays null, so we look in
+ * every place a structured error can hide.
+ */
+function extractStructuredProviderError(bundle) {
+  if (bundle?.provider_error && typeof bundle.provider_error === "object") return bundle.provider_error;
+  const attempts = Array.isArray(bundle?.provider_attempts) ? bundle.provider_attempts : [];
+  for (let i = attempts.length - 1; i >= 0; i--) {
+    if (attempts[i]?.provider_error && typeof attempts[i].provider_error === "object") return attempts[i].provider_error;
+  }
+  const timeline = Array.isArray(bundle?.timeline) ? bundle.timeline : [];
+  for (let i = timeline.length - 1; i >= 0; i--) {
+    if (timeline[i]?.provider_error && typeof timeline[i].provider_error === "object") return timeline[i].provider_error;
+  }
+  return null;
+}
+
+/**
+ * A task "did not complete" (no model-quality signal) when it failed at the
+ * provider or network layer. This is derived from the VERDICT, not just
+ * `bundle.provider_error` — that field is frequently null on a failed run while
+ * the verdict carries `failureOrigin: "PROVIDER"` and a `provider_*` code.
+ */
+function isProviderFailure(verdict, structuredError) {
+  if (structuredError) return true;
+  const origin = verdict?.failureOrigin ?? null;
+  if (origin === "PROVIDER" || origin === "NETWORK") return true;
+  const code = verdict?.failureReasonCode;
+  return typeof code === "string" && /^(provider_|network_)/.test(code);
+}
+
 function summarize(taskId, bundle, durationMs, model) {
   const usage = bundle?.usage ?? {};
   const verdict = bundle?.verdict ?? {};
@@ -212,11 +247,18 @@ function summarize(taskId, bundle, durationMs, model) {
   // Authoritative cost = accurate per-model price applied to ACTUAL tokens.
   const accurateCostUsd = estimateUsdCost(model, tokensIn, tokensOut);
   const pass = bundle?.score?.pass === true;
-  const providerError = bundle?.provider_error ?? null;
+  const structuredError = extractStructuredProviderError(bundle);
   const failureOrigin = verdict.failureOrigin ?? null;
   const failureCode =
     verdict.failureReasonCode ||
     (pass ? null : (verdict.completionState && verdict.completionState !== "PASS" ? verdict.completionState : "FAIL"));
+  const providerFailure = !pass && isProviderFailure(verdict, structuredError);
+  // Persist ONLY the redacted safe projection — never the raw provider error.
+  const providerError = structuredError
+    ? safeProviderError(structuredError, model)
+    : (providerFailure
+        ? { provider: "openrouter", model, kind: "UNKNOWN", origin: failureOrigin ?? "PROVIDER", statusCode: null, code: failureCode ? redactSecrets(failureCode) : null, message: redactSecrets(verdict.summary ?? "Provider call did not complete"), requestId: null, retryable: false }
+        : null);
   return {
     taskId,
     model,
@@ -229,7 +271,9 @@ function summarize(taskId, bundle, durationMs, model) {
     providerCostNote: usage.provider_cost_note ?? null,
     failureOrigin,
     failureCode,
-    providerError: providerError ? (providerError.kind || "PROVIDER_ERROR") : null,
+    providerFailure,
+    providerErrorKind: providerError ? providerError.kind : null,
+    providerError,
     bundleId: bundle?.bundle_id ?? null,
     categories: categoriesOfTask(taskId),
   };
@@ -269,9 +313,19 @@ function aggregate(model, cells) {
     : 0;
   const failureModes = [...new Set(
     mine.filter((c) => !c.pass)
-      .map((c) => c.providerError ? `provider:${c.providerError}` : (c.failureCode || "FAIL"))
+      .map((c) => redactSecrets(c.providerErrorKind ? `provider:${c.providerErrorKind}` : (c.failureCode || "FAIL")))
   )];
-  return { model, tasksRun, tasksPassed, passRate, avgLatencyMs, totalCostUsd, costPerUsefulUsd, toolJsonTasksRun, toolJsonReliability, failureModes };
+  // Run-validity signals: a task only "completed" (carries a model-quality
+  // signal) if it did not fail at the provider/network/harness layer.
+  const providerFailures = mine.filter((c) => c.providerFailure).length;
+  const completedCalls = mine.filter((c) => !c.providerFailure && c.failureOrigin !== "HARNESS").length;
+  const tokensObserved = mine.reduce((a, c) => a + c.tokensIn + c.tokensOut, 0);
+  const spendObserved = totalCostUsd;
+  return {
+    model, tasksRun, tasksPassed, passRate, avgLatencyMs, totalCostUsd, costPerUsefulUsd,
+    toolJsonTasksRun, toolJsonReliability, failureModes,
+    completedCalls, providerFailures, tokensObserved, spendObserved,
+  };
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
@@ -327,14 +381,16 @@ async function main() {
   try {
     smoke = await runOne(target.model, SMOKE_TASK_ID);
   } catch (err) {
-    console.error(`SMOKE FAILED (exception): ${String(err?.message || err).slice(0, 240)}`);
+    console.error(`SMOKE FAILED (exception): ${redactSecrets(String(err?.message || err)).slice(0, 240)}`);
     console.error("Aborting before the benchmark matrix — fix the route/credentials first.");
     process.exit(1);
   }
   totalCost += smoke.accurateCostUsd;
   console.log(`   ${smoke.pass ? "PASS" : "FAIL"} · ${smoke.tokensIn}+${smoke.tokensOut} tok · $${smoke.accurateCostUsd.toFixed(4)} · ${smoke.durationMs}ms`);
-  if (smoke.providerError) {
-    console.error(`SMOKE FAILED (provider error: ${smoke.providerError}). Aborting.`);
+  if (smoke.providerFailure) {
+    const e = smoke.providerError ?? {};
+    console.error(`SMOKE FAILED (provider call did not complete: ${redactSecrets(e.message || e.kind || "provider error")}${e.statusCode ? ` [HTTP ${e.statusCode}]` : ""}).`);
+    console.error("Aborting before the benchmark matrix — the provider route is not healthy; do NOT treat this as a model verdict.");
     process.exit(1);
   }
   // The smoke doubles as the candidate's safety-001 cell (avoids double spend).
@@ -360,15 +416,16 @@ async function main() {
             const cell = await runOne(model, taskId);
             totalCost += cell.accurateCostUsd;
             cells.push(cell);
-            console.log(`   ${cell.pass ? "PASS" : "FAIL"}${cell.failureCode ? " (" + cell.failureCode + ")" : ""} · ${cell.tokensIn}+${cell.tokensOut} tok · $${cell.accurateCostUsd.toFixed(4)} · ${cell.durationMs}ms`);
-            if (cell.providerError) {
-              console.log(`   provider error: ${cell.providerError} — stopping`);
-              stopped = true; stopReason = `provider:${cell.providerError}`;
+            console.log(`   ${cell.pass ? "PASS" : "FAIL"}${cell.failureCode ? " (" + redactSecrets(cell.failureCode) + ")" : ""} · ${cell.tokensIn}+${cell.tokensOut} tok · $${cell.accurateCostUsd.toFixed(4)} · ${cell.durationMs}ms`);
+            if (cell.providerFailure) {
+              const e = cell.providerError ?? {};
+              console.log(`   provider call did not complete: ${redactSecrets(e.message || e.kind || "provider error")}${e.statusCode ? ` [HTTP ${e.statusCode}]` : ""} — stopping (not a model verdict)`);
+              stopped = true; stopReason = `provider:${redactSecrets(cell.providerErrorKind || "PROVIDER_ERROR")}`;
               break outer;
             }
           } catch (err) {
-            console.log(`   ERROR: ${String(err?.message || err).slice(0, 200)}`);
-            cells.push({ taskId, model, pass: false, durationMs: 0, tokensIn: 0, tokensOut: 0, accurateCostUsd: 0, bundleReportedCostUsd: 0, providerCostNote: null, failureOrigin: "HARNESS", failureCode: "HARNESS_ERROR", providerError: null, bundleId: null, categories: categoriesOfTask(taskId) });
+            console.log(`   ERROR: ${redactSecrets(String(err?.message || err)).slice(0, 200)}`);
+            cells.push({ taskId, model, pass: false, durationMs: 0, tokensIn: 0, tokensOut: 0, accurateCostUsd: 0, bundleReportedCostUsd: 0, providerCostNote: null, failureOrigin: "HARNESS", failureCode: "HARNESS_ERROR", providerFailure: false, providerErrorKind: null, providerError: null, bundleId: null, categories: categoriesOfTask(taskId) });
             stopped = true; stopReason = "harness_error";
             break outer;
           }
@@ -392,6 +449,9 @@ async function main() {
     mimoPro,
     hasData: !smokeOnly && candidate.tasksRun > 0,
   });
+  // An invalid run is NOT a model verdict. Surface it in the receipt + exit code
+  // so no downstream reader (or human) mistakes a provider outage for REJECT.
+  const runInvalid = verdict.recommendation === "PROVIDER_FAILURE" || verdict.recommendation === "INVALID_RUN";
 
   // ── Receipt (always written) ────────────────────────────────────────────────
   const actualTokens = cells.reduce((a, c) => a + c.tokensIn + c.tokensOut, 0);
@@ -420,6 +480,8 @@ async function main() {
       cellsRun: cells.length,
       stopped,
       stopReason,
+      recommendation: verdict.recommendation,
+      runValid: !runInvalid,
     },
     perModel: Object.fromEntries(Object.entries(routeMetrics).map(([m, v]) => [m, {
       tasksRun: v.tasksRun,
@@ -429,6 +491,8 @@ async function main() {
       totalCostUsd: Number(v.totalCostUsd.toFixed(6)),
       costPerUsefulUsd: Number.isFinite(v.costPerUsefulUsd) ? Number(v.costPerUsefulUsd.toFixed(6)) : null,
       toolJsonReliability: Number(v.toolJsonReliability.toFixed(3)),
+      completedCalls: v.completedCalls,
+      providerFailures: v.providerFailures,
       failureModes: v.failureModes,
     }])),
   };
@@ -472,7 +536,10 @@ async function main() {
   if (writeReport) console.log(`   report : ${OUT_DIR.replace(ROOT + "/", "")}/{${ts},latest}.{json,md}`);
   console.log("=".repeat(72));
 
-  process.exit(stopReason === "harness_error" ? 1 : 0);
+  if (runInvalid) {
+    console.log(`   ! run marked ${verdict.recommendation} — NOT a model-quality verdict; provider route must be healthy before a real comparison.`);
+  }
+  process.exit(stopReason === "harness_error" ? 1 : runInvalid ? 3 : 0);
 }
 
 function fmtUsd(n) {
@@ -524,4 +591,4 @@ ${notEval}
 `;
 }
 
-main().catch((err) => { console.error("fatal:", err); process.exit(1); });
+main().catch((err) => { console.error("fatal:", redactSecrets(err?.stack || String(err?.message || err))); process.exit(1); });
