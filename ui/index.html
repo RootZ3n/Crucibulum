@@ -6189,7 +6189,14 @@ function renderActiveArenaShell(){
 const PRODUCT_REGISTRY=[
   {id:'luak',  displayName:'Luak',  status:'public', order:1,
    tagline:'Test · Prove · Tune', blurb:'Drive a model hard, measure it, tune it, and bank the proof.',
-   accent:'#22d3ee', accent2:'#8b5cf6', peh:'flag', defaultScene:'speedway'},
+   // 1920s Racetrack Speedway palette: polished brass + racing oxblood. These
+   // drive --peh-accent / --peh-accent2 inline on .peh-shell; the deeper
+   // aged-paper / leather / oil textures live in the .peh-product-luak skin.
+   accent:'#c8962e', accent2:'#9c3b22', peh:'flag', defaultScene:'speedway',
+   // Real per-product Peh art — the 1920s race-driver squirrel guide. Optional
+   // and data-driven: only products that ship mascot art render the guide
+   // figure (renderPehGuide), so Howa/future products are unaffected.
+   mascotArt:'assets/peh-vintage-racer-squirrel.png'},
   // howa product — displayName is data-driven ("Howa").
   // A standalone product — NOT a sub-area sitting beside Luak in one shared app.
   {id:'howa', displayName:'Howa', status:'public', order:1,
@@ -6542,8 +6549,11 @@ function pehGlyph(key){
 // MEDALLION placeholder, swapped for real per-location/era Peh art later.
 // Rendering is fully driven by the location's pehSlot — no hardcoding.
 function pehSquirrelSilhouette(){
-  // Sitting squirrel silhouette (filled) — big plume tail, perked ears.
-  return `<svg class="peh-squirrel" viewBox="0 0 64 64" width="100%" height="100%" aria-hidden="true"><path fill="currentColor" d="M40 9c2.2 0 4 2 4 4.6 0 2-1 3.6-2.4 4.4 3 2.4 4.8 6 4.8 10.2 0 3-1 5.7-2.7 7.9 5.7 2.5 9.7 8.1 9.7 14.6 0 1.7-1.3 3-3 3H22c-7.2 0-13-5.8-13-13 0-6.8 5.2-12.4 11.9-13 .3-4 2.3-7.5 5.3-9.8-.7-1-1.1-2.2-1.1-3.5C25 11 28 8 31.8 8c1.9 0 3.6.8 4.8 2 1-1.2 2.4-1 3.4-1z"/><circle cx="30" cy="24" r="1.7" fill="#0c0a1a"/></svg>`;
+  // Sitting squirrel silhouette (filled) — big plume tail, perked ears — now
+  // wearing a 1920s racer's goggles + strap so Peh reads as the speedway
+  // driver/mechanic guide, not a generic mascot. Still a swappable placeholder
+  // for real per-location/era Peh art (assets/peh-vintage-racer-squirrel.png).
+  return `<svg class="peh-squirrel" viewBox="0 0 64 64" width="100%" height="100%" aria-hidden="true"><path fill="currentColor" d="M40 9c2.2 0 4 2 4 4.6 0 2-1 3.6-2.4 4.4 3 2.4 4.8 6 4.8 10.2 0 3-1 5.7-2.7 7.9 5.7 2.5 9.7 8.1 9.7 14.6 0 1.7-1.3 3-3 3H22c-7.2 0-13-5.8-13-13 0-6.8 5.2-12.4 11.9-13 .3-4 2.3-7.5 5.3-9.8-.7-1-1.1-2.2-1.1-3.5C25 11 28 8 31.8 8c1.9 0 3.6.8 4.8 2 1-1.2 2.4-1 3.4-1z"/><g fill="none" stroke="#3a2a18" stroke-width="1.6" stroke-linecap="round" opacity=".92"><circle cx="29.5" cy="23.5" r="3.7"/><path d="M33 22.4c3-1 5.2-.9 7 .5"/></g><circle cx="29.5" cy="23.5" r="1.4" fill="#0c0a1a"/></svg>`;
 }
 function pehSlotMarkup(slot,opts){
   if(!slot)return'';
@@ -6561,6 +6571,18 @@ function pehSlotMarkup(slot,opts){
 function renderPehSlot(scene){
   if(!scene||!scene.pehSlot)return'';
   return pehSlotMarkup(scene.pehSlot,{inline:false});
+}
+// Peh guide figure — the product's real mascot art (e.g. the 1920s race-driver
+// squirrel for Luak), framed as a "your guide" portrait beside the scene
+// caption. Data-driven: renders ONLY when the active product ships mascotArt,
+// so Howa/future products are unaffected. Decorative (aria-hidden); the
+// data-driven per-location pehSlot remains the in-map placeholder.
+function renderPehGuide(product){
+  if(!product||!product.mascotArt)return'';
+  return `<figure class="peh-guide" aria-hidden="true">
+    <span class="peh-guide-frame"><img class="peh-guide-img" src="${esc(product.mascotArt)}" alt="" loading="lazy"></span>
+    <figcaption class="peh-guide-cap"><b>Peh</b><i>your pit guide</i></figcaption>
+  </figure>`;
 }
 
 // ── PehverseShell: top-level renderer (called by render()) ─────────────
@@ -6614,6 +6636,7 @@ function renderPehImmersive(product,scene,deckMarkup){
       <p class="peh-scene-desc">${esc(scene?scene.desc:product.blurb)}</p>
     </div>
     ${renderPehSlot(scene)}
+    ${renderPehGuide(product)}
     ${renderHotspotLayer(scene)}
     ${renderPehWaypoints(product,scene)}
     ${renderWorkspaceOverlays(deckMarkup)}

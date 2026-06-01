@@ -2977,3 +2977,206 @@ body::after {
 .peh-ft-dev-product:hover{color:var(--ink);border-color:var(--peh-accent)}
 .peh-ft-dev-product.active{background:linear-gradient(120deg,var(--peh-accent),var(--peh-accent2));color:#0c0a1a;font-weight:700;border-color:transparent}
 .peh-ft-dev-soon{font-size:11px;padding:5px 10px;border-radius:999px;border:1px dashed var(--border-subtle);color:var(--ink-dim);opacity:.8}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LUAK SKIN — 1920s Racetrack Speedway
+   A product-scoped vintage-racing theme layered over the (theme-neutral)
+   Pehverse engine above. Scoped strictly to `.peh-product-luak` so Howa and
+   future products are untouched, and it ONLY restyles colour / texture /
+   shape / type — never the structural rules the world-map tests pin (the
+   mobile full-screen sheet, the ≥880px dock gating, the data-driven Peh slot
+   positioning). The world map becomes a 1920s track board on an aged-paper
+   workbench; hotspots are brass course markers; Peh wears a checkered-flag
+   pit badge; panels are oiled-leather instrument cases.
+   Drop-in art: assets/luak-vintage-racing-map.png layers over the CSS track
+   board automatically (see ui/assets/README.md); the CSS board is the
+   graceful fallback when the PNG is absent.
+   ══════════════════════════════════════════════════════════════════════ */
+.peh-product-luak{
+  /* Vintage racing tokens — warm aged paper, oiled leather, polished brass. */
+  --luak-oil:#14100a;          /* oil-stained garage black           */
+  --luak-leather:#3a2a1c;      /* oiled saddle leather               */
+  --luak-leather-2:#281c12;
+  --luak-paper:#efe2c2;        /* aged race-programme paper          */
+  --luak-paper-2:#d8c69a;
+  --luak-sepia:#2b2118;        /* printed sepia ink                  */
+  --luak-sepia-soft:#4a3826;
+  --luak-brass:#c8962e;        /* polished brass (== --peh-accent)   */
+  --luak-brass-hi:#f4dd92;
+  --luak-brass-dk:#8a5a16;
+  --luak-oxblood:#9c3b22;      /* racing oxblood (== --peh-accent2)  */
+  --luak-asphalt:#221e19;
+  --luak-display:"Arial Narrow","Oswald","Bebas Neue","Haettenschweiler","Impact",sans-serif;
+  background:var(--luak-oil);
+}
+
+/* ── Top bar / taskbar: oiled-leather band with a brass beading ──────── */
+.peh-product-luak .peh-topbar{
+  background:linear-gradient(180deg,var(--luak-leather),var(--luak-leather-2));
+  border-bottom:1px solid var(--luak-brass-dk);
+  box-shadow:0 1px 0 rgba(244,221,146,.18) inset,0 6px 18px rgba(0,0,0,.45);
+}
+.peh-product-luak .peh-taskbar{
+  background:linear-gradient(0deg,var(--luak-leather-2),var(--luak-leather));
+  border-top:1px solid var(--luak-brass-dk);
+  box-shadow:0 -1px 0 rgba(244,221,146,.15) inset;
+}
+.peh-product-luak .peh-brand-mark{
+  color:var(--luak-oil);box-shadow:0 1px 2px rgba(0,0,0,.4),0 0 0 1px rgba(244,221,146,.5) inset;
+}
+.peh-product-luak .peh-brand-word{font-family:var(--luak-display);font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--luak-paper)}
+.peh-product-luak .peh-travel-btn{background:rgba(20,16,10,.45);border-color:var(--luak-brass-dk)}
+.peh-product-luak .peh-travel-btn:hover{background:rgba(200,150,46,.16);border-color:var(--luak-brass)}
+.peh-product-luak .peh-here b{font-family:var(--luak-display);letter-spacing:.06em;text-transform:uppercase;color:var(--luak-paper)}
+.peh-product-luak .peh-travel-cta{color:var(--luak-brass-hi)}
+.peh-product-luak .peh-mode-toggle{border-color:var(--luak-brass-dk)}
+
+/* ── The Speedway scene: aged-paper workbench under a track board ────── */
+.peh-product-luak .peh-scene-atmos{
+  /* The painted track board (assets/luak-vintage-racing-map.png) is the
+     central navigation object, laid on an aged-paper workbench. `contain`
+     keeps the whole illustrated circuit visible; the parchment wash fills the
+     letterbox AND is the graceful fallback if the PNG is ever removed. The
+     brass course-marker hotspots and Peh's pit badge layer over it. */
+  background:
+    url("assets/luak-vintage-racing-map.png") center/contain no-repeat,
+    radial-gradient(135% 105% at 50% 6%,#f3e7ca 0%,var(--luak-paper) 30%,var(--luak-paper-2) 52%,#b89a63 80%,#6e5532 100%);
+}
+.peh-product-luak .peh-scene-atmos::after{
+  /* fine paper grain instead of the neon dot-screen */
+  background-image:radial-gradient(rgba(60,40,18,.10) 1px,transparent 1.4px);
+  background-size:3px 3px;opacity:.4;mix-blend-mode:multiply;
+}
+.peh-product-luak .peh-scene-caption{position:relative;z-index:2}
+.peh-product-luak .peh-scene-tag{color:var(--luak-brass-dk);font-family:var(--luak-display);letter-spacing:.22em}
+.peh-product-luak .peh-scene-title{
+  font-family:var(--luak-display);font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--luak-sepia);text-shadow:0 1px 0 rgba(255,250,235,.45);
+  display:inline-block;padding-bottom:4px;border-bottom:3px solid var(--luak-brass);
+}
+.peh-product-luak .peh-scene-desc{color:var(--luak-sepia-soft)}
+
+/* ── Hotspots → brass enamel course markers + engraved plaques ──────── */
+.peh-product-luak .peh-pin{
+  background:radial-gradient(circle at 50% 30%,var(--luak-brass-hi),var(--luak-brass) 52%,var(--luak-brass-dk) 100%);
+  box-shadow:0 0 0 3px var(--luak-leather-2),0 0 0 5px rgba(200,150,46,.45),0 6px 14px rgba(0,0,0,.55);
+}
+.peh-product-luak .peh-pin::after{border-color:rgba(244,221,146,.75)}
+.peh-product-luak .peh-hotspot-label{
+  font-family:var(--luak-display);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:11px;
+  color:var(--luak-sepia);
+  background:linear-gradient(180deg,var(--luak-paper),var(--luak-paper-2));
+  border:1px solid var(--luak-brass-dk);
+  box-shadow:0 2px 6px rgba(0,0,0,.4),0 0 0 1px rgba(244,221,146,.4) inset;
+}
+.peh-product-luak .peh-hotspot:focus-visible .peh-hotspot-label{outline-color:var(--luak-brass)}
+
+/* ── Peh's pit badge — brass medallion ringed by a checkered flag ───── */
+.peh-product-luak .peh-slot-medallion{
+  position:relative;color:#3a2a18;
+  background:radial-gradient(circle at 50% 30%,#f6ead0,#d9b86a 55%,#a9803a 100%);
+  border:2px solid var(--luak-brass-dk);
+  box-shadow:0 0 0 3px var(--luak-leather-2),0 0 0 6px rgba(200,150,46,.4),0 8px 20px rgba(0,0,0,.55);
+}
+.peh-product-luak .peh-slot-medallion::before{
+  content:"";position:absolute;inset:-8px;border-radius:50%;z-index:-1;
+  background:repeating-conic-gradient(#241f1a 0 18deg,#efe3c6 18deg 36deg);
+  -webkit-mask:radial-gradient(circle,transparent 0 calc(50% - 4px),#000 calc(50% - 4px));
+          mask:radial-gradient(circle,transparent 0 calc(50% - 4px),#000 calc(50% - 4px));
+  opacity:.9;
+}
+.peh-product-luak .peh-slot-tag{
+  font-family:var(--luak-display);letter-spacing:.16em;color:var(--luak-sepia);
+  background:linear-gradient(180deg,var(--luak-paper),var(--luak-paper-2));border-color:var(--luak-brass-dk);
+}
+
+/* ── Peh's guide portrait — real race-driver squirrel art, framed in brass.
+      Decorative (pointer-events:none) so it never blocks a course marker. ── */
+.peh-product-luak .peh-guide{
+  position:absolute;z-index:6;left:12px;bottom:48px;margin:0;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+}
+.peh-product-luak .peh-guide-frame{
+  display:block;width:clamp(62px,11vw,104px);aspect-ratio:5/6;overflow:hidden;border-radius:14px;
+  background:linear-gradient(180deg,var(--luak-paper),var(--luak-paper-2));
+  border:2px solid var(--luak-brass-dk);
+  box-shadow:0 0 0 3px var(--luak-leather-2),0 0 0 5px rgba(200,150,46,.4),0 10px 26px rgba(0,0,0,.55);
+}
+.peh-product-luak .peh-guide-img{width:100%;height:100%;object-fit:cover;object-position:50% 10%;display:block}
+.peh-product-luak .peh-guide-cap{
+  display:flex;flex-direction:column;line-height:1.05;text-align:center;
+  padding:3px 11px;border-radius:999px;
+  background:rgba(20,16,10,.82);border:1px solid var(--luak-brass-dk);
+}
+.peh-product-luak .peh-guide-cap b{font-family:var(--luak-display);letter-spacing:.14em;text-transform:uppercase;font-size:11px;color:var(--luak-brass-hi)}
+.peh-product-luak .peh-guide-cap i{font-style:normal;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--luak-paper-2)}
+/* On phones the guide stays small and tucks up out of the thumb zone. */
+@media (max-width:599px){
+  .peh-product-luak .peh-guide{bottom:auto;top:8px;right:8px;left:auto}
+  .peh-product-luak .peh-guide-frame{width:54px}
+  .peh-product-luak .peh-guide-cap{display:none}
+}
+
+/* ── Scene-hop waypoints → leather-and-brass control tabs ───────────── */
+.peh-product-luak .peh-waypoint{
+  font-family:var(--luak-display);letter-spacing:.08em;text-transform:uppercase;
+  background:linear-gradient(180deg,var(--luak-leather),var(--luak-leather-2));
+  color:var(--luak-paper);border:1px solid var(--luak-brass-dk);
+}
+.peh-product-luak .peh-waypoint:hover{border-color:var(--luak-brass);color:#fff}
+.peh-product-luak .peh-waypoint.active{background:linear-gradient(120deg,var(--luak-brass-hi),var(--luak-brass) 45%,var(--luak-oxblood));color:var(--luak-oil);border-color:var(--luak-brass-dk)}
+
+/* ── Workspace panels → oiled-leather instrument cases (dark bodies keep
+      the live lanes legible; only the chrome goes vintage) ───────────── */
+.peh-product-luak .peh-panel,.peh-product-luak .peh-tile{
+  background:linear-gradient(180deg,#1f1810,#14100a);
+  border:1px solid var(--luak-brass-dk);
+  box-shadow:0 18px 60px rgba(0,0,0,.6),0 0 0 1px rgba(244,221,146,.12) inset;
+}
+.peh-product-luak .peh-panel.focused,.peh-product-luak .peh-tile.focused{border-color:var(--luak-brass)}
+.peh-product-luak .peh-panel-head{
+  background:linear-gradient(180deg,var(--luak-leather),var(--luak-leather-2));
+  border-bottom:1px solid var(--luak-brass-dk);
+}
+.peh-product-luak .peh-panel-title{font-family:var(--luak-display);letter-spacing:.06em;text-transform:uppercase;color:var(--luak-paper)}
+.peh-product-luak .peh-backmap{background:rgba(200,150,46,.16);border-color:var(--luak-brass-dk);color:var(--luak-paper)}
+.peh-product-luak .peh-backmap:hover{border-color:var(--luak-brass);color:#fff}
+
+/* Placeholder workspace → a parchment shop-notice pinned with a brass stud. */
+.peh-product-luak .peh-ph{
+  margin:10px;border-radius:12px;color:var(--luak-sepia-soft);
+  background:linear-gradient(180deg,var(--luak-paper),var(--luak-paper-2));
+  border:1px solid var(--luak-brass-dk);
+  box-shadow:0 6px 18px rgba(0,0,0,.45);
+}
+.peh-product-luak .peh-ph-glyph{color:var(--luak-oxblood)}
+.peh-product-luak .peh-ph-blurb{color:var(--luak-sepia)}
+.peh-product-luak .peh-ph-tag{color:var(--luak-brass-dk);border-color:var(--luak-brass-dk)}
+
+/* ── Dashboard chooser + headings ───────────────────────────────────── */
+.peh-product-luak .peh-dash-head{border-bottom:1px solid var(--luak-brass-dk)}
+.peh-product-luak .peh-dash-here h1{font-family:var(--luak-display);letter-spacing:.04em;text-transform:uppercase}
+.peh-product-luak .peh-choice{
+  background:linear-gradient(160deg,var(--luak-paper),var(--luak-paper-2));
+  border:1px solid var(--luak-brass-dk);color:var(--luak-sepia);
+}
+.peh-product-luak .peh-choice:hover{border-color:var(--luak-brass)}
+.peh-product-luak .peh-choice-glyph{color:var(--luak-oxblood)}
+.peh-product-luak .peh-choice-title{font-family:var(--luak-display);letter-spacing:.04em;text-transform:uppercase}
+.peh-product-luak .peh-choice-kind{color:var(--luak-brass-dk)}
+
+/* ── Fast-travel sheet → a race-day programme ───────────────────────── */
+.peh-product-luak .peh-ft{
+  background:linear-gradient(180deg,var(--luak-paper),var(--luak-paper-2));
+  border:1px solid var(--luak-brass-dk);color:var(--luak-sepia);
+}
+.peh-product-luak .peh-ft-head{border-bottom:1px solid var(--luak-brass-dk)}
+.peh-product-luak .peh-ft-head h2{font-family:var(--luak-display);letter-spacing:.06em;text-transform:uppercase;color:var(--luak-sepia)}
+.peh-product-luak .peh-ft-hint{color:var(--luak-brass-dk)}
+.peh-product-luak .peh-ft-close{border-color:var(--luak-brass-dk);color:var(--luak-sepia)}
+.peh-product-luak .peh-ft-scene{
+  font-family:var(--luak-display);letter-spacing:.06em;text-transform:uppercase;
+  background:rgba(20,16,10,.06);border:1px solid var(--luak-brass-dk);color:var(--luak-sepia);
+}
+.peh-product-luak .peh-ft-scene:hover{border-color:var(--luak-brass)}
+.peh-product-luak .peh-ft-scene.active{background:linear-gradient(120deg,var(--luak-brass-hi),var(--luak-brass) 45%,var(--luak-oxblood));color:var(--luak-oil);border-color:var(--luak-brass-dk)}
