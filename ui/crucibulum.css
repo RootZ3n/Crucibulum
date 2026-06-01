@@ -3033,21 +3033,38 @@ body::after {
 
 /* ── The Speedway scene: aged-paper workbench under a track board ────── */
 .peh-product-luak .peh-scene-atmos{
-  /* The painted track board (assets/luak-vintage-racing-map.png) is the
-     central navigation object, laid on an aged-paper workbench. `contain`
-     keeps the whole illustrated circuit visible; the parchment wash fills the
-     letterbox AND is the graceful fallback if the PNG is ever removed. The
-     brass course-marker hotspots and Peh's pit badge layer over it. */
+  /* Full-bleed painted speedway map as the central navigation object, on an
+     aged-paper workbench fallback. Desktop uses the landscape comp; the phone
+     breakpoint below swaps in the portrait comp. The comps already paint the
+     seven location labels + empty brass ring "sockets", so the live hotspot
+     pins seat INTO those sockets (labels/slot/guide are hidden for Luak). */
   background:
-    url("assets/luak-vintage-racing-map.png") center/contain no-repeat,
+    url("assets/luak-vintage-racing-map.png") center/cover no-repeat,
     radial-gradient(135% 105% at 50% 6%,#f3e7ca 0%,var(--luak-paper) 30%,var(--luak-paper-2) 52%,#b89a63 80%,#6e5532 100%);
 }
+@media (max-width:879px){
+  .peh-product-luak .peh-scene-atmos{
+    background:
+      url("assets/luak-responsive-racing-map.png") center top/cover no-repeat,
+      radial-gradient(135% 105% at 50% 6%,#f3e7ca 0%,var(--luak-paper) 30%,var(--luak-paper-2) 52%,#b89a63 80%,#6e5532 100%);
+  }
+}
 .peh-product-luak .peh-scene-atmos::after{
-  /* fine paper grain instead of the neon dot-screen */
-  background-image:radial-gradient(rgba(60,40,18,.10) 1px,transparent 1.4px);
-  background-size:3px 3px;opacity:.4;mix-blend-mode:multiply;
+  /* very faint paper grain so the painted art stays crisp */
+  background-image:radial-gradient(rgba(60,40,18,.08) 1px,transparent 1.4px);
+  background-size:3px 3px;opacity:.22;mix-blend-mode:multiply;
 }
 .peh-product-luak .peh-scene-caption{position:relative;z-index:2}
+/* The painted comp supplies the location labels and Peh art, so the live
+   shell hides its own duplicates and lets the brass pins sit in the painted
+   ring sockets. (Reversible — drop a label-free map back in and re-show these
+   to return to the engine-drawn markers.) */
+.peh-product-luak .peh-hotspot-label{display:none}
+.peh-product-luak .peh-slot{display:none}
+.peh-product-luak .peh-guide{display:none}
+.peh-product-luak .peh-pin{width:30px;height:30px}
+/* Labels are hidden, so keep a clear keyboard-focus ring on the pin itself. */
+.peh-product-luak .peh-hotspot:focus-visible .peh-pin{outline:3px solid var(--luak-brass-hi);outline-offset:3px}
 .peh-product-luak .peh-scene-tag{color:var(--luak-brass-dk);font-family:var(--luak-display);letter-spacing:.22em}
 .peh-product-luak .peh-scene-title{
   font-family:var(--luak-display);font-weight:700;letter-spacing:.04em;text-transform:uppercase;

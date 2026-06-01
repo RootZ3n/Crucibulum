@@ -6240,13 +6240,16 @@ const SCENE_REGISTRY={
     {id:'speedway', title:'The Speedway', purpose:'Dashboard / overview', route:'/dashboard',
      desc:'The heart of Luak. Legendary races, roaring engines, and the proof that never fades.', peh:'flag',
      pehSlot:{x:50, y:55, anchor:'center', variant:'driver'}, hotspots:[
-      {id:'sp-overview', label:'Dashboard',         x:24, y:42, workspace:'speedway-overview', scene:'speedway'},
-      {id:'sp-track',    label:'The Racetrack',     x:50, y:47, workspace:'benchmark-runs',     scene:'racetrack'},
-      {id:'sp-stand',    label:'The Grandstand',    x:40, y:18, workspace:'grandstand-results', scene:'grandstand'},
-      {id:'sp-tower',    label:'The Timing Tower',  x:82, y:24, workspace:'timing-metrics',     scene:'timing-tower'},
-      {id:'sp-pit',      label:'The Pit Lane',      x:84, y:48, workspace:'pit-lane-config',    scene:'pit-lane'},
-      {id:'sp-victory',  label:'The Victory Circle',x:78, y:64, workspace:'victory-achievements',scene:'victory-circle'},
-      {id:'sp-shop',     label:'The Workshop',      x:62, y:80, workspace:'workshop-diagnostics',scene:'workshop'}
+      // x/y seat each pin into the painted ring "socket" on the speedway map
+      // comp (assets/luak-vintage-racing-map.png) — compromise % that read on
+      // both the landscape and portrait comps, since one registry drives both.
+      {id:'sp-overview', label:'Dashboard',         x:51, y:46, workspace:'speedway-overview', scene:'speedway'},
+      {id:'sp-track',    label:'The Racetrack',     x:20, y:73, workspace:'benchmark-runs',     scene:'racetrack'},
+      {id:'sp-stand',    label:'The Grandstand',    x:52, y:26, workspace:'grandstand-results', scene:'grandstand'},
+      {id:'sp-tower',    label:'The Timing Tower',  x:20, y:39, workspace:'timing-metrics',     scene:'timing-tower'},
+      {id:'sp-pit',      label:'The Pit Lane',      x:83, y:44, workspace:'pit-lane-config',    scene:'pit-lane'},
+      {id:'sp-victory',  label:'The Victory Circle',x:49, y:75, workspace:'victory-achievements',scene:'victory-circle'},
+      {id:'sp-shop',     label:'The Workshop',      x:82, y:75, workspace:'workshop-diagnostics',scene:'workshop'}
     ]},
     {id:'racetrack', title:'The Racetrack', purpose:'Active benchmarks', route:'/racetrack',
      desc:'Where the cars race. Push a model hard and watch it run, lap after lap, under load.', peh:'gauge',

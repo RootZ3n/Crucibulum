@@ -20,11 +20,23 @@ art was found at the repo root (ChatGPT default filenames) and **copied here**:
 | `luak-vintage-racing-map.png` | `ChatGPT Image May 31, 2026, 12_46_24 PM.png` (1672×941) | The Luak 1920s racing world map — Speedway hub, Grandstand, Timing Tower, Pit Lane, Victory Circle, Workshop + Peh placeholders, with desktop & mobile views. |
 | `peh-vintage-racer-squirrel.png` | `ChatGPT Image May 31, 2026, 12_55_28 PM.png` (1122×1402) | Peh as a 1920s race-driver squirrel — leather cap, goggles, LUAK suit, #32 helmet. |
 
-The map is now the immersive scene background (`contain`, on a parchment
-workbench); the racer art is the framed "pit guide" portrait
-(`renderPehGuide`). The parchment wash, brass course-marker hotspots, and Peh's
-pit-badge silhouette remain the graceful fallback if a PNG is ever removed.
+Later replaced (2026-06-01) by purpose-built full-screen comps:
 
-A dedicated narrow-crop `luak-responsive-racing-map.png` is still an optional
-future drop-in; until then the single map serves both layouts (`contain` keeps
-the whole circuit visible on phones).
+| Asset | Used as | Source |
+| --- | --- | --- |
+| `luak-vintage-racing-map.png` | **Desktop** scene background (`cover`, ≥880px). | `ChatGPT Image Jun 1, 2026, 06_20_14 AM (1).png` (landscape comp). |
+| `luak-responsive-racing-map.png` | **Mobile/portrait** scene background (`cover`, ≤879px). | `ChatGPT Image Jun 1, 2026, 06_20_14 AM (2).png` (portrait comp w/ bottom nav). |
+
+These comps already paint the seven location labels and empty brass ring
+"sockets", so the live shell hides its own hotspot labels, Peh slot medallion,
+and guide portrait for Luak (`.peh-product-luak` rules) and seats the
+interactive brass pins into the painted sockets. All of that is **reversible**:
+drop a clean, label-free map back in and re-show those rules to return to the
+fully engine-drawn markers. The parchment wash remains the fallback if a PNG is
+removed.
+
+Known first-pass limitation: one hotspot coordinate set serves both comps
+(doctrine forbids a separate mobile registry), and `cover` crops differently
+per viewport, so pin↔socket alignment is exact on the layout the coords target
+(desktop) and approximate on the other. A clean label-free map would let the
+engine draw aligned markers on both.
