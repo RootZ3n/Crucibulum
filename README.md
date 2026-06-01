@@ -156,6 +156,15 @@ Conversational task families currently present in the corpus:
 
 This means Luak can inspect both execution behavior and chat behavior. The current taxonomy is release-candidate level and versioned, but it should still be cited with the repository commit, task IDs, and scoring policy used for a given comparison. The test corpus is lightweight by design (intentional minimum for bootstrap); use `npm run oracle:hash -- --write` after adding oracles to register them in the corpus.
 
+### Experimental targets
+
+Some models are wired up for **experimental benchmarking only** — never as a
+default, the judge, or a normal routing target, and always excluded from the
+leaderboard and capability certification. OpenRouter **MiniMax-M3** is the first
+such target: run `npm run bench:minimax-m3 -- --model minimax-m3 --smoke-only`
+to gate it, or see [`docs/MINIMAX_M3_EXPERIMENTAL.md`](docs/MINIMAX_M3_EXPERIMENTAL.md)
+for the full cost-capped comparison against the MiMo v2.5 family.
+
 ## Scoring Model
 
 Luak judges runs in a fixed order:

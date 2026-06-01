@@ -1,4 +1,4 @@
-import { describe, it } from "node:test";
+import { describe, it, afterEach } from "node:test";
 import assert from "node:assert/strict";
 
 import { buildOpenAIChatBody } from "../adapters/openai.js";
@@ -49,5 +49,47 @@ describe("provider benchmark chat policy", () => {
       reasoningEffort: "off",
     });
     assert.deepEqual(config.thinkingConfig, { thinkingBudget: 0 });
+  });
+});
+
+describe("OpenRouter output-token cap", () => {
+  const realEnv = process.env["OPENROUTER_MAX_OUTPUT_TOKENS"];
+  afterEach(() => {
+    if (realEnv === undefined) delete process.env["OPENROUTER_MAX_OUTPUT_TOKENS"];
+    else process.env["OPENROUTER_MAX_OUTPUT_TOKENS"] = realEnv;
+  });
+
+  it("defaults to 8192 when nothing overrides it", () => {
+    delete process.env["OPENROUTER_MAX_OUTPUT_TOKENS"];
+    const body = buildOpenRouterChatBody("openrouter", "https://openrouter.ai/api/v1", "any-model", [{ role: "user", content: "Hi" }]);
+    assert.equal(body.max_tokens, 8192);
+  });
+
+  it("honours an explicit per-call maxTokens option", () => {
+    delete process.env["OPENROUTER_MAX_OUTPUT_TOKENS"];
+    const body = buildOpenRouterChatBody("openrouter", "https://openrouter.ai/api/v1", "any-model", [{ role: "user", content: "Hi" }], {
+      maxTokens: 512,
+    });
+    assert.equal(body.max_tokens, 512);
+  });
+
+  it("honours the OPENROUTER_MAX_OUTPUT_TOKENS env cap (covers chat + execute paths)", () => {
+    process.env["OPENROUTER_MAX_OUTPUT_TOKENS"] = "1024";
+    const body = buildOpenRouterChatBody("openrouter", "https://openrouter.ai/api/v1", "any-model", [{ role: "user", content: "Hi" }]);
+    assert.equal(body.max_tokens, 1024);
+  });
+
+  it("ignores a malformed env value rather than collapsing the cap to zero", () => {
+    process.env["OPENROUTER_MAX_OUTPUT_TOKENS"] = "not-a-number";
+    const body = buildOpenRouterChatBody("openrouter", "https://openrouter.ai/api/v1", "any-model", [{ role: "user", content: "Hi" }]);
+    assert.equal(body.max_tokens, 8192);
+  });
+
+  it("an explicit option beats the env cap", () => {
+    process.env["OPENROUTER_MAX_OUTPUT_TOKENS"] = "1024";
+    const body = buildOpenRouterChatBody("openrouter", "https://openrouter.ai/api/v1", "any-model", [{ role: "user", content: "Hi" }], {
+      maxTokens: 256,
+    });
+    assert.equal(body.max_tokens, 256);
   });
 });

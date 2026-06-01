@@ -4,6 +4,27 @@ All notable public-release changes for Luak are tracked here.
 
 ## Unreleased
 
+### Added
+
+- **Experimental benchmark target: OpenRouter MiniMax-M3.** Registered in
+  `core/experimental-targets.ts` as an *experimental-only* target — never a
+  default, never the judge, never routed for normal tasks, and excluded from
+  the leaderboard and capability certification. A dedicated runner
+  (`scripts/minimax-m3-bench.mjs`, `npm run bench:minimax-m3`) benchmarks it
+  against the MiMo v2.5 family across coding-patch, long-context, tool-call,
+  migration-audit, structured-JSON, and refusal/overblocking categories, and
+  emits a recommendation (DEFAULT / FALLBACK / SPECIALIST / EXPERIMENTAL /
+  REJECT). Cost controls: explicit `--model minimax-m3` opt-in, moderate output
+  cap, mandatory smoke gate, hard `--max-cost-usd` early-stop, batch refusal
+  without `--approve-batch`, and an always-written cost receipt. The Luna
+  asset-prompt-refinement category has no Luak task and is reported as "not
+  evaluated" rather than silently dropped. See
+  `docs/MINIMAX_M3_EXPERIMENTAL.md`.
+- **`OPENROUTER_MAX_OUTPUT_TOKENS` / `ChatOptions.maxTokens`.** The OpenRouter
+  adapter now honours an optional output-token cap (per-call option, or the
+  env var covering both chat and agentic paths). Unset preserves the prior
+  8192 default, so normal runs are unaffected.
+
 ### Changed
 
 - **Rebrand: Crucible → Luak.** Project identity now uses the Choctaw

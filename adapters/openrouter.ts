@@ -311,6 +311,35 @@ function costOf(u?: { cost?: number; total_cost?: number }): number | undefined 
   return undefined;
 }
 
+const DEFAULT_MAX_OUTPUT_TOKENS = 8192;
+
+/**
+ * Resolve the per-call output-token cap, in precedence order:
+ *
+ *   1. `options.maxTokens`               — explicit per-call cap (chat callers)
+ *   2. `OPENROUTER_MAX_OUTPUT_TOKENS`    — process-wide cap (covers both the
+ *                                          chat() and execute() paths uniformly,
+ *                                          since execute() calls callAPI without
+ *                                          options); set by cost-capped
+ *                                          experimental benchmark runs
+ *   3. 8192                              — the long-standing default
+ *
+ * Only a positive, finite integer overrides the default — a malformed env
+ * value or option is ignored rather than silently lowering the cap to 0.
+ */
+function resolveMaxOutputTokens(options?: ChatOptions): number {
+  const fromOption = options?.maxTokens;
+  if (typeof fromOption === "number" && Number.isFinite(fromOption) && fromOption > 0) {
+    return Math.floor(fromOption);
+  }
+  const envRaw = process.env["OPENROUTER_MAX_OUTPUT_TOKENS"];
+  if (envRaw) {
+    const parsed = Number(envRaw);
+    if (Number.isFinite(parsed) && parsed > 0) return Math.floor(parsed);
+  }
+  return DEFAULT_MAX_OUTPUT_TOKENS;
+}
+
 export function buildOpenRouterChatBody(
   adapterId: string,
   baseUrl: string,
@@ -325,7 +354,7 @@ export function buildOpenRouterChatBody(
   const body: Record<string, unknown> = {
     model,
     messages,
-    max_tokens: 8192,
+    max_tokens: resolveMaxOutputTokens(options),
     temperature: 0.1,
     stream: false,
     usage: { include: true },

@@ -312,6 +312,13 @@ export interface ChatOptions {
   reasoningEffort?: "off" | "minimal" | "default" | undefined;
   retries?: number | undefined;
   timeoutMs?: number | undefined;
+  /**
+   * Hard cap on output tokens for this call. Adapters that support it forward
+   * it as the provider's `max_tokens` / `maxOutputTokens`. Optional — when
+   * unset the adapter's own default applies. Used by experimental cost-capped
+   * benchmark runs to keep spend bounded (see docs/MINIMAX_M3_EXPERIMENTAL.md).
+   */
+  maxTokens?: number | undefined;
   /** Internal harness hint for deterministic mock adapters; ignored by live adapters. */
   currentQuestion?: ConversationalQuestion | undefined;
 }
