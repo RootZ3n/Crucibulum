@@ -60,3 +60,5 @@ Thumbs.db
 .claude/
 .codex
 *.log
+ChatGPT Image*.png
+pnpm-lock.yaml
