@@ -32,6 +32,28 @@ else
   source "$LUAK_DIR/.env" 2>/dev/null || true
   set +a
 
+  # ── Ensure a bundle-signing HMAC key exists ───────────────────────────────
+  # Without LUAK_HMAC_KEY the integrity model is inert: every bundle verifies to
+  # "legacy_unverified" (content hash only, no secret) and forged bundles are
+  # indistinguishable from legitimate ones. Generate one on first launch and
+  # PERSIST it to .env — a fresh key each restart would invalidate the
+  # signatures of every previously-stored bundle. (Fable 5 audit C2.)
+  if [ -z "${LUAK_HMAC_KEY:-}" ] && [ -z "${CRUCIBLE_HMAC_KEY:-}" ]; then
+    GENERATED_HMAC_KEY="$(openssl rand -hex 32)"
+    export LUAK_HMAC_KEY="$GENERATED_HMAC_KEY"
+    if [ -w "$LUAK_DIR/.env" ] || [ ! -e "$LUAK_DIR/.env" ]; then
+      {
+        echo ""
+        echo "# Auto-generated bundle-signing key (LUAK HMAC). Keep this secret and stable."
+        echo "LUAK_HMAC_KEY=$GENERATED_HMAC_KEY"
+      } >> "$LUAK_DIR/.env"
+      echo "Generated and persisted LUAK_HMAC_KEY to .env (bundle signing now active)."
+    else
+      echo "WARNING: LUAK_HMAC_KEY not set and .env is not writable — using an ephemeral key for this session only."
+      echo "         Bundles signed this session will fail verification after restart. Set LUAK_HMAC_KEY in .env to persist."
+    fi
+  fi
+
   # Start the server in the background
   cd "$LUAK_DIR"
   node dist/server/api.js &
