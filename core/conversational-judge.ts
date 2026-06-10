@@ -719,9 +719,11 @@ function scoreRegexMatch(q: ConversationalQuestion, response: string): { passed:
     };
   }
 
-  // Test regex
+  // Test regex. Case-sensitive tests (e.g. an ALL-UPPERCASE obedience check)
+  // opt out of the "i" flag via case_sensitive; default stays insensitive for
+  // backward compatibility. (Audit S3.)
   try {
-    const re = new RegExp(pattern, "iu");
+    const re = new RegExp(pattern, q.case_sensitive ? "u" : "iu");
     if (re.test(stripped)) {
       return { passed: true, reason: null };
     }

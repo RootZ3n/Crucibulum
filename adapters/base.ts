@@ -397,6 +397,11 @@ export interface ConversationalQuestion {
   pattern?: string | undefined;
   /** Max response length for scoring_type: "regex_match" */
   maxLength?: number | undefined;
+  /** When true, the regex_match pattern is compiled WITHOUT the "i" flag so
+   *  case-sensitivity checks (e.g. an ALL-UPPERCASE obedience test) are
+   *  meaningful. Defaults to false → case-insensitive for backward
+   *  compatibility. (Audit S3.) */
+  case_sensitive?: boolean | undefined;
   // ── numeric_fact_match (vision-recognition scoring) ───────────────
   /** Expected numeric value (e.g. 7) — accepted as digit or spelled-out
    *  variants (see expected_number_variants). The answer must contain
