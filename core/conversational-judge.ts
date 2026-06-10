@@ -25,8 +25,23 @@ import { getScorer, runScorer } from "./scorer-registry.js";
 // ── Text matching primitives ───────────────────────────────────────────────
 
 /** Normalize text for comparison: lowercase, strip punctuation, collapse whitespace */
+// Units that may appear with intervening whitespace ("100 ms" → "100ms") so
+// numeric pass phrases match regardless of how the model spaces the unit.
+const NUMERIC_UNITS = [
+  "ms", "s", "us", "ns", "kb", "mb", "gb", "tb", "kib", "mib", "gib",
+  "hz", "khz", "mhz", "ghz", "px", "pt", "em", "rem", "fps", "bps", "kbps", "mbps",
+];
+
 function norm(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  let t = text.toLowerCase();
+  // Strip thousands separators between digits ("1,200" → "1200") before the
+  // punctuation pass turns the comma into a space and splits the number. (Audit S6.)
+  t = t.replace(/(\d),(?=\d)/g, "$1");
+  t = t.replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  // Collapse whitespace between a number and a known unit ("100 ms" → "100ms")
+  // so "100ms" and "100 ms" normalize identically. (Audit S6.)
+  t = t.replace(new RegExp(`(\\d)\\s+(${NUMERIC_UNITS.join("|")})\\b`, "g"), "$1$2");
+  return t;
 }
 
 function contains(response: string, phrase: string): boolean {
