@@ -1407,13 +1407,25 @@ function isEffectivelyEmpty(response: string): boolean {
 
 // ── Main scoring dispatcher ───────────────────────────────────────────────
 
+/**
+ * Upper bound on the model output fed into deterministic scorers. Several
+ * scorers run global regexes over the whole response; an unbounded answer is a
+ * ReDoS / CPU-cost vector. 50KB is far larger than any legitimate chat answer.
+ * (Audit M5.)
+ */
+const MAX_SCORING_CHARS = 50_000;
+
 export function scoreConversationalQuestion(
   question: ConversationalQuestion,
-  response: string,
+  rawResponse: string,
 ): ConversationalResult & { _internal: true } {
   const start = Date.now();
   let passed = false;
   let failureReason: string | null = null;
+  // Truncate before any scorer regex touches the text.
+  const response = typeof rawResponse === "string" && rawResponse.length > MAX_SCORING_CHARS
+    ? rawResponse.slice(0, MAX_SCORING_CHARS)
+    : rawResponse;
 
   // Guard: absence-style scorers must not silently credit empty answers.
   // (hedge_count, corporate_check). For other scorers, the per-type logic

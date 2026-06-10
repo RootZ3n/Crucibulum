@@ -119,30 +119,6 @@ export function destroyWorkspace(wsPath: string): void {
   }
 }
 
-/**
- * Snapshot current workspace state by committing all changes.
- * Returns the new commit hash.
- */
-export function snapshotWorkspace(wsPath: string, message: string): string {
-  try {
-    execSync("git add -A", { cwd: wsPath, stdio: "pipe" });
-    execSync(`git commit -m "${message.replace(/"/g, '\\"')}" --allow-empty`, {
-      cwd: wsPath,
-      stdio: "pipe",
-      env: {
-        ...process.env,
-        GIT_AUTHOR_NAME: "crucibulum",
-        GIT_AUTHOR_EMAIL: "crucibulum@local",
-        GIT_COMMITTER_NAME: "crucibulum",
-        GIT_COMMITTER_EMAIL: "crucibulum@local",
-      },
-    });
-    return execSync("git rev-parse HEAD", { cwd: wsPath, encoding: "utf-8" }).trim();
-  } catch {
-    return "snapshot-failed";
-  }
-}
-
 function writeBaselineSnapshot(root: string): void {
   try {
     const snapshot = snapshotFiles(root);

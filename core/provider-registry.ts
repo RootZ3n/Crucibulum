@@ -22,7 +22,7 @@
  *   (b) an inline value that is masked in every serialize-for-client path.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, chmodSync } from "node:fs";
 import { join } from "node:path";
 import { log } from "../utils/logger.js";
 import { crucibleStateRoot } from "../utils/env.js";
@@ -331,8 +331,12 @@ function saveToDisk(store: StoreShape): void {
     mkdirSync(statePath(), { recursive: true });
     const path = storeFile();
     const tmp = path + ".tmp";
-    writeFileSync(tmp, JSON.stringify(store, null, 2));
+    // The registry can hold inline provider API keys in plaintext. Write with
+    // owner-only permissions (0600) so the default umask doesn't leave it
+    // group/world-readable. (Audit L3.)
+    writeFileSync(tmp, JSON.stringify(store, null, 2), { mode: 0o600 });
     renameSync(tmp, path);
+    try { chmodSync(path, 0o600); } catch { /* best effort on platforms without POSIX modes */ }
   } catch (err) {
     log("error", "provider-registry", `Failed to persist registry: ${String(err)}`);
   }

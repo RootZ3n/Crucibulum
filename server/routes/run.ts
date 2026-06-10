@@ -18,7 +18,7 @@ import { isConversationalTask } from "../../core/conversational-runner.js";
 import { normalizeBundleVerdict } from "../../core/verdict.js";
 import { presentBundleVerdict } from "../../core/verdict-policy.js";
 import type { StructuredProviderError } from "../../types/provider-error.js";
-import { providerErrorDetail } from "../../core/provider-errors.js";
+import { providerErrorSummary } from "../../core/provider-errors.js";
 import { resolveByModelIdWithHint } from "../../core/provider-registry.js";
 
 interface ActiveRun {
@@ -550,14 +550,13 @@ export async function handleRunPost(req: IncomingMessage, res: ServerResponse): 
       if (!health.ok) {
         failureStage = "health_check";
         failureProviderError = health.providerError ?? null;
-        // Prefer a reason that carries both the bucket ("Invalid provider
-        // payload") AND the raw detail ("MiniMax error 2049: invalid api
-        // key") — adapters stash the root cause in rawMessage but return
-        // only the generic summary as `reason`. Without merging, the
-        // operator sees a vague "Invalid provider payload" on every run and
-        // can't tell a bad API key from a wrong model id.
+        // Use the bucketed, secret-free summary rather than the raw provider
+        // detail (which can echo the Authorization header / key fragments from
+        // a 401/403 body) in the client-facing reason. The full structured
+        // error is still attached to failureProviderError for the bundle /
+        // server-side log, where it is redacted on persist. (Audit M2.)
         failureReason = failureProviderError
-          ? providerErrorDetail(failureProviderError)
+          ? providerErrorSummary(failureProviderError)
           : (health.reason ?? `${adapterId} unavailable`);
         throw Object.assign(new Error(failureReason), { stage: failureStage, providerError: failureProviderError });
       }

@@ -14,12 +14,14 @@
  */
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { log } from "../utils/logger.js";
 import { sendJSON } from "./routes/shared.js";
 import { envValue } from "../utils/env.js";
 import { loadAllScorers } from "../core/scorer-registry.js";
+import { reapStaleWorkspaces } from "../core/cleanup.js";
 import { enforce, RATE_READ, RATE_RUN, RATE_INGEST } from "./rate-limit.js";
 
 import * as health from "./routes/health.js";
@@ -216,8 +218,12 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Cr
 
     sendJSON(res, 404, { error: "Not found" });
   } catch (err) {
-    log("error", "api", `Request error: ${String(err)}`);
-    sendJSON(res, 500, { error: String(err) });
+    // Don't leak internal error strings (stack traces, file paths, provider
+    // detail) to the client. Log the full error server-side under a
+    // correlation id and return only that id. (Audit M2.)
+    const correlationId = randomUUID();
+    log("error", "api", `Request error [${correlationId}]: ${String(err)}`);
+    sendJSON(res, 500, { error: "Internal server error", correlation_id: correlationId });
   }
 }
 
@@ -265,5 +271,30 @@ export async function startServer(port: number = DEFAULT_PORT, host: string = DE
   log("info", "api", `Bind host: ${host}`);
   log("info", "api", `UI: http://${displayHost}:${port}/`);
   log("info", "api", `API: http://${displayHost}:${port}/api/`);
+
+  // TTL reaper: periodically remove stale workspace dirs (only ws_*, never
+  // bundles) so a crashed/OOM-killed run doesn't leak its workspace. (Audit M6.)
+  const reaper = setInterval(() => {
+    try { reapStaleWorkspaces(); } catch (err) { log("warn", "api", `Workspace reaper error: ${String(err)}`); }
+  }, 60 * 60 * 1000);
+  reaper.unref?.();
+
+  // Graceful shutdown: run one final reap and close the listener so a clean
+  // SIGTERM/SIGINT (systemd stop, Ctrl-C) doesn't leave the port or stale
+  // workspaces behind. (Audit M6.)
+  let shuttingDown = false;
+  const shutdown = (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    log("info", "api", `Received ${signal} — shutting down`);
+    clearInterval(reaper);
+    try { reapStaleWorkspaces(); } catch { /* best effort */ }
+    server.close(() => process.exit(0));
+    // Don't hang forever if connections linger.
+    setTimeout(() => process.exit(0), 5_000).unref?.();
+  };
+  process.once("SIGTERM", () => shutdown("SIGTERM"));
+  process.once("SIGINT", () => shutdown("SIGINT"));
+
   return server;
 }

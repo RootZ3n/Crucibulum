@@ -8,6 +8,7 @@ import { readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { EvidenceBundle } from "../adapters/base.js";
 import { canonicalPercent } from "../types/scores.js";
+import { sha256Hex } from "../utils/hashing.js";
 import { loadVerifiedBundle } from "../core/bundle.js";
 import { normalizeBundleVerdict } from "../core/verdict.js";
 import { log } from "../utils/logger.js";
@@ -128,7 +129,11 @@ export function buildLeaderboardEntry(modelKey: string, inputBundles: EvidenceBu
   const passAt: Record<string, boolean> = {};
   const taskPassAt = new Map<string, { pass1: boolean; pass3: boolean | null; pass5: boolean | null }>();
   for (const [taskId, runs] of taskResults) {
-    const orderedRuns = [...runs].sort((a, b) => new Date(a.environment.timestamp_start).getTime() - new Date(b.environment.timestamp_start).getTime());
+    // Order runs by a hash of the (signed) bundle_id, NOT timestamp_start.
+    // timestamp_start is editable, so a forged bundle could pick which run
+    // counts as "pass@1". A bundle_id hash is stable and not trivially
+    // selectable. (Audit L5.)
+    const orderedRuns = [...runs].sort((a, b) => sha256Hex(a.bundle_id).localeCompare(sha256Hex(b.bundle_id)));
     const pass1 = orderedRuns[0]?.score.pass ?? false;
     const pass3 = orderedRuns.length >= 3 ? orderedRuns.slice(0, 3).some((run) => run.score.pass) : null;
     const pass5 = orderedRuns.length >= 5 ? orderedRuns.slice(0, 5).some((run) => run.score.pass) : null;

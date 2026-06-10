@@ -139,7 +139,9 @@ export class GrimoireCCAdapter implements CrucibulumAdapter {
       await sleep(POLL_INTERVAL_MS);
 
       try {
-        const res = await fetch(`${this.url}/grimoire/cc/status/${jobId}`, {
+        // jobId comes from the provider's response — URL-encode it so it can't
+        // alter the request path. (Audit L6.)
+        const res = await fetch(`${this.url}/grimoire/cc/status/${encodeURIComponent(jobId)}`, {
           signal: AbortSignal.timeout(10_000),
         });
         if (!res.ok) {

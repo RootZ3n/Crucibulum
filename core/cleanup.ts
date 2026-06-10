@@ -59,7 +59,11 @@ const DEFAULT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 export function cleanupStaleArtifacts(options: CleanupOptions = {}): CleanupResult {
   const maxAgeMs = options.maxAgeMs ?? DEFAULT_MAX_AGE_MS;
   const dryRun = options.dryRun ?? false;
-  const keepWorkspaces = options.keepWorkspaces ?? true;
+  // Default to reaping stale workspaces. Keeping them by default meant a
+  // SIGKILL/OOM mid-run leaked the workspace dir forever (the runner's
+  // destroyWorkspace finally-block never ran). Stale here still means older
+  // than maxAgeMs, so an in-flight workspace is never touched. (Audit M6.)
+  const keepWorkspaces = options.keepWorkspaces ?? false;
   const runsDir = resolveRunsDir(options.runsDir);
   const now = Date.now();
 
@@ -150,6 +154,38 @@ export function cleanupStaleArtifacts(options: CleanupOptions = {}): CleanupResu
   }
 
   return result;
+}
+
+/**
+ * Reap only stale workspace directories (ws_*), leaving bundles and every
+ * other artifact untouched. Used by the server's periodic TTL reaper so a
+ * crashed/OOM-killed run doesn't leak its workspace forever, without ever
+ * risking deletion of evidence bundles. Default TTL: 1 hour. (Audit M6.)
+ */
+export function reapStaleWorkspaces(options: { maxAgeMs?: number; runsDir?: string } = {}): { deleted: number; errors: string[] } {
+  const maxAgeMs = options.maxAgeMs ?? 60 * 60 * 1000; // 1h
+  const runsDir = resolveRunsDir(options.runsDir);
+  const now = Date.now();
+  const out = { deleted: 0, errors: [] as string[] };
+  if (!existsSync(runsDir)) return out;
+  let entries: string[];
+  try { entries = readdirSync(runsDir); } catch (err) { out.errors.push(String(err)); return out; }
+  for (const entry of entries) {
+    if (!entry.startsWith("ws_")) continue;
+    const fullPath = join(runsDir, entry);
+    try {
+      const stat = statSync(fullPath);
+      if (!stat.isDirectory()) continue;
+      if (now - stat.mtimeMs <= maxAgeMs) continue;
+      rmSync(fullPath, { recursive: true, force: true });
+      out.deleted++;
+      log("debug", "cleanup", `Reaped stale workspace: ${entry}`);
+    } catch (err) {
+      out.errors.push(`Error reaping ${entry}: ${String(err)}`);
+    }
+  }
+  if (out.deleted > 0) log("info", "cleanup", `Workspace reaper removed ${out.deleted} stale workspace(s)`);
+  return out;
 }
 
 /**

@@ -94,7 +94,10 @@ export function makeHttpProviderError(
   // common on 429 + 503 but providers occasionally emit it elsewhere; we
   // forward whatever they send so the cooldown layer can honour it.
   const retryAfterHeader = response.headers.get("retry-after");
-  const retryAfterSec = retryAfterHeader != null ? parseRetryAfter(retryAfterHeader) : null;
+  // Cap the honored Retry-After at 5 minutes. A malicious/misconfigured
+  // endpoint can otherwise emit a multi-hour (up to the 24h default) value and
+  // stall an entire benchmark batch. (Audit M8.)
+  const retryAfterSec = retryAfterHeader != null ? parseRetryAfter(retryAfterHeader, { maxSeconds: 300 }) : null;
   return new ProviderFailureError({
     ...context,
     kind: classification.kind,
