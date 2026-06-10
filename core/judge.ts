@@ -249,33 +249,38 @@ function judgeCorrectness(
 function judgeRegression(
   oracle: Oracle,
   workspacePath: string,
-): { score: number; details: Record<string, "pass" | "fail">; command_results: JudgeCommandResult[] } {
-  const details: Record<string, "pass" | "fail"> = {};
+): { score: number; details: Record<string, "pass" | "fail" | "unsupported">; command_results: JudgeCommandResult[] } {
+  const details: Record<string, "pass" | "fail" | "unsupported"> = {};
   const commandResults: JudgeCommandResult[] = [];
   let total = 0;
   let passed = 0;
 
   for (const check of oracle.checks.regression) {
-    total++;
     if (check.command) {
+      total++;
       const commandResult = runCommand(check.id, "regression", check.command, workspacePath);
       commandResults.push(commandResult);
-      details[check.id] = commandResult.status === "pass" ? "pass" : "fail";
+      details[check.id] = commandResult.status === "pass" ? "pass" : commandResult.status === "fail" ? "fail" : "unsupported";
       if (commandResult.status === "pass") passed++;
     } else {
-      details[check.id] = "pass";
-      passed++;
+      // A regression check with no command is not evaluable — treat it as
+      // unsupported and EXCLUDE it from the score. Counting it as a free pass
+      // let under-specified oracles inflate the regression credit. (Audit H6.)
+      details[check.id] = "unsupported";
       commandResults.push({
         id: check.id,
         scope: "regression",
         command: "",
-        status: "pass",
-        summary: "Regression check had no command and was treated as pass",
-        exitCode: 0,
+        status: "unsupported",
+        summary: "Regression check has no command and is not evaluable — not counted",
+        errorKind: "unevaluable",
       });
     }
   }
 
+  // No evaluable regression checks → nothing could have regressed: score 1.0,
+  // same as a task that ships no regression suite. The fix is that command-less
+  // checks no longer contribute a positive signal to a partially-evaluable set.
   return { score: total > 0 ? passed / total : 1, details, command_results: commandResults };
 }
 

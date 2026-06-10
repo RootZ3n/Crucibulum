@@ -583,7 +583,9 @@ export interface VerificationResults {
   };
   regression: {
     score: number;
-    details: Record<string, "pass" | "fail">;
+    // "unsupported" = a regression check with no runnable command; it is
+    // excluded from the score rather than counted as a free pass. (Audit H6.)
+    details: Record<string, "pass" | "fail" | "unsupported">;
     command_results?: JudgeCommandResult[] | undefined;
   };
   integrity: {
