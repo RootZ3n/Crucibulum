@@ -47,7 +47,7 @@
       "id": "IO1-Q4",
       "question": "Reply with a SINGLE emoji representing happiness. Nothing else.",
       "scoring_type": "regex_match",
-      "pattern": "^\\s*[\\p{Emoji_Presentation}\\p{Emoji}\\u200d]+\\s*$",
+      "pattern": "^\\s*[\\p{Emoji_Presentation}\\u200d\\uFE0F]+\\s*$",
       "maxLength": 20,
       "weight": 2,
       "tags": [
