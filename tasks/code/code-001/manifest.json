@@ -24,9 +24,7 @@
       "scoring_type": "text_match_all",
       "pass_phrases": [
         "sort",
-        "score",
-        "b score",
-        "a score"
+        "score"
       ],
       "weight": 2,
       "tags": [
