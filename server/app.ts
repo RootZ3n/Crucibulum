@@ -129,6 +129,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Cr
       return void await health.handleHealth(req, res);
     }
 
+    if (path === "/api/health/logs" && method === "GET") return void await health.handleHealthLogs(req, res);
     if (path === "/api/scorers" && method === "GET") return void await health.handleScorers(req, res);
     if (path === "/api/scorers/health" && method === "GET") return void await health.handleScorersHealth(req, res);
     if (path === "/api/health/adapters" && method === "GET") return void await health.handleAdaptersHealth(req, res);

@@ -5,6 +5,7 @@
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { sendJSON, log } from "./shared.js";
+import { readRecentLogs } from "../../utils/logger.js";
 import { getAdapterCatalog } from "../../adapters/registry.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "../../core/judge.js";
 import { describeDefaultJudge, resolveJudgeConfig } from "../../core/judge-config.js";
@@ -21,6 +22,17 @@ export async function handleHealth(_req: IncomingMessage, res: ServerResponse): 
     auth: { enabled: false, scheme: "none", note: "no built-in auth — operator owns network-layer access control" },
     uptime: process.uptime(),
   });
+}
+
+export async function handleHealthLogs(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  // Operator visibility (Audit C1): tail the persisted server log. A detached
+  // server has no terminal, so this is the only window into reaper activity,
+  // startup warnings, and crash traces without reproducing the failure.
+  const url = new URL(req.url ?? "/", "http://localhost");
+  const requested = parseInt(url.searchParams.get("limit") ?? "100", 10);
+  const limit = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), 1000) : 100;
+  const logs = readRecentLogs(limit);
+  sendJSON(res, 200, { count: logs.length, limit, logs });
 }
 
 export async function handleScorers(_req: IncomingMessage, res: ServerResponse): Promise<void> {
