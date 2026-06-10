@@ -27,6 +27,7 @@ import type { JudgeResult } from "./judge.js";
 import type { CrucibulumAdapter } from "../adapters/base.js";
 import type { WorkspaceInfo } from "./workspace.js";
 import { sha256Object } from "../utils/hashing.js";
+import { redactDeep, redactSecrets } from "./redact.js";
 import { hashManifest } from "./manifest.js";
 import { estimateCost } from "../utils/cost.js";
 import { log } from "../utils/logger.js";
@@ -347,9 +348,35 @@ export function buildBundle(input: BundleBuildInput): EvidenceBundle {
  * The bundle hash is recomputed afterwards so the stored signature still
  * matches the persisted id.
  */
+/**
+ * Scrub provider-error subtrees of any embedded credentials before the bundle
+ * is hashed, signed, and persisted. Provider 401/403/429 bodies routinely echo
+ * the Authorization header or key fragments, and those land in timeline error
+ * details and provider_attempts. Redacting BEFORE signing keeps the stored
+ * hash consistent with the stored (redacted) content. (Audit H2.)
+ *
+ * Mutates in place. Scoped to the error/diagnostic subtrees so model output
+ * (diffs, responses) is left intact.
+ */
+export function redactBundleSecrets(bundle: EvidenceBundle): void {
+  if (Array.isArray(bundle.timeline)) {
+    bundle.timeline = redactDeep(bundle.timeline);
+  }
+  if (Array.isArray(bundle.provider_attempts)) {
+    bundle.provider_attempts = redactDeep(bundle.provider_attempts);
+  }
+  if (bundle.usage && typeof bundle.usage.provider_cost_note === "string") {
+    bundle.usage.provider_cost_note = redactSecrets(bundle.usage.provider_cost_note);
+  }
+}
+
 export function storeBundle(bundle: EvidenceBundle): string {
   const runsDir = process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs");
   mkdirSync(runsDir, { recursive: true });
+
+  // Redact before any hash/signature is computed so the persisted hash covers
+  // the redacted payload. (Audit H2.)
+  redactBundleSecrets(bundle);
 
   // Belt on top of the random-suffix suspenders: even if the random suffix
   // collides (vanishingly unlikely) we never overwrite. Rename the bundle

@@ -32,6 +32,14 @@ export function redactSecrets(input: unknown): string {
   // 1. OpenRouter keys (`sk-or-v1-…`) — the highest-value secret, masked first
   //    so it is gone even if no surrounding `apiKey:`/`Bearer` context exists.
   s = s.replace(/sk-or-v1-[A-Za-z0-9._-]+/gi, REDACTED);
+  // 1b. Anthropic keys (`sk-ant-…`) — hyphens mean the generic sk- rule below
+  //     stops at the first dash, so match these explicitly first.
+  s = s.replace(/sk-ant-[A-Za-z0-9._-]+/gi, REDACTED);
+  // 1c. Google API keys (`AIza…`, ~39 chars) and JWTs (`eyJ…` three segments).
+  s = s.replace(/AIza[0-9A-Za-z._-]{20,}/g, REDACTED);
+  s = s.replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, REDACTED);
+  // 1d. Google-style `?key=`/`&key=` URL credential params.
+  s = s.replace(/([?&]key=)[^&\s"',}]+/gi, `$1${REDACTED}`);
   // 2. Other OpenAI-style `sk-…` keys (length-gated to avoid masking prose).
   s = s.replace(/sk-[A-Za-z0-9]{20,}/gi, REDACTED);
   // 3. Authorization header values, with or without a `Bearer` prefix and in
@@ -51,6 +59,24 @@ export function redactSecrets(input: unknown): string {
     `$1${REDACTED}`,
   );
   return s;
+}
+
+/**
+ * Recursively redact every string value in a JSON-serializable structure,
+ * preserving shape. Used to scrub provider-error subtrees before they are
+ * hashed into and persisted in an evidence bundle. (Audit H2.)
+ */
+export function redactDeep<T>(value: T): T {
+  if (typeof value === "string") return redactSecrets(value) as unknown as T;
+  if (Array.isArray(value)) return value.map((v) => redactDeep(v)) as unknown as T;
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = redactDeep(v);
+    }
+    return out as T;
+  }
+  return value;
 }
 
 function stringifySafely(input: unknown): string {

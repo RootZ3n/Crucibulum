@@ -93,7 +93,10 @@ export class GoogleAdapter implements CrucibulumAdapter {
       return { ok: false, reason: providerErrorDetail(providerError), providerError };
     }
     try {
-      const res = await fetch(`${GOOGLE_BASE}/models?key=${this.apiKey}`, {
+      // Key goes in the x-goog-api-key header, not the URL query — query
+      // strings leak into access logs, proxies, and error bodies. (Audit H2/L6.)
+      const res = await fetch(`${GOOGLE_BASE}/models`, {
+        headers: { "x-goog-api-key": this.apiKey },
         signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
       });
       if (!res.ok) {
@@ -208,10 +211,11 @@ async function callGoogle(
 ): Promise<{ text: string; tokensIn: number; tokensOut: number }> {
   const generationConfig = buildGoogleGenerationConfig(options);
   const res = await fetch(
-    `${GOOGLE_BASE}/models/${model}:generateContent?key=${apiKey}`,
+    `${GOOGLE_BASE}/models/${encodeURIComponent(model)}:generateContent`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      // Key in the header, not the query string. (Audit H2/L6.)
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemInstruction }] },
         contents,
