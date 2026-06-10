@@ -38,7 +38,7 @@
     }
   ],
   "scoring": {
-    "pass_threshold": 0.7
+    "pass_threshold": 0.85
   },
   "metadata": {
     "author": "crucibulum-core",

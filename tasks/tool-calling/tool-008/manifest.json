@@ -56,6 +56,8 @@
     "hash": "sha256:f82409c35fce085483004eada9da7bacad536ec6a73c9fc4b18ef10e68ca1816"
   },
   "metadata": {
+    "status": "quarantined",
+    "quarantine_reason": "Claims to measure verification discipline (read-back after write) but oracle only checks file content. Read-back is never observed. 100% FP on stated dimension.",
     "author": "crucibulum-core",
     "created": "2026-05-20",
     "tags": [
