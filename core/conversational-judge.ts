@@ -1502,7 +1502,19 @@ function scoreRoleplayContinuityFactMatch(q: ConversationalQuestion, response: s
     return { passed: false, reason: "roleplay_continuity_fact_match requires at least one required_fact on the manifest question" };
   }
 
-  const factMatched = (f: { variants: string[] }) => f.variants.some((v) => lower.includes(v.toLowerCase()));
+  // Short variants (≤5 chars) match on word boundaries so a recipient
+  // name like "mira" lands on "Mira" but not "miracle"/"admirable". Longer
+  // multi-word variants ("river path") keep substring matching. (Audit
+  // roleplay-continuity-001.)
+  const variantMatches = (v: string): boolean => {
+    const vl = v.toLowerCase();
+    if (vl.length <= 5) {
+      const escaped = vl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return new RegExp(`\\b${escaped}\\b`).test(lower);
+    }
+    return lower.includes(vl);
+  };
+  const factMatched = (f: { variants: string[] }) => f.variants.some(variantMatches);
   const missing = requiredFacts.filter((f) => !factMatched(f));
 
   if (missing.length === 0) {
