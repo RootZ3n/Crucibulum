@@ -3,7 +3,7 @@
  * Git-based isolation. Clone task repo, reset between runs, snapshot state.
  */
 
-import { execSync } from "node:child_process";
+import { execSync, execFileSync } from "node:child_process";
 import { mkdirSync, existsSync, rmSync, cpSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -69,14 +69,26 @@ export function createWorkspace(taskRepoPath: string, taskId: string): Workspace
     /* non-git repo */
   }
 
-  // Run setup script if it exists
+  // Run setup script if it exists — OPT-IN ONLY.
+  //
+  // .crucibulum/setup.sh ships inside an arbitrary task repo, so auto-executing
+  // it ran untrusted shell as the service user (with read access to plaintext
+  // provider keys in .env). A "benchmark task" was therefore a trojan. The
+  // script is still copied into the workspace by cpSync, but it is never run
+  // unless the operator explicitly sets LUAK_ALLOW_SETUP_EXEC=true. (Audit C3.)
   const setupScript = join(wsPath, ".crucibulum", "setup.sh");
   if (existsSync(setupScript)) {
-    log("info", "workspace", "Running setup script");
-    try {
-      execSync(`bash "${setupScript}"`, { cwd: wsPath, stdio: "pipe", timeout: 30_000 });
-    } catch (err) {
-      log("warn", "workspace", `Setup script failed: ${String(err).slice(0, 200)}`);
+    if (process.env["LUAK_ALLOW_SETUP_EXEC"] === "true") {
+      log("warn", "workspace", "LUAK_ALLOW_SETUP_EXEC=true — executing task-provided .crucibulum/setup.sh (ARBITRARY untrusted code from the task repo)");
+      try {
+        // execFileSync (no shell) so the workspace path can't be abused for
+        // shell injection even when exec is opted in.
+        execFileSync("bash", [setupScript], { cwd: wsPath, stdio: "pipe", timeout: 30_000 });
+      } catch (err) {
+        log("warn", "workspace", `Setup script failed: ${String(err).slice(0, 200)}`);
+      }
+    } else {
+      log("warn", "workspace", "Task ships .crucibulum/setup.sh but auto-execution is disabled — skipping (copied into workspace, NOT run). Set LUAK_ALLOW_SETUP_EXEC=true to opt in.");
     }
   }
 

@@ -35,7 +35,14 @@ describe("fixture corpus validation", () => {
   });
 
   it("tool-006 workspace makes locked.txt deletion fail before model execution", () => {
+    // This fixture's setup.sh chmods the directory non-writable so the deletion
+    // fails. setup.sh is opt-in since the C3 fix (auto-exec was an RCE vector),
+    // so this fixture-audit test explicitly opts in to exercise that setup.
+    const prevAllow = process.env["LUAK_ALLOW_SETUP_EXEC"];
+    process.env["LUAK_ALLOW_SETUP_EXEC"] = "true";
     const workspace = createWorkspace("tasks/tool-calling/tool-006/repo", "tool-006-fixture-audit");
+    if (prevAllow === undefined) delete process.env["LUAK_ALLOW_SETUP_EXEC"];
+    else process.env["LUAK_ALLOW_SETUP_EXEC"] = prevAllow;
     try {
       assert.throws(
         () => execFileSync("rm", ["tool-trial/locked.txt"], { cwd: workspace.path, stdio: "pipe" }),
