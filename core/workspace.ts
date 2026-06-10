@@ -4,8 +4,8 @@
  */
 
 import { execSync, execFileSync } from "node:child_process";
-import { mkdirSync, existsSync, rmSync, cpSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { mkdirSync, existsSync, rmSync, cpSync, readdirSync, readFileSync, writeFileSync, lstatSync } from "node:fs";
+import { join, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { log } from "../utils/logger.js";
 
@@ -152,17 +152,39 @@ function writeBaselineSnapshot(root: string): void {
   }
 }
 
-function snapshotFiles(dir: string, prefix: string = ""): Record<string, string> {
+// Snapshot bounds: an adversarial task repo could otherwise OOM the host with
+// one huge file, or disclose out-of-workspace files via a symlink. (Audit H8.)
+const SNAPSHOT_MAX_FILE_BYTES = 1024 * 1024;        // 1MB per file
+const SNAPSHOT_MAX_TOTAL_BYTES = 50 * 1024 * 1024;  // 50MB total
+
+function snapshotFiles(dir: string, prefix: string = "", root: string = dir, budget: { total: number } = { total: 0 }): Record<string, string> {
   const out: Record<string, string> = {};
+  const rootResolved = resolve(root);
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === ".git" || entry.name === "node_modules" || entry.name === BASELINE_FILE) {
       continue;
     }
     const abs = join(dir, entry.name);
     const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
-    if (entry.isDirectory()) {
-      Object.assign(out, snapshotFiles(abs, rel));
-    } else if (entry.isFile()) {
+    // lstat (not stat) so symlinks are detected and never followed — a link to
+    // /etc/passwd or to a dir outside the workspace must not be read/recursed.
+    let st;
+    try { st = lstatSync(abs); } catch { continue; }
+    if (st.isSymbolicLink()) continue;
+    const absResolved = resolve(abs);
+    if (absResolved !== rootResolved && !absResolved.startsWith(rootResolved + sep)) continue;
+    if (st.isDirectory()) {
+      Object.assign(out, snapshotFiles(abs, rel, root, budget));
+    } else if (st.isFile()) {
+      if (st.size > SNAPSHOT_MAX_FILE_BYTES) {
+        log("warn", "workspace", `Skipping oversized file in snapshot (${st.size} bytes > ${SNAPSHOT_MAX_FILE_BYTES}): ${rel}`);
+        continue;
+      }
+      if (budget.total + st.size > SNAPSHOT_MAX_TOTAL_BYTES) {
+        log("warn", "workspace", `Snapshot total cap (${SNAPSHOT_MAX_TOTAL_BYTES} bytes) reached; skipping remaining files starting at ${rel}`);
+        continue;
+      }
+      budget.total += st.size;
       out[rel] = readFileSync(abs, "utf-8");
     }
   }

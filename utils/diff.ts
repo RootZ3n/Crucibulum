@@ -2,8 +2,9 @@
  * Luak — Diff Utilities
  */
 import { execFileSync } from "node:child_process";
-import { join } from "node:path";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join, resolve, sep } from "node:path";
+import { existsSync, readFileSync, readdirSync, lstatSync } from "node:fs";
+import { log } from "./logger.js";
 
 const BASELINE_FILE = ".crucibulum-baseline.json";
 
@@ -96,17 +97,38 @@ function getSnapshotDiff(workspacePath: string): { files_changed: FileDiff[]; fi
   return { files_changed, files_created, files_deleted };
 }
 
-function snapshotFiles(dir: string, prefix: string = ""): Record<string, string> {
+// Snapshot bounds mirror core/workspace.ts: cap per-file/total bytes and never
+// follow symlinks, so an adversarial workspace can't OOM the host or disclose
+// out-of-workspace files. (Audit H8.)
+const SNAPSHOT_MAX_FILE_BYTES = 1024 * 1024;        // 1MB per file
+const SNAPSHOT_MAX_TOTAL_BYTES = 50 * 1024 * 1024;  // 50MB total
+
+function snapshotFiles(dir: string, prefix: string = "", root: string = dir, budget: { total: number } = { total: 0 }): Record<string, string> {
   const out: Record<string, string> = {};
+  const rootResolved = resolve(root);
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === ".git" || entry.name === "node_modules" || entry.name === BASELINE_FILE) {
       continue;
     }
     const abs = join(dir, entry.name);
     const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
-    if (entry.isDirectory()) {
-      Object.assign(out, snapshotFiles(abs, rel));
-    } else if (entry.isFile()) {
+    let st;
+    try { st = lstatSync(abs); } catch { continue; }
+    if (st.isSymbolicLink()) continue;
+    const absResolved = resolve(abs);
+    if (absResolved !== rootResolved && !absResolved.startsWith(rootResolved + sep)) continue;
+    if (st.isDirectory()) {
+      Object.assign(out, snapshotFiles(abs, rel, root, budget));
+    } else if (st.isFile()) {
+      if (st.size > SNAPSHOT_MAX_FILE_BYTES) {
+        log("warn", "diff", `Skipping oversized file in snapshot (${st.size} bytes): ${rel}`);
+        continue;
+      }
+      if (budget.total + st.size > SNAPSHOT_MAX_TOTAL_BYTES) {
+        log("warn", "diff", `Snapshot total cap reached; skipping remaining files at ${rel}`);
+        continue;
+      }
+      budget.total += st.size;
       out[rel] = readFileSync(abs, "utf-8");
     }
   }
