@@ -57,7 +57,11 @@
     "rubrics": ["dm_narrator", "scene_continuity"],
     "pass_threshold": 0.7
   },
-  "quarantine": null,
+  "status": "quarantined",
+  "quarantine": {
+    "reason": "scoring_type 'roleplay_rubric' is not implemented by any scorer — every question falls through to the default case and fails with RUBRIC_MISMATCH (Audit S2). Quarantined until a roleplay_rubric scorer exists.",
+    "since": "2026-06-10"
+  },
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-05-25",

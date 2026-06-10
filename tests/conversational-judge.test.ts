@@ -134,3 +134,26 @@ describe("conversational judge memory discipline (refusal_check)", () => {
     assert.match(scored.failure_reason ?? "", /fabricat/i);
   });
 });
+
+describe("conversational judge default (unimplemented scoring_type) guard", () => {
+  // roleplay_rubric was declared on three roleplay manifests but never had a
+  // scorer case. Before the default guard it fell through the switch with
+  // passed=false and failure_reason=null — a silent always-fail. (Audit S2.)
+  const UNKNOWN_QUESTION = {
+    id: "RP-Q",
+    question: "stay in character",
+    scoring_type: "roleplay_rubric",
+    weight: 1,
+    tags: ["roleplay"],
+  } as unknown as ConversationalQuestion;
+
+  it("fails closed with a RUBRIC_MISMATCH diagnostic instead of silently", () => {
+    const scored = scoreConversationalQuestion(
+      UNKNOWN_QUESTION,
+      "A perfectly in-character, helpful reply.",
+    );
+    assert.equal(scored.passed, false);
+    assert.match(scored.failure_reason ?? "", /RUBRIC_MISMATCH/);
+    assert.match(scored.failure_reason ?? "", /roleplay_rubric/);
+  });
+});

@@ -151,7 +151,7 @@ describe("Luak Phase 18 · composite-vs-correctness label clarity (offline)", ()
   it("P11 · docs link the scoring-invariant module + the audit reports as the authoritative cross-references", () => {
     assert.match(DOC, /core\/scoring-invariant\.ts/);
     assert.match(DOC, /reports\/scoring-integrity\/context-degradation-001/);
-    assert.match(DOC, /core\/conversational-runner\.ts:358/);
+    assert.match(DOC, /core\/conversational-runner\.ts:390/);
     assert.match(DOC, /core\/bundle\.ts:141/);
   });
 
@@ -207,10 +207,10 @@ describe("Luak Phase 18 · composite-vs-correctness label clarity (offline)", ()
     // The doc cites two formula lines; the cited paths must exist.
     const runner = readFileSync(join(ROOT, "core", "conversational-runner.ts"), "utf-8").split("\n");
     const bundle = readFileSync(join(ROOT, "core", "bundle.ts"), "utf-8").split("\n");
-    // Phase 18 doc says `core/conversational-runner.ts:358` — be
-    // tolerant about exact line drift; check a 10-line window
-    // around the citation for the function declaration.
-    const runnerHit = runner.slice(348, 372).join("\n");
+    // Phase 18 doc says `core/conversational-runner.ts:390` — be
+    // tolerant about exact line drift; check a window around the
+    // citation for the function declaration.
+    const runnerHit = runner.slice(380, 404).join("\n");
     assert.match(runnerHit, /function combineConversationalScore/);
     const bundleHit = bundle.slice(135, 155).join("\n");
     assert.match(bundleHit, /function combineWeightedScore/);

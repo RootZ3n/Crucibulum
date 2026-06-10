@@ -105,6 +105,30 @@ export function persistConversation(sessionId: string, messages: ChatMessage[]):
   writeFileSync(sessionPath(sessionId), JSON.stringify({ session_id: sessionId, messages }, null, 2));
 }
 
+/**
+ * Scoring types with a real case in the judge's scorer switch
+ * (core/conversational-judge.ts). Anything outside this set falls through to
+ * the `default:` case and fails closed with a RUBRIC_MISMATCH diagnostic — but
+ * a silent always-fail test is a benchmark bug, so we warn at load time too.
+ * (Audit S2.)
+ */
+const KNOWN_SCORING_TYPES = new Set<string>([
+  "text_match", "text_match_all", "refusal_check", "refusal_quality",
+  "recall", "correction", "proactive", "hedge_count", "corporate_check",
+  "regex_match", "numeric_fact_match", "uncertainty_honesty", "absence_honesty",
+  "roleplay_character_consistency", "roleplay_continuity_fact_match", "custom",
+]);
+
+function warnUnknownScoringTypes(manifest: ConversationalManifest): void {
+  for (const q of manifest.questions ?? []) {
+    if (!KNOWN_SCORING_TYPES.has(q.scoring_type)) {
+      log("warn", "conv-runner",
+        `[manifest] ${manifest.id}/${q.id}: unknown scoring_type "${q.scoring_type}" — ` +
+        `no scorer implements it, so this question will always fail with RUBRIC_MISMATCH`);
+    }
+  }
+}
+
 export function loadConversationalManifest(taskId: string): ConversationalManifest {
   // taskId indexes into tasks/<family>/<taskId>/ — reject traversal. (Audit C5.)
   assertSafeId(taskId, "task id");
@@ -128,6 +152,7 @@ export function loadConversationalManifest(taskId: string): ConversationalManife
         throw new Error(`Task ${taskId} is not a conversational task (mode: ${manifest.execution_mode})`);
       }
       assertBenchmarkProvenance(manifest);
+      warnUnknownScoringTypes(manifest);
       return manifest;
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === "ENOENT") continue;

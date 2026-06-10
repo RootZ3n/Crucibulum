@@ -1606,6 +1606,16 @@ export function scoreConversationalQuestion(
       }
       break;
     }
+    default: {
+      // Fail closed on any scoring_type with no case above. Before this guard,
+      // an unrecognized scoring_type (e.g. "roleplay_rubric", which was never
+      // implemented, or a future typo) fell through the switch with
+      // passed=false and failureReason=null — a silent always-fail test that
+      // scored 0 for every model with no diagnostic. (Audit S2.)
+      passed = false;
+      failureReason = `RUBRIC_MISMATCH: scoring_type '${question.scoring_type}' not implemented`;
+      break;
+    }
   }
 
   return {

@@ -25,6 +25,13 @@ const ROLEPLAY_TASKS = [
   'roleplay-boundary-001',
   'roleplay-tone-001',
 ];
+// roleplay_rubric has no scorer — these three always failed with
+// RUBRIC_MISMATCH and were quarantined (Audit S2 / SCORER-FIX-WORK-ORDER Fix 2).
+const QUARANTINED_ROLEPLAY_TASKS = new Set([
+  'roleplay-dm-001',
+  'roleplay-boundary-001',
+  'roleplay-tone-001',
+]);
 const VISION_TASKS = [
   'vision-ocr-001',
   'vision-ui-001',
@@ -85,7 +92,12 @@ describe('Luak roleplay + vision capability scaffold', () => {
       const m = loadManifest('roleplay', id);
       assert.equal(m.family, 'roleplay', `${id}: family must be "roleplay"`);
       assert.equal(m.experimental, true, `${id}: experimental flag must be true`);
-      assert.equal(m.quarantine, null, `${id}: quarantine must be null (not yet quarantined; not yet certified)`);
+      if (QUARANTINED_ROLEPLAY_TASKS.has(id)) {
+        assert.equal(m.status, 'quarantined', `${id}: must be marked status: "quarantined"`);
+        assert.ok(m.quarantine && typeof m.quarantine.reason === 'string', `${id}: quarantine must carry a reason`);
+      } else {
+        assert.equal(m.quarantine, null, `${id}: quarantine must be null (not yet quarantined; not yet certified)`);
+      }
       assert.ok(Array.isArray(m.questions) && m.questions.length >= 3, `${id}: must have at least 3 turns`);
       assert.ok(m.scoring && Array.isArray(m.scoring.rubrics) && m.scoring.rubrics.length > 0, `${id}: must declare scoring.rubrics`);
     }

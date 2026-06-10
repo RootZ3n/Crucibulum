@@ -104,7 +104,7 @@ composite-vs-correctness confusion this doc addresses.
   `reports/scoring-integrity/context-degradation-001/2026-05-27T01-24-28Z-score-reconstruction.md`
   (every legal anchor enumerated; every on-disk bundle classified).
 - Conversational composite formula:
-  `core/conversational-runner.ts:358` (`combineConversationalScore`).
+  `core/conversational-runner.ts:390` (`combineConversationalScore`).
 - Repo-mode composite formula:
   `core/bundle.ts:141` (`combineWeightedScore`).
 - Invariant module: `core/scoring-invariant.ts`.
