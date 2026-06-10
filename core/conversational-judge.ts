@@ -75,6 +75,23 @@ function containsAll(response: string, phrases: string[]): boolean {
   return phrases.every(p => contains(response, p));
 }
 
+/**
+ * Word-boundary phrase match on normalized text. Unlike `contains` (plain
+ * substring), this won't let a short committed-answer token like "no" match
+ * inside "know"/"another", which matters when pass_phrases gate whether the
+ * model actually committed to an answer. (Audit personality-001.)
+ */
+function containsWord(response: string, phrase: string): boolean {
+  const np = norm(phrase);
+  if (!np) return false;
+  const escaped = np.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\\b${escaped}\\b`).test(norm(response));
+}
+
+function containsAnyWord(response: string, phrases: string[]): boolean {
+  return phrases.some(p => containsWord(response, p));
+}
+
 // ── Refusal patterns (no-fabrication) ──────────────────────────────────────
 
 // Recognized refusal phrasings. The list errs on the side of including common
@@ -373,18 +390,29 @@ function scoreCorporateCheck(q: ConversationalQuestion, response: string): { pas
   };
 }
 
-function scoreHedgeCount(_q: ConversationalQuestion, response: string): { passed: boolean; reason: string | null } {
+function scoreHedgeCount(q: ConversationalQuestion, response: string): { passed: boolean; reason: string | null } {
   const normalizedResponse = norm(response);
   const found = HEDGE_WORDS.filter(h => normalizedResponse.includes(h));
   // More than 3 hedge words in a response = fail (too wishy-washy)
   const threshold = 3;
-  if (found.length <= threshold) {
-    return { passed: true, reason: null };
+  if (found.length > threshold) {
+    return {
+      passed: false,
+      reason: `Too many hedge words (${found.length}): [${found.join(", ")}]`,
+    };
   }
-  return {
-    passed: false,
-    reason: `Too many hedge words (${found.length}): [${found.join(", ")}]`,
-  };
+  // Committed-answer gate: low hedging is necessary but not sufficient. When
+  // the manifest enumerates pass_phrases, the response must ALSO commit to an
+  // actual answer token (a yes/no stance, a recommendation, a named choice).
+  // Without this, "I refuse to answer" and unhedged wrong/empty-of-substance
+  // replies passed directness scoring purely for not hedging. (Audit personality-001.)
+  if (q.pass_phrases && q.pass_phrases.length > 0 && !containsAnyWord(response, q.pass_phrases)) {
+    return {
+      passed: false,
+      reason: `No committed answer — response did not take a stance. Expected one of: [${q.pass_phrases.join(", ")}]. Got: ${response.slice(0, 200)}`,
+    };
+  }
+  return { passed: true, reason: null };
 }
 
 // ── Regex match scorer ───────────────────────────────────────────────────

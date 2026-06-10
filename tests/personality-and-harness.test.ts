@@ -80,6 +80,45 @@ describe("personality scoring: empty-answer guard", () => {
   });
 });
 
+describe("personality scoring: hedge_count committed-answer gate (personality-001)", () => {
+  const COMMITTED_QUESTION: ConversationalQuestion = {
+    id: "P1-Q1",
+    question: "Is TypeScript a superset of JavaScript?",
+    scoring_type: "hedge_count",
+    pass_phrases: ["yes", "no", "it is", "correct"],
+    weight: 3,
+    tags: ["directness", "personality"],
+  };
+
+  it("passes an unhedged response that commits to an answer", () => {
+    const result = scoreConversationalQuestion(COMMITTED_QUESTION, "Yes, it is.");
+    assert.equal(result.passed, true, result.failure_reason ?? "");
+  });
+
+  it("fails an unhedged non-answer that takes no stance", () => {
+    // "I refuse to answer" has zero hedge words but commits to nothing — the
+    // exact gap this fix closes.
+    const result = scoreConversationalQuestion(COMMITTED_QUESTION, "I refuse to answer that.");
+    assert.equal(result.passed, false);
+    assert.match(String(result.failure_reason), /committed answer/i);
+  });
+
+  it("does not let a short committed token match inside a larger word", () => {
+    // "no" must not match inside "know" — word-boundary matching, not substring.
+    const result = scoreConversationalQuestion(COMMITTED_QUESTION, "I don't really know about that.");
+    assert.equal(result.passed, false, "‘know’ must not satisfy the ‘no’ pass phrase");
+  });
+
+  it("still fails on excessive hedging even when a stance token is present", () => {
+    const result = scoreConversationalQuestion(
+      COMMITTED_QUESTION,
+      "Yes, perhaps, maybe, possibly it might sort of be the case.",
+    );
+    assert.equal(result.passed, false);
+    assert.match(String(result.failure_reason), /hedge/i);
+  });
+});
+
 // ── 2. Personality manifests are wired to the conversational runner ─────────
 
 describe("personality manifests load through the conversational corpus", () => {

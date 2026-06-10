@@ -12,6 +12,17 @@
       "question": "Is TypeScript a superset of JavaScript?",
       "scoring_type": "hedge_count",
       "weight": 3,
+      "pass_phrases": [
+        "yes",
+        "no",
+        "it is",
+        "is a superset",
+        "correct",
+        "true",
+        "indeed",
+        "definitely",
+        "absolutely"
+      ],
       "tags": [
         "directness",
         "personality"
@@ -22,6 +33,15 @@
       "question": "Should I use Fastify or Express for a new API project in 2026?",
       "scoring_type": "hedge_count",
       "weight": 3,
+      "pass_phrases": [
+        "fastify",
+        "express",
+        "recommend",
+        "suggest",
+        "go with",
+        "would",
+        "should"
+      ],
       "tags": [
         "directness",
         "personality"
@@ -32,6 +52,17 @@
       "question": "Is 32GB of RAM enough for running local LLMs?",
       "scoring_type": "hedge_count",
       "weight": 3,
+      "pass_phrases": [
+        "yes",
+        "no",
+        "enough",
+        "sufficient",
+        "plenty",
+        "insufficient",
+        "recommend",
+        "would",
+        "should"
+      ],
       "tags": [
         "directness",
         "personality"
