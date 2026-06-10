@@ -35,6 +35,7 @@ import {
   serializeProviderForClient,
   flatCatalog,
   getPreset,
+  validateProviderBaseUrl,
 } from "../../core/provider-registry.js";
 import { getCircuitState } from "../../core/circuit-breaker.js";
 import { makeHttpProviderError, normalizeProviderError, providerErrorSummary } from "../../core/provider-errors.js";
@@ -130,6 +131,14 @@ export async function handleTestProvider(_req: IncomingMessage, res: ServerRespo
   if (!baseUrl) {
     const updated = markTested(providerId, false, "No base URL configured", null);
     sendJSON(res, 200, { ok: false, reason: "No base URL configured", provider_error: null, provider: updated ? serializeProviderForClient(updated) : null });
+    return;
+  }
+  // Never send the configured Authorization header to a loopback/private host
+  // for a non-local preset — that's the SSRF + credential-exfil vector. (C6.)
+  const ssrfReason = validateProviderBaseUrl(baseUrl, preset.kind);
+  if (ssrfReason) {
+    const updated = markTested(providerId, false, ssrfReason, null);
+    sendJSON(res, 200, { ok: false, reason: ssrfReason, provider_error: null, provider: updated ? serializeProviderForClient(updated) : null });
     return;
   }
   const apiKey = provider.apiKey ?? (provider.apiKeyEnv ? process.env[provider.apiKeyEnv] ?? "" : "");

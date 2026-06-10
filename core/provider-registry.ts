@@ -190,6 +190,12 @@ export interface ProviderConfig {
   lastTestedReason: string | null;
   lastTestedError?: StructuredProviderError | null;
   createdAt: number;
+  /**
+   * Non-fatal validation warnings about this provider config — currently the
+   * baseUrl SSRF check (C6). Surfaced to the UI; the /test probe additionally
+   * refuses to send credentials to a baseUrl that fails validation.
+   */
+  warnings?: string[];
 }
 
 export interface ModelEntry {
@@ -401,6 +407,7 @@ export function serializeProviderForClient(p: ProviderConfig): Record<string, un
     supportsModelListing: preset?.supportsModelListing ?? false,
     supportsUsageMetadata: preset?.supportsUsageMetadata ?? false,
     firstClass: preset?.firstClass ?? false,
+    warnings: p.warnings ?? [],
   };
 }
 
@@ -408,6 +415,74 @@ function maskSecret(secret: string): string {
   if (!secret) return "";
   if (secret.length <= 4) return "****";
   return `****${secret.slice(-4)}`;
+}
+
+// ── baseUrl SSRF validation (C6) ─────────────────────────────────────────────
+
+/**
+ * Validate a user-supplied provider baseUrl before it is stored or probed.
+ *
+ * The /test probe sends the provider's configured Authorization header to
+ * `${baseUrl}${probePath}`, so an attacker-chosen baseUrl turns the server
+ * into an unauthenticated SSRF gadget AND exfiltrates the provider key to an
+ * arbitrary host. We require an http(s) scheme and, for non-local presets,
+ * reject loopback / private / link-local hosts. Local presets (Ollama, etc.)
+ * legitimately point at localhost, so they are exempt.
+ *
+ * Returns null when the baseUrl is acceptable (including null/empty, meaning
+ * "use the preset default"), or a human-readable reason string otherwise.
+ */
+export function validateProviderBaseUrl(
+  baseUrl: string | null | undefined,
+  presetKind: ProviderPreset["kind"],
+): string | null {
+  if (baseUrl === null || baseUrl === undefined || baseUrl.trim() === "") return null;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(baseUrl);
+  } catch {
+    return `baseUrl is not a valid URL: ${baseUrl.slice(0, 80)}`;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return `baseUrl must use http: or https: (got ${parsed.protocol})`;
+  }
+
+  // Local providers may legitimately address localhost / LAN.
+  if (presetKind === "local") return null;
+
+  const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (isPrivateOrLocalHost(host)) {
+    return `baseUrl host ${parsed.hostname} is loopback/private/link-local — not allowed for a ${presetKind} provider (credentials would be sent there)`;
+  }
+  return null;
+}
+
+/** True when a hostname/IP literal is loopback, private, or link-local. */
+export function isPrivateOrLocalHost(host: string): boolean {
+  if (!host) return true;
+  if (host === "localhost" || host.endsWith(".localhost")) return true;
+  if (host === "0.0.0.0") return true;
+
+  // IPv6 forms.
+  if (host === "::1" || host === "::") return true;
+  if (host.startsWith("fe80:")) return true;            // link-local
+  if (host.startsWith("fc") || host.startsWith("fd")) return true; // unique-local fc00::/7
+  // IPv4-mapped IPv6 (::ffff:127.0.0.1) — fall through to the v4 check below.
+  const v4mapped = host.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+  const v4 = v4mapped ? v4mapped[1]! : host;
+
+  const m = v4.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const a = Number(m[1]); const b = Number(m[2]);
+    if (a === 127) return true;                          // loopback
+    if (a === 10) return true;                           // private
+    if (a === 172 && b >= 16 && b <= 31) return true;    // private
+    if (a === 192 && b === 168) return true;             // private
+    if (a === 169 && b === 254) return true;             // link-local
+    if (a === 0) return true;                            // "this network"
+  }
+  return false;
 }
 
 // ── Write helpers ──────────────────────────────────────────────────────────
@@ -437,11 +512,13 @@ export function addProvider(input: AddProviderInput): ProviderConfig {
   const preset = getPreset(input.presetId);
   if (!preset) throw new Error(`Unknown preset: ${input.presetId}`);
   const now = Date.now();
+  const baseUrl = (input.baseUrl ?? null) || null;
+  const ssrfWarning = validateProviderBaseUrl(baseUrl, preset.kind);
   const cfg: ProviderConfig = {
     id: newId("prov"),
     presetId: preset.id,
     label: input.label?.trim() || preset.label,
-    baseUrl: (input.baseUrl ?? null) || null,
+    baseUrl,
     apiKeyEnv: (input.apiKeyEnv ?? preset.envKey) || null,
     apiKey: (input.apiKey ?? null) || null,
     enabled: input.enabled !== false,
@@ -450,7 +527,9 @@ export function addProvider(input: AddProviderInput): ProviderConfig {
     lastTestedReason: null,
     lastTestedError: null,
     createdAt: now,
+    ...(ssrfWarning ? { warnings: [ssrfWarning] } : {}),
   };
+  if (ssrfWarning) log("warn", "registry", `Provider ${cfg.id} (${preset.id}) baseUrl flagged: ${ssrfWarning}`);
   mutate((s) => { s.providers.push(cfg); });
   return cfg;
 }
@@ -469,7 +548,18 @@ export function updateProvider(id: string, patch: UpdateProviderInput): Provider
     const p = s.providers.find((x) => x.id === id);
     if (!p) return;
     if (patch.label !== undefined) p.label = patch.label.trim() || p.label;
-    if (patch.baseUrl !== undefined) p.baseUrl = patch.baseUrl || null;
+    if (patch.baseUrl !== undefined) {
+      p.baseUrl = patch.baseUrl || null;
+      // Re-validate against the SSRF policy whenever baseUrl changes. (C6)
+      const preset = getPreset(p.presetId);
+      const ssrfWarning = validateProviderBaseUrl(p.baseUrl, preset?.kind ?? "cloud");
+      if (ssrfWarning) {
+        p.warnings = [ssrfWarning];
+        log("warn", "registry", `Provider ${p.id} (${p.presetId}) baseUrl flagged: ${ssrfWarning}`);
+      } else {
+        delete p.warnings;
+      }
+    }
     if (patch.apiKeyEnv !== undefined) p.apiKeyEnv = patch.apiKeyEnv || null;
     if (patch.apiKey !== undefined) p.apiKey = patch.apiKey || null;
     if (patch.enabled !== undefined) p.enabled = patch.enabled;
