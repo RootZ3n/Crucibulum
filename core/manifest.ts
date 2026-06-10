@@ -9,6 +9,7 @@ import { resolve, join } from "node:path";
 import type { TaskManifest, AgentVisibleManifest } from "../adapters/base.js";
 import { sha256Hex } from "../utils/hashing.js";
 import { log } from "../utils/logger.js";
+import { assertSafeId } from "../utils/safe-id.js";
 
 const TASKS_DIR = join(process.cwd(), "tasks");
 const PUBLIC_STATUSES = new Set(["public", "private", "mixed"]);
@@ -36,6 +37,9 @@ function discoverFamilies(): string[] {
  * Searches all family directories under tasks/.
  */
 export function loadManifestRaw(taskId: string): any {
+  // taskId indexes into tasks/<family>/<taskId>/ — reject path traversal so a
+  // crafted id like `../../etc/passwd` cannot escape TASKS_DIR. (Audit C5.)
+  assertSafeId(taskId, "task id");
   const families = discoverFamilies();
   for (const family of families) {
     const manifestPath = join(TASKS_DIR, family, taskId, "manifest.json");

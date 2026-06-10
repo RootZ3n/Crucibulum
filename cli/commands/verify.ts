@@ -4,14 +4,16 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { verifyBundle } from "../../core/bundle.js";
+import { isSafeId, safeJoinId } from "../../utils/safe-id.js";
 import type { EvidenceBundle } from "../../adapters/base.js";
 
 export async function verifyCommand(args: string[]): Promise<void> {
   const bundleId = args[0];
   if (!bundleId) { console.error("Usage: luak verify <bundle_id>"); process.exit(3); }
+  if (!isSafeId(bundleId)) { console.error(`Invalid bundle id: ${bundleId}`); process.exit(3); }
 
   const runsDir = process.env["CRUCIBULUM_RUNS_DIR"] ?? join(process.cwd(), "runs");
-  const filePath = join(runsDir, `${bundleId}.json`);
+  const filePath = safeJoinId(runsDir, bundleId, ".json", "bundle id");
 
   try {
     const raw = readFileSync(filePath, "utf-8");

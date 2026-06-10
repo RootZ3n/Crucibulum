@@ -33,6 +33,7 @@ import { sha256Object } from "../utils/hashing.js";
 import { estimateCost } from "../utils/cost.js";
 import { log } from "../utils/logger.js";
 import { formatDuration } from "../utils/timing.js";
+import { assertSafeId, safeJoinId } from "../utils/safe-id.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
 import { assertBenchmarkProvenance } from "./manifest.js";
 import { canonicalPercent } from "../types/scores.js";
@@ -83,7 +84,10 @@ const MEMORY_DIR = resolve(process.env["CRUCIBULUM_MEMORY_DIR"] ?? join(process.
 const NO_VISIBLE_REASONING_INSTRUCTION = "Benchmark rule: do not output chain-of-thought, hidden reasoning, or <think> blocks. Return only the final answer required by the prompt. If the prompt asks for a single word, line, or concise answer, output only that.";
 
 function sessionPath(sessionId: string): string {
-  return join(MEMORY_DIR, `${sessionId}.json`);
+  // sessionId can originate from an untrusted manifest. Without validation,
+  // `../../foo` would let persistConversation write outside MEMORY_DIR
+  // (arbitrary file write → RCE by overwriting a script). (Audit C5.)
+  return safeJoinId(MEMORY_DIR, sessionId, ".json", "session id");
 }
 
 export function loadPersistedConversation(sessionId: string): ChatMessage[] {
@@ -101,6 +105,8 @@ export function persistConversation(sessionId: string, messages: ChatMessage[]):
 }
 
 export function loadConversationalManifest(taskId: string): ConversationalManifest {
+  // taskId indexes into tasks/<family>/<taskId>/ — reject traversal. (Audit C5.)
+  assertSafeId(taskId, "task id");
   // Search through task family directories
   const families = [
     "identity", "truthfulness", "safety", "memory", "proactive", "personality", "adversarial_chat", "cost_efficiency",
