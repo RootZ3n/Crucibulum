@@ -60,6 +60,21 @@ export interface LeaderboardEntry {
   verified: boolean;
 }
 
+/**
+ * Trust gate for the CLI leaderboard path. Mirrors the HTTP route's
+ * eligibility filter (`filterLeaderboardEligibleBundles` in
+ * server/routes/leaderboard.ts): a bundle is only rankable if its hash +
+ * HMAC signature re-verified on load (`trust.bundle_verified === true`).
+ *
+ * Without this, anyone who can drop a `.json` into runs/ forges a #1 entry —
+ * loadVerifiedBundle returns tampered/legacy bundles (with bundle_verified
+ * forced to false) so operators can still inspect them, but they must never
+ * reach scoring. C1 in the Fable 5 audit.
+ */
+export function filterVerifiedBundles(bundles: EvidenceBundle[]): EvidenceBundle[] {
+  return bundles.filter((b) => b.trust?.bundle_verified === true);
+}
+
 export function loadBundles(): EvidenceBundle[] {
   try {
     const files = readdirSync(RUNS_DIR).filter(f => f.endsWith(".json") && !f.endsWith(".crucible.json"));
@@ -72,7 +87,14 @@ export function loadBundles(): EvidenceBundle[] {
         log("warn", "aggregator", `Skipping unreadable bundle file ${f}: ${String(err).slice(0, 120)}`);
       }
     }
-    return bundles;
+    // Quarantine unverified bundles before they ever reach aggregation. The
+    // HTTP leaderboard re-verifies on read; the CLI path historically did not.
+    const verified = filterVerifiedBundles(bundles);
+    const dropped = bundles.length - verified.length;
+    if (dropped > 0) {
+      log("warn", "aggregator", `Excluded ${dropped} unverified bundle(s) from leaderboard (hash/HMAC re-check failed)`);
+    }
+    return verified;
   } catch { return []; }
 }
 
@@ -87,9 +109,12 @@ export function aggregateByModel(bundles: EvidenceBundle[]): Map<string, Evidenc
   return groups;
 }
 
-export function buildLeaderboardEntry(modelKey: string, bundles: EvidenceBundle[]): LeaderboardEntry {
+export function buildLeaderboardEntry(modelKey: string, inputBundles: EvidenceBundle[]): LeaderboardEntry {
+  // Defense in depth: even if a caller bypasses loadBundles, never score an
+  // unverified bundle. A forged/tampered/legacy bundle must not rank. (C1)
+  const bundles = filterVerifiedBundles(inputBundles);
   if (bundles.length === 0) {
-    throw new Error(`buildLeaderboardEntry: cannot build entry for ${modelKey} with zero bundles`);
+    throw new Error(`buildLeaderboardEntry: cannot build entry for ${modelKey} with zero verified bundles`);
   }
   const first = bundles[0]!;
   const taskResults = new Map<string, EvidenceBundle[]>();

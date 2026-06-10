@@ -6,7 +6,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { aggregateByModel, buildLeaderboardEntry } from "../leaderboard/aggregator.js";
+import { aggregateByModel, buildLeaderboardEntry, filterVerifiedBundles } from "../leaderboard/aggregator.js";
 import type { EvidenceBundle } from "../adapters/base.js";
 
 function makeMockBundle(overrides: Partial<{
@@ -23,6 +23,7 @@ function makeMockBundle(overrides: Partial<{
   failureMode: string | null;
   timestampStart: string;
   timestampEnd: string;
+  verified: boolean;
 }>): EvidenceBundle {
   const o = {
     adapter: "mock",
@@ -38,6 +39,7 @@ function makeMockBundle(overrides: Partial<{
     failureMode: null,
     timestampStart: "2026-01-01T00:00:00Z",
     timestampEnd: "2026-01-01T00:01:00Z",
+    verified: true,
     ...overrides,
   };
 
@@ -83,7 +85,7 @@ function makeMockBundle(overrides: Partial<{
       rubric_hidden: true,
       narration_ignored: true,
       state_based_scoring: true,
-      bundle_verified: true,
+      bundle_verified: o.verified,
       deterministic_judge_authoritative: true,
       review_layer_advisory: true,
     },
@@ -260,5 +262,42 @@ describe("pass@k", () => {
     assert.equal(entry.review_signals.review_blocked_rate, 0.2);
     assert.equal(entry.verdict_metrics?.model_failures, 4);
     assert.equal(entry.verdict_metrics?.not_complete, 0);
+  });
+});
+
+// ── C1 · unverified bundles are excluded from leaderboard scoring ────────────
+
+describe("leaderboard trust gate (C1)", () => {
+  it("filterVerifiedBundles drops bundles whose re-check failed", () => {
+    const bundles = [
+      makeMockBundle({ taskId: "task-ok", verified: true }),
+      makeMockBundle({ taskId: "task-forged", verified: false }),
+    ];
+    const kept = filterVerifiedBundles(bundles);
+    assert.equal(kept.length, 1);
+    assert.equal(kept[0]!.task.id, "task-ok");
+  });
+
+  it("buildLeaderboardEntry never ranks an unverified bundle", () => {
+    // A forged bundle claims a perfect score; a legit one scores lower. If the
+    // forged bundle leaked into scoring, the average + pass count would inflate.
+    const bundles = [
+      makeMockBundle({ taskId: "task-legit", pass: true, total: 0.6, verified: true }),
+      makeMockBundle({ taskId: "task-forged", pass: true, total: 1.0, correctness: 1, regression: 1, integrity: 1, efficiency: 1, verified: false }),
+    ];
+
+    const entry = buildLeaderboardEntry("mock:local:mock-model", bundles);
+    // Only the one verified task is attempted/counted.
+    assert.equal(entry.tasks_attempted, 1);
+    assert.equal(entry.bundle_hashes.length, 1);
+    assert.ok(!Object.keys(entry.pass_at).some((k) => k.startsWith("task-forged")), "forged task must not appear in pass_at");
+  });
+
+  it("buildLeaderboardEntry throws when every bundle is unverified", () => {
+    const bundles = [
+      makeMockBundle({ taskId: "task-a", verified: false }),
+      makeMockBundle({ taskId: "task-b", verified: false }),
+    ];
+    assert.throws(() => buildLeaderboardEntry("mock:local:mock-model", bundles), /zero verified bundles/);
   });
 });
