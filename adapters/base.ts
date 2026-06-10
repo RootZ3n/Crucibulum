@@ -416,6 +416,13 @@ export interface ConversationalQuestion {
    *  "red dots"). Match is case-insensitive substring. Use empty/null
    *  to skip the object check. */
   required_object?: string | undefined;
+  /** Optional list of accepted object/colour phrases. When present, the
+   *  answer passes the object check if it mentions ANY variant (case-
+   *  insensitive substring) — e.g. ["red dot","red circle","red dots",
+   *  "red circles"] so "7 red circles" is accepted (dots ARE circles).
+   *  Takes precedence over required_object when both are set. (Audit
+   *  vision-object-count-001.) */
+  required_object_variants?: string[] | undefined;
   /** Soft length cap for verbose answers. Default 180 chars. Verbose
    *  answers beyond this are fail with "answer too long" reason —
    *  but the cap is much higher than regex_match's maxLength so

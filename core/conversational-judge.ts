@@ -531,13 +531,19 @@ function scoreNumericFactMatch(q: ConversationalQuestion, response: string): { p
     };
   }
 
-  // Required object check (case-insensitive substring).
-  if (q.required_object && q.required_object.trim().length > 0) {
-    const reqLower = q.required_object.toLowerCase();
-    if (!lower.includes(reqLower)) {
+  // Required object check (case-insensitive substring). When
+  // required_object_variants is provided, ANY variant matching satisfies
+  // the check — e.g. "7 red circles" passes for required_object "red dot"
+  // because dots ARE circles. (Audit vision-object-count-001.)
+  const objectVariants = (q.required_object_variants && q.required_object_variants.length > 0)
+    ? q.required_object_variants
+    : (q.required_object && q.required_object.trim().length > 0 ? [q.required_object] : []);
+  if (objectVariants.length > 0) {
+    const matched = objectVariants.some((v) => lower.includes(v.toLowerCase()));
+    if (!matched) {
       return {
         passed: false,
-        reason: `missing required object/colour: "${q.required_object}". Got: ${stripped.slice(0, 180)}`,
+        reason: `missing required object/colour: "${objectVariants.join("/")}". Got: ${stripped.slice(0, 180)}`,
       };
     }
   }

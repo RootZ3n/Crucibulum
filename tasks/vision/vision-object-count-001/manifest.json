@@ -24,6 +24,7 @@
       "expected_number": 7,
       "expected_number_variants": ["7", "seven"],
       "required_object": "red dot",
+      "required_object_variants": ["red dot", "red circle", "red point", "red dots", "red circles"],
       "max_chars": 600,
       "weight": 1,
       "tags": ["vision", "count", "experimental"],
