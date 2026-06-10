@@ -4,7 +4,7 @@
  */
 
 import { execSync, execFileSync } from "node:child_process";
-import { mkdirSync, existsSync, rmSync, cpSync, readdirSync, readFileSync, writeFileSync, lstatSync } from "node:fs";
+import { mkdirSync, existsSync, rmSync, cpSync, readdirSync, readFileSync, writeFileSync, lstatSync, chmodSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { log } from "../utils/logger.js";
@@ -109,13 +109,41 @@ export function resetWorkspace(wsPath: string): void {
 }
 
 /**
- * Clean up workspace directory entirely.
+ * Restore write/execute permissions across a tree so rmSync can delete it.
+ * A task's setup.sh can chmod a directory non-writable (tool-006 does exactly
+ * this to make a delete fail), which then blocks rmSync — the directory must
+ * be chmod'd before its entries can be listed/removed. (Audit H3.)
+ */
+function chmodTreeWritable(p: string): void {
+  let st;
+  try { st = lstatSync(p); } catch { return; }
+  if (st.isSymbolicLink()) return; // never follow / chmod through a symlink
+  try { chmodSync(p, 0o700); } catch { /* best effort */ }
+  if (st.isDirectory()) {
+    let entries: string[] = [];
+    try { entries = readdirSync(p); } catch { return; }
+    for (const entry of entries) chmodTreeWritable(join(p, entry));
+  }
+}
+
+/**
+ * Clean up workspace directory entirely. Retries once after restoring
+ * permissions so a setup.sh that locked a subdir can't leak the workspace
+ * forever (the H3 root cause: 78 ws_tool-006-fixture-audit_* dirs survived
+ * because rmSync hit EACCES and the error was swallowed). (Audit H3.)
  */
 export function destroyWorkspace(wsPath: string): void {
   try {
     rmSync(wsPath, { recursive: true, force: true });
+    return;
   } catch {
-    /* best effort */
+    /* fall through to permission-recovery retry */
+  }
+  try {
+    chmodTreeWritable(wsPath);
+    rmSync(wsPath, { recursive: true, force: true });
+  } catch (err) {
+    log("warn", "workspace", `Failed to destroy workspace ${wsPath}: ${String(err).slice(0, 160)}`);
   }
 }
 

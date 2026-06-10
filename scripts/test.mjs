@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { readdirSync, existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
@@ -32,10 +32,32 @@ child.on("error", (err) => {
   process.exit(1);
 });
 
-child.on("exit", (code, signal) => {
-  if (signal) {
-    process.kill(process.pid, signal);
-    return;
+// Post-suite workspace sweep (Audit H3). Tests that call createWorkspace
+// directly can leak ws_* dirs when teardown fails (e.g. tool-006's setup.sh
+// locks a subdir, defeating a naive rmSync). Reap any leftovers through the
+// permission-recovering destroyWorkspace so the test runner never accretes
+// workspaces across runs.
+async function sweepLeakedWorkspaces() {
+  const runsDir = process.env.CRUCIBULUM_RUNS_DIR ?? join(root, "runs");
+  if (!existsSync(runsDir)) return;
+  let entries = [];
+  try { entries = readdirSync(runsDir).filter((n) => n.startsWith("ws_")); } catch { return; }
+  if (entries.length === 0) return;
+  try {
+    const { destroyWorkspace } = await import(join(testsDir, "..", "core", "workspace.js"));
+    for (const entry of entries) destroyWorkspace(join(runsDir, entry));
+    console.error(`[test] swept ${entries.length} leftover workspace(s) from ${runsDir}`);
+  } catch (err) {
+    console.error(`[test] workspace sweep skipped: ${err?.message ?? err}`);
   }
-  process.exit(code ?? 1);
+}
+
+child.on("exit", (code, signal) => {
+  void sweepLeakedWorkspaces().finally(() => {
+    if (signal) {
+      process.kill(process.pid, signal);
+      return;
+    }
+    process.exit(code ?? 1);
+  });
 });
