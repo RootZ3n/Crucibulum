@@ -7,7 +7,7 @@
  */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { parseJsonSafe, assertNoPrototypePollution, validateSchema } from "../utils/json-safe.js";
+import { parseJsonSafe, assertNoPrototypePollution, validateSchema, type SchemaSpec } from "../utils/json-safe.js";
 import { loadVerifiedBundle } from "../core/bundle.js";
 import { verifyOracleIntegrity } from "../core/oracle.js";
 import type { TaskManifest } from "../adapters/base.js";
@@ -40,7 +40,7 @@ describe("prototype-pollution rejection (H5)", () => {
 
 describe("validateSchema (H5)", () => {
   it("reports type and required-key errors", () => {
-    const schema = { type: "object", required: ["id", "n"], properties: { id: { type: "string" }, n: { type: "number" } } } as const;
+    const schema: SchemaSpec = { type: "object", required: ["id", "n"], properties: { id: { type: "string" }, n: { type: "number" } } };
     assert.deepEqual(validateSchema({ id: "a", n: 1 }, schema), []);
     const errs = validateSchema({ id: 5 }, schema);
     assert.ok(errs.some((e) => /missing required key "n"/.test(e)));
@@ -48,7 +48,7 @@ describe("validateSchema (H5)", () => {
   });
 
   it("validates array item types", () => {
-    const schema = { type: "array", items: { type: "number" } } as const;
+    const schema: SchemaSpec = { type: "array", items: { type: "number" } };
     assert.deepEqual(validateSchema([1, 2, 3], schema), []);
     assert.ok(validateSchema([1, "two"], schema).length === 1);
   });
