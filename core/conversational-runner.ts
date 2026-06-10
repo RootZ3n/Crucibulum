@@ -829,7 +829,14 @@ function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBu
 
   const efficiency = computeConversationalEfficiency(manifest, totalDurationMs, totalTokensIn, totalTokensOut);
   const totalScore = combineConversationalScore(judgeResult.score, efficiency.score);
-  const passed = totalScore >= manifest.scoring.pass_threshold;
+  // Threshold-1.0 tasks (all vision tests + deterministic roleplay) require a
+  // perfect answer. The 0.15 efficiency term makes the blended totalScore top
+  // out at 0.85 + 0.15·eff, so a fully-correct but slow model can never reach
+  // 1.0 and is failed purely for being slow. When pass_threshold >= 1.0, gate
+  // on correctness alone; efficiency is still recorded for diagnostics. (Audit S4.)
+  const passed = manifest.scoring.pass_threshold >= 1.0
+    ? judgeResult.score >= 1.0
+    : totalScore >= manifest.scoring.pass_threshold;
 
   const bundle: EvidenceBundle = {
     bundle_id: bundleId,
