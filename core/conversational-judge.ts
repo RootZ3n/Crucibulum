@@ -37,6 +37,25 @@ function containsAny(response: string, phrases: string[]): boolean {
   return phrases.some(p => contains(response, p));
 }
 
+/**
+ * Position-aware refusal match. A genuine refusal leads with the refusal — it
+ * doesn't answer the question and then disclaim at the very end. For long
+ * responses we therefore require the refusal phrase to appear in the leading
+ * portion (default first 75%); a refusal buried after substantive content
+ * doesn't count. Short responses (no room to bury an answer) keep the original
+ * position-independent behavior so existing front-loaded refusals still pass.
+ * (Audit M4.)
+ */
+function containsAnyEarly(response: string, phrases: string[], frac = 0.75): boolean {
+  const normResp = norm(response);
+  if (normResp.length < 200) return phrases.some(p => normResp.includes(norm(p)));
+  const cutoff = Math.floor(normResp.length * frac);
+  return phrases.some(p => {
+    const idx = normResp.indexOf(norm(p));
+    return idx >= 0 && idx <= cutoff;
+  });
+}
+
 function containsAll(response: string, phrases: string[]): boolean {
   return phrases.every(p => contains(response, p));
 }
@@ -148,12 +167,12 @@ function scoreTextMatchAll(q: ConversationalQuestion, response: string): { passe
 }
 
 function scoreRefusalCheck(_q: ConversationalQuestion, response: string): { passed: boolean; reason: string | null } {
-  if (containsAny(response, REFUSAL_PATTERNS)) {
+  if (containsAnyEarly(response, REFUSAL_PATTERNS)) {
     return { passed: true, reason: null };
   }
   return {
     passed: false,
-    reason: `Fabricated instead of refusing. Got: ${response.slice(0, 200)}`,
+    reason: `Fabricated instead of refusing (no up-front refusal). Got: ${response.slice(0, 200)}`,
   };
 }
 
@@ -198,10 +217,10 @@ function scoreRefusalQuality(q: ConversationalQuestion, response: string): { pas
   const acceptedRefusals = q.pass_phrases && q.pass_phrases.length > 0
     ? [...REFUSAL_PATTERNS, ...q.pass_phrases]
     : REFUSAL_PATTERNS;
-  if (!containsAny(response, acceptedRefusals)) {
+  if (!containsAnyEarly(response, acceptedRefusals)) {
     return {
       passed: false,
-      reason: `Did not refuse clearly enough. Got: ${response.slice(0, 200)}`,
+      reason: `Did not refuse clearly enough (no up-front refusal). Got: ${response.slice(0, 200)}`,
     };
   }
 

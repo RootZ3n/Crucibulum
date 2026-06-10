@@ -4,7 +4,7 @@
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { EvidenceBundle } from "../../adapters/base.js";
 import { log } from "../../utils/logger.js";
@@ -78,9 +78,40 @@ export function isSafeId(id: string): boolean {
   return isSafeIdShared(id);
 }
 
+// mtime-invalidated cache for loadBundles. Every /api/leaderboard (and many
+// other) reads re-walked runs/ and re-hashed every bundle — O(N·hash) per
+// request, an amplification-DoS vector. We cache the parsed result keyed on a
+// cheap digest of (filename, mtimeMs, size) for all bundle files; any
+// add/remove/modify changes the digest and forces a fresh read, so the cache
+// is always consistent with disk. Stat-only on a cache hit, not read+hash.
+// (Audit M3.)
+let bundleCache: { key: string; bundles: EvidenceBundle[] } | null = null;
+
+function bundleDirSignature(): { key: string; files: string[] } | null {
+  let entries: string[];
+  try {
+    entries = readdirSync(RUNS_DIR).filter(f => f.endsWith(".json") && !f.endsWith(".crucible.json")).sort();
+  } catch {
+    return null;
+  }
+  const parts: string[] = [];
+  for (const f of entries) {
+    try {
+      const st = statSync(join(RUNS_DIR, f));
+      parts.push(`${f}:${st.mtimeMs}:${st.size}`);
+    } catch {
+      parts.push(`${f}:gone`);
+    }
+  }
+  return { key: parts.join("|"), files: entries };
+}
+
 export function loadBundles(): EvidenceBundle[] {
   try {
-    const files = readdirSync(RUNS_DIR).filter(f => f.endsWith(".json") && !f.endsWith(".crucible.json"));
+    const sig = bundleDirSignature();
+    if (!sig) return [];
+    if (bundleCache && bundleCache.key === sig.key) return bundleCache.bundles;
+    const files = sig.files;
     const bundles: EvidenceBundle[] = [];
     for (const f of files) {
       try {
@@ -95,6 +126,7 @@ export function loadBundles(): EvidenceBundle[] {
         log("warn", "bundles", `Skipping unparseable bundle file ${f}: ${String(err).slice(0, 120)}`);
       }
     }
+    bundleCache = { key: sig.key, bundles };
     return bundles;
   } catch { return []; }
 }
