@@ -28,6 +28,7 @@ const HEALTH_TIMEOUT_MS = 10_000;
 
 interface ZAIConfig extends AdapterConfig {
   model?: string | undefined;
+  api_key?: string | undefined;
 }
 
 export class ZAIAdapter implements CrucibulumAdapter {
@@ -65,7 +66,8 @@ export class ZAIAdapter implements CrucibulumAdapter {
   async init(config: AdapterConfig): Promise<void> {
     const c = config as ZAIConfig;
     if (c.model) this.model = c.model;
-    this.apiKey = process.env["ZAI_API_KEY"] ?? "";
+    // Per-run inline key first, then env. No process.env mutation. (Audit H3.)
+    this.apiKey = c.api_key || process.env["ZAI_API_KEY"] || "";
   }
 
   async healthCheck() {

@@ -465,9 +465,14 @@ export async function getAdapterCatalog(): Promise<AdapterCatalogEntry[]> {
   const entries: AdapterCatalogEntry[] = [];
   for (const entry of REGISTRY) {
     try {
-      hydrateEnvFromRegistry(entry.id);
       const adapter = entry.create();
       const config = entry.makeConfig({ model: "", provider: entry.fixed_provider });
+      // Inject any UI-configured inline key/baseUrl into THIS config (not env)
+      // so the health check reflects credentials set in the Providers tab. (H3)
+      const cred = registryCredentialForAdapter(entry.id);
+      const keyedConfig = config as AdapterConfig & { api_key?: string; base_url?: string };
+      if (cred.apiKey) keyedConfig.api_key = cred.apiKey;
+      if (cred.baseUrl) keyedConfig.base_url = cred.baseUrl;
       await adapter.init(config);
       let health: { ok: boolean; reason?: string | undefined };
       try {
@@ -539,18 +544,25 @@ export async function instantiateAdapterForRun(input: {
   retries?: number | null;
 }): Promise<{ adapter: CrucibulumAdapter; config: AdapterConfig; registry: RegistryDefinition }> {
   const registry = resolveAdapter(input.adapter);
-  hydrateEnvFromRegistry(registry.id);
   const adapter = registry.create();
   const config = registry.makeConfig({
     model: input.model,
     provider: input.provider ?? registry.fixed_provider,
   });
+  // Resolve the credential for THIS run and pass it via the config — never
+  // through global process.env, which bleeds across concurrent runs. (Audit H3.)
+  const keyedConfig = config as AdapterConfig & { api_key?: string; base_url?: string };
   const registryTarget = resolveByModelIdWithHint(input.model, input.provider);
   if (registryTarget && registryTarget.adapter === registry.id) {
-    const keyedConfig = config as AdapterConfig & { api_key?: string; base_url?: string };
     const apiKey = registryTarget.apiKey ?? (registryTarget.apiKeyEnv ? process.env[registryTarget.apiKeyEnv] ?? "" : "");
     if (apiKey) keyedConfig.api_key = apiKey;
     if (registryTarget.baseUrl) keyedConfig.base_url = registryTarget.baseUrl;
+  } else {
+    // No exact model match in the registry: still honor an enabled provider
+    // configured for this adapter (mirrors the old env-hydration fallback).
+    const cred = registryCredentialForAdapter(registry.id);
+    if (cred.apiKey && !keyedConfig.api_key) keyedConfig.api_key = cred.apiKey;
+    if (cred.baseUrl && !keyedConfig.base_url) keyedConfig.base_url = cred.baseUrl;
   }
   if (typeof input.timeout_ms === "number" && input.timeout_ms > 0) config.timeout_ms = input.timeout_ms;
   if (typeof input.retries === "number" && input.retries >= 0) config.retries = input.retries;
@@ -558,39 +570,29 @@ export async function instantiateAdapterForRun(input: {
   return { adapter, config, registry };
 }
 
-// Bridge inline API keys and baseUrl overrides from the Providers tab
-// (registry) into process.env so adapters that read `process.env[…]` at init
-// time pick them up. Without this, a user who configured credentials through
-// the UI but never exported env vars gets an instant "API_KEY not set"
-// failure on every run, even though the Test button in the Providers tab
-// worked (that path reads inline values directly). Only fills env slots that
-// are currently unset — a real exported env var still wins.
-const ADAPTER_BASE_URL_ENV: Record<string, string> = {
-  minimax: "MINIMAX_BASE_URL",
-  zai: "ZAI_BASE_URL",
-  openrouter: "OPENROUTER_BASE_URL",
-  openai: "OPENAI_BASE_URL",
-  anthropic: "ANTHROPIC_BASE_URL",
-  peh: "PEH_URL",
-  google: "GOOGLE_AI_BASE_URL",
-};
-function hydrateEnvFromRegistry(adapterId: string): void {
+/**
+ * Resolve the inline credential + baseUrl a user configured for an adapter in
+ * the Providers tab, WITHOUT mutating global process.env.
+ *
+ * The old hydrateEnvFromRegistry wrote inline keys into process.env, which is a
+ * shared mutable global across concurrent runs: OpenAI-compatible and
+ * OpenRouter presets both map to the same env var, so whichever key hydrated
+ * first won — a cross-provider credential bleed and a race. Adapters now read
+ * the key from their per-run AdapterConfig.api_key (env remains the fallback),
+ * so credentials stay isolated to the run that owns them. (Audit H3.)
+ */
+function registryCredentialForAdapter(adapterId: string): { apiKey?: string | undefined; baseUrl?: string | undefined } {
   let providers;
-  try { providers = listProviders(); } catch { return; }
+  try { providers = listProviders(); } catch { return {}; }
   for (const provider of providers) {
     if (!provider.enabled) continue;
     const preset = getPreset(provider.presetId);
     if (!preset || preset.adapter !== adapterId) continue;
-    if (preset.envKey) {
-      const inlineKey = provider.apiKey;
-      if (inlineKey && !process.env[preset.envKey]) process.env[preset.envKey] = inlineKey;
-    }
-    const baseEnv = ADAPTER_BASE_URL_ENV[adapterId];
-    if (baseEnv) {
-      const url = provider.baseUrl || preset.defaultBaseUrl;
-      if (url && !process.env[baseEnv]) process.env[baseEnv] = url;
-    }
+    const apiKey = provider.apiKey || (provider.apiKeyEnv ? process.env[provider.apiKeyEnv] : undefined) || undefined;
+    const baseUrl = provider.baseUrl || preset.defaultBaseUrl || undefined;
+    return { apiKey: apiKey || undefined, baseUrl: baseUrl || undefined };
   }
+  return {};
 }
 
 // ── Provider Catalog ──────────────────────────────────────────────────────

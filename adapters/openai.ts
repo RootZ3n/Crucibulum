@@ -30,6 +30,7 @@ const HEALTH_TIMEOUT_MS = 10_000;
 
 interface OpenAIConfig extends AdapterConfig {
   model?: string | undefined;
+  api_key?: string | undefined;
 }
 
 function isReasoningModel(model: string): boolean {
@@ -80,7 +81,9 @@ export class OpenAIAdapter implements CrucibulumAdapter {
   async init(config: AdapterConfig): Promise<void> {
     const c = config as OpenAIConfig;
     if (c.model) this.model = c.model;
-    this.apiKey = process.env["OPENAI_API_KEY"] ?? "";
+    // Per-run inline key (from the Providers tab) takes precedence; fall back
+    // to the exported env var. No global process.env mutation. (Audit H3.)
+    this.apiKey = c.api_key || process.env["OPENAI_API_KEY"] || "";
   }
 
   async healthCheck() {

@@ -28,6 +28,7 @@ const HEALTH_TIMEOUT_MS = 10_000;
 
 interface AnthropicConfig extends AdapterConfig {
   model?: string | undefined;
+  api_key?: string | undefined;
 }
 
 export class AnthropicAdapter implements CrucibulumAdapter {
@@ -78,7 +79,8 @@ export class AnthropicAdapter implements CrucibulumAdapter {
   async init(config: AdapterConfig): Promise<void> {
     const c = config as AnthropicConfig;
     if (c.model) this.model = c.model;
-    this.apiKey = process.env["ANTHROPIC_API_KEY"] ?? "";
+    // Per-run inline key first, then env. No process.env mutation. (Audit H3.)
+    this.apiKey = c.api_key || process.env["ANTHROPIC_API_KEY"] || "";
   }
 
   async healthCheck() {
