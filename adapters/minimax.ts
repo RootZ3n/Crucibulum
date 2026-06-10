@@ -277,7 +277,9 @@ async function callMiniMax(
   };
   if (reasoningOff) {
     body["reasoning_effort"] = "off";
-    body["thinking"] = { enabled: false };
+    // MiniMax API rejects `thinking: { enabled: false }` with error 2013
+    // ("thinking.type missing required parameter"). reasoning_effort=off is
+    // sufficient to suppress reasoning output. (Bubbles audit 2026-06-10)
   } else if (options?.reasoningEffort === "minimal") {
     body["reasoning_effort"] = "minimal";
   }
