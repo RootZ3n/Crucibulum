@@ -741,7 +741,9 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
     log("info", "conv-runner", `[${question.id}] ${result.passed ? "PASS" : "FAIL"} (${result.duration_ms}ms)`);
   }
 
-  // 5. Aggregate
+  // 5. Aggregate — collapse inconsistent prompt-sensitivity pairs first so
+  // disagreement is fatal, then run the deterministic judge over the result.
+  enforcePairConsistency(manifest, results);
   const judgeResult = judgeConversational(manifest, results);
   const endTime = new Date().toISOString();
   const totalDurationMs = Date.now() - runStartMs;
@@ -786,6 +788,49 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
     persistConversation(manifest.session.session_id, messages);
   }
   return { bundle, passed: judgeResult.pass, score: judgeResult.score, exitCode };
+}
+
+/**
+ * Pair-aware consistency enforcement for paired prompt-sensitivity tasks.
+ *
+ * A paired test ("same intent, different phrasing — both must give the same
+ * answer to pass") is only meaningful if disagreement is fatal. Scored
+ * independently, a model that answers one phrasing correctly and the other
+ * wrong still banks the right one's weight — half credit for being
+ * inconsistent, so 6/8 passing clears a 0.7 threshold despite a contradiction.
+ *
+ * This collapses each pair before aggregation: when a pair's members disagree
+ * (some pass, some fail), the passing members are demoted to FAIL with score 0
+ * so the whole pair contributes nothing. Consistent pairs (all pass or all
+ * fail) are untouched. Pairs are identified by a `pair-<n>` tag on the
+ * question; only prompt-sensitivity manifests carry that tag, so this is inert
+ * for every other task. (Audit prompt-sensitivity-001.)
+ */
+export function enforcePairConsistency(
+  manifest: ConversationalManifest,
+  results: ConversationalResult[],
+): void {
+  const tagsById = new Map(manifest.questions.map((q) => [q.id, q.tags ?? []]));
+  const groups = new Map<string, ConversationalResult[]>();
+  for (const r of results) {
+    const pairTag = (tagsById.get(r.question_id) ?? []).find((t) => /^pair-/.test(t));
+    if (!pairTag) continue;
+    const arr = groups.get(pairTag);
+    if (arr) arr.push(r);
+    else groups.set(pairTag, [r]);
+  }
+  for (const [pairTag, members] of groups) {
+    if (members.length < 2) continue;
+    const passedCount = members.filter((m) => m.passed).length;
+    const inconsistent = passedCount > 0 && passedCount < members.length;
+    if (!inconsistent) continue;
+    for (const m of members) {
+      if (!m.passed) continue;
+      m.passed = false;
+      m.score = 0;
+      m.failure_reason = `PAIR_INCONSISTENT (${pairTag}): paired phrasings disagreed — this phrasing passed but its partner failed, so the pair scores 0.${m.failure_reason ? ` (was: ${m.failure_reason})` : ""}`;
+    }
+  }
 }
 
 // ── Bundle builder ──────────────────────────────────────────────────────
