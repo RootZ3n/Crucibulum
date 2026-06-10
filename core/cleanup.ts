@@ -3,9 +3,10 @@
  * Conservative cleanup of stale run workspaces and artifacts.
  */
 
-import { readdirSync, statSync, rmSync, existsSync } from "node:fs";
+import { readdirSync, statSync, rmSync, existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { log } from "../utils/logger.js";
+import { luakStateRoot } from "../utils/env.js";
 
 // Evaluate per call so tests can inject CRUCIBULUM_RUNS_DIR via env or
 // pass `runsDir` directly. The previous module-load constant captured
@@ -156,35 +157,99 @@ export function cleanupStaleArtifacts(options: CleanupOptions = {}): CleanupResu
   return result;
 }
 
+export interface ReaperResult {
+  /** ws_* directories examined this cycle */
+  checked: number;
+  /** stale ws_* directories removed */
+  deleted: number;
+  /** ws_* directories kept (not yet stale) */
+  kept: number;
+  errors: string[];
+}
+
+export interface ReaperStatus {
+  /** Epoch ms of the last reaper cycle, or null if it has never run */
+  lastRun: number | null;
+  lastChecked: number;
+  lastDeleted: number;
+  lastKept: number;
+  lastErrors: string[];
+}
+
+// Module-level record of the most recent reaper cycle. Surfaced via
+// getReaperStatus() / GET /api/health/reaper so an operator can confirm the
+// reaper is actually running (the C2 symptom: 78 stale workspaces survived a
+// 3.6-day uptime with an hourly reaper that left no trace it had run).
+let lastReaper: ReaperStatus = { lastRun: null, lastChecked: 0, lastDeleted: 0, lastKept: 0, lastErrors: [] };
+
+export function getReaperStatus(): ReaperStatus {
+  return { ...lastReaper, lastErrors: [...lastReaper.lastErrors] };
+}
+
+/** Touch state/.reaper-last-run so the reaper's liveness is verifiable on disk. */
+function touchReaperHeartbeat(runAt: number, stateDir?: string): void {
+  try {
+    const dir = stateDir ?? luakStateRoot();
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, ".reaper-last-run"), `${new Date(runAt).toISOString()}\n`);
+  } catch (err) {
+    log("warn", "cleanup", `Failed to write reaper heartbeat: ${String(err)}`);
+  }
+}
+
 /**
  * Reap only stale workspace directories (ws_*), leaving bundles and every
  * other artifact untouched. Used by the server's periodic TTL reaper so a
  * crashed/OOM-killed run doesn't leak its workspace forever, without ever
- * risking deletion of evidence bundles. Default TTL: 1 hour. (Audit M6.)
+ * risking deletion of evidence bundles. Default TTL: 1 hour. (Audit M6/C2.)
+ *
+ * Every cycle: logs a one-line summary at info level (so it's visible in the
+ * file log now that C1 persists output), records the result for
+ * getReaperStatus(), and touches state/.reaper-last-run.
  */
-export function reapStaleWorkspaces(options: { maxAgeMs?: number; runsDir?: string } = {}): { deleted: number; errors: string[] } {
+export function reapStaleWorkspaces(options: { maxAgeMs?: number; runsDir?: string; stateDir?: string } = {}): ReaperResult {
   const maxAgeMs = options.maxAgeMs ?? 60 * 60 * 1000; // 1h
   const runsDir = resolveRunsDir(options.runsDir);
   const now = Date.now();
-  const out = { deleted: 0, errors: [] as string[] };
-  if (!existsSync(runsDir)) return out;
-  let entries: string[];
-  try { entries = readdirSync(runsDir); } catch (err) { out.errors.push(String(err)); return out; }
-  for (const entry of entries) {
-    if (!entry.startsWith("ws_")) continue;
-    const fullPath = join(runsDir, entry);
+  const out: ReaperResult = { checked: 0, deleted: 0, kept: 0, errors: [] };
+  if (existsSync(runsDir)) {
+    let entries: string[];
     try {
-      const stat = statSync(fullPath);
-      if (!stat.isDirectory()) continue;
-      if (now - stat.mtimeMs <= maxAgeMs) continue;
-      rmSync(fullPath, { recursive: true, force: true });
-      out.deleted++;
-      log("debug", "cleanup", `Reaped stale workspace: ${entry}`);
+      entries = readdirSync(runsDir);
+      for (const entry of entries) {
+        if (!entry.startsWith("ws_")) continue;
+        const fullPath = join(runsDir, entry);
+        try {
+          const stat = statSync(fullPath);
+          if (!stat.isDirectory()) continue;
+          out.checked++;
+          if (now - stat.mtimeMs <= maxAgeMs) {
+            out.kept++;
+            continue;
+          }
+          rmSync(fullPath, { recursive: true, force: true });
+          out.deleted++;
+          log("debug", "cleanup", `Reaped stale workspace: ${entry}`);
+        } catch (err) {
+          out.errors.push(`Error reaping ${entry}: ${String(err)}`);
+        }
+      }
     } catch (err) {
-      out.errors.push(`Error reaping ${entry}: ${String(err)}`);
+      out.errors.push(String(err));
     }
   }
-  if (out.deleted > 0) log("info", "cleanup", `Workspace reaper removed ${out.deleted} stale workspace(s)`);
+
+  // Always emit a heartbeat + status, even on a no-op cycle, so silence is
+  // never ambiguous between "reaper not running" and "nothing to do".
+  lastReaper = {
+    lastRun: now,
+    lastChecked: out.checked,
+    lastDeleted: out.deleted,
+    lastKept: out.kept,
+    lastErrors: [...out.errors],
+  };
+  touchReaperHeartbeat(now, options.stateDir);
+  log("info", "cleanup", `Reaper: checked ${out.checked} workspaces, deleted ${out.deleted}, kept ${out.kept}`);
   return out;
 }
 

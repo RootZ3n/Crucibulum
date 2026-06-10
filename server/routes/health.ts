@@ -12,7 +12,7 @@ import { describeDefaultJudge, resolveJudgeConfig } from "../../core/judge-confi
 import { getCircuitState, rateLimitStatus, circuitReset } from "../../core/circuit-breaker.js";
 import { listScorers } from "../../core/scorer-registry.js";
 import { listSuites, listTaskDetails } from "./shared.js";
-import { cleanupStaleArtifacts, getCleanupStats } from "../../core/cleanup.js";
+import { cleanupStaleArtifacts, getCleanupStats, getReaperStatus } from "../../core/cleanup.js";
 
 export async function handleHealth(_req: IncomingMessage, res: ServerResponse): Promise<void> {
   sendJSON(res, 200, {
@@ -33,6 +33,21 @@ export async function handleHealthLogs(req: IncomingMessage, res: ServerResponse
   const limit = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), 1000) : 100;
   const logs = readRecentLogs(limit);
   sendJSON(res, 200, { count: logs.length, limit, logs });
+}
+
+export async function handleReaperHealth(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  // Operator-facing proof the TTL reaper is alive (Audit C2). lastRun is null
+  // until the first cycle (startup reap runs synchronously, so by the time the
+  // server answers requests this is populated).
+  const status = getReaperStatus();
+  sendJSON(res, 200, {
+    lastRun: status.lastRun,
+    lastRunIso: status.lastRun ? new Date(status.lastRun).toISOString() : null,
+    lastChecked: status.lastChecked,
+    lastDeleted: status.lastDeleted,
+    lastKept: status.lastKept,
+    errors: status.lastErrors,
+  });
 }
 
 export async function handleScorers(_req: IncomingMessage, res: ServerResponse): Promise<void> {

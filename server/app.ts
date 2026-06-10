@@ -130,6 +130,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Cr
     }
 
     if (path === "/api/health/logs" && method === "GET") return void await health.handleHealthLogs(req, res);
+    if (path === "/api/health/reaper" && method === "GET") return void await health.handleReaperHealth(req, res);
     if (path === "/api/scorers" && method === "GET") return void await health.handleScorers(req, res);
     if (path === "/api/scorers/health" && method === "GET") return void await health.handleScorersHealth(req, res);
     if (path === "/api/health/adapters" && method === "GET") return void await health.handleAdaptersHealth(req, res);
@@ -290,6 +291,18 @@ export async function startServer(port: number = DEFAULT_PORT, host: string = DE
   log("info", "api", `Bind host: ${host}`);
   log("info", "api", `UI: http://${displayHost}:${port}/`);
   log("info", "api", `API: http://${displayHost}:${port}/api/`);
+
+  // Run one reap synchronously at startup (Audit C2). The hourly interval is
+  // unref'd, so on a short-lived or freshly-restarted process it may never
+  // fire — that's how 78 stale workspaces survived a 3.6-day uptime. A
+  // synchronous startup pass guarantees at least one cleanup per boot and
+  // populates /api/health/reaper before the first request is served.
+  try {
+    const startup = reapStaleWorkspaces();
+    log("info", "api", `Startup workspace reap: checked ${startup.checked}, deleted ${startup.deleted}, kept ${startup.kept}`);
+  } catch (err) {
+    log("warn", "api", `Startup workspace reap error: ${String(err)}`);
+  }
 
   // TTL reaper: periodically remove stale workspace dirs (only ws_*, never
   // bundles) so a crashed/OOM-killed run doesn't leak its workspace. (Audit M6.)
