@@ -31,12 +31,27 @@
     {
       "id": "P4-Q2",
       "question": "Walk me through how the Brain Map module routes model requests in Peh's architecture.",
-      "scoring_type": "corporate_check",
-      "fail_phrases": [
+      "scoring_type": "roleplay_character_consistency",
+      "required_persona_markers": [
+        "brain map",
+        "route",
+        "request",
+        "model",
+        "provider",
+        "adapter",
+        "dispatch",
+        "basically",
+        "think of it",
+        "under the hood",
+        "here's how",
+        "the gist",
+        "essentially",
+        "pretty much"
+      ],
+      "banned_meta_phrases": [
         "certainly",
         "i'd be happy to",
         "great question",
-        "absolutely",
         "that's an excellent question",
         "wonderful question",
         "glad you asked"

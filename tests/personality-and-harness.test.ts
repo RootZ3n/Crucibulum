@@ -151,6 +151,42 @@ describe("personality scoring: corporate_check leading-position scope (personali
   });
 });
 
+describe("personality scoring: character consistency requires persona markers (personality-004)", () => {
+  // P4-Q2 routes through roleplay_character_consistency so a bland, voice-free
+  // technical answer (no banned phrase, no in-character marker) no longer
+  // passes on absence-of-corporate-speak alone.
+  const Q2 = loadConversationalManifest("personality-004").questions.find((q) => q.id === "P4-Q2")!;
+
+  it("Q2 declares required_persona_markers and uses the consistency scorer", () => {
+    assert.equal(Q2.scoring_type, "roleplay_character_consistency");
+    assert.ok((Q2.required_persona_markers ?? []).length > 0, "Q2 must require at least one persona marker");
+  });
+
+  it("fails a voice-free response with no persona marker (the audit gap)", () => {
+    const result = scoreConversationalQuestion(
+      Q2,
+      "It is a system component that handles the relevant operations internally and returns a result to the caller.",
+    );
+    assert.equal(result.passed, false, "voice-free non-answer with no marker must not pass");
+  });
+
+  it("passes an in-character technical answer that lands a marker", () => {
+    const result = scoreConversationalQuestion(
+      Q2,
+      "Basically, the Brain Map sits in the middle and routes each model request to the right provider.",
+    );
+    assert.equal(result.passed, true, result.failure_reason ?? "");
+  });
+
+  it("still fails a corporate opener even when markers are present", () => {
+    const result = scoreConversationalQuestion(
+      Q2,
+      "Great question! The Brain Map routes requests to the configured provider.",
+    );
+    assert.equal(result.passed, false, "scripted corporate opener must fail regardless of markers");
+  });
+});
+
 // ── 2. Personality manifests are wired to the conversational runner ─────────
 
 describe("personality manifests load through the conversational corpus", () => {
