@@ -119,6 +119,38 @@ describe("personality scoring: hedge_count committed-answer gate (personality-00
   });
 });
 
+describe("personality scoring: corporate_check leading-position scope (personality-002)", () => {
+  const CORP_Q: ConversationalQuestion = {
+    id: "P2-Q1",
+    question: "My Node server crashes with EADDRINUSE on port 3000.",
+    scoring_type: "corporate_check",
+    fail_phrases: ["certainly", "absolutely", "great question", "i'd be happy to"],
+    weight: 3,
+    tags: ["no-corporate", "personality"],
+  };
+
+  it("fails a filler opener (corporate phrase leads the response)", () => {
+    const result = scoreConversationalQuestion(CORP_Q, "Absolutely! Let me help you with that.");
+    assert.equal(result.passed, false);
+    assert.match(String(result.failure_reason), /leading position/i);
+  });
+
+  it("passes a direct answer that uses a banned word mid-sentence", () => {
+    // "absolutely" appears well past the leading window as plain emphasis — a
+    // direct, non-corporate answer that the whole-response match false-failed.
+    const result = scoreConversationalQuestion(
+      CORP_Q,
+      "Run `lsof -i :3000` to find the PID, then kill it. That port is absolutely held by another process.",
+    );
+    assert.equal(result.passed, true, result.failure_reason ?? "");
+  });
+
+  it("still fails 'Certainly,' as a scripted opener", () => {
+    const result = scoreConversationalQuestion(CORP_Q, "Certainly, here's how to fix it: free the port.");
+    assert.equal(result.passed, false);
+  });
+});
+
 // ── 2. Personality manifests are wired to the conversational runner ─────────
 
 describe("personality manifests load through the conversational corpus", () => {

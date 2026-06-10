@@ -375,18 +375,32 @@ function scoreProactive(q: ConversationalQuestion, response: string): { passed: 
   };
 }
 
+/**
+ * Corporate filler is a *leading* tell: "Absolutely! Let me help you with
+ * that." opens with the pleasantry. The same words used mid-sentence are
+ * benign — "Kill the process; that port is absolutely in use" is a direct,
+ * non-corporate answer that the old whole-response substring match
+ * false-failed. Scope the fail phrases to the response-leading position so
+ * only the filler-opener pattern trips the check. (Audit personality-002.)
+ */
+const CORPORATE_LEADING_CHARS = 60;
+
 function scoreCorporateCheck(q: ConversationalQuestion, response: string): { passed: boolean; reason: string | null } {
   const phrases = q.fail_phrases ?? [];
   if (phrases.length === 0) {
     return { passed: true, reason: null };
   }
-  const found = phrases.filter(p => contains(response, p));
+  const normResp = norm(response);
+  const found = phrases.filter(p => {
+    const idx = normResp.indexOf(norm(p));
+    return idx >= 0 && idx < CORPORATE_LEADING_CHARS;
+  });
   if (found.length === 0) {
     return { passed: true, reason: null };
   }
   return {
     passed: false,
-    reason: `Corporate speak detected: [${found.join(", ")}]`,
+    reason: `Corporate speak detected (leading position): [${found.join(", ")}]`,
   };
 }
 
