@@ -361,6 +361,13 @@ export function reconcileVerdictWithLaneEvaluations(bundle: EvidenceBundle): voi
   if (!bundle.verdict) return;
   if (bundle.verdict.completionState !== "FAIL") return;
   if (bundle.verdict.failureOrigin !== "MODEL") return;
+  // `failure_is_infrastructure` is read off the bundle's lane evaluations, which
+  // are forgeable on a tampered file. Stamping it true converts a real model
+  // FAIL into a not-counted NC, deflating model_failure_rate. Only honor the
+  // downgrade for bundles that re-verified on load (freshly built bundles are
+  // bundle_verified=true at this point). Unverified bundles keep their FAIL.
+  // (Audit H7.)
+  if (bundle.trust?.bundle_verified !== true) return;
 
   const evaluations: Array<{ field: string; category: string }> = [];
   const fields = [
