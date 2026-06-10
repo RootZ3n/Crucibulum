@@ -55,12 +55,16 @@ export function listSuiteManifests(): SuiteManifest[] {
       .map(f => {
         try {
           return parseJsonSafe<SuiteManifest>(readFileSync(join(SUITES_DIR, f), "utf-8"));
-        } catch {
+        } catch (err) {
+          // Surface corrupt/forged suite files instead of silently dropping
+          // them. (Audit M7.)
+          log("warn", "suite-loader", `Skipping unparseable/unsafe suite file ${f}: ${String(err).slice(0, 120)}`);
           return null;
         }
       })
       .filter((s): s is SuiteManifest => s !== null);
-  } catch {
+  } catch (err) {
+    log("warn", "suite-loader", `Failed to list suites: ${String(err).slice(0, 120)}`);
     return [];
   }
 }

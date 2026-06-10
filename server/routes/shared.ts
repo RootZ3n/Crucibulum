@@ -105,6 +105,9 @@ export function loadBundles(): EvidenceBundle[] {
  * silently swap which bundle a caller thought they had.
  */
 export function getBundleById(id: string): EvidenceBundle | null {
+  // Defense in depth: reject obviously unsafe ids up front so no id-derived
+  // path or lookup ever sees `../` etc., even though the match is in-memory. (M9)
+  if (!isSafeId(id)) return null;
   try {
     const bundles = loadBundles();
     return bundles.find(b => b.bundle_id === id) ?? null;
@@ -119,6 +122,7 @@ export function getBundleById(id: string): EvidenceBundle | null {
  * suffix; run ids are crypto-random — they're never the same string).
  */
 export function getBundleByRunId(runId: string): EvidenceBundle | null {
+  if (!isSafeId(runId)) return null; // M9: reject unsafe ids uniformly
   try {
     const bundles = loadBundles();
     return bundles.find(b => b.run_id === runId) ?? null;

@@ -27,10 +27,13 @@ if curl -sf "http://127.0.0.1:$LUAK_PORT/api/health" > /dev/null 2>&1; then
 else
   echo "Starting Luak server on port $LUAK_PORT..."
 
-  # Load env vars so node can find API keys
-  set -a
-  source "$LUAK_DIR/.env" 2>/dev/null || true
-  set +a
+  # Load env vars so node can find API keys. A missing .env is fine (skip), but
+  # a malformed one must fail loudly rather than be swallowed by `|| true`. (L4)
+  if [ -f "$LUAK_DIR/.env" ]; then
+    set -a
+    source "$LUAK_DIR/.env"
+    set +a
+  fi
 
   # ── Ensure a bundle-signing HMAC key exists ───────────────────────────────
   # Without LUAK_HMAC_KEY the integrity model is inert: every bundle verifies to
@@ -76,8 +79,9 @@ else
 fi
 
 # ── Health check ────────────────────────────────────────────────────────────
-HEALTH=$(curl -sf "http://127.0.0.1:$LUAK_PORT/api/health")
-if [ $? -ne 0 ]; then
+# Capture inside the `if` so a curl failure doesn't trip `set -e` and abort
+# before the explicit error message runs. (Audit L4.)
+if ! HEALTH=$(curl -sf "http://127.0.0.1:$LUAK_PORT/api/health"); then
   echo "ERROR: Luak health check failed."
   exit 1
 fi

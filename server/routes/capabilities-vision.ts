@@ -24,6 +24,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { userInfo } from "node:os";
 import { sendJSON, parseJsonBody } from "./shared.js";
 
 import { VISION_GATES, evaluatePromotion } from "../../core/capability-certification.js";
@@ -609,6 +610,17 @@ function renderReceiptMarkdown(receipt: CapabilityPromotionReceipt): string {
   return lines.join("\n") + "\n";
 }
 
+/**
+ * Identity recorded as the promoter, derived from server context (the OS user
+ * Luak runs as + the request peer address), never the request body. (Audit L2.)
+ */
+function promoteOperatorIdentity(req: IncomingMessage): string {
+  let user = "unknown";
+  try { user = userInfo().username || "unknown"; } catch { /* container without passwd entry */ }
+  const peer = req.socket?.remoteAddress ?? "unknown-peer";
+  return `${user}@${peer}`;
+}
+
 export async function handlePromote(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const body = await parseJsonBody<{ confirm?: string; operatorNote?: string; operator?: string }>(req);
   if (!body.ok) {
@@ -680,7 +692,11 @@ export async function handlePromote(req: IncomingMessage, res: ServerResponse): 
     certifiedModelsJsonSha256Before: sha256Before,
     certifiedModelsJsonSha256After: sha256Before, // identical — the write never touches certified-models.json
     modelCertificationTierMutated: modelCertificationTierMutated(sha256Before, sha256Before),
-    operator: typeof input.operator === "string" && input.operator.trim() ? input.operator.trim() : "operator",
+    // Operator identity comes from the server's own context (the OS user
+    // running Luak) plus the request peer address — NOT from the request body,
+    // which an attacker can set to anything and have recorded verbatim. The
+    // body's free-text operatorNote (a justification) is still honored. (L2.)
+    operator: promoteOperatorIdentity(req),
     operatorNote: typeof input.operatorNote === "string" && input.operatorNote.trim() ? input.operatorNote.trim() : null,
     generatedAt: new Date().toISOString(),
   }, receiptPath);
