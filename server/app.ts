@@ -22,6 +22,7 @@ import { sendJSON } from "./routes/shared.js";
 import { envValue } from "../utils/env.js";
 import { loadAllScorers } from "../core/scorer-registry.js";
 import { reapStaleWorkspaces } from "../core/cleanup.js";
+import { initCircuitBreaker } from "../core/circuit-breaker.js";
 import { enforce, RATE_READ, RATE_RUN, RATE_INGEST } from "./rate-limit.js";
 
 import * as health from "./routes/health.js";
@@ -276,6 +277,9 @@ export async function startServer(port: number = DEFAULT_PORT, host: string = DE
   const server = createApp();
   log("info", "api", "Auth: NONE — no built-in authentication. Bind to loopback or put a private-network gate (Tailscale, VPN, firewall, reverse-proxy auth) in front of Luak if you expose it beyond this machine.");
   warnIfHmacKeyMissing();
+  // Reload persisted circuit state so a restart honors in-flight cooldowns
+  // instead of re-thrashing providers that were mid-ban. (Audit C3.)
+  initCircuitBreaker();
   try {
     const scorerResults = await loadAllScorers();
     log("info", "api", `Scorer registry: ${scorerResults.loaded} loaded, ${scorerResults.failed.length} failed`);
