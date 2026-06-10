@@ -8,6 +8,7 @@ import { basename, isAbsolute, join, resolve } from "node:path";
 import type { Oracle, TaskManifest } from "../adapters/base.js";
 import { sha256Hex } from "../utils/hashing.js";
 import { log } from "../utils/logger.js";
+import { parseJsonSafe } from "../utils/json-safe.js";
 
 const ORACLES_DIR = join(process.cwd(), "oracles");
 const HASH_RE = /^sha256:[0-9a-f]{64}$/;
@@ -37,6 +38,12 @@ function oracleIntegrity(status: OracleHashStatus, expected: string | null, actu
 
 export function resolveOraclePath(manifest: TaskManifest): string {
   const refPath = manifest.oracle_ref?.path;
+  // NB: in-repo manifests legitimately use relative `../../oracles/<id>...`
+  // refs, so `..` cannot be rejected here. Path-based hardening is therefore
+  // unworkable for oracles; integrity is instead guaranteed by the now-mandatory
+  // sha256 hash pin in verifyOracleIntegrity (a traversal target would not match
+  // the expected hash). The basename() candidate also keeps loads inside
+  // ORACLES_DIR whenever the literal ref path doesn't exist. (Audit H5.)
   const candidates = [
     refPath ? (isAbsolute(refPath) ? refPath : resolve(process.cwd(), refPath)) : "",
     refPath ? join(ORACLES_DIR, basename(refPath)) : "",
@@ -55,12 +62,11 @@ export function hashOracleBytes(raw: string | Buffer): string {
 
 export function verifyOracleIntegrity(manifest: TaskManifest, raw?: string | Buffer): OracleIntegrity {
   const expected = manifest.oracle_ref?.hash ?? null;
-  const hashRequired = manifest.oracle_ref?.hash_required !== false;
+  // The hash is unconditionally required. The old `hash_required: false` escape
+  // hatch let a crafted manifest skip integrity entirely — an oracle that
+  // decides scoring must always be hash-pinned. (Audit H5.)
   const actual = raw === undefined ? null : hashOracleBytes(raw);
 
-  if (!hashRequired && !expected) {
-    return oracleIntegrity("not_required", null, actual);
-  }
   if (!expected) {
     return oracleIntegrity("missing", null, actual);
   }
@@ -98,7 +104,7 @@ export function loadOracleWithIntegrity(manifest: TaskManifest): LoadedOracle {
     const integrity = verifyOracleIntegrity(manifest, raw);
     assertOracleIntegrity(manifest, integrity);
 
-    const oracle = JSON.parse(raw) as Oracle;
+    const oracle = parseJsonSafe<Oracle>(raw);
 
     if (oracle.task_id !== manifest.id) {
       throw new Error(`Oracle task_id mismatch: expected ${manifest.id}, got ${oracle.task_id}`);

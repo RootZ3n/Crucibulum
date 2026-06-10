@@ -7,6 +7,8 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { SuiteManifest, SuiteScoringWeights, FlakeDetectionConfig } from "../types/scores.js";
 import { log } from "../utils/logger.js";
+import { parseJsonSafe } from "../utils/json-safe.js";
+import { isSafeId } from "../utils/safe-id.js";
 
 const SUITES_DIR = process.env["CRUCIBULUM_SUITES_DIR"] ?? join(process.cwd(), "suites");
 
@@ -23,13 +25,18 @@ const DEFAULT_PASS_THRESHOLD = 0.60;
  * Load a suite manifest by ID.
  */
 export function loadSuite(suiteId: string): SuiteManifest | null {
+  // suiteId indexes into suites/<suiteId>.json — reject traversal. (Audit C5/H5.)
+  if (!isSafeId(suiteId)) {
+    log("warn", "suite-loader", `Rejecting unsafe suite id: ${String(suiteId).slice(0, 64)}`);
+    return null;
+  }
   const manifestPath = join(SUITES_DIR, `${suiteId}.json`);
   if (!existsSync(manifestPath)) {
     return null;
   }
   try {
     const raw = readFileSync(manifestPath, "utf-8");
-    const manifest = JSON.parse(raw) as SuiteManifest;
+    const manifest = parseJsonSafe<SuiteManifest>(raw);
     log("info", "suite-loader", `Loaded suite: ${suiteId}`);
     return manifest;
   } catch (err) {
@@ -47,7 +54,7 @@ export function listSuiteManifests(): SuiteManifest[] {
       .filter(f => f.endsWith(".json"))
       .map(f => {
         try {
-          return JSON.parse(readFileSync(join(SUITES_DIR, f), "utf-8")) as SuiteManifest;
+          return parseJsonSafe<SuiteManifest>(readFileSync(join(SUITES_DIR, f), "utf-8"));
         } catch {
           return null;
         }

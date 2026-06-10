@@ -28,6 +28,7 @@ import type { CrucibulumAdapter } from "../adapters/base.js";
 import type { WorkspaceInfo } from "./workspace.js";
 import { sha256Object } from "../utils/hashing.js";
 import { redactDeep, redactSecrets } from "./redact.js";
+import { parseJsonSafe } from "../utils/json-safe.js";
 import { hashManifest } from "./manifest.js";
 import { estimateCost } from "../utils/cost.js";
 import { log } from "../utils/logger.js";
@@ -559,7 +560,9 @@ export function verifyBundle(bundle: EvidenceBundle): BundleVerificationResult {
 export function loadVerifiedBundle(raw: string, sourceLabel?: string): EvidenceBundle | null {
   let parsed: unknown;
   try {
-    parsed = JSON.parse(raw);
+    // parseJsonSafe also rejects prototype-pollution keys (__proto__ etc.);
+    // a bundle carrying one is treated as malformed. (Audit H5.)
+    parsed = parseJsonSafe(raw);
   } catch {
     return null;
   }

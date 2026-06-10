@@ -10,6 +10,7 @@ import type { TaskManifest, AgentVisibleManifest } from "../adapters/base.js";
 import { sha256Hex } from "../utils/hashing.js";
 import { log } from "../utils/logger.js";
 import { assertSafeId } from "../utils/safe-id.js";
+import { parseJsonSafe } from "../utils/json-safe.js";
 
 const TASKS_DIR = join(process.cwd(), "tasks");
 const PUBLIC_STATUSES = new Set(["public", "private", "mixed"]);
@@ -45,7 +46,7 @@ export function loadManifestRaw(taskId: string): any {
     const manifestPath = join(TASKS_DIR, family, taskId, "manifest.json");
     try {
       const raw = readFileSync(manifestPath, "utf-8");
-      const manifest = JSON.parse(raw);
+      const manifest = parseJsonSafe<any>(raw);
       if (manifest.id !== taskId) {
         throw new Error(`Manifest ID mismatch: expected ${taskId}, got ${manifest.id}`);
       }

@@ -34,6 +34,7 @@ import { estimateCost } from "../utils/cost.js";
 import { log } from "../utils/logger.js";
 import { formatDuration } from "../utils/timing.js";
 import { assertSafeId, safeJoinId } from "../utils/safe-id.js";
+import { parseJsonSafe } from "../utils/json-safe.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
 import { assertBenchmarkProvenance } from "./manifest.js";
 import { canonicalPercent } from "../types/scores.js";
@@ -95,7 +96,7 @@ export function loadPersistedConversation(sessionId: string): ChatMessage[] {
   if (!existsSync(path)) {
     return [];
   }
-  const raw = JSON.parse(readFileSync(path, "utf-8")) as { messages?: ChatMessage[] };
+  const raw = parseJsonSafe<{ messages?: ChatMessage[] }>(readFileSync(path, "utf-8"));
   return Array.isArray(raw.messages) ? raw.messages : [];
 }
 
@@ -122,7 +123,7 @@ export function loadConversationalManifest(taskId: string): ConversationalManife
     try {
       const manifestPath = join(TASKS_DIR, family, taskId, "manifest.json");
       const raw = readFileSync(manifestPath, "utf-8");
-      const manifest = JSON.parse(raw) as ConversationalManifest;
+      const manifest = parseJsonSafe<ConversationalManifest>(raw);
       if (manifest.execution_mode !== "conversational") {
         throw new Error(`Task ${taskId} is not a conversational task (mode: ${manifest.execution_mode})`);
       }
