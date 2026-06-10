@@ -31,10 +31,11 @@
       "write_file",
       "search"
     ],
-    "forbidden_paths": [
-      ".crucibulum/",
-      "oracles/"
-    ],
+    ["
+          ".crucibulum/",
+          "oracles/",
+          "tests/"
+        ]
     "network_allowed": false
   },
   "verification": {

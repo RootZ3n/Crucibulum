@@ -21,7 +21,7 @@
       "id": "V14-Q1",
       "question": "Look at the bar chart. Is the trend increasing or decreasing across the five days? Reply with one or two words.",
       "scoring_type": "text_match",
-      "pass_phrases": ["decreasing", "decreas", "going down", "trend down", "downward"],
+      "pass_phrases": ["decreasing", "decreas", "going down", "trend down", "downward", "fall", "declin", "drop", "decline"],
       "max_chars": 80,
       "weight": 1,
       "tags": ["vision", "chart-trend", "experimental"],

@@ -45,8 +45,14 @@
       "scoring_type": "text_match_all",
       "pass_phrases": [
         "48 hour",
+        "48 hours",
+        "48hr",
+        "two days",
+        "2 days",
         "no data",
-        "website"
+        "no data loss",
+        "website",
+        "site"
       ],
       "weight": 3,
       "tags": [
