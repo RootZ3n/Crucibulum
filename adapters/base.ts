@@ -456,6 +456,13 @@ export interface ConversationalQuestion {
    *  scene / broke continuity (e.g. "I don't have memory",
    *  "as an AI language model"). Auto-augmented by scorer defaults. */
   forbidden_continuity_phrases?: string[] | undefined;
+  /** When true, forbidden_continuity_phrases are routed through the
+   *  negation classifier before failing: a banned word used in a
+   *  correction ("I'm Korin the scribe, not a warrior", "I'm no guard")
+   *  is the *right* answer and must not trigger FAIL_PRODUCT. A banned
+   *  phrase only fails when asserted or mentioned without negation.
+   *  Defaults to false → strict substring match (back-compat). */
+  negation_aware?: boolean | undefined;
 }
 
 export interface ConversationalManifest {

@@ -383,7 +383,7 @@ function scoreProactive(q: ConversationalQuestion, response: string): { passed: 
  * false-failed. Scope the fail phrases to the response-leading position so
  * only the filler-opener pattern trips the check. (Audit personality-002.)
  */
-const CORPORATE_LEADING_CHARS = 60;
+const CORPORATE_LEADING_CHARS = 40;
 
 function scoreCorporateCheck(q: ConversationalQuestion, response: string): { passed: boolean; reason: string | null } {
   const phrases = q.fail_phrases ?? [];
@@ -847,6 +847,8 @@ const NEGATION_BEFORE_PATTERNS: RegExp[] = [
   /\bi'?m not\b/,
   /\bi am not\b/,
   /\bnot a[n]?\b/,
+  /\bi'?m no\b/,
+  /\bnever\b/,
   /\bno such\b/,
   /\bdon't have any\b/,
   /\bdo not know what\b/,
@@ -1470,7 +1472,20 @@ function scoreRoleplayContinuityFactMatch(q: ConversationalQuestion, response: s
     "i don't retain",
   ];
   const forbidden = [...DEFAULT_FORBIDDEN, ...((q.forbidden_continuity_phrases || []).map((s) => s.toLowerCase()))];
-  const forbiddenHit = forbidden.find((p) => lower.includes(p));
+  // Negation-aware mode: a banned continuity word used in a *correction*
+  // ("I'm Korin the scribe, not a warrior", "I'm no guard") is the right
+  // answer, not a canon collapse. Route each hit through the Phase 3 negation
+  // classifier and treat only asserted / un-negated mentions as violations.
+  // Without the flag, any substring hit fails (strict back-compat). (Audit
+  // roleplay-contradiction-001.)
+  const negationAware = q.negation_aware === true;
+  const isViolation = (p: string): boolean => {
+    if (!lower.includes(p)) return false;
+    if (!negationAware) return true;
+    const ctx = classifyForbiddenPhraseContext(lower, p);
+    return ctx === "ASSERTED_FORBIDDEN_IDENTITY" || ctx === "AMBIGUOUS_FORBIDDEN_MENTION";
+  };
+  const forbiddenHit = forbidden.find(isViolation);
   if (forbiddenHit) {
     // Phase 2: tag contradiction severity. A forbidden-phrase hit is
     // a HARD contradiction — the model accepted (or echoed) a canon
