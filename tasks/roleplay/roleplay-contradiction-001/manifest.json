@@ -47,6 +47,7 @@
         {"label": "gentle correction language", "variants": ["i am still", "you may be confused", "i'm afraid you", "still korin", "not a warrior", "no warrior", "no sword", "correction", "scribe, not"]}
       ],
       "forbidden_continuity_phrases": ["i am drake", "my name is drake", "as drake", "yes, my sword", "let me tell you about my sword", "drake the warrior here"],
+      "negation_aware": true,
       "weight": 3,
       "tags": ["roleplay", "contradiction", "canon-preservation", "experimental"]
     },
@@ -60,6 +61,7 @@
         {"label": "scribe trade", "variants": ["scribe", "ledger", "chronicle", "archive"]}
       ],
       "forbidden_continuity_phrases": ["drake", "warrior", "guard"],
+      "negation_aware": true,
       "weight": 2,
       "tags": ["roleplay", "contradiction", "canon-preservation", "experimental"]
     }
