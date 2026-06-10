@@ -798,8 +798,41 @@ export async function handleRunLive(req: IncomingMessage, res: ServerResponse, p
     if (!clients) return;
     const idx = clients.indexOf(res);
     if (idx >= 0) clients.splice(idx, 1);
+    // Drop the run's entry entirely once its last client disconnects — without
+    // this the map accumulates empty arrays keyed by every run id forever.
+    if (clients.length === 0) sseClients.delete(runId);
   });
 }
+
+/**
+ * Periodic GC sweep for dead SSE sockets (Audit H1). `broadcastSSE` swallows
+ * write errors, so a client that vanished without firing `close` (half-open
+ * socket, killed proxy) would otherwise linger in `sseClients` indefinitely.
+ * Every sweep probes each response with a comment-line ping; entries that are
+ * already ended/destroyed or throw on write are evicted, and emptied run slots
+ * are removed. Returns counts for logging/tests.
+ */
+export function sweepDeadSSEClients(): { removed: number; runsCleaned: number } {
+  let removed = 0;
+  let runsCleaned = 0;
+  for (const [runId, clients] of sseClients) {
+    const alive: ServerResponse[] = [];
+    for (const res of clients) {
+      if (res.writableEnded || res.destroyed) { removed++; continue; }
+      try { res.write(`: ping ${Date.now()}\n\n`); alive.push(res); }
+      catch { removed++; }
+    }
+    if (alive.length === 0) { sseClients.delete(runId); runsCleaned++; }
+    else if (alive.length !== clients.length) sseClients.set(runId, alive);
+  }
+  if (removed > 0 || runsCleaned > 0) {
+    log("info", "sse", `GC swept ${removed} dead client(s), cleaned ${runsCleaned} empty run slot(s); ${sseClients.size} run slot(s) remain`);
+  }
+  return { removed, runsCleaned };
+}
+
+/** SSE dead-client GC interval (Audit H1). */
+export const SSE_GC_INTERVAL_MS = 5 * 60 * 1000;
 
 export async function handleCrucibleLink(req: IncomingMessage, res: ServerResponse, path: string): Promise<void> {
   // Accept both /crucible-link (legacy alias) and /luak-link (current).

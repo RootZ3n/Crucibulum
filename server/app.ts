@@ -315,6 +315,13 @@ export async function startServer(port: number = DEFAULT_PORT, host: string = DE
   }, 60 * 60 * 1000);
   reaper.unref?.();
 
+  // SSE dead-client GC: evict response objects whose sockets died without
+  // firing `close`, so `sseClients` cannot grow without bound. (Audit H1.)
+  const sseGc = setInterval(() => {
+    try { run.sweepDeadSSEClients(); } catch (err) { log("warn", "api", `SSE GC error: ${String(err)}`); }
+  }, run.SSE_GC_INTERVAL_MS);
+  sseGc.unref?.();
+
   // Graceful shutdown: run one final reap and close the listener so a clean
   // SIGTERM/SIGINT (systemd stop, Ctrl-C) doesn't leave the port or stale
   // workspaces behind. (Audit M6.)
@@ -324,6 +331,7 @@ export async function startServer(port: number = DEFAULT_PORT, host: string = DE
     shuttingDown = true;
     log("info", "api", `Received ${signal} — shutting down`);
     clearInterval(reaper);
+    clearInterval(sseGc);
     try { reapStaleWorkspaces(); } catch { /* best effort */ }
     server.close(() => process.exit(0));
     // Don't hang forever if connections linger.
