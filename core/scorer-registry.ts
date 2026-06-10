@@ -130,6 +130,66 @@ export async function loadAllScorers(): Promise<{
   return results;
 }
 
+// ─── Safe invocation ───────────────────────────────────────────────
+
+export interface ScorerRunResult {
+  output: ScorerOutput;
+  /** Non-null when the plugin's output was rejected and coerced to 0/fail. */
+  rejected: string | null;
+}
+
+/**
+ * Invoke a scorer plugin and validate its output before trusting it. Scorers
+ * are arbitrary plugin code loaded from /scorers/; an output like
+ * `{passed:true, score:999}` would otherwise force a full-credit pass. We
+ * require passed to be a real boolean and score to be a finite number in
+ * [0,1]. Anything else is rejected with a warning and coerced to 0/fail —
+ * the scorer cannot fail open. (Audit C7.)
+ */
+export function runScorer(plugin: ScorerPlugin, input: ScorerInput): ScorerRunResult {
+  let raw: unknown;
+  try {
+    raw = plugin.score(input);
+  } catch (err) {
+    return failClosed(plugin.id, `threw: ${String(err)}`);
+  }
+
+  if (typeof raw !== "object" || raw === null) {
+    return failClosed(plugin.id, "returned a non-object result");
+  }
+  const r = raw as Record<string, unknown>;
+
+  if (typeof r.passed !== "boolean") {
+    return failClosed(plugin.id, `returned non-boolean 'passed' (${typeof r.passed})`);
+  }
+  if (typeof r.score !== "number" || !Number.isFinite(r.score)) {
+    return failClosed(plugin.id, `returned non-finite 'score' (${String(r.score)})`);
+  }
+  if (r.score < 0 || r.score > 1) {
+    return failClosed(plugin.id, `returned out-of-range 'score' (${r.score}); expected 0..1`);
+  }
+
+  return {
+    output: {
+      score: r.score,
+      passed: r.passed,
+      breakdown: (typeof r.breakdown === "object" && r.breakdown !== null) ? r.breakdown as Record<string, number> : {},
+      explanation: typeof r.explanation === "string" ? r.explanation : "",
+      ...(typeof r.metadata === "object" && r.metadata !== null ? { metadata: r.metadata as Record<string, unknown> } : {}),
+    },
+    rejected: null,
+  };
+}
+
+function failClosed(scorerId: string, reason: string): ScorerRunResult {
+  const message = `Custom scorer '${scorerId}' ${reason} — coerced to 0/fail`;
+  log("warn", "scorer-registry", message);
+  return {
+    output: { score: 0, passed: false, breakdown: {}, explanation: message },
+    rejected: message,
+  };
+}
+
 // ─── Queries ───────────────────────────────────────────────────────
 
 export function getScorer(id: string): ScorerPlugin | undefined {

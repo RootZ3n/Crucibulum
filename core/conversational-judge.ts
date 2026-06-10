@@ -20,7 +20,7 @@ import type {
   ConversationalManifest,
 } from "../adapters/base.js";
 import { log } from "../utils/logger.js";
-import { getScorer } from "./scorer-registry.js";
+import { getScorer, runScorer } from "./scorer-registry.js";
 
 // ── Text matching primitives ───────────────────────────────────────────────
 
@@ -1536,8 +1536,11 @@ export function scoreConversationalQuestion(
         failureReason = `Custom scorer '${scorerId}' not loaded — check /scorers/ directory and /api/scorers/health`;
         break;
       }
-      try {
-        const result = scorer.score({
+      {
+        // runScorer validates the plugin's output (boolean passed, finite
+        // score in [0,1]) and fails closed on anything else — a plugin can't
+        // force a pass with {passed:true, score:999}. (Audit C7.)
+        const { output } = runScorer(scorer, {
           taskId: question.id,
           taskFamily: "conversational",
           modelResponse: response,
@@ -1547,12 +1550,10 @@ export function scoreConversationalQuestion(
           },
           metadata: { tags: question.tags },
         });
-        passed = result.passed;
+        passed = output.passed;
         if (!passed) {
-          failureReason = result.explanation;
+          failureReason = output.explanation;
         }
-      } catch (err) {
-        failureReason = `Custom scorer '${scorerId}' threw: ${String(err)}`;
       }
       break;
     }
