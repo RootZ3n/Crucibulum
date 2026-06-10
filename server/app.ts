@@ -244,6 +244,29 @@ export function createApp(options: CreateAppOptions = {}): Server {
 }
 
 /**
+ * Emit a startup warning when no bundle-signing HMAC key is configured.
+ * Without it the integrity model is inert: every bundle verifies to
+ * "legacy_unverified" and forged bundles are indistinguishable from
+ * legitimate ones. (Audit C4 — the server was started directly, bypassing
+ * start.sh's key auto-generation, so this warning is the only signal.)
+ *
+ * Returns the resolved status so callers/tests can assert without re-reading
+ * the environment. Exported for unit testing the warning path.
+ */
+export function warnIfHmacKeyMissing(): "missing" | "legacy-alias" | "ok" {
+  if (!process.env["LUAK_HMAC_KEY"] && !process.env["CRUCIBLE_HMAC_KEY"]) {
+    log("warn", "hmac", "WARNING: No HMAC key configured. All bundles will be unsigned. Set LUAK_HMAC_KEY in .env.");
+    log("warn", "hmac", "Unsigned bundles will be quarantined and not ranked on the public leaderboard. This is fine for local demos, but meaningful verified rankings require a configured HMAC key.");
+    return "missing";
+  }
+  if (!process.env["LUAK_HMAC_KEY"] && process.env["CRUCIBLE_HMAC_KEY"]) {
+    log("warn", "hmac", "Using deprecated CRUCIBLE_HMAC_KEY; rename to LUAK_HMAC_KEY (CRUCIBLE_* remains supported as an alias)");
+    return "legacy-alias";
+  }
+  return "ok";
+}
+
+/**
  * Production boot. Loads the scorer registry, then binds the configured port.
  * Returns the listening server so callers can hold a reference for tests or
  * shutdown hooks.
@@ -251,12 +274,7 @@ export function createApp(options: CreateAppOptions = {}): Server {
 export async function startServer(port: number = DEFAULT_PORT, host: string = DEFAULT_HOST): Promise<Server> {
   const server = createApp();
   log("info", "api", "Auth: NONE — no built-in authentication. Bind to loopback or put a private-network gate (Tailscale, VPN, firewall, reverse-proxy auth) in front of Luak if you expose it beyond this machine.");
-  if (!process.env["LUAK_HMAC_KEY"] && !process.env["CRUCIBLE_HMAC_KEY"]) {
-    log("warn", "hmac", "LUAK_HMAC_KEY is not set — unsigned bundles will be quarantined and not ranked on the public leaderboard");
-    log("warn", "hmac", "This is fine for local demos, but meaningful verified rankings require a configured HMAC key");
-  } else if (!process.env["LUAK_HMAC_KEY"] && process.env["CRUCIBLE_HMAC_KEY"]) {
-    log("warn", "hmac", "Using deprecated CRUCIBLE_HMAC_KEY; rename to LUAK_HMAC_KEY (CRUCIBLE_* remains supported as an alias)");
-  }
+  warnIfHmacKeyMissing();
   try {
     const scorerResults = await loadAllScorers();
     log("info", "api", `Scorer registry: ${scorerResults.loaded} loaded, ${scorerResults.failed.length} failed`);
