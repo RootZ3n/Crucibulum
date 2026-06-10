@@ -77,7 +77,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
   {
     id: "openai-compatible",
     label: "OpenAI-compatible endpoint",
-    adapter: "openrouter",
+    adapter: "openai-compatible",
     kind: "cloud",
     defaultBaseUrl: null,
     envKey: null,

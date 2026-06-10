@@ -231,6 +231,22 @@ const REGISTRY: RegistryDefinition[] = [
     },
   },
   {
+    id: "openai-compatible",
+    name: "OpenAI-Compatible",
+    kind: "cloud",
+    provider_mode: "configurable",
+    fixed_provider: null,
+    supports_custom_model: true,
+    create: () => new OpenRouterAdapter({ id: "openai-compatible", name: "OpenAI-Compatible" }),
+    provider_options: [{ id: "openai-compatible", name: "OpenAI-Compatible endpoint", kind: "cloud", configurable: true }],
+    async listModels() {
+      return []; // Models are discovered via the provider registry, not the adapter
+    },
+    makeConfig(input) {
+      return { model: input.model } as AdapterConfig;
+    },
+  },
+  {
     id: "openclaw",
     name: "OpenClaw",
     kind: "subprocess",
@@ -552,7 +568,16 @@ export async function instantiateAdapterForRun(input: {
   // Resolve the credential for THIS run and pass it via the config — never
   // through global process.env, which bleeds across concurrent runs. (Audit H3.)
   const keyedConfig = config as AdapterConfig & { api_key?: string; base_url?: string };
-  const registryTarget = resolveByModelIdWithHint(input.model, input.provider);
+  // When the adapter is a generic OpenAI-compatible adapter (openrouter), don't
+  // pass the provider hint — it would filter out providers registered under the
+  // "openai-compatible" preset (e.g. DeepSeek, MiMo) whose presetId != "openrouter".
+  // 
+  // UPDATE: This is no longer needed since we added the "openai-compatible" adapter
+  // as a first-class adapter. Keeping as defensive fallback.
+  const providerHint = (input.adapter === "openrouter" && input.provider === "openrouter")
+    ? null
+    : input.provider;
+  const registryTarget = resolveByModelIdWithHint(input.model, providerHint);
   if (registryTarget && registryTarget.adapter === registry.id) {
     const apiKey = registryTarget.apiKey ?? (registryTarget.apiKeyEnv ? process.env[registryTarget.apiKeyEnv] ?? "" : "");
     if (apiKey) keyedConfig.api_key = apiKey;
