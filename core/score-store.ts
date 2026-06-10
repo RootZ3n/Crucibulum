@@ -28,7 +28,14 @@ function addColumnIfMissing(database: InstanceType<typeof Database>, ddl: string
   try {
     database.exec(ddl);
   } catch (err) {
-    if (!String(err).toLowerCase().includes("duplicate column")) {
+    // Only the benign "column already exists" outcome is expected here — that's
+    // the whole point of the helper. Every other ALTER TABLE failure (locked
+    // DB, disk full, permissions, malformed DDL) must propagate: swallowing it
+    // would leave the schema silently missing a column and blow up later on
+    // INSERT instead. (Audit M3.)
+    const msg = String(err).toLowerCase();
+    const isDuplicateColumn = msg.includes("duplicate column") || msg.includes("already exists");
+    if (!isDuplicateColumn) {
       throw err;
     }
   }

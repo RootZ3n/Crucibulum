@@ -22,7 +22,7 @@
  *   (b) an inline value that is masked in every serialize-for-client path.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, chmodSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, chmodSync, copyFileSync } from "node:fs";
 import { join } from "node:path";
 import { log } from "../utils/logger.js";
 import { crucibleStateRoot } from "../utils/env.js";
@@ -326,14 +326,33 @@ function loadFromDisk(): StoreShape {
   }
 }
 
+/**
+ * Copy the current registry to `.bak` before it is overwritten, so a
+ * corrupt/bad write (or an operator mistake) is recoverable from the last
+ * good copy. Best-effort: a backup failure must not block the actual save.
+ * The backup carries the same 0600 perms since it may hold inline keys. (M1.)
+ */
+function backupFile(path: string): void {
+  if (!existsSync(path)) return;
+  try {
+    copyFileSync(path, `${path}.bak`);
+    try { chmodSync(`${path}.bak`, 0o600); } catch { /* best effort */ }
+  } catch (err) {
+    log("warn", "provider-registry", `Failed to back up registry before write: ${String(err)}`);
+  }
+}
+
 function saveToDisk(store: StoreShape): void {
   try {
     mkdirSync(statePath(), { recursive: true });
     const path = storeFile();
+    // Snapshot the prior good copy to .bak before we touch the live file.
+    backupFile(path);
     const tmp = path + ".tmp";
     // The registry can hold inline provider API keys in plaintext. Write with
     // owner-only permissions (0600) so the default umask doesn't leave it
-    // group/world-readable. (Audit L3.)
+    // group/world-readable. (Audit L3.) tmp+rename gives an atomic swap so a
+    // crash mid-write never leaves a torn file. (Audit M1.)
     writeFileSync(tmp, JSON.stringify(store, null, 2), { mode: 0o600 });
     renameSync(tmp, path);
     try { chmodSync(path, 0o600); } catch { /* best effort on platforms without POSIX modes */ }

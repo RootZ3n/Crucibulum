@@ -31,7 +31,10 @@ else
   # a malformed one must fail loudly rather than be swallowed by `|| true`. (L4)
   if [ -f "$LUAK_DIR/.env" ]; then
     set -a
-    source "$LUAK_DIR/.env"
+    # POSIX `.` not the bash-only `source`: under `sh start.sh` (dash) `source`
+    # is "command not found", which `set -e` turns into a silent abort before
+    # the server ever starts. `.` works in both bash and dash. (Audit H5.)
+    . "$LUAK_DIR/.env"
     set +a
   fi
 
