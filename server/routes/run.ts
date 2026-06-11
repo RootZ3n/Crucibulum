@@ -756,7 +756,6 @@ export async function handleRunLive(req: IncomingMessage, res: ServerResponse, p
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
     Connection: "keep-alive",
-    "Access-Control-Allow-Origin": "*",
   });
   const run = activeRuns.get(runId);
   if (run) {

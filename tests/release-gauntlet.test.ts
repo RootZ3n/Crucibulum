@@ -65,7 +65,7 @@ describe("release-gauntlet: --dry-run-inventory", () => {
     assert.match(stdout, /tasks total:\s+87/);
     assert.match(stdout, /conversational:\s+62/);
     assert.match(stdout, /repo:\s+25/);
-    assert.match(stdout, /registered adapters:\s+12/);
+    assert.match(stdout, /registered adapters:\s+13/);
     // Sample of expected families.
     for (const fam of ["personality", "operational-trust", "role-stress", "safety", "tool-calling"]) {
       assert.match(stdout, new RegExp(`\\b${fam}\\b`));

@@ -27,6 +27,14 @@ function delayFor(attempt: number, options: RetryOptions): number {
   return Math.min(max, base * 2 ** Math.max(0, attempt - 1)) + jitter;
 }
 
+function delayWithRetryAfter(attempt: number, options: RetryOptions, error: StructuredProviderError): number {
+  const computed = delayFor(attempt, options);
+  const retryAfterMs = typeof error.retryAfterSec === "number" && Number.isFinite(error.retryAfterSec) && error.retryAfterSec >= 0
+    ? error.retryAfterSec * 1000
+    : 0;
+  return Math.max(computed, retryAfterMs);
+}
+
 export async function withProviderRetries<T>(
   fn: (attempt: number) => Promise<T>,
   context: { provider: string; adapter: string },
@@ -67,7 +75,7 @@ export async function withProviderRetries<T>(
       if (!canRetry) {
         throw err;
       }
-      await sleep(delayFor(attempt, options));
+      await sleep(delayWithRetryAfter(attempt, options, structured));
     }
   }
   throw new Error("retry loop exited unexpectedly");

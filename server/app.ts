@@ -18,7 +18,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { log } from "../utils/logger.js";
-import { sendJSON } from "./routes/shared.js";
+import { sendJSON, setCorsHeaders } from "./routes/shared.js";
 import { envValue } from "../utils/env.js";
 import { loadAllScorers } from "../core/scorer-registry.js";
 import { reapStaleWorkspaces } from "../core/cleanup.js";
@@ -49,6 +49,7 @@ export interface CreateAppOptions {
 }
 
 async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: CreateAppOptions): Promise<void> {
+  setCorsHeaders(req, res);
   const url = new URL(req.url ?? "/", `http://localhost:${DEFAULT_PORT}`);
   const rawPath = url.pathname;
   // Reject paths with double-slash (path normalization bypass) or empty segments.
@@ -61,11 +62,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Cr
   const method = req.method ?? "GET";
 
   if (method === "OPTIONS") {
-    res.writeHead(204, {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    });
+    res.writeHead(204);
     res.end();
     return;
   }

@@ -78,7 +78,6 @@ export function sendRateLimited(res: ServerResponse, rule: RateLimitRule, retryA
   res.writeHead(429, {
     "Content-Type": "application/json; charset=utf-8",
     "Retry-After": String(retryAfterSec),
-    "Access-Control-Allow-Origin": "*",
   });
   res.end(JSON.stringify({
     error: "rate_limited",

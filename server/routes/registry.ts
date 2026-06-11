@@ -95,15 +95,19 @@ export async function handleUpdateProvider(req: IncomingMessage, res: ServerResp
   const parsed = await parseJsonBody<Record<string, unknown>>(req);
   if (!parsed.ok) { sendJSON(res, 400, { error: parsed.error }); return; }
   const body = parsed.value;
-  const updated = updateProvider(providerId, {
-    label: typeof body["label"] === "string" ? body["label"] : undefined,
-    baseUrl: typeof body["baseUrl"] === "string" ? body["baseUrl"] : body["baseUrl"] === null ? null : undefined,
-    apiKeyEnv: typeof body["apiKeyEnv"] === "string" ? body["apiKeyEnv"] : body["apiKeyEnv"] === null ? null : undefined,
-    apiKey: typeof body["apiKey"] === "string" ? body["apiKey"] : body["apiKey"] === null ? null : undefined,
-    enabled: typeof body["enabled"] === "boolean" ? body["enabled"] : undefined,
-  });
-  if (!updated) { sendJSON(res, 404, { error: "Provider not found" }); return; }
-  sendJSON(res, 200, { provider: serializeProviderForClient(updated) });
+  try {
+    const updated = updateProvider(providerId, {
+      label: typeof body["label"] === "string" ? body["label"] : undefined,
+      baseUrl: typeof body["baseUrl"] === "string" ? body["baseUrl"] : body["baseUrl"] === null ? null : undefined,
+      apiKeyEnv: typeof body["apiKeyEnv"] === "string" ? body["apiKeyEnv"] : body["apiKeyEnv"] === null ? null : undefined,
+      apiKey: typeof body["apiKey"] === "string" ? body["apiKey"] : body["apiKey"] === null ? null : undefined,
+      enabled: typeof body["enabled"] === "boolean" ? body["enabled"] : undefined,
+    });
+    if (!updated) { sendJSON(res, 404, { error: "Provider not found" }); return; }
+    sendJSON(res, 200, { provider: serializeProviderForClient(updated) });
+  } catch (err) {
+    sendJSON(res, 400, { error: String(err).slice(0, 200) });
+  }
 }
 
 // ── DELETE /api/registry/providers/:id ─────────────────────────────────────

@@ -28,6 +28,7 @@ import type {
 import { Observer } from "../core/observer.js";
 import { makeEmptyResponseError, makeHttpProviderError, makeInvalidResponseError, normalizeProviderError, providerErrorSummary } from "../core/provider-errors.js";
 import { log } from "../utils/logger.js";
+import { validateProviderBaseUrl } from "../core/provider-registry.js";
 
 const DEFAULT_PEH_URL = process.env["PEH_URL"] ?? "http://localhost:18791";
 const MODEL_TIMEOUT_MS = 120_000;
@@ -73,7 +74,11 @@ export class PehAdapter implements CrucibulumAdapter {
 
   async init(config: AdapterConfig): Promise<void> {
     const c = config as PehConfig;
-    if (c.peh_url) this.url = c.peh_url;
+    if (c.peh_url) {
+      const ssrfReason = validateProviderBaseUrl(c.peh_url, "local");
+      if (ssrfReason) throw new Error(`Unsafe Peh base URL: ${ssrfReason}`);
+      this.url = c.peh_url.replace(/\/+$/, "");
+    }
     if (c.model) this.model = c.model;
     if (c.provider) this.provider = c.provider;
   }

@@ -1,5 +1,5 @@
 import type { AdapterConfig, CrucibulumAdapter } from "./base.js";
-import { listProviders, getPreset, resolveByModelIdWithHint } from "../core/provider-registry.js";
+import { listProviders, getPreset, resolveByModelIdWithHint, validateProviderBaseUrl } from "../core/provider-registry.js";
 import { OllamaAdapter } from "./ollama.js";
 import { OpenRouterAdapter } from "./openrouter.js";
 import { OpenClawAdapter } from "./openclaw.js";
@@ -581,7 +581,12 @@ export async function instantiateAdapterForRun(input: {
   if (registryTarget && registryTarget.adapter === registry.id) {
     const apiKey = registryTarget.apiKey ?? (registryTarget.apiKeyEnv ? process.env[registryTarget.apiKeyEnv] ?? "" : "");
     if (apiKey) keyedConfig.api_key = apiKey;
-    if (registryTarget.baseUrl) keyedConfig.base_url = registryTarget.baseUrl;
+    if (registryTarget.baseUrl) {
+      const preset = getPreset(registryTarget.presetId);
+      const ssrfReason = validateProviderBaseUrl(registryTarget.baseUrl, preset?.kind ?? "cloud");
+      if (ssrfReason) throw new Error(`Unsafe provider baseUrl for ${registryTarget.providerConfigId}: ${ssrfReason}`);
+      keyedConfig.base_url = registryTarget.baseUrl;
+    }
   } else {
     // No exact model match in the registry: still honor an enabled provider
     // configured for this adapter (mirrors the old env-hydration fallback).
@@ -615,6 +620,8 @@ function registryCredentialForAdapter(adapterId: string): { apiKey?: string | un
     if (!preset || preset.adapter !== adapterId) continue;
     const apiKey = provider.apiKey || (provider.apiKeyEnv ? process.env[provider.apiKeyEnv] : undefined) || undefined;
     const baseUrl = provider.baseUrl || preset.defaultBaseUrl || undefined;
+    const ssrfReason = validateProviderBaseUrl(baseUrl, preset.kind);
+    if (ssrfReason) throw new Error(`Unsafe provider baseUrl for ${provider.id}: ${ssrfReason}`);
     return { apiKey: apiKey || undefined, baseUrl: baseUrl || undefined };
   }
   return {};

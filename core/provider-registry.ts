@@ -537,6 +537,9 @@ export function addProvider(input: AddProviderInput): ProviderConfig {
   const now = Date.now();
   const baseUrl = (input.baseUrl ?? null) || null;
   const ssrfWarning = validateProviderBaseUrl(baseUrl, preset.kind);
+  if (ssrfWarning) {
+    throw new Error(ssrfWarning);
+  }
   const cfg: ProviderConfig = {
     id: newId("prov"),
     presetId: preset.id,
@@ -550,9 +553,7 @@ export function addProvider(input: AddProviderInput): ProviderConfig {
     lastTestedReason: null,
     lastTestedError: null,
     createdAt: now,
-    ...(ssrfWarning ? { warnings: [ssrfWarning] } : {}),
   };
-  if (ssrfWarning) log("warn", "registry", `Provider ${cfg.id} (${preset.id}) baseUrl flagged: ${ssrfWarning}`);
   mutate((s) => { s.providers.push(cfg); });
   return cfg;
 }
@@ -567,21 +568,22 @@ export interface UpdateProviderInput {
 
 export function updateProvider(id: string, patch: UpdateProviderInput): ProviderConfig | null {
   let updated: ProviderConfig | null = null;
+  if (patch.baseUrl !== undefined) {
+    const existing = listProviders().find((x) => x.id === id);
+    if (existing) {
+      const preset = getPreset(existing.presetId);
+      const nextBaseUrl = patch.baseUrl || null;
+      const ssrfWarning = validateProviderBaseUrl(nextBaseUrl, preset?.kind ?? "cloud");
+      if (ssrfWarning) throw new Error(ssrfWarning);
+    }
+  }
   mutate((s) => {
     const p = s.providers.find((x) => x.id === id);
     if (!p) return;
     if (patch.label !== undefined) p.label = patch.label.trim() || p.label;
     if (patch.baseUrl !== undefined) {
       p.baseUrl = patch.baseUrl || null;
-      // Re-validate against the SSRF policy whenever baseUrl changes. (C6)
-      const preset = getPreset(p.presetId);
-      const ssrfWarning = validateProviderBaseUrl(p.baseUrl, preset?.kind ?? "cloud");
-      if (ssrfWarning) {
-        p.warnings = [ssrfWarning];
-        log("warn", "registry", `Provider ${p.id} (${p.presetId}) baseUrl flagged: ${ssrfWarning}`);
-      } else {
-        delete p.warnings;
-      }
+      delete p.warnings;
     }
     if (patch.apiKeyEnv !== undefined) p.apiKeyEnv = patch.apiKeyEnv || null;
     if (patch.apiKey !== undefined) p.apiKey = patch.apiKey || null;

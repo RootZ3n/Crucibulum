@@ -10,6 +10,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { validateProviderBaseUrl, isPrivateOrLocalHost } from "../core/provider-registry.js";
+import { OpenRouterAdapter } from "../adapters/openrouter.js";
+import { MiniMaxAdapter } from "../adapters/minimax.js";
+import { PehAdapter } from "../adapters/peh.js";
 
 describe("provider baseUrl SSRF guard (C6)", () => {
   it("rejects non-http(s) schemes for cloud providers", () => {
@@ -68,5 +71,20 @@ describe("provider baseUrl SSRF guard (C6)", () => {
     assert.equal(isPrivateOrLocalHost("127.0.0.1"), true);
     assert.equal(isPrivateOrLocalHost("localhost"), true);
     assert.equal(isPrivateOrLocalHost("169.254.169.254"), true);
+  });
+
+  it("rejects unsafe adapter-level base_url overrides before fetch", async () => {
+    await assert.rejects(
+      () => new OpenRouterAdapter().init({ base_url: "http://127.0.0.1:9999/v1", model: "x", api_key: "secret" } as never),
+      /Unsafe .*base_url/i,
+    );
+    await assert.rejects(
+      () => new MiniMaxAdapter().init({ base_url: "http://169.254.169.254/v1", model: "x", api_key: "secret" } as never),
+      /Unsafe MiniMax base_url/i,
+    );
+    await assert.rejects(
+      () => new PehAdapter().init({ peh_url: "file:///etc/passwd" } as never),
+      /Unsafe Peh base URL/i,
+    );
   });
 });

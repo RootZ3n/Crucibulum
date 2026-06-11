@@ -22,6 +22,7 @@ import { Observer } from "../core/observer.js";
 import { makeEmptyResponseError, makeHttpProviderError, makeInvalidResponseError, makeProviderFailureError, normalizeProviderError, providerErrorSummary, providerErrorDetail } from "../core/provider-errors.js";
 import { withProviderRetries } from "../core/retry.js";
 import { log } from "../utils/logger.js";
+import { validateProviderBaseUrl } from "../core/provider-registry.js";
 
 // MiniMax runs two distinct platforms with separate accounts and keys:
 //   • International: api.minimax.io — current global API host
@@ -90,7 +91,10 @@ export class MiniMaxAdapter implements CrucibulumAdapter {
     if (typeof c.timeout_ms === "number" && c.timeout_ms > 0) this.timeoutMs = c.timeout_ms;
     if (typeof c.retries === "number" && c.retries >= 0) this.retries = Math.floor(c.retries);
     const envBase = process.env["MINIMAX_BASE_URL"];
-    this.baseUrl = (c.base_url || envBase || MINIMAX_BASE_DEFAULT).replace(/\/+$/, "");
+    const nextBaseUrl = c.base_url || envBase || MINIMAX_BASE_DEFAULT;
+    const ssrfReason = validateProviderBaseUrl(nextBaseUrl, "cloud");
+    if (ssrfReason) throw new Error(`Unsafe MiniMax base_url: ${ssrfReason}`);
+    this.baseUrl = nextBaseUrl.replace(/\/+$/, "");
   }
 
   async healthCheck() {

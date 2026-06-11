@@ -20,6 +20,7 @@ import { Observer } from "../core/observer.js";
 import { makeEmptyResponseError, makeHttpProviderError, makeInvalidResponseError, makeProviderFailureError, normalizeProviderError, providerErrorSummary, providerErrorDetail } from "../core/provider-errors.js";
 import { withProviderRetries } from "../core/retry.js";
 import { log } from "../utils/logger.js";
+import { validateProviderBaseUrl } from "../core/provider-registry.js";
 
 const DEFAULT_OPENROUTER_BASE = "https://openrouter.ai/api/v1";
 const MODEL_TIMEOUT_MS = 120_000; // 2 min for cloud models (faster than local)
@@ -91,7 +92,11 @@ export class OpenRouterAdapter implements CrucibulumAdapter {
     const c = config as OpenRouterConfig;
     if (c.api_key) this.apiKey = c.api_key;
     if (c.model) this.model = c.model;
-    if (c.base_url) this.baseUrl = c.base_url;
+    if (c.base_url) {
+      const ssrfReason = validateProviderBaseUrl(c.base_url, "cloud");
+      if (ssrfReason) throw new Error(`Unsafe ${this.name} base_url: ${ssrfReason}`);
+      this.baseUrl = c.base_url.replace(/\/+$/, "");
+    }
     if (typeof c.timeout_ms === "number" && c.timeout_ms > 0) this.timeoutMs = c.timeout_ms;
     if (typeof c.retries === "number" && c.retries >= 0) this.retries = Math.floor(c.retries);
     if (!this.apiKey) {

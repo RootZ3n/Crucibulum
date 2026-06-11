@@ -28,6 +28,7 @@ describe("adapter registry", () => {
       "minimax",
       "ollama",
       "openai",
+      "openai-compatible",
       "openclaw",
       "openrouter",
       "peh",

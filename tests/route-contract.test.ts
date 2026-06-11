@@ -476,17 +476,34 @@ describe("route: /api/registry — data-driven provider/model management", () =>
     assert.equal(toggled.enabled, false);
   });
 
-  it("POST /api/registry/providers/:id/test returns {ok, reason, provider} and never throws — bad endpoint yields a clean failure", async () => {
+  it("POST /api/registry/providers rejects unsafe cloud baseUrl before credentials can be stored", async () => {
     const add = await fetch(`${base}/api/registry/providers`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         presetId: "openai-compatible",
         label: "Deliberately bogus",
-        baseUrl: "http://127.0.0.1:1",   // reserved port, nothing listening
+        baseUrl: "http://127.0.0.1:1",
         apiKey: "sk-test",
       }),
     });
+    assert.equal(add.status, 400);
+    const body = await add.json() as { error: string };
+    assert.match(body.error, /loopback|private|credentials/i);
+  });
+
+  it("POST /api/registry/providers/:id/test returns {ok, reason, provider} and never throws — bad public endpoint yields a clean failure", async () => {
+    const add = await fetch(`${base}/api/registry/providers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        presetId: "openai-compatible",
+        label: "Deliberately unreachable public endpoint",
+        baseUrl: "https://example.invalid/v1",
+        apiKey: "sk-test",
+      }),
+    });
+    assert.equal(add.status, 201);
     const { provider } = await add.json() as { provider: { id: string } };
     const test = await fetch(`${base}/api/registry/providers/${provider.id}/test`, { method: "POST" });
     assert.equal(test.status, 200, "a failed probe must still return 200 with {ok:false} — never a 500");
