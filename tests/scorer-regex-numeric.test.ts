@@ -26,6 +26,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { scoreConversationalQuestion } from '../core/conversational-judge.js';
 
 const ROOT = process.cwd();
 const MANIFEST = JSON.parse(
@@ -130,17 +131,15 @@ describe('Luak scorer: regex_match (numeric, token-efficiency)', () => {
   });
 
   it('S7 · failure messages identify the actual pattern + got value (no silent fail)', () => {
-    // We can't reach the scorer directly without the runner, but the
-    // bundle timeline error format is pinned: "<QID>: FAIL — Response
-    // did not match pattern <regex>. Got: <answer>". Verify the format
-    // by checking a known historical bundle.
-    const bundle = JSON.parse(
-      readFileSync(join(ROOT, 'runs', 'run_2026-05-25_token-efficiency-001_deepseek-deepseek-v4-flash_06e45740.json'), 'utf-8'),
-    );
-    const errors = (bundle.timeline as Array<{ type: string; detail: string }>).filter((e) => e.type === 'error');
-    assert.ok(errors.length >= 2, 'audited bundle must have at least 2 error rows (Q1 and Q4)');
-    for (const e of errors) {
-      assert.match(e.detail, /^TE1-Q\d+: FAIL — Response did not match pattern \/[^/]+\/[a-z]*\. Got: /, `scorer error format must name the pattern AND the got value: ${e.detail}`);
+    const q1 = QUESTIONS.find((x) => x.id === 'TE1-Q1')!;
+    const q4 = QUESTIONS.find((x) => x.id === 'TE1-Q4')!;
+    const failures = [
+      scoreConversationalQuestion(q1 as never, '6'),
+      scoreConversationalQuestion(q4 as never, '351'),
+    ];
+    for (const scored of failures) {
+      assert.equal(scored.passed, false);
+      assert.match(scored.failure_reason ?? '', /^Response did not match pattern \/[^/]+\/[a-z]*\. Got: /, `scorer error format must name the pattern AND the got value: ${scored.failure_reason}`);
     }
   });
 });

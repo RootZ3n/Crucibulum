@@ -1778,48 +1778,66 @@ export function judgeConversational(
   manifest: ConversationalManifest,
   results: ConversationalResult[],
 ): ConversationalJudgeResult {
-  const totalWeight = results.reduce((sum, r) => sum + r.weight, 0);
-  const earnedWeight = results.reduce((sum, r) => sum + r.score, 0);
+  const attemptedById = new Map(results.map((r) => [r.question_id, r]));
+  const completeResults: ConversationalResult[] = manifest.questions.map((question) => {
+    const attempted = attemptedById.get(question.id);
+    if (attempted) return attempted;
+    return {
+      question_id: question.id,
+      question: question.question,
+      response: "",
+      passed: false,
+      score: 0,
+      weight: question.weight,
+      failure_reason: "UNATTEMPTED: runner stopped before this question",
+      duration_ms: 0,
+      tokens_in: 0,
+      tokens_out: 0,
+    };
+  });
+  const totalWeight = manifest.questions.reduce((sum, q) => sum + q.weight, 0);
+  const earnedWeight = completeResults.reduce((sum, r) => sum + r.score, 0);
   const score = totalWeight > 0 ? earnedWeight / totalWeight : 0;
-  const passedCount = results.filter(r => r.passed).length;
-  const failedCount = results.filter(r => !r.passed).length;
+  const passedCount = completeResults.filter(r => r.passed).length;
+  const failedCount = completeResults.filter(r => !r.passed).length;
 
   // Anomaly detection — flag suspicious cases the harness/UI must surface.
   const anomalyFlags: string[] = [];
-  if (failedCount === results.length && results.length > 2) {
+  const attemptedFailedCount = results.filter(r => !r.passed).length;
+  if ((failedCount === completeResults.length && completeResults.length > 2) || (attemptedFailedCount === results.length && results.length > 2)) {
     anomalyFlags.push("ALL_FAILED: Every question failed — likely API or routing issue");
   }
-  if (passedCount === results.length && results.length > 5) {
+  if (passedCount === completeResults.length && completeResults.length > 5) {
     anomalyFlags.push("PERFECT_SCORE: All questions passed — verify scoring is correct");
   }
   // An "empty answer that still passed" is the personality-tab regression
   // signature: the model returned nothing yet the absence-of-X scorer marked
   // it pass. Should not happen after the empty-response guard, but kept as a
   // belt-and-braces flag the harness checks for.
-  const silentPassWithoutAnswer = results.find((r) => r.passed && (!r.response || r.response.trim().length === 0));
+  const silentPassWithoutAnswer = completeResults.find((r) => r.passed && (!r.response || r.response.trim().length === 0));
   if (silentPassWithoutAnswer) {
     anomalyFlags.push(`SILENT_PASS: Question ${silentPassWithoutAnswer.question_id} passed with an empty answer`);
   }
   // No tokens whatsoever on a passing run almost always means the adapter
   // never reached the provider — the run should be NC, not PASS.
-  const allZeroTokens = results.length > 0 && results.every((r) => (r.tokens_in ?? 0) === 0 && (r.tokens_out ?? 0) === 0);
+  const allZeroTokens = completeResults.length > 0 && completeResults.every((r) => (r.tokens_in ?? 0) === 0 && (r.tokens_out ?? 0) === 0);
   if (allZeroTokens && passedCount > 0) {
     anomalyFlags.push("NO_TOKENS_REPORTED: Run reported zero token usage on passing questions — verify provider call actually happened");
   }
 
   const pass = score >= manifest.scoring.pass_threshold;
 
-  log("info", "conv-judge", `Score: ${(score * 100).toFixed(0)}% (${passedCount}/${results.length}) — ${pass ? "PASS" : "FAIL"}`);
+  log("info", "conv-judge", `Score: ${(score * 100).toFixed(0)}% (${passedCount}/${completeResults.length}) — ${pass ? "PASS" : "FAIL"}`);
 
   return {
-    total_questions: results.length,
+    total_questions: manifest.questions.length,
     passed: passedCount,
     failed: failedCount,
     total_weight: totalWeight,
     earned_weight: earnedWeight,
     score,
     pass,
-    results,
+    results: completeResults,
     anomaly_flags: anomalyFlags,
   };
 }

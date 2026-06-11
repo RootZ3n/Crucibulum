@@ -33,7 +33,7 @@ import { sha256Object } from "../utils/hashing.js";
 import { estimateCost } from "../utils/cost.js";
 import { log } from "../utils/logger.js";
 import { formatDuration } from "../utils/timing.js";
-import { assertSafeId, safeJoinId } from "../utils/safe-id.js";
+import { assertContainedPath, assertSafeId, safeJoinId } from "../utils/safe-id.js";
 import { parseJsonSafe } from "../utils/json-safe.js";
 import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
 import { assertBenchmarkProvenance } from "./manifest.js";
@@ -47,12 +47,15 @@ import { createHash } from "node:crypto";
 // runner's disk view. preflightSkipCheck uses this to do
 // hash-of-bytes verification before any provider call.
 const REPO_FS: FixtureFsHandle = {
-  exists: (p: string) => existsSync(resolve(process.cwd(), p)),
-  read: (p: string) => nodeReadFileSyncBytes(resolve(process.cwd(), p)),
+  exists: (p: string) => existsSync(containedRepoPath(p, "fixture path")),
+  read: (p: string) => nodeReadFileSyncBytes(containedRepoPath(p, "fixture path")),
   sha256Hex: (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex"),
 };
 function nodeReadFileSyncBytes(p: string): Uint8Array {
   return readFileSync(p);
+}
+function containedRepoPath(path: string, label = "path"): string {
+  return assertContainedPath(process.cwd(), resolve(process.cwd(), path), label);
 }
 import { interpretBundleResult } from "./interpretation.js";
 import type { StructuredProviderError } from "../types/provider-error.js";
@@ -649,7 +652,7 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
     // before we got here — re-read the bytes for transport.
     if (manifest.family === "vision" && (manifest as unknown as { image_fixture?: { path: string; mime?: string } }).image_fixture) {
       const fx = (manifest as unknown as { image_fixture: { path: string; mime?: string } }).image_fixture;
-      const bytes = readFileSync(resolve(process.cwd(), fx.path));
+      const bytes = readFileSync(containedRepoPath(fx.path, "image_fixture.path"));
       const dataUrl = `data:${fx.mime || "image/png"};base64,${bytes.toString("base64")}`;
       messages.push({
         role: "user",
@@ -787,7 +790,7 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
   if (manifest.session?.session_id) {
     persistConversation(manifest.session.session_id, messages);
   }
-  return { bundle, passed: judgeResult.pass, score: judgeResult.score, exitCode };
+  return { bundle, passed: bundle.score.pass, score: judgeResult.score, exitCode };
 }
 
 /**
@@ -987,7 +990,7 @@ function buildConversationalBundle(input: ConversationalBundleInput): EvidenceBu
       rubric_hidden: false, // conversational tasks have visible pass criteria
       narration_ignored: false,
       state_based_scoring: true,
-      bundle_verified: false,
+      bundle_verified: true,
       deterministic_judge_authoritative: true,
       review_layer_advisory: true,
     },

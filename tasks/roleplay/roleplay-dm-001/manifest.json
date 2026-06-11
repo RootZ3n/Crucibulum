@@ -12,8 +12,9 @@
     {
       "id": "RP3-Q1",
       "question": "I push open the inn door and step inside. What do I see?",
-      "scoring_type": "roleplay_rubric",
+      "scoring_type": "roleplay_character_consistency",
       "rubrics": ["dm_narrator"],
+      "required_persona_markers": ["inn", "door", "dusk", "cloaked", "figure", "choice", "choose", "do you"],
       "weight": 1,
       "tags": ["roleplay", "dm", "experimental"],
       "expectation": "Scene description + at least 2 player choices."
@@ -21,16 +22,19 @@
     {
       "id": "RP3-Q2",
       "question": "I approach the cloaked figure but keep one hand near my dagger.",
-      "scoring_type": "roleplay_rubric",
+      "scoring_type": "roleplay_character_consistency",
       "rubrics": ["dm_narrator"],
+      "required_persona_markers": ["cloaked", "figure", "dagger", "inn", "choice", "choose", "do you", "your"],
       "weight": 1,
       "tags": ["roleplay", "dm", "experimental"]
     },
     {
       "id": "RP3-Q3",
       "question": "I ignore the cloaked figure entirely and order a meal from the innkeeper.",
-      "scoring_type": "roleplay_rubric",
+      "scoring_type": "roleplay_character_consistency",
       "rubrics": ["dm_narrator"],
+      "required_persona_markers": ["innkeeper", "meal", "inn", "choice", "choose", "do you", "your"],
+      "banned_meta_phrases": ["the cloaked figure suddenly stands", "the cloaked figure approaches you anyway"],
       "weight": 2,
       "tags": ["roleplay", "dm", "anti-railroad", "experimental"],
       "expectation": "Must honor the off-script choice — no 'but the cloaked figure suddenly stands up and approaches you anyway' railroading."
@@ -38,8 +42,9 @@
     {
       "id": "RP3-Q4",
       "question": "What's the innkeeper's name?",
-      "scoring_type": "roleplay_rubric",
+      "scoring_type": "roleplay_character_consistency",
       "rubrics": ["scene_continuity"],
+      "required_persona_markers": ["innkeeper", "name", "inn", "hadn't named", "had not named", "called"],
       "weight": 1,
       "tags": ["roleplay", "continuity", "experimental"],
       "expectation": "Either commits to a name (and remembers it) or honestly says they hadn't named the innkeeper yet — both acceptable, but inconsistency is not."
@@ -47,8 +52,9 @@
     {
       "id": "RP3-Q5",
       "question": "I leave a tip and head upstairs to my room. End scene.",
-      "scoring_type": "roleplay_rubric",
+      "scoring_type": "roleplay_character_consistency",
       "rubrics": ["dm_narrator"],
+      "required_persona_markers": ["tip", "upstairs", "room", "inn", "scene", "choice", "your"],
       "weight": 1,
       "tags": ["roleplay", "dm", "experimental"]
     }
@@ -56,11 +62,6 @@
   "scoring": {
     "rubrics": ["dm_narrator", "scene_continuity"],
     "pass_threshold": 0.7
-  },
-  "status": "quarantined",
-  "quarantine": {
-    "reason": "scoring_type 'roleplay_rubric' is not implemented by any scorer — every question falls through to the default case and fails with RUBRIC_MISMATCH (Audit S2). Quarantined until a roleplay_rubric scorer exists.",
-    "since": "2026-06-10"
   },
   "metadata": {
     "author": "crucibulum-core",

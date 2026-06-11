@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import type { ConversationalManifest } from "../adapters/base.js";
 import { computeConversationalEfficiency, sanitizeVisibleReasoning, shouldSuppressVisibleReasoning } from "../core/conversational-runner.js";
+import { judgeConversational } from "../core/conversational-judge.js";
 
 function manifest(overrides: Partial<ConversationalManifest> = {}): ConversationalManifest {
   return {
@@ -82,6 +83,40 @@ describe("computeConversationalEfficiency", () => {
     const result = computeConversationalEfficiency(costManifest, 30_000, 1200, 900);
     assert.equal(result.time_limit_sec, 90);
     assert.ok(result.score < 0.8, `expected tighter token budget to matter, got ${result.score}`);
+  });
+});
+
+describe("judgeConversational partial-run denominator", () => {
+  it("scores unattempted manifest questions as zero weight when a runner stops early", () => {
+    const m = manifest({
+      questions: [
+        { id: "q1", question: "one", scoring_type: "text_match", pass_phrases: ["ok"], weight: 1, tags: [] },
+        { id: "q2", question: "two", scoring_type: "text_match", pass_phrases: ["ok"], weight: 2, tags: [] },
+        { id: "q3", question: "three", scoring_type: "text_match", pass_phrases: ["ok"], weight: 3, tags: [] },
+      ],
+      scoring: { pass_threshold: 0.7 },
+    });
+
+    const judged = judgeConversational(m, [{
+      question_id: "q1",
+      question: "one",
+      response: "ok",
+      passed: true,
+      score: 1,
+      weight: 1,
+      failure_reason: null,
+      duration_ms: 10,
+      tokens_in: 1,
+      tokens_out: 1,
+    }]);
+
+    assert.equal(judged.total_weight, 6);
+    assert.equal(judged.earned_weight, 1);
+    assert.equal(judged.score, 1 / 6);
+    assert.equal(judged.pass, false);
+    assert.equal(judged.total_questions, 3);
+    assert.equal(judged.results.length, 3);
+    assert.match(judged.results[1]?.failure_reason ?? "", /UNATTEMPTED/);
   });
 });
 

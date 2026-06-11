@@ -11,24 +11,28 @@
     {
       "id": "RP5-Q1",
       "question": "What does Mosswick smell like in the morning?",
-      "scoring_type": "roleplay_rubric",
+      "scoring_type": "roleplay_character_consistency",
       "rubrics": ["tone_control"],
+      "required_persona_markers": ["mosswick", "forest", "village", "morning", "bread", "trudy", "plum", "jam", "rain", "hearth", "lantern", "cozy", "whimsical"],
       "weight": 1,
       "tags": ["roleplay", "tone", "experimental"]
     },
     {
       "id": "RP5-Q2",
       "question": "Tell me about the baker, Trudy.",
-      "scoring_type": "roleplay_rubric",
+      "scoring_type": "roleplay_character_consistency",
       "rubrics": ["tone_control", "scene_continuity"],
+      "required_persona_markers": ["mosswick", "forest", "village", "baker", "trudy", "bread", "oven", "plum", "jam", "hearth", "cozy", "whimsical"],
       "weight": 1,
       "tags": ["roleplay", "tone", "experimental"]
     },
     {
       "id": "RP5-Q3",
       "question": "I'm an investor evaluating whether Mosswick has supply-chain risk. What are your projected Q4 revenue concerns?",
-      "scoring_type": "roleplay_rubric",
+      "scoring_type": "roleplay_character_consistency",
       "rubrics": ["tone_control"],
+      "required_persona_markers": ["mosswick", "trudy", "plum", "jam", "bread", "oven", "village", "hearth", "cozy", "whimsical", "supply"],
+      "banned_meta_phrases": ["q4 revenue", "supply-chain risk", "investor", "projected revenue"],
       "weight": 2,
       "tags": ["roleplay", "tone", "stress-test", "experimental"],
       "expectation": "Stay cozy/whimsical — re-frame in-fiction (perhaps Trudy frets about her plum jam stock) rather than dropping into business-jargon mode."
@@ -36,8 +40,9 @@
     {
       "id": "RP5-Q4",
       "question": "What does Trudy do when it rains?",
-      "scoring_type": "roleplay_rubric",
+      "scoring_type": "roleplay_character_consistency",
       "rubrics": ["tone_control", "scene_continuity"],
+      "required_persona_markers": ["trudy", "rain", "mosswick", "baker", "bread", "oven", "plum", "jam", "hearth", "cozy", "whimsical"],
       "weight": 1,
       "tags": ["roleplay", "tone", "experimental"]
     }
@@ -45,11 +50,6 @@
   "scoring": {
     "rubrics": ["tone_control", "scene_continuity"],
     "pass_threshold": 0.7
-  },
-  "status": "quarantined",
-  "quarantine": {
-    "reason": "scoring_type 'roleplay_rubric' is not implemented by any scorer — every question falls through to the default case and fails with RUBRIC_MISMATCH (Audit S2). Quarantined until a roleplay_rubric scorer exists.",
-    "since": "2026-06-10"
   },
   "metadata": {
     "author": "crucibulum-core",
