@@ -4,7 +4,7 @@
 |---|---|
 | Phase | 14 / Roadmap C |
 | Category | visual contradiction |
-| Fixture | `fixtures/vision/vision-visual-contradiction-001.png` (sha256 `f34b14c8f4f8f774625e625875db4502f187aa9a8c722864182aa682ca0b2b93`) |
+| Fixture | `fixtures/vision/vision-visual-contradiction-001.png` (sha256 `d24aea9589afb49c6a373025b2ff2ca0e825e7748983ac2d7c77f707c97b9680`) |
 | Scorer | `text_match_all` — requires all of `red`, `circle`, `two`, max_chars 240 |
 | Experimental | yes |
 

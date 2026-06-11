@@ -6,10 +6,13 @@
   "difficulty": "medium",
   "experimental": true,
   "description": "POC: UI screenshot diagnosis — identify the clipped button in a Luak-like dashboard mock. Measures element identification, NOT exact phrasing. Pass if the model names the RUN BENCHMARK element (in any reasonable casing).",
-  "requires_capability": ["supportsVision", "supportsImageInput"],
+  "requires_capability": [
+    "supportsVision",
+    "supportsImageInput"
+  ],
   "image_fixture": {
     "path": "fixtures/vision/vision-ui-001.png",
-    "sha256": "b7e842d8acf1ddbb35c7bf34ba267053d9ad37bfa9083936b144e9b35a4d753a",
+    "sha256": "da850b36bbbb534b156dd9d1eb85bf71e1682e43f571821948eab54445e3e71a",
     "mime": "image/png",
     "width": 800,
     "height": 400,
@@ -21,20 +24,35 @@
       "id": "V2-Q1",
       "question": "Look at this UI screenshot. Which UI element is most-clipped or overflowing its container? Name the element.",
       "scoring_type": "text_match",
-      "pass_phrases": ["RUN BENCHMARK", "Run Benchmark", "run benchmark", "RUNBENCHMARK"],
+      "pass_phrases": [
+        "RUN BENCHMARK",
+        "Run Benchmark",
+        "run benchmark",
+        "RUNBENCHMARK"
+      ],
       "weight": 1,
-      "tags": ["vision", "ui", "diagnosis", "experimental"],
+      "tags": [
+        "vision",
+        "ui",
+        "diagnosis",
+        "experimental"
+      ],
       "image_ref": "fixtures/vision/vision-ui-001.png"
     }
   ],
   "scoring": {
-    "pass_threshold": 1.0
+    "pass_threshold": 1
   },
   "quarantine": null,
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-05-25",
-    "tags": ["vision", "ui", "diagnosis", "experimental"],
+    "tags": [
+      "vision",
+      "ui",
+      "diagnosis",
+      "experimental"
+    ],
     "diagnostic_purpose": "POC for vision_ui_diagnosis. Test uses text_match (ANY-of) so 'RUN BENCHMARK' / 'Run Benchmark' / 'run benchmark' all pass; the case-insensitive contains check makes the test about element identification, not exact casing.",
     "benchmark_provenance": {
       "source": "Luak synthetic UI mock",

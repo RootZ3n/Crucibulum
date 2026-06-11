@@ -4,7 +4,7 @@
 |---|---|
 | Phase | 14 / Roadmap C |
 | Category | spatial reasoning (3×3 row identification) |
-| Fixture | `fixtures/vision/vision-spatial-002.png` (sha256 `5414bda047d91e76b90fc13089ef1c2203e96c9f0e689a2e94208f5e057cee6c`) |
+| Fixture | `fixtures/vision/vision-spatial-002.png` (sha256 `40fc8f8c9dc606ccc2447dbf3617019a7baa6de2fdaa3ddd3245781fe0d9a187`) |
 | Scorer | `text_match` — pass-phrases include `row 2`, `row two`, `2nd row`, `second row`, ` 2`, `middle row` |
 | Experimental | yes |
 

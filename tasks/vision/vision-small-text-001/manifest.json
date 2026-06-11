@@ -6,10 +6,13 @@
   "difficulty": "medium",
   "experimental": true,
   "description": "Phase 14: small-text OCR. The fixture is a synthetic panel with a small 'Receipt ID:' label and the 4-digit body '8273'. Pass requires the exact 4-digit number. Tests small-text legibility without leaking it as the visually-dominant element.",
-  "requires_capability": ["supportsVision", "supportsImageInput"],
+  "requires_capability": [
+    "supportsVision",
+    "supportsImageInput"
+  ],
   "image_fixture": {
     "path": "fixtures/vision/vision-small-text-001.png",
-    "sha256": "be21823275da8a745482a2d30e6d10c23c9e0e8698e537e6118296b243d5d7ce",
+    "sha256": "0305b81646d34d0cbe41d237c8be90a344c5e9e120b995b7d13dccc5ff175bae",
     "mime": "image/png",
     "width": 400,
     "height": 160,
@@ -24,16 +27,28 @@
       "pattern": "^\\s*8273\\s*$",
       "maxLength": 12,
       "weight": 1,
-      "tags": ["vision", "ocr", "small-text", "experimental"],
+      "tags": [
+        "vision",
+        "ocr",
+        "small-text",
+        "experimental"
+      ],
       "image_ref": "fixtures/vision/vision-small-text-001.png"
     }
   ],
-  "scoring": { "pass_threshold": 1.0 },
+  "scoring": {
+    "pass_threshold": 1
+  },
   "quarantine": null,
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-05-27",
-    "tags": ["vision", "ocr", "small-text", "experimental"],
+    "tags": [
+      "vision",
+      "ocr",
+      "small-text",
+      "experimental"
+    ],
     "diagnostic_purpose": "POC for small-text OCR. Pass requires exact-match on '8273'.",
     "benchmark_provenance": {
       "source": "Luak synthetic small-text fixture",

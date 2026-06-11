@@ -4,7 +4,7 @@
 |---|---|
 | Phase | 14 / Roadmap C |
 | Category | spatial reasoning (2×2 quadrant) |
-| Fixture | `fixtures/vision/vision-spatial-001.png` (sha256 `b6c53d7e8f3d9714a85a12d20ab8eb79690f74386931fee21a9a0def6f364fbd`) |
+| Fixture | `fixtures/vision/vision-spatial-001.png` (sha256 `70f30ec9f944ab84a5dd811aba3e3539893903e6fa57b80a0b5407b0f5470fc1`) |
 | Scorer | `text_match` — pass-phrase `blue`, max_chars 80 |
 | Experimental | yes |
 

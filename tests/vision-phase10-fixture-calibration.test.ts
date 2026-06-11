@@ -59,7 +59,7 @@ describe("Vision Phase 10 · uncertainty fixture calibration (offline)", () => {
     const onDisk = sha256(FIXTURE);
     assert.equal(onDisk, MANIFEST.image_fixture.sha256, "fixture sha256 must match manifest");
     // Pin the exact Phase 10 value so a silent regeneration is caught.
-    assert.equal(onDisk, "f93c96c4f3bfde0d73759c9f494ed9b1f649f12a46297b9b362be21db1316455");
+    assert.equal(onDisk, "a05f9fe8abea0d5ea65107ca0787cddee6af801082440a50eba25a539dab5884");
   });
 
   it("P2 · uncertainty fixture generator is deterministic + carries UNCERTAINTY_VERSION", () => {

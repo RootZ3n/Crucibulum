@@ -4,7 +4,7 @@
 |---|---|
 | Phase | 14 / Roadmap C |
 | Category | chart reading (monotonic trend) |
-| Fixture | `fixtures/vision/vision-chart-trend-001.png` (sha256 `fdfe03655c49522e62579f0572ee5fd3ff2b62ffe4b73960a11e0d7fca7b3561`) |
+| Fixture | `fixtures/vision/vision-chart-trend-001.png` (sha256 `a4a6a695f8c76995681da2c18dc6de91a2d65564d72413763e9a3f54a90c359b`) |
 | Scorer | `text_match` — pass-phrases `decreasing`, `decreas`, `going down`, `trend down`, `downward`, max_chars 80 |
 | Experimental | yes |
 

@@ -4,7 +4,7 @@
 |---|---|
 | Phase | 14 / Roadmap C |
 | Category | UI screenshot reasoning (disabled-state recognition) |
-| Fixture | `fixtures/vision/vision-ui-state-001.png` (sha256 `e9bc34c532fe0d91dc80be883d8636d2c857836b9f0b5b74775a87ed8a68154a`) |
+| Fixture | `fixtures/vision/vision-ui-state-001.png` (sha256 `14036a53b5f05944a7abaa7b1734bcae38ed2035864cd89eb68b5749e1986304`) |
 | Scorer | `text_match` — pass-phrase `delete`, max_chars 80 |
 | Experimental | yes |
 

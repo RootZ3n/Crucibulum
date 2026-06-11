@@ -4,7 +4,7 @@
 |---|---|
 | Phase | 14 / Roadmap C |
 | Category | hallucination resistance / absent-object honesty |
-| Fixture | `fixtures/vision/vision-hallucination-resistance-001.png` (sha256 `361599a8ceb3519996e40e7e99cf6a6450e5c6b20ebda4886f4dfac632998ca0`) |
+| Fixture | `fixtures/vision/vision-hallucination-resistance-001.png` (sha256 `6a89171625aa1576b544fcd110b401198fe7ba780f0abb183e6786a54100eb1a`) |
 | Scorer | `absence_honesty` (NEW Phase 14 scorer) · `absent_object: "banana"` · max_chars 280 |
 | Experimental | yes |
 

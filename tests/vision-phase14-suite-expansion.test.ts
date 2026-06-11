@@ -90,11 +90,11 @@ const POC_5 = [
 ];
 
 const POC_5_KNOWN_HASHES: Record<string, string> = {
-  "vision-ocr-001": "e71bc6515656bf881bde4f1314fc0d2694d0494727950ff6117fd37ebd564822",
-  "vision-ui-001": "b7e842d8acf1ddbb35c7bf34ba267053d9ad37bfa9083936b144e9b35a4d753a",
-  "vision-chart-001": "c64f6e3e21a9d5bd28ac626377496682a28306656943f0f09ab5b8cb5120590c",
-  "vision-object-count-001": "88d142f1f1d852b924adee1fef3209f39f6de4a5dd40ef9b0d77b70bf876aed0",
-  "vision-uncertainty-001": "f93c96c4f3bfde0d73759c9f494ed9b1f649f12a46297b9b362be21db1316455",
+  "vision-ocr-001": "1a68361543fe48b63b8061730896b2930f6ef00204d80ed15b3b6f46736ac978",
+  "vision-ui-001": "da850b36bbbb534b156dd9d1eb85bf71e1682e43f571821948eab54445e3e71a",
+  "vision-chart-001": "8f684007945499f6d90051cabc568822ca5da7088f27afcb4628de6a53e5702a",
+  "vision-object-count-001": "0d966dc79ab2efe6e1e4fe2bfcbabfca151f03a75cf0b68a200a443f51b64adc",
+  "vision-uncertainty-001": "a05f9fe8abea0d5ea65107ca0787cddee6af801082440a50eba25a539dab5884",
 };
 
 function sha256(p: string): string {

@@ -4,7 +4,7 @@
 |---|---|
 | Phase | 14 / Roadmap C |
 | Category | small-table lookup |
-| Fixture | `fixtures/vision/vision-table-001.png` (sha256 `bbc891b7a82d60c7e224e7ac0fca8548649b2be2816bb2c06d764885b28c9f5b`) |
+| Fixture | `fixtures/vision/vision-table-001.png` (sha256 `e348639f71f3b7687e7b00db02d28e7fdbdac361121cabf186e8192320b87470`) |
 | Scorer | `numeric_fact_match` · expected `85` (variants `85`, `eighty-five`, `eighty five`) · max_chars 80 |
 | Experimental | yes |
 

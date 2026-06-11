@@ -6,10 +6,13 @@
   "difficulty": "easy",
   "experimental": true,
   "description": "Phase 14: chart-trend recognition. Fixture is a 5-bar chart with monotonically decreasing values (200,160,120,80,40). Prompt asks whether the trend is increasing or decreasing; correct answer contains 'decreasing' (or 'decrease' / 'down' as accepted variants).",
-  "requires_capability": ["supportsVision", "supportsImageInput"],
+  "requires_capability": [
+    "supportsVision",
+    "supportsImageInput"
+  ],
   "image_fixture": {
     "path": "fixtures/vision/vision-chart-trend-001.png",
-    "sha256": "fdfe03655c49522e62579f0572ee5fd3ff2b62ffe4b73960a11e0d7fca7b3561",
+    "sha256": "a4a6a695f8c76995681da2c18dc6de91a2d65564d72413763e9a3f54a90c359b",
     "mime": "image/png",
     "width": 520,
     "height": 320,
@@ -21,19 +24,39 @@
       "id": "V14-Q1",
       "question": "Look at the bar chart. Is the trend increasing or decreasing across the five days? Reply with one or two words.",
       "scoring_type": "text_match",
-      "pass_phrases": ["decreasing", "decreas", "going down", "trend down", "downward", "fall", "declin", "drop", "decline"],
+      "pass_phrases": [
+        "decreasing",
+        "decreas",
+        "going down",
+        "trend down",
+        "downward",
+        "fall",
+        "declin",
+        "drop",
+        "decline"
+      ],
       "max_chars": 80,
       "weight": 1,
-      "tags": ["vision", "chart-trend", "experimental"],
+      "tags": [
+        "vision",
+        "chart-trend",
+        "experimental"
+      ],
       "image_ref": "fixtures/vision/vision-chart-trend-001.png"
     }
   ],
-  "scoring": { "pass_threshold": 1.0 },
+  "scoring": {
+    "pass_threshold": 1
+  },
   "quarantine": null,
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-05-27",
-    "tags": ["vision", "chart-trend", "experimental"],
+    "tags": [
+      "vision",
+      "chart-trend",
+      "experimental"
+    ],
     "diagnostic_purpose": "POC for monotonic trend recognition. PASS = response contains any decreasing-direction indicator within 80 chars.",
     "benchmark_provenance": {
       "source": "Luak synthetic chart-trend fixture",

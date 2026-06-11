@@ -6,10 +6,13 @@
   "difficulty": "medium",
   "experimental": true,
   "description": "Phase 14: small-table reading. Fixture is a 3-row scoreboard (Alice 72, Bob 85, Carol 64). Prompt asks Bob's score; correct answer contains '85'.",
-  "requires_capability": ["supportsVision", "supportsImageInput"],
+  "requires_capability": [
+    "supportsVision",
+    "supportsImageInput"
+  ],
   "image_fixture": {
     "path": "fixtures/vision/vision-table-001.png",
-    "sha256": "bbc891b7a82d60c7e224e7ac0fca8548649b2be2816bb2c06d764885b28c9f5b",
+    "sha256": "e348639f71f3b7687e7b00db02d28e7fdbdac361121cabf186e8192320b87470",
     "mime": "image/png",
     "width": 440,
     "height": 260,
@@ -22,19 +25,33 @@
       "question": "Look at the scoreboard table. What is Bob's score? Reply with ONLY the number.",
       "scoring_type": "numeric_fact_match",
       "expected_number": 85,
-      "expected_number_variants": ["85", "eighty-five", "eighty five"],
+      "expected_number_variants": [
+        "85",
+        "eighty-five",
+        "eighty five"
+      ],
       "max_chars": 80,
       "weight": 1,
-      "tags": ["vision", "table", "experimental"],
+      "tags": [
+        "vision",
+        "table",
+        "experimental"
+      ],
       "image_ref": "fixtures/vision/vision-table-001.png"
     }
   ],
-  "scoring": { "pass_threshold": 1.0 },
+  "scoring": {
+    "pass_threshold": 1
+  },
   "quarantine": null,
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-05-27",
-    "tags": ["vision", "table", "experimental"],
+    "tags": [
+      "vision",
+      "table",
+      "experimental"
+    ],
     "diagnostic_purpose": "POC for row-keyed table lookup. PASS requires the model to return Bob's score (85) and not Alice's (72) or Carol's (64).",
     "benchmark_provenance": {
       "source": "Luak synthetic table fixture",

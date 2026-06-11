@@ -6,10 +6,13 @@
   "difficulty": "medium",
   "experimental": true,
   "description": "Phase 14: noisy-text OCR. The fixture is a synthetic panel with the word 'READY' rendered cleanly but overlaid with a deterministic dotted-noise scatter pattern. Pass requires recognising 'READY' through the noise.",
-  "requires_capability": ["supportsVision", "supportsImageInput"],
+  "requires_capability": [
+    "supportsVision",
+    "supportsImageInput"
+  ],
   "image_fixture": {
     "path": "fixtures/vision/vision-noisy-text-001.png",
-    "sha256": "00af5781f07a5bc4d94af48012b790a68777447328194bb10f6cde8974663239",
+    "sha256": "84334ad86f98f4c5676cdd0bdde3e96827217199ce3ef13686bbd32ac5bf87ce",
     "mime": "image/png",
     "width": 480,
     "height": 240,
@@ -24,16 +27,28 @@
       "pattern": "^\\s*READY\\s*$",
       "maxLength": 16,
       "weight": 1,
-      "tags": ["vision", "ocr", "noisy-text", "experimental"],
+      "tags": [
+        "vision",
+        "ocr",
+        "noisy-text",
+        "experimental"
+      ],
       "image_ref": "fixtures/vision/vision-noisy-text-001.png"
     }
   ],
-  "scoring": { "pass_threshold": 1.0 },
+  "scoring": {
+    "pass_threshold": 1
+  },
   "quarantine": null,
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-05-27",
-    "tags": ["vision", "ocr", "noisy-text", "experimental"],
+    "tags": [
+      "vision",
+      "ocr",
+      "noisy-text",
+      "experimental"
+    ],
     "diagnostic_purpose": "POC for noisy-text OCR. Pass requires exact-match on 'READY' through visible degradation.",
     "benchmark_provenance": {
       "source": "Luak synthetic noisy-text fixture",

@@ -6,10 +6,13 @@
   "difficulty": "medium",
   "experimental": true,
   "description": "Phase 14: visual contradiction. Caption above the image reads 'Three blue squares.' but the picture below contains TWO RED CIRCLES. A correct answer must call out the actual picture content — red circles, count of two — rather than agreeing with the caption.",
-  "requires_capability": ["supportsVision", "supportsImageInput"],
+  "requires_capability": [
+    "supportsVision",
+    "supportsImageInput"
+  ],
   "image_fixture": {
     "path": "fixtures/vision/vision-visual-contradiction-001.png",
-    "sha256": "f34b14c8f4f8f774625e625875db4502f187aa9a8c722864182aa682ca0b2b93",
+    "sha256": "d24aea9589afb49c6a373025b2ff2ca0e825e7748983ac2d7c77f707c97b9680",
     "mime": "image/png",
     "width": 500,
     "height": 320,
@@ -21,19 +24,33 @@
       "id": "V10-Q1",
       "question": "The caption at the top says 'Three blue squares.' Look at the actual picture below the caption and describe what is really there. Mention colour, shape, and count.",
       "scoring_type": "text_match_all",
-      "pass_phrases": ["red", "circle", "two"],
+      "pass_phrases": [
+        "red",
+        "circle",
+        "two"
+      ],
       "max_chars": 240,
       "weight": 1,
-      "tags": ["vision", "visual-contradiction", "experimental"],
+      "tags": [
+        "vision",
+        "visual-contradiction",
+        "experimental"
+      ],
       "image_ref": "fixtures/vision/vision-visual-contradiction-001.png"
     }
   ],
-  "scoring": { "pass_threshold": 1.0 },
+  "scoring": {
+    "pass_threshold": 1
+  },
   "quarantine": null,
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-05-27",
-    "tags": ["vision", "visual-contradiction", "experimental"],
+    "tags": [
+      "vision",
+      "visual-contradiction",
+      "experimental"
+    ],
     "diagnostic_purpose": "POC for caption-vs-picture contradiction detection. Pass requires the model to describe the actual picture content (red + circle + two) rather than echo the caption (blue/squares/three).",
     "benchmark_provenance": {
       "source": "Luak synthetic visual-contradiction fixture",

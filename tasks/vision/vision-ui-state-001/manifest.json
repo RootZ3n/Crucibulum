@@ -6,10 +6,13 @@
   "difficulty": "medium",
   "experimental": true,
   "description": "Phase 14: UI state recognition. Fixture is a mock action panel with three buttons — SAVE (enabled green), CANCEL (enabled grey), DELETE (disabled dark-grey, with a small lock glyph + reduced-contrast label). Prompt asks which action is disabled/unavailable; correct answer contains 'delete'.",
-  "requires_capability": ["supportsVision", "supportsImageInput"],
+  "requires_capability": [
+    "supportsVision",
+    "supportsImageInput"
+  ],
   "image_fixture": {
     "path": "fixtures/vision/vision-ui-state-001.png",
-    "sha256": "e9bc34c532fe0d91dc80be883d8636d2c857836b9f0b5b74775a87ed8a68154a",
+    "sha256": "14036a53b5f05944a7abaa7b1734bcae38ed2035864cd89eb68b5749e1986304",
     "mime": "image/png",
     "width": 600,
     "height": 240,
@@ -21,19 +24,31 @@
       "id": "V13-Q1",
       "question": "Look at the three buttons in this action panel. Which action appears disabled or unavailable? Answer with one word — the button label.",
       "scoring_type": "text_match",
-      "pass_phrases": ["delete"],
+      "pass_phrases": [
+        "delete"
+      ],
       "max_chars": 80,
       "weight": 1,
-      "tags": ["vision", "ui-state", "experimental"],
+      "tags": [
+        "vision",
+        "ui-state",
+        "experimental"
+      ],
       "image_ref": "fixtures/vision/vision-ui-state-001.png"
     }
   ],
-  "scoring": { "pass_threshold": 1.0 },
+  "scoring": {
+    "pass_threshold": 1
+  },
   "quarantine": null,
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-05-27",
-    "tags": ["vision", "ui-state", "experimental"],
+    "tags": [
+      "vision",
+      "ui-state",
+      "experimental"
+    ],
     "diagnostic_purpose": "POC for disabled-state recognition in a mock UI. Pass requires 'delete' substring within 80 chars.",
     "benchmark_provenance": {
       "source": "Luak synthetic UI-state fixture",

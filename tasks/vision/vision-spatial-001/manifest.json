@@ -6,10 +6,13 @@
   "difficulty": "easy",
   "experimental": true,
   "description": "Phase 14: 2x2 spatial reasoning. Fixture has four coloured shapes — red square (top-left), blue circle (top-right), green triangle (bottom-left), yellow star (bottom-right). The prompt asks for the colour in the top-right; correct answer must contain 'blue'.",
-  "requires_capability": ["supportsVision", "supportsImageInput"],
+  "requires_capability": [
+    "supportsVision",
+    "supportsImageInput"
+  ],
   "image_fixture": {
     "path": "fixtures/vision/vision-spatial-001.png",
-    "sha256": "b6c53d7e8f3d9714a85a12d20ab8eb79690f74386931fee21a9a0def6f364fbd",
+    "sha256": "70f30ec9f944ab84a5dd811aba3e3539893903e6fa57b80a0b5407b0f5470fc1",
     "mime": "image/png",
     "width": 400,
     "height": 400,
@@ -21,19 +24,31 @@
       "id": "V8-Q1",
       "question": "Look at the four shapes in the image. What colour is the shape in the top-right quadrant? Answer with one word.",
       "scoring_type": "text_match",
-      "pass_phrases": ["blue"],
+      "pass_phrases": [
+        "blue"
+      ],
       "max_chars": 80,
       "weight": 1,
-      "tags": ["vision", "spatial-reasoning", "experimental"],
+      "tags": [
+        "vision",
+        "spatial-reasoning",
+        "experimental"
+      ],
       "image_ref": "fixtures/vision/vision-spatial-001.png"
     }
   ],
-  "scoring": { "pass_threshold": 1.0 },
+  "scoring": {
+    "pass_threshold": 1
+  },
   "quarantine": null,
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-05-27",
-    "tags": ["vision", "spatial-reasoning", "experimental"],
+    "tags": [
+      "vision",
+      "spatial-reasoning",
+      "experimental"
+    ],
     "diagnostic_purpose": "POC for spatial relation recognition. Pass requires 'blue' substring in answer, which discriminates top-right from the other 3 colours.",
     "benchmark_provenance": {
       "source": "Luak synthetic 2x2 spatial fixture",

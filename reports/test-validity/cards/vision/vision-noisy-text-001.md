@@ -4,7 +4,7 @@
 |---|---|
 | Phase | 14 / Roadmap C |
 | Category | noisy OCR |
-| Fixture | `fixtures/vision/vision-noisy-text-001.png` (sha256 `00af5781f07a5bc4d94af48012b790a68777447328194bb10f6cde8974663239`) |
+| Fixture | `fixtures/vision/vision-noisy-text-001.png` (sha256 `84334ad86f98f4c5676cdd0bdde3e96827217199ce3ef13686bbd32ac5bf87ce`) |
 | Scorer | `regex_match` — `^\s*READY\s*$` |
 | Experimental | yes |
 

@@ -4,7 +4,7 @@
 |---|---|
 | Phase | 14 / Roadmap C (Vision suite expansion 5 → 15) |
 | Category | small-text OCR |
-| Fixture | `fixtures/vision/vision-small-text-001.png` (sha256 `be21823275da8a745482a2d30e6d10c23c9e0e8698e537e6118296b243d5d7ce`) |
+| Fixture | `fixtures/vision/vision-small-text-001.png` (sha256 `0305b81646d34d0cbe41d237c8be90a344c5e9e120b995b7d13dccc5ff175bae`) |
 | Scorer | `regex_match` — `^\s*8273\s*$` |
 | Experimental | yes; not in leaderboard / not in certification |
 

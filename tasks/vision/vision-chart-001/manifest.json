@@ -6,10 +6,13 @@
   "difficulty": "medium",
   "experimental": true,
   "description": "POC: chart reading — identify the peak day in a simple bar chart. Measures CHART RECOGNITION, NOT concision. Accepts natural-language answers within 600 chars as long as the correct day AND value are present. (max_chars raised from 180 → 600 in Phase 6 after live smoke caught honest chain-of-thought answers at 347 chars; matches the Phase-5 numeric_fact_match precedent set by vision-object-count-001.)",
-  "requires_capability": ["supportsVision", "supportsImageInput"],
+  "requires_capability": [
+    "supportsVision",
+    "supportsImageInput"
+  ],
   "image_fixture": {
     "path": "fixtures/vision/vision-chart-001.png",
-    "sha256": "c64f6e3e21a9d5bd28ac626377496682a28306656943f0f09ab5b8cb5120590c",
+    "sha256": "8f684007945499f6d90051cabc568822ca5da7088f27afcb4628de6a53e5702a",
     "mime": "image/png",
     "width": 640,
     "height": 360,
@@ -22,22 +25,32 @@
       "question": "Which day has the highest bar in this chart, and what is its value?",
       "scoring_type": "numeric_fact_match",
       "expected_number": 87,
-      "expected_number_variants": ["87"],
+      "expected_number_variants": [
+        "87"
+      ],
       "required_object": "wed",
       "max_chars": 600,
       "weight": 1,
-      "tags": ["vision", "chart", "experimental"],
+      "tags": [
+        "vision",
+        "chart",
+        "experimental"
+      ],
       "image_ref": "fixtures/vision/vision-chart-001.png"
     }
   ],
   "scoring": {
-    "pass_threshold": 1.0
+    "pass_threshold": 1
   },
   "quarantine": null,
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-05-25",
-    "tags": ["vision", "chart", "experimental"],
+    "tags": [
+      "vision",
+      "chart",
+      "experimental"
+    ],
     "diagnostic_purpose": "POC for vision_chart_facts using numeric_fact_match. Pass if the response contains the peak value 87 AND mentions Wednesday (substring 'wed'). Accepts 'Wednesday at 87', 'Wed 87', 'The peak is Wednesday with 87.' etc.",
     "benchmark_provenance": {
       "source": "Luak synthetic chart",

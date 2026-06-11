@@ -6,10 +6,13 @@
   "difficulty": "easy",
   "experimental": true,
   "description": "POC: count discrete objects (red dots) in a synthetic scene. Measures VISUAL RECOGNITION + COUNTING accuracy, NOT concision. Accepts natural-language answers up to 600 chars (vision models commonly narrate their counting reasoning) as long as the correct count is present and the colour/object is named.",
-  "requires_capability": ["supportsVision", "supportsImageInput"],
+  "requires_capability": [
+    "supportsVision",
+    "supportsImageInput"
+  ],
   "image_fixture": {
     "path": "fixtures/vision/vision-object-count-001.png",
-    "sha256": "88d142f1f1d852b924adee1fef3209f39f6de4a5dd40ef9b0d77b70bf876aed0",
+    "sha256": "0d966dc79ab2efe6e1e4fe2bfcbabfca151f03a75cf0b68a200a443f51b64adc",
     "mime": "image/png",
     "width": 400,
     "height": 400,
@@ -22,23 +25,40 @@
       "question": "How many red dots are in this image?",
       "scoring_type": "numeric_fact_match",
       "expected_number": 7,
-      "expected_number_variants": ["7", "seven"],
+      "expected_number_variants": [
+        "7",
+        "seven"
+      ],
       "required_object": "red dot",
-      "required_object_variants": ["red dot", "red circle", "red point", "red dots", "red circles"],
+      "required_object_variants": [
+        "red dot",
+        "red circle",
+        "red point",
+        "red dots",
+        "red circles"
+      ],
       "max_chars": 600,
       "weight": 1,
-      "tags": ["vision", "count", "experimental"],
+      "tags": [
+        "vision",
+        "count",
+        "experimental"
+      ],
       "image_ref": "fixtures/vision/vision-object-count-001.png"
     }
   ],
   "scoring": {
-    "pass_threshold": 1.0
+    "pass_threshold": 1
   },
   "quarantine": null,
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-05-25",
-    "tags": ["vision", "count", "experimental"],
+    "tags": [
+      "vision",
+      "count",
+      "experimental"
+    ],
     "diagnostic_purpose": "POC for vision_object_count scorer using the new numeric_fact_match mode. Accepts '7' / 'seven' / 'There are seven red dots.' and similar within 180 chars; rejects wrong counts, missing colour/object reference, or excessive rambling.",
     "benchmark_provenance": {
       "source": "Luak synthetic dot image",

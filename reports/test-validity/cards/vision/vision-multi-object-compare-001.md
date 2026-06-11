@@ -4,7 +4,7 @@
 |---|---|
 | Phase | 14 / Roadmap C |
 | Category | multi-object comparison |
-| Fixture | `fixtures/vision/vision-multi-object-compare-001.png` (sha256 `48f7f6d7ea099e3ac0cd1264214982339a8dc87faab71a2543e27ffdddb443bf`) |
+| Fixture | `fixtures/vision/vision-multi-object-compare-001.png` (sha256 `7f9f598f10e49559e73186233c734c8a0a8ab6fc3f2ba9d119230f277c446ddb`) |
 | Scorer | `text_match` — pass-phrase `blue`, max_chars 80 |
 | Experimental | yes |
 

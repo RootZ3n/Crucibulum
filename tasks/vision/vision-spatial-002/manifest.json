@@ -6,10 +6,13 @@
   "difficulty": "medium",
   "experimental": true,
   "description": "Phase 14: 3x3 spatial reasoning. Fixture has a 3x3 grid (rows + cols labelled 1-3) with a single red star at row 2 / column 2 (middle). The prompt asks which row contains the star.",
-  "requires_capability": ["supportsVision", "supportsImageInput"],
+  "requires_capability": [
+    "supportsVision",
+    "supportsImageInput"
+  ],
   "image_fixture": {
     "path": "fixtures/vision/vision-spatial-002.png",
-    "sha256": "5414bda047d91e76b90fc13089ef1c2203e96c9f0e689a2e94208f5e057cee6c",
+    "sha256": "40fc8f8c9dc606ccc2447dbf3617019a7baa6de2fdaa3ddd3245781fe0d9a187",
     "mime": "image/png",
     "width": 420,
     "height": 420,
@@ -21,19 +24,35 @@
       "id": "V9-Q1",
       "question": "The grid is labelled with rows 1-3 (top to bottom) and columns 1-3 (left to right). Which row contains the star? Reply with the row number or the word.",
       "scoring_type": "text_match",
-      "pass_phrases": ["row 2", "row two", "2nd row", "second row", "middle row"],
+      "pass_phrases": [
+        "row 2",
+        "row two",
+        "2nd row",
+        "second row",
+        "middle row"
+      ],
       "max_chars": 80,
       "weight": 1,
-      "tags": ["vision", "spatial-reasoning", "experimental"],
+      "tags": [
+        "vision",
+        "spatial-reasoning",
+        "experimental"
+      ],
       "image_ref": "fixtures/vision/vision-spatial-002.png"
     }
   ],
-  "scoring": { "pass_threshold": 1.0 },
+  "scoring": {
+    "pass_threshold": 1
+  },
   "quarantine": null,
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-05-27",
-    "tags": ["vision", "spatial-reasoning", "experimental"],
+    "tags": [
+      "vision",
+      "spatial-reasoning",
+      "experimental"
+    ],
     "diagnostic_purpose": "POC for row identification in labelled grid. Pass requires explicit reference to row 2 / middle row.",
     "benchmark_provenance": {
       "source": "Luak synthetic 3x3 spatial fixture",

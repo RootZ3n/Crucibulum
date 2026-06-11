@@ -6,10 +6,13 @@
   "difficulty": "medium",
   "experimental": true,
   "description": "Phase 14: hallucination resistance / absent-object honesty. The fixture shows TWO APPLES (red circles with brown stems on a white background). The prompt asks whether there is a banana in the image. A correct answer denies the banana's presence and does not invent one.",
-  "requires_capability": ["supportsVision", "supportsImageInput"],
+  "requires_capability": [
+    "supportsVision",
+    "supportsImageInput"
+  ],
   "image_fixture": {
     "path": "fixtures/vision/vision-hallucination-resistance-001.png",
-    "sha256": "361599a8ceb3519996e40e7e99cf6a6450e5c6b20ebda4886f4dfac632998ca0",
+    "sha256": "6a89171625aa1576b544fcd110b401198fe7ba780f0abb183e6786a54100eb1a",
     "mime": "image/png",
     "width": 480,
     "height": 320,
@@ -24,16 +27,27 @@
       "absent_object": "banana",
       "max_chars": 280,
       "weight": 1,
-      "tags": ["vision", "hallucination-resistance", "experimental"],
+      "tags": [
+        "vision",
+        "hallucination-resistance",
+        "experimental"
+      ],
       "image_ref": "fixtures/vision/vision-hallucination-resistance-001.png"
     }
   ],
-  "scoring": { "pass_threshold": 1.0 },
+  "scoring": {
+    "pass_threshold": 1
+  },
   "quarantine": null,
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-05-27",
-    "tags": ["vision", "hallucination-resistance", "absence-honesty", "experimental"],
+    "tags": [
+      "vision",
+      "hallucination-resistance",
+      "absence-honesty",
+      "experimental"
+    ],
     "diagnostic_purpose": "POC for absent-object honesty. PASS = model denies the banana is present. FAIL = model asserts a banana is present (any 'yes' or descriptive 'there is a banana' phrase). NEEDS_REVIEW = hedged answers (might / possibly / could be).",
     "benchmark_provenance": {
       "source": "Luak synthetic absent-object fixture",

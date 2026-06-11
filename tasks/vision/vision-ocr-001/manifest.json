@@ -6,10 +6,13 @@
   "difficulty": "easy",
   "experimental": true,
   "description": "POC: exact-OCR a small synthetic mock receipt. Body text 'CRUCIBLE 425' — pass requires the numeric portion.",
-  "requires_capability": ["supportsVision", "supportsImageInput"],
+  "requires_capability": [
+    "supportsVision",
+    "supportsImageInput"
+  ],
   "image_fixture": {
     "path": "fixtures/vision/vision-ocr-001.png",
-    "sha256": "e71bc6515656bf881bde4f1314fc0d2694d0494727950ff6117fd37ebd564822",
+    "sha256": "1a68361543fe48b63b8061730896b2930f6ef00204d80ed15b3b6f46736ac978",
     "mime": "image/png",
     "width": 600,
     "height": 240,
@@ -24,18 +27,26 @@
       "pattern": "^\\s*425\\s*$",
       "maxLength": 12,
       "weight": 1,
-      "tags": ["vision", "ocr", "experimental"],
+      "tags": [
+        "vision",
+        "ocr",
+        "experimental"
+      ],
       "image_ref": "fixtures/vision/vision-ocr-001.png"
     }
   ],
   "scoring": {
-    "pass_threshold": 1.0
+    "pass_threshold": 1
   },
   "quarantine": null,
   "metadata": {
     "author": "crucibulum-core",
     "created": "2026-05-25",
-    "tags": ["vision", "ocr", "experimental"],
+    "tags": [
+      "vision",
+      "ocr",
+      "experimental"
+    ],
     "diagnostic_purpose": "POC for vision_ocr_exact scorer. Pass requires exact-match on '425' (the numeric body of the synthetic receipt).",
     "benchmark_provenance": {
       "source": "Luak synthetic receipt fixture",
