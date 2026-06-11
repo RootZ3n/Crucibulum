@@ -319,7 +319,11 @@ const state={
     workspaces:[],   // [{uid, defId, dock:'right'|'bottom'|'fullscreen', min}]
     focus:null,      // uid of focused workspace (top of stack)
     fastTravel:false,
-    wsSeq:0
+    wsSeq:0,
+    // Peh-as-guide: when a hotspot is clicked Peh "speaks" — a contextual
+    // speech bubble appears at the hotspot and the medallion glides there.
+    pehBubble:null,  // {text, x, y, anchor, variant, hotspotId, phase} — active bubble
+    pehPosition:null // {x, y} — current Peh medallion position (for the glide)
   },
   tasks:[],
   adapters:[],
@@ -6243,49 +6247,49 @@ const SCENE_REGISTRY={
       // x/y seat each pin into the painted ring "socket" on the speedway map
       // comp (assets/luak-vintage-racing-map.png) — compromise % that read on
       // both the landscape and portrait comps, since one registry drives both.
-      {id:'sp-overview', label:'Dashboard',         x:51, y:46, workspace:'speedway-overview', scene:'speedway'},
-      {id:'sp-track',    label:'The Racetrack',     x:20, y:73, workspace:'benchmark-runs',     scene:'racetrack'},
-      {id:'sp-stand',    label:'The Grandstand',    x:52, y:26, workspace:'grandstand-results', scene:'grandstand'},
-      {id:'sp-tower',    label:'The Timing Tower',  x:20, y:39, workspace:'timing-metrics',     scene:'timing-tower'},
-      {id:'sp-pit',      label:'The Pit Lane',      x:83, y:44, workspace:'pit-lane-config',    scene:'pit-lane'},
-      {id:'sp-victory',  label:'The Victory Circle',x:49, y:75, workspace:'victory-achievements',scene:'victory-circle'},
-      {id:'sp-shop',     label:'The Workshop',      x:82, y:75, workspace:'workshop-diagnostics',scene:'workshop'}
+      {id:'sp-overview', label:'Dashboard',         x:51, y:46, workspace:'speedway-overview', scene:'speedway',     greeting:"Welcome to the Speedway! This is where we keep an eye on everything at a glance."},
+      {id:'sp-track',    label:'The Racetrack',     x:20, y:73, workspace:'benchmark-runs',     scene:'racetrack',    greeting:"Right this way — the track's where models get put through their paces!"},
+      {id:'sp-stand',    label:'The Grandstand',    x:52, y:26, workspace:'grandstand-results', scene:'grandstand',   greeting:"Take a seat up here — best view in the house for the results."},
+      {id:'sp-tower',    label:'The Timing Tower',  x:20, y:39, workspace:'timing-metrics',     scene:'timing-tower', greeting:"Up in the tower, we measure every tenth of a second. Precision wins races."},
+      {id:'sp-pit',      label:'The Pit Lane',      x:83, y:44, workspace:'pit-lane-config',    scene:'pit-lane',     greeting:"The pit's where we tune the machine. Every adjustment counts."},
+      {id:'sp-victory',  label:'The Victory Circle',x:49, y:75, workspace:'victory-achievements',scene:'victory-circle',greeting:"This is what it's all about. Every win, every record — right here."},
+      {id:'sp-shop',     label:'The Workshop',      x:82, y:75, workspace:'workshop-diagnostics',scene:'workshop',    greeting:"My workshop. Tools, diagnostics, and a lot of elbow grease."}
     ]},
     {id:'racetrack', title:'The Racetrack', purpose:'Active benchmarks', route:'/racetrack',
      desc:'Where the cars race. Push a model hard and watch it run, lap after lap, under load.', peh:'gauge',
      pehSlot:{x:50, y:62, anchor:'center', variant:'driver'}, hotspots:[
-      {id:'rt-runs',  label:'Active Benchmarks', x:46, y:54, workspace:'benchmark-runs'},
-      {id:'rt-hub',   label:'Back to the Speedway', x:84, y:78, scene:'speedway'}
+      {id:'rt-runs',  label:'Active Benchmarks', x:46, y:54, workspace:'benchmark-runs', greeting:"Engines hot? Let's see what this model can do, lap after lap."},
+      {id:'rt-hub',   label:'Back to the Speedway', x:84, y:78, scene:'speedway', greeting:"Let's head back to the hub — follow me!"}
     ]},
     {id:'grandstand', title:'The Grandstand', purpose:'Results & rankings', route:'/results',
      desc:'Where the spectators watch. Final standings, head-to-head results, and who took the flag.', peh:'trophy',
      pehSlot:{x:42, y:30, anchor:'top', variant:'spectator'}, hotspots:[
-      {id:'gs-results', label:'Results & Rankings', x:48, y:52, workspace:'grandstand-results'},
-      {id:'gs-hub',     label:'Back to the Speedway', x:84, y:80, scene:'speedway'}
+      {id:'gs-results', label:'Results & Rankings', x:48, y:52, workspace:'grandstand-results', greeting:"Here's the scoreboard — who took the flag and who fell behind."},
+      {id:'gs-hub',     label:'Back to the Speedway', x:84, y:80, scene:'speedway', greeting:"Let's head back to the hub — follow me!"}
     ]},
     {id:'timing-tower', title:'The Timing Tower', purpose:'Performance metrics', route:'/metrics',
      desc:'Where the times are recorded. Lap charts, throughput, tokens-per-second, the running clock.', peh:'gauge',
      pehSlot:{x:80, y:34, anchor:'top', variant:'timekeeper'}, hotspots:[
-      {id:'tt-metrics', label:'Performance Metrics', x:50, y:52, workspace:'timing-metrics'},
-      {id:'tt-hub',     label:'Back to the Speedway', x:84, y:80, scene:'speedway'}
+      {id:'tt-metrics', label:'Performance Metrics', x:50, y:52, workspace:'timing-metrics', greeting:"Every tenth of a second, logged and charted. The clock never lies."},
+      {id:'tt-hub',     label:'Back to the Speedway', x:84, y:80, scene:'speedway', greeting:"Let's head back to the hub — follow me!"}
     ]},
     {id:'pit-lane', title:'The Pit Lane', purpose:'Configuration & tuning', route:'/config',
      desc:'Where the cars are serviced. Set the parameters, tighten the bolts, dial it in for the next run.', peh:'wrench',
      pehSlot:{x:82, y:56, anchor:'right', variant:'mechanic'}, hotspots:[
-      {id:'pl-config', label:'Configuration & Tuning', x:46, y:52, workspace:'pit-lane-config'},
-      {id:'pl-hub',    label:'Back to the Speedway', x:84, y:82, scene:'speedway'}
+      {id:'pl-config', label:'Configuration & Tuning', x:46, y:52, workspace:'pit-lane-config', greeting:"Grab a wrench — let's dial in the settings before the next run."},
+      {id:'pl-hub',    label:'Back to the Speedway', x:84, y:82, scene:'speedway', greeting:"Let's head back to the hub — follow me!"}
     ]},
     {id:'victory-circle', title:'The Victory Circle', purpose:'Achievement tracking', route:'/achievements',
      desc:'Where the winners celebrate. Milestones, records that held up, and the trophies earned in trial.', peh:'trophy',
      pehSlot:{x:78, y:70, anchor:'bottom', variant:'champion'}, hotspots:[
-      {id:'vc-ach', label:'Achievements', x:48, y:50, workspace:'victory-achievements'},
-      {id:'vc-hub', label:'Back to the Speedway', x:84, y:82, scene:'speedway'}
+      {id:'vc-ach', label:'Achievements', x:48, y:50, workspace:'victory-achievements', greeting:"Every milestone, every record that held up — take a bow, champ."},
+      {id:'vc-hub', label:'Back to the Speedway', x:84, y:82, scene:'speedway', greeting:"Let's head back to the hub — follow me!"}
     ]},
     {id:'workshop', title:'The Workshop', purpose:'Tools & diagnostics', route:'/diagnostics',
      desc:'Where the mechanics work. Diagnostics, system health, and the tools that keep the fleet running.', peh:'wrench',
      pehSlot:{x:62, y:84, anchor:'bottom', variant:'mechanic'}, hotspots:[
-      {id:'ws-diag', label:'Tools & Diagnostics', x:48, y:50, workspace:'workshop-diagnostics'},
-      {id:'ws-hub',  label:'Back to the Speedway', x:84, y:82, scene:'speedway'}
+      {id:'ws-diag', label:'Tools & Diagnostics', x:48, y:50, workspace:'workshop-diagnostics', greeting:"Pop the hood with me — diagnostics tell us how the fleet's holding up."},
+      {id:'ws-hub',  label:'Back to the Speedway', x:84, y:82, scene:'speedway', greeting:"Let's head back to the hub — follow me!"}
     ]}
   ],
   howa:[
@@ -6411,6 +6415,7 @@ function pehWorkspaceBelongsToActive(def){
 function pehSetScene(sceneId){
   if(!pehScene(pehActiveProductId(),sceneId))return; // isolation: own areas only
   state.pehverse.scene=sceneId;
+  state.pehverse.pehPosition=null; // new scene → Peh rests at its own slot
   localStorage.setItem('pehverse-scene',sceneId);
   render();
 }
@@ -6418,6 +6423,7 @@ function pehSetScene(sceneId){
 function pehGoScene(sceneId){
   if(!pehScene(pehActiveProductId(),sceneId))return;
   state.pehverse.scene=sceneId;
+  state.pehverse.pehPosition=null;
   state.pehverse.fastTravel=false;
   localStorage.setItem('pehverse-scene',sceneId);
   render();
@@ -6433,6 +6439,8 @@ function pehDevSwitchProduct(productId){
   state.pehverse.scene=p.defaultScene||(pehScenes(p.id)[0]&&pehScenes(p.id)[0].id)||null;
   state.pehverse.workspaces=[];
   state.pehverse.focus=null;
+  state.pehverse.pehBubble=null;
+  state.pehverse.pehPosition=null;
   state.pehverse.fastTravel=false;
   try{localStorage.setItem('pehverse-product',p.id);if(state.pehverse.scene)localStorage.setItem('pehverse-scene',state.pehverse.scene)}catch(e){}
   render();
@@ -6468,14 +6476,89 @@ function pehOpenWorkspace(defId,opts){
   pehFocusWorkspace(ws.uid,true);
   render();
 }
+// ── Peh-as-guide: contextual speech bubble ─────────────────────────────
+// When a hotspot is clicked, Peh "appears" there with a greeting. The
+// bubble auto-dismisses after a few seconds (fade), and the medallion
+// glides to the hotspot (handled by renderPehSlot reading pehPosition).
+// These two timers let a fresh click cancel an in-flight dismiss so the
+// bubble doesn't vanish mid-greeting when the user hops around quickly.
+let pehBubbleFadeTimer=null; // fires the exit (fade-out) phase
+let pehBubbleClearTimer=null; // removes the bubble after the fade
+const PEH_BUBBLE_HOLD_MS=6000; // visible before fade begins
+const PEH_BUBBLE_FADE_MS=300;  // fade-out duration (matches CSS .peh-bubble-exit)
+function pehClearBubbleTimers(){
+  if(pehBubbleFadeTimer){clearTimeout(pehBubbleFadeTimer);pehBubbleFadeTimer=null;}
+  if(pehBubbleClearTimer){clearTimeout(pehBubbleClearTimer);pehBubbleClearTimer=null;}
+}
+// Place the bubble relative to the hotspot: above it normally, below when
+// the hotspot sits near the top edge. x is clamped so the (centered) bubble
+// doesn't run off the map sides; the tail stays pointed at Peh.
+function pehBubbleAnchor(hotspot){return (hotspot.y!=null&&hotspot.y<24)?'down':'up';}
+function pehSayGreeting(hotspot,scene){
+  if(!hotspot)return;
+  const text=hotspot.greeting||(scene?`Welcome to ${scene.title}.`:'This way!');
+  const x=Math.max(16,Math.min(84,hotspot.x!=null?hotspot.x:50));
+  const y=hotspot.y!=null?hotspot.y:50;
+  pehClearBubbleTimers();
+  state.pehverse.pehBubble={
+    text,x,y,
+    anchor:pehBubbleAnchor(hotspot),
+    variant:(scene&&scene.pehSlot&&scene.pehSlot.variant)||'guide',
+    hotspotId:hotspot.id,
+    phase:'enter'
+  };
+  // Peh glides to the hotspot. Use the hotspot's true x (not the clamped
+  // bubble x) so the medallion lands on the pin.
+  state.pehverse.pehPosition={x:hotspot.x!=null?hotspot.x:50,y};
+  render();
+  // Begin the fade after the hold window, then remove once the fade ends.
+  pehBubbleFadeTimer=setTimeout(()=>{
+    pehBubbleFadeTimer=null;
+    if(!state.pehverse.pehBubble||state.pehverse.pehBubble.hotspotId!==hotspot.id)return;
+    state.pehverse.pehBubble.phase='exit';
+    render();
+    pehBubbleClearTimer=setTimeout(()=>{
+      pehBubbleClearTimer=null;
+      if(state.pehverse.pehBubble&&state.pehverse.pehBubble.hotspotId===hotspot.id){
+        state.pehverse.pehBubble=null;
+        render();
+      }
+    },PEH_BUBBLE_FADE_MS);
+  },PEH_BUBBLE_HOLD_MS);
+}
+// Manual dismiss — clicking the bubble fades it out immediately.
+function pehDismissBubble(){
+  if(!state.pehverse.pehBubble)return;
+  pehClearBubbleTimers();
+  state.pehverse.pehBubble.phase='exit';
+  render();
+  pehBubbleClearTimer=setTimeout(()=>{
+    pehBubbleClearTimer=null;
+    state.pehverse.pehBubble=null;
+    render();
+  },PEH_BUBBLE_FADE_MS);
+}
 // Hotspot click: optionally travel to a sub-scene (product-local), then open
 // the workspace (isolation-guarded). Hotspots only reference their own
 // product's data, but both calls re-validate so the boundary holds anyway.
 function pehHotspot(defId,sceneId){
   if(sceneId&&pehScene(pehActiveProductId(),sceneId)){
-    state.pehverse.scene=sceneId;localStorage.setItem('pehverse-scene',sceneId);
+    state.pehverse.scene=sceneId;state.pehverse.pehPosition=null;localStorage.setItem('pehverse-scene',sceneId);
   }
   pehOpenWorkspace(defId);
+}
+// Hotspot activation entry point (what the pin's onclick calls): Peh greets
+// the visitor FIRST, then — after a short beat so the bubble/medallion are
+// seen — the existing workspace/scene navigation runs unchanged.
+function pehHotspotActivate(sceneId,hotspotId){
+  const scene=pehScene(pehActiveProductId(),sceneId);
+  const hotspot=scene&&scene.hotspots?scene.hotspots.find((h)=>h.id===hotspotId):null;
+  if(hotspot)pehSayGreeting(hotspot,scene);
+  setTimeout(()=>{
+    if(!hotspot)return;
+    if(hotspot.workspace)pehHotspot(hotspot.workspace,hotspot.scene);
+    else if(hotspot.scene)pehSetScene(hotspot.scene);
+  },300);
 }
 function pehFocusWorkspace(uid,skipRender){
   const ws=state.pehverse.workspaces.find((w)=>w.uid===uid);
@@ -6565,15 +6648,39 @@ function pehSlotMarkup(slot,opts){
   const inline=o.inline; // dashboard/mobile card → static medallion, no % position
   const pos=inline?'' : `left:${slot.x}%;top:${slot.y}%;`;
   const anchor=slot.anchor||'center';
-  return `<div class="peh-slot peh-slot-${anchor} ${inline?'peh-slot-inline':''}" style="${pos}" data-variant="${esc(variant)}" data-anchor="${esc(anchor)}" title="Peh — your guide here (${esc(variant)})" aria-label="Peh placeholder — ${esc(variant)}">
+  return `<div class="peh-slot peh-slot-${anchor} ${inline?'peh-slot-inline':''} ${o.glow?'glow':''}" style="${pos}" data-variant="${esc(variant)}" data-anchor="${esc(anchor)}" title="Peh — your guide here (${esc(variant)})" aria-label="Peh placeholder — ${esc(variant)}">
     <span class="peh-slot-medallion" aria-hidden="true">${pehSquirrelSilhouette()}</span>
     ${inline?'':'<span class="peh-slot-tag">Peh</span>'}
   </div>`;
 }
 // Immersive scene Peh slot — positioned over the world map by pehSlot{x,y}.
+// When Peh has been summoned to a hotspot (pehPosition set) the medallion
+// glides there (CSS transition on left/top) and pulses while Peh is speaking.
 function renderPehSlot(scene){
   if(!scene||!scene.pehSlot)return'';
-  return pehSlotMarkup(scene.pehSlot,{inline:false});
+  const pv=state.pehverse;
+  const slot=pv.pehPosition
+    ? Object.assign({},scene.pehSlot,{x:pv.pehPosition.x,y:pv.pehPosition.y})
+    : scene.pehSlot;
+  return pehSlotMarkup(slot,{inline:false,glow:!!pv.pehBubble});
+}
+// Peh's contextual speech bubble — anchored at the clicked hotspot. The
+// scene overlay layer is click-through (pointer-events:none in CSS); only
+// the bubble itself is interactive, so clicking it dismisses the greeting
+// while clicks elsewhere still reach the hotspots beneath.
+function renderPehBubble(){
+  const b=state.pehverse.pehBubble;
+  if(!b)return'';
+  const phaseClass=b.phase==='exit'?'peh-bubble-exit':'peh-bubble-enter';
+  return `<div class="peh-bubble-layer" aria-hidden="false">
+    <div class="peh-bubble peh-bubble-anchor-${esc(b.anchor)} ${phaseClass}" style="left:${b.x}%;top:${b.y}%" role="status" title="Dismiss" onclick="pehDismissBubble()">
+      <div class="peh-bubble-content">
+        <span class="peh-bubble-name">Peh</span>
+        <p class="peh-bubble-text">${esc(b.text)}</p>
+      </div>
+      <div class="peh-bubble-tail" aria-hidden="true"></div>
+    </div>
+  </div>`;
 }
 // Peh guide figure — the product's real mascot art (e.g. the 1920s race-driver
 // squirrel for Luak), framed as a "your guide" portrait beside the scene
@@ -6639,6 +6746,7 @@ function renderPehImmersive(product,scene,deckMarkup){
       <p class="peh-scene-desc">${esc(scene?scene.desc:product.blurb)}</p>
     </div>
     ${renderPehSlot(scene)}
+    ${renderPehBubble()}
     ${renderPehGuide(product)}
     ${renderHotspotLayer(scene)}
     ${renderPehWaypoints(product,scene)}
@@ -6666,9 +6774,8 @@ function renderPehDashboard(product,scene,deckMarkup){
 function renderHotspotLayer(scene){
   if(!scene||!scene.hotspots||!scene.hotspots.length)return'';
   return `<div class="peh-hotspots" aria-label="${esc(scene.title)} hotspots">${scene.hotspots.map((h)=>{
-    const action=h.workspace
-      ? `pehHotspot('${h.workspace}'${h.scene?`,'${h.scene}'`:''})`
-      : (h.scene?`pehSetScene('${h.scene}')`:'');
+    // Peh greets first, then the existing nav runs (see pehHotspotActivate).
+    const action=`pehHotspotActivate('${scene.id}','${h.id}')`;
     const kind=h.workspace?(pehWorkspaceDef(h.workspace)||{}).kind:'travel';
     return `<button class="peh-hotspot" type="button" style="left:${h.x}%;top:${h.y}%" title="${esc(h.label)}" aria-label="${esc(h.label)}" onclick="${action}">
       <span class="peh-pin" aria-hidden="true"></span>

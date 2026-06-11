@@ -2792,7 +2792,7 @@ body::after {
 /* Positioned over the world map by the location's pehSlot{x,y,anchor}.
    The medallion is a SQUIRREL SILHOUETTE PLACEHOLDER — swapped for real
    per-location/era Peh art later. */
-.peh-slot{position:absolute;z-index:5;display:flex;flex-direction:column;align-items:center;gap:5px;pointer-events:none}
+.peh-slot{position:absolute;z-index:5;display:flex;flex-direction:column;align-items:center;gap:5px;pointer-events:none;transition:left .4s ease,top .4s ease}
 .peh-slot-center{transform:translate(-50%,-50%)}
 .peh-slot-top{transform:translate(-50%,0)}
 .peh-slot-bottom{transform:translate(-50%,-100%)}
@@ -2815,6 +2815,65 @@ body::after {
 /* Inline variant — sits in the dashboard/mobile card header, not positioned. */
 .peh-slot-inline{position:static;transform:none;float:right;margin:0 0 6px 12px}
 .peh-slot-inline .peh-slot-medallion{width:48px;height:48px;padding:7px}
+
+/* ── Peh-as-guide: speaking glow + contextual speech bubble ─────────── */
+/* When Peh is "speaking" (a bubble is active) the medallion pulses a gentle
+   cyan/violet halo so the eye is drawn to the guide. */
+.peh-slot.glow .peh-slot-medallion{animation:pehSlotGlow 1.8s ease-in-out infinite}
+@keyframes pehSlotGlow{
+  0%,100%{box-shadow:0 0 0 4px color-mix(in srgb,var(--peh-accent) 26%,transparent),0 8px 22px rgba(0,0,0,.5)}
+  50%{box-shadow:0 0 0 7px color-mix(in srgb,#67e8f9 38%,transparent),0 0 26px color-mix(in srgb,var(--peh-accent) 60%,transparent),0 8px 24px rgba(0,0,0,.55)}
+}
+
+/* The bubble layer spans the scene but is click-through — only the bubble
+   card itself takes pointer events (so it can be dismissed on click while
+   the hotspots underneath stay reachable everywhere else). */
+.peh-bubble-layer{position:absolute;inset:0;z-index:7;pointer-events:none}
+.peh-bubble{
+  position:absolute;pointer-events:auto;cursor:pointer;
+  width:max-content;max-width:min(260px,46vw);
+  transform:translate(-50%,0); /* overridden per anchor below */
+  filter:drop-shadow(0 12px 26px rgba(0,0,0,.5));
+}
+.peh-bubble-content{
+  position:relative;border-radius:14px;padding:10px 13px 11px;
+  background:linear-gradient(160deg,color-mix(in srgb,var(--peh-accent) 28%,rgba(18,14,38,.92)),rgba(12,10,26,.94));
+  border:1px solid color-mix(in srgb,#67e8f9 34%,var(--border-subtle));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 0 0 1px rgba(103,232,249,.06);
+  backdrop-filter:blur(8px);
+}
+.peh-bubble-name{
+  display:block;font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+  color:#7df0ff;margin-bottom:3px;
+}
+.peh-bubble-text{margin:0;font-size:13px;line-height:1.4;color:var(--ink);font-weight:500}
+/* Tail — a small rotated square sharing the card's fill/border, clipped so
+   only the outward-pointing corner shows toward Peh. */
+.peh-bubble-tail{
+  position:absolute;width:14px;height:14px;
+  background:linear-gradient(160deg,color-mix(in srgb,var(--peh-accent) 28%,rgba(18,14,38,.92)),rgba(12,10,26,.94));
+  border:1px solid color-mix(in srgb,#67e8f9 34%,var(--border-subtle));
+}
+/* Anchor 'up' → bubble ABOVE the hotspot, tail at the bottom pointing down. */
+.peh-bubble-anchor-up{transform:translate(-50%,calc(-100% - 16px))}
+.peh-bubble-anchor-up .peh-bubble-tail{left:50%;bottom:-8px;transform:translateX(-50%) rotate(45deg);border-top:none;border-left:none}
+/* Anchor 'down' → bubble BELOW the hotspot, tail at the top pointing up. */
+.peh-bubble-anchor-down{transform:translate(-50%,16px)}
+.peh-bubble-anchor-down .peh-bubble-tail{left:50%;top:-8px;transform:translateX(-50%) rotate(45deg);border-bottom:none;border-right:none}
+
+/* Enter: fade + scale-up (origin toward Peh). Exit: fade-out. */
+.peh-bubble-enter{animation:pehBubbleIn .2s ease-out both}
+.peh-bubble-exit{animation:pehBubbleOut .3s ease-in both}
+@keyframes pehBubbleIn{from{opacity:0;transform:translate(-50%,calc(-100% - 16px)) scale(.82)}to{opacity:1}}
+@keyframes pehBubbleOut{from{opacity:1}to{opacity:0}}
+/* Keep the scale origin correct for the 'down' anchor too. */
+.peh-bubble-anchor-down.peh-bubble-enter{animation:pehBubbleInDown .2s ease-out both}
+@keyframes pehBubbleInDown{from{opacity:0;transform:translate(-50%,16px) scale(.82)}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  .peh-slot{transition:none}
+  .peh-slot.glow .peh-slot-medallion{animation:none}
+  .peh-bubble-enter,.peh-bubble-exit,.peh-bubble-anchor-down.peh-bubble-enter{animation-duration:.01ms}
+}
 
 /* ── Back-to-map affordance (persistent on the workspace sheet) ─────── */
 .peh-backmap{
