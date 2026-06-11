@@ -299,7 +299,7 @@ const CATEGORY_COPY={
 };
 
 const state={
-  activeTab:localStorage.getItem('crucibulum-active-tab')||'dashboard',
+  activeTab:normalizeTabKey(localStorage.getItem('crucibulum-active-tab')||'dashboard'),
   viewMode:localStorage.getItem('crucibulum-view-mode')||'simple',
   resultsView:localStorage.getItem('crucibulum-results-view')||'simple',
   drilldownModel:null,
@@ -397,6 +397,8 @@ const HEALTH_MIN_INTERVAL_MS=4000;
 const HEALTH_LAST_KNOWN_TTL_MS=120000;
 
 const esc=(v)=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+function validTabKey(tabKey){return !!TAB_CONFIG[tabKey]}
+function normalizeTabKey(tabKey){return validTabKey(tabKey)?tabKey:'dashboard'}
 const fmtMoney=(v)=>`$${Number(v??0).toFixed(4)}`;
 const fmtDate=(v)=>{if(!v)return'Never';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString()};
 const fmtMs=(v)=>{const ms=Number(v??0);if(!Number.isFinite(ms)||ms<=0)return'0 ms';return ms>=1000?`${(ms/1000).toFixed(2)} s`:`${Math.round(ms)} ms`};
@@ -406,6 +408,10 @@ function safeScore(value){const n=Number(value??0);return Number.isFinite(n)?Mat
 function safeStr(value){const s=String(value??'');return(s==='undefined'||s==='null'||s==='NaN')?'':s}
 function safeNum(value){const n=Number(value??0);return Number.isFinite(n)?n:0}
 function kbClick(fnCall){return` role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${fnCall}}"` }
+function actionKeyAttrs(action,attrs){
+  const data=Object.entries(attrs||{}).map(([k,v])=>` data-${k}="${esc(v)}"`).join('');
+  return` data-action="${esc(action)}"${data} role="button" tabindex="0"`;
+}
 
 // ─── Friendly label map ──────────────────────────────────────────────────
 // Maps technical metric keys to user-friendly labels and inline tooltips.
@@ -1480,7 +1486,14 @@ async function refreshRunSurfaces(tabKey,opts){
   }
 }
 
-function setActiveTab(tabKey){state.activeTab=tabKey;localStorage.setItem('crucibulum-active-tab',tabKey);if(tabKey==='vision'){fetchVisionSmoke();fetchVisionPromotionEval()}if(tabKey==='roleplay'){fetchRoleplaySmoke()}render()}
+function setActiveTab(tabKey){
+  const next=normalizeTabKey(tabKey);
+  state.activeTab=next;
+  localStorage.setItem('crucibulum-active-tab',next);
+  if(next==='vision'){fetchVisionSmoke();fetchVisionPromotionEval()}
+  if(next==='roleplay'){fetchRoleplaySmoke()}
+  render();
+}
 // Vision smoke snapshot loader. Fires once per session (or on manual reload)
 // from /api/vision/latest-smoke. Re-renders on success/error so the Vision
 // status panel can show the result instead of "loading…". Vision stays
@@ -2559,12 +2572,23 @@ function watchRunCompletion(tabKey,runId,taskId,modelId){
         render();
       }catch{}
     });
-    source.addEventListener('complete',async(event)=>{
-      source.close();
-      trace_push('sse_complete');
-      setRunPhase(tabKey,'judging');
-      const payload=JSON.parse(event.data);
-      const normalized=normalizeRunForDisplay({...payload,bundle_id:runId,task_id:taskId,model:modelId});
+	    source.addEventListener('complete',async(event)=>{
+	      source.close();
+	      trace_push('sse_complete');
+	      setRunPhase(tabKey,'judging');
+	      let payload;
+	      try{
+	        payload=JSON.parse(event.data);
+	      }catch(err){
+	        const reason=`Malformed complete event payload: ${String(err&&err.message||err)}`;
+	        trace_push('sse_complete_parse_error',{reason});
+	        updateBatchItem(tabKey,taskId,modelId,{status:'failed',runId,reason});
+	        pushRunEvent(tabKey,'fail',reason);
+	        dumpTrace('complete-parse-error');
+	        resolve({status:'error',executed:false,started,reason});
+	        return;
+	      }
+	      const normalized=normalizeRunForDisplay({...payload,bundle_id:runId,task_id:taskId,model:modelId});
       const verdict=normalized.verdictLabel||((normalized.pass===false)?'FAIL':'PASS');
       pushRunEvent(tabKey,'judge',`Judged ${verdict} · ${normalized.overall}% · ${humanizeToken(taskId)}`);
       state.runState[tabKey].lines.push(`[${taskId} :: ${modelId}] ${verdict} at ${normalized.overall}%`);
@@ -3806,8 +3830,7 @@ function renderRankedResults(tabKey){
       const provTag=entry.sampleAdequate===false?'<span class="tag dim" title="Under sample threshold">PROVISIONAL</span>':'';
       const failTag=failRate>10?`<span class="tag red">${failRate}% CRIT</span>`:'';
       const focused=focusedModel&&normalizeId(entry.model)===normalizeId(focusedModel)?'focused':'';
-      const clickFn=`focusModelDrilldown('${esc(tabKey)}','${esc(safeStr(entry.model))}')`;
-      return`<div class="ranked-row clickable ${focused}" onclick="${clickFn}"${kbClick(clickFn)} aria-label="Inspect ${esc(safeStr(entry.model))}"><div class="ranked-pos">#${i+1}</div><div class="ranked-model" title="${esc(safeStr(entry.model))}">${esc(safeStr(entry.model))}</div><div class="ranked-bar"><div class="ranked-fill" style="width:${width}%"></div></div><div class="ranked-score">${score}%</div><div class="ranked-meta">${safeNum(entry.runs)}R${provTag}${failTag}</div></div>`;
+      return`<div class="ranked-row clickable ${focused}"${actionKeyAttrs('model-drilldown',{tab:tabKey,model:safeStr(entry.model)})} aria-label="Inspect ${esc(safeStr(entry.model))}"><div class="ranked-pos">#${i+1}</div><div class="ranked-model" title="${esc(safeStr(entry.model))}">${esc(safeStr(entry.model))}</div><div class="ranked-bar"><div class="ranked-fill" style="width:${width}%"></div></div><div class="ranked-score">${score}%</div><div class="ranked-meta">${safeNum(entry.runs)}R${provTag}${failTag}</div></div>`;
     }).join('')}</div>`;
   } else if(mode==='table'){
     body=`<div class="ranked-table-wrap"><table class="ranked-table"><thead><tr><th>#</th><th>Model</th><th>Score</th><th>Pass</th><th>Crit Fail</th><th>Runs</th><th>Status</th></tr></thead><tbody>${entries.map((entry,i)=>{
@@ -3818,8 +3841,7 @@ function renderRankedResults(tabKey){
       const statusLabel=adequate?'TRUSTED':'PROVISIONAL';
       const statusCls=adequate?'teal':'dim';
       const focused=focusedModel&&normalizeId(entry.model)===normalizeId(focusedModel)?'focused':'';
-      const clickFnT=`focusModelDrilldown('${esc(tabKey)}','${esc(safeStr(entry.model))}')`;
-      return`<tr class="clickable ${focused}" onclick="${clickFnT}" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${clickFnT}}" aria-label="Inspect ${esc(safeStr(entry.model))}"><td>${i+1}</td><td class="rt-model">${esc(safeStr(entry.model))}</td><td class="rt-score ${score>=80?'teal':score>=55?'orange':'red'}">${score}%</td><td>${passRate}%</td><td class="${failRate>10?'red':''}">${failRate}%</td><td>${safeNum(entry.runs)}</td><td><span class="tag ${statusCls}">${statusLabel}</span></td></tr>`;
+      return`<tr class="clickable ${focused}"${actionKeyAttrs('model-drilldown',{tab:tabKey,model:safeStr(entry.model)})} aria-label="Inspect ${esc(safeStr(entry.model))}"><td>${i+1}</td><td class="rt-model">${esc(safeStr(entry.model))}</td><td class="rt-score ${score>=80?'teal':score>=55?'orange':'red'}">${score}%</td><td>${passRate}%</td><td class="${failRate>10?'red':''}">${failRate}%</td><td>${safeNum(entry.runs)}</td><td><span class="tag ${statusCls}">${statusLabel}</span></td></tr>`;
     }).join('')}</tbody></table></div>`;
   } else {
     body=`<div class="ranked-chart">${entries.map((entry,i)=>{
@@ -3827,8 +3849,7 @@ function renderRankedResults(tabKey){
       const width=Math.max(4,Math.round((score/top)*100));
       const cls=score>=80?'pass':score>=55?'warn':'fail';
       const focused=focusedModel&&normalizeId(entry.model)===normalizeId(focusedModel)?'focused':'';
-      const clickFnC=`focusModelDrilldown('${esc(tabKey)}','${esc(safeStr(entry.model))}')`;
-      return`<div class="chart-row clickable ${focused}" onclick="${clickFnC}"${kbClick(clickFnC)} aria-label="Inspect ${esc(safeStr(entry.model))}"><div class="chart-label">${esc(safeStr(entry.model).slice(0,18))}</div><div class="chart-bar-track"><div class="chart-bar-fill ${cls}" style="width:${width}%"></div><span class="chart-bar-value">${score}%</span></div></div>`;
+      return`<div class="chart-row clickable ${focused}"${actionKeyAttrs('model-drilldown',{tab:tabKey,model:safeStr(entry.model)})} aria-label="Inspect ${esc(safeStr(entry.model))}"><div class="chart-label">${esc(safeStr(entry.model).slice(0,18))}</div><div class="chart-bar-track"><div class="chart-bar-fill ${cls}" style="width:${width}%"></div><span class="chart-bar-value">${score}%</span></div></div>`;
     }).join('')}</div>`;
   }
 
@@ -3886,8 +3907,7 @@ function renderModelDrilldown(tabKey,modelId){
       const ts=r.timestamp?fmtDate(r.timestamp):'N/A';
       const evSum=r.evidenceSummary?`<div class="dd-evidence">${esc(r.evidenceSummary.slice(0,200))}</div>`:'<div class="dd-evidence dd-na">No evidence summary available.</div>';
       const catLine=r.categorySummary?`<div class="dd-categories">${esc(r.categorySummary)}</div>`:'';
-      const runClickFn=`focusDrilldownRun('${esc(tabKey)}','${esc(r.runId)}')`;
-      return`<article class="dd-run clickable ${cls}" onclick="${runClickFn}" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${runClickFn}}" aria-label="View evidence for run ${esc(r.runId.slice(0,12))}"><div class="dd-run-head"><div class="dd-run-left"><span class="badge ${cls}">${esc(r.verdictLabel)}</span><span class="dd-score ${cls}">${r.score}%</span>${critTag}${modelFailTag}${infraTag}</div><div class="dd-run-right">${taskLabel}${familyLabel}${receiptTag}<button type="button" class="dd-view-btn" onclick="event.stopPropagation();${runClickFn}" title="Open full evidence inspector for this run">VIEW EVIDENCE</button></div></div><div class="dd-run-meta"><span class="dd-ts">${esc(ts)}</span>${r.bundleHash?`<span class="dd-hash" title="${esc(r.bundleHash)}">#${esc(r.bundleHash.slice(0,8))}</span>`:''}<span class="dd-rid">${esc(r.runId.slice(0,16))}</span></div>${catLine}${evSum}</article>`;
+      return`<article class="dd-run clickable ${cls}"${actionKeyAttrs('drilldown-run',{tab:tabKey,run:r.runId})} aria-label="View evidence for run ${esc(r.runId.slice(0,12))}"><div class="dd-run-head"><div class="dd-run-left"><span class="badge ${cls}">${esc(r.verdictLabel)}</span><span class="dd-score ${cls}">${r.score}%</span>${critTag}${modelFailTag}${infraTag}</div><div class="dd-run-right">${taskLabel}${familyLabel}${receiptTag}<button type="button" class="dd-view-btn" data-action="drilldown-run" data-tab="${esc(tabKey)}" data-run="${esc(r.runId)}" title="Open full evidence inspector for this run">VIEW EVIDENCE</button></div></div><div class="dd-run-meta"><span class="dd-ts">${esc(ts)}</span>${r.bundleHash?`<span class="dd-hash" title="${esc(r.bundleHash)}">#${esc(r.bundleHash.slice(0,8))}</span>`:''}<span class="dd-rid">${esc(r.runId.slice(0,16))}</span></div>${catLine}${evSum}</article>`;
     }).join('')}</div>`;
     if(hasMore){
       runRows+=`<div class="dd-pagination"><button type="button" class="bvt-btn active" onclick="drilldownShowMore()">SHOW MORE (${visible.length} of ${total})</button></div>`;
@@ -5298,7 +5318,8 @@ function renderRoleplayLanePanel(tabKey){
 }
 
 function renderLane(tabKey){
-  const tab=TAB_CONFIG[tabKey];
+  const tab=TAB_CONFIG[tabKey]||TAB_CONFIG.dashboard;
+  if(!TAB_CONFIG[tabKey])tabKey=tab.key;
   const tabState=state.tabData[tab.key]||defaultTabState();
   const stats=tabState.stats||{};
   const modelCount=(tabState.selectedModels||[]).length;
@@ -6335,9 +6356,9 @@ const WORKSPACE_REGISTRY={
   'benchmark-runs':      {product:'luak', title:'Active Benchmarks',  kind:'lane', tab:'benchmark',  route:'/racetrack',    dock:'right',      peh:'gauge'},
   'grandstand-results':  {product:'luak', title:'Results & Rankings', kind:'lane', tab:'dashboard',  route:'/results',      dock:'right',      peh:'trophy'},
   'timing-metrics':      {product:'luak', title:'Performance Metrics',kind:'placeholder', route:'/metrics',  dock:'bottom', peh:'gauge',  relatedTab:'benchmark', blurb:'Lap times, throughput, and tokens-per-second land here when the timing pipeline ships.'},
-  'pit-lane-config':     {product:'luak', title:'Configuration & Tuning', kind:'lane', tab:'config', route:'/config',     dock:'right',      peh:'wrench'},
+  'pit-lane-config':     {product:'luak', title:'Configuration & Tuning', kind:'lane', tab:'providers', route:'/config',     dock:'right',      peh:'wrench'},
   'victory-achievements':{product:'luak', title:'Achievements',       kind:'placeholder', route:'/achievements', dock:'right', peh:'trophy', relatedTab:'dashboard', blurb:'Milestones and records that held up under trial are tracked here.'},
-  'workshop-diagnostics':{product:'luak', title:'Tools & Diagnostics',kind:'placeholder', route:'/diagnostics', dock:'bottom', peh:'wrench', relatedTab:'info', blurb:'System health, diagnostics, and the mechanic’s toolbox for the fleet.'},
+  'workshop-diagnostics':{product:'luak', title:'Tools & Diagnostics',kind:'placeholder', route:'/diagnostics', dock:'bottom', peh:'wrench', relatedTab:'providers', blurb:'System health, diagnostics, and the mechanic’s toolbox for the fleet.'},
   // ── Howa (product:'howa') ──
   'stress-tests':        {product:'howa', title:'Stress Tests',       kind:'lane', tab:'safety', dock:'right',      peh:'shield'},
   'adversarial-trials':  {product:'howa', title:'Adversarial Trials', kind:'lane', tab:'poison', dock:'right',      peh:'bug'},
@@ -6568,7 +6589,7 @@ function pehFocusWorkspace(uid,skipRender){
   // own onclick handlers (run, drilldown, export) operate on the right
   // lane. Only the focused lane is fully interactive; others snapshot.
   const def=pehWorkspaceDef(ws.defId);
-  if(def&&def.kind==='lane'&&def.tab)state.activeTab=def.tab;
+  if(def&&def.kind==='lane'&&def.tab)state.activeTab=normalizeTabKey(def.tab);
   // Move focused workspace to the end of the stack (top of z-order).
   state.pehverse.workspaces=state.pehverse.workspaces.filter((w)=>w.uid!==uid).concat(ws);
   if(!skipRender)render();
@@ -6606,7 +6627,7 @@ function pehBackToMap(uid){
 }
 // Placeholder "open the related console" affordance — keeps the legacy
 // lane reachable from an atmospheric stub without breaking the world.
-function pehOpenRelatedLane(tab){if(tab)state.activeTab=tab;pehOpenWorkspace('console')}
+function pehOpenRelatedLane(tab){if(tab)state.activeTab=normalizeTabKey(tab);pehOpenWorkspace('console')}
 
 // ── Peh glyphs (atmospheric placeholders, NOT final art) ───────────────
 function pehGlyph(key){
@@ -6936,6 +6957,26 @@ function pehBindKeys(){
   });
 }
 pehBindKeys();
+document.addEventListener('click',(e)=>{
+  const el=e.target&&e.target.closest?e.target.closest('[data-action]'):null;
+  if(!el)return;
+  const action=el.dataset.action;
+  if(action==='model-drilldown'){
+    e.preventDefault();
+    focusModelDrilldown(el.dataset.tab||state.activeTab,el.dataset.model||'');
+  } else if(action==='drilldown-run'){
+    e.preventDefault();
+    e.stopPropagation();
+    focusDrilldownRun(el.dataset.tab||state.activeTab,el.dataset.run||'');
+  }
+});
+document.addEventListener('keydown',(e)=>{
+  if(e.key!=='Enter'&&e.key!==' ')return;
+  const el=e.target&&e.target.closest?e.target.closest('[data-action]'):null;
+  if(!el||e.target!==el)return;
+  e.preventDefault();
+  el.click();
+});
 // Finalize which single product is live before the first render.
 pehInitProduct();
 
