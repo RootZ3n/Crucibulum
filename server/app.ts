@@ -112,6 +112,19 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Cr
       }
     }
 
+    // UI guide modules (api.js, scenes.js, peh-guide.js, app.js). The shell is
+    // still a single index.html, but the Peh-guide concourse loads as a handful
+    // of flat, dependency-free ES scripts. Same safe-filename pattern as the
+    // image route — no path segments, so no traversal — scoped to UI_DIR.
+    if (method === "GET" && /^\/[a-zA-Z0-9_\-]+\.js$/.test(path)) {
+      const scriptPath = join(UI_DIR, path.slice(1));
+      if (existsSync(scriptPath)) {
+        res.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8", "Cache-Control": "no-store" });
+        res.end(readFileSync(scriptPath, "utf-8"));
+        return;
+      }
+    }
+
     const isApi = path.startsWith("/api/") || ["runs", "stats", "receipts", "leaderboard", "health"].some((p) => path === `/${p}`);
     const isHealthAlias = path === "/health";
 
