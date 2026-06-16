@@ -98,7 +98,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Cr
       }
     }
 
-    if (method === "GET" && /^\/[a-zA-Z0-9_\-]+\.(png|jpg|jpeg|svg|webp|gif|ico)$/.test(path)) {
+    if (method === "GET" && /^\/(?:assets\/)?[a-zA-Z0-9_\-]+\.(png|jpg|jpeg|svg|webp|gif|ico)$/.test(path)) {
       const assetPath = join(UI_DIR, path.slice(1));
       if (existsSync(assetPath)) {
         const ext = path.split(".").pop()!.toLowerCase();

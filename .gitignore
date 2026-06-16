@@ -62,3 +62,6 @@ Thumbs.db
 *.log
 ChatGPT Image*.png
 pnpm-lock.yaml
+
+# Backup files
+*.bak

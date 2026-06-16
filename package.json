@@ -1,9 +1,15 @@
 {
   "name": "luak",
   "version": "0.1.0",
-  "private": true,
   "description": "Auditable scoreboard, receipt, and evidence viewer for model and agent trial outputs",
   "type": "module",
+  "author": "Jeffrey Miller",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nousresearch/luak.git"
+  },
+  "homepage": "https://github.com/nousresearch/luak#readme",
   "engines": {
     "node": ">=20"
   },
@@ -71,9 +77,13 @@
     "evaluation",
     "agent",
     "benchmark",
-    "testing"
+    "testing",
+    "scoreboard",
+    "llm",
+    "evaluation-framework",
+    "model-eval",
+    "agent-testing"
   ],
-  "license": "MIT",
   "dependencies": {
     "better-sqlite3": "^12.8.0",
     "dotenv": "^17.4.1"

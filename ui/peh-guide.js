@@ -1,106 +1,69 @@
-/* Luak — Peh the guide.
+/* Luak — Peh's race engineer journal.
  *
- * Peh is the racing-squirrel host of the concourse (he/him). This module owns
- * his figure, his speech bubble, and the row of action buttons he offers at
- * each scene. It knows nothing about the network — app.js feeds it a scene and
- * a callback; Peh greets, describes the place, and surfaces the actions.
+ * Voice: 1920s race engineer. Terse, precise, confident.
+ * Owns the journal ring-buffer (localStorage, 50 entries max).
+ * app.js creates the drawer UI; this module owns the data and vocabulary.
  *
- * Visual classes (pc-*) are defined once in app.js's injected stylesheet.
+ *   PehGuide.jot(kind, text)   — add an entry
+ *   PehGuide.entries()         — read all entries (newest first)
+ *   PehGuide.thinking(n)       — a "hold on" line keyed by integer n
+ *   PehGuide.done(n)           — a "here's the result" line
+ *   PehGuide.empty(n)          — a "nothing yet" line
+ *   PehGuide.fail(n)           — an "engine trouble" line
  */
 (function () {
   'use strict';
 
-  // A few stock lines so Peh feels alive between scripted greetings. He/him.
+  var JKEY = 'luak-peh-journal';
+  var JMAX = 50;
+
+  var entries = [];
+  try { entries = JSON.parse(localStorage.getItem(JKEY) || '[]') || []; } catch (e) { entries = []; }
+
+  function pick(arr, n) { return arr[Math.abs(n || 0) % arr.length]; }
+
+  function jot(kind, text) {
+    var entry = { t: new Date().toISOString(), kind: kind, text: text };
+    entries.unshift(entry);
+    if (entries.length > JMAX) entries.length = JMAX;
+    try { localStorage.setItem(JKEY, JSON.stringify(entries)); } catch (e) {}
+    if (typeof window.LuakJournalUpdate === 'function') window.LuakJournalUpdate();
+  }
+
   var THINKING = [
-    "Let me go grab that for you…",
-    "One sec — checking the board…",
-    "Hold tight, I'll run and look…",
+    "Hold tight — checking the timing board…",
+    "One moment — let me consult the lap charts…",
+    "Stand by — I'll run up to the tower…",
+    "Just a tick — cross-checking the data…",
   ];
   var DONE = [
-    "Here's what I found.",
-    "There you go.",
-    "Fresh off the wire.",
+    "Here's what the board shows.",
+    "Fresh off the timing wire.",
+    "The data's come in.",
+    "Off the lap sheet — there you are.",
   ];
-  var EMPTY_LINES = [
-    "Nothing on the board for that one yet.",
-    "Hm — that shelf's empty right now.",
+  var EMPTY = [
+    "Nothing on the board for that lane yet.",
+    "Clean slate — no data recorded there.",
+    "That section of the board is still blank.",
   ];
-  var ERROR_LINES = [
-    "Engine trouble — I couldn't reach the back room for that.",
-    "That line's down right now; the backend didn't answer.",
+  var FAIL = [
+    "Engine trouble — couldn't reach the back room for that.",
+    "That line's down; the backend didn't answer.",
+    "Blown a seal somewhere — the server's not responding.",
   ];
 
-  function pick(arr, seed) { return arr[Math.abs(seed || 0) % arr.length]; }
-
-  function el(tag, cls, html) {
-    var n = document.createElement(tag);
-    if (cls) n.className = cls;
-    if (html !== undefined) n.innerHTML = html;
-    return n;
+  // Seed entries with a boot welcome so the journal isn't empty on first open.
+  if (!entries.length) {
+    jot('k-peh', "Welcome to the Speedway. I'm Peh — your race engineer. Tap a hotspot on the map to get started, or use Fast Travel (Alt+T) to jump between areas.");
   }
 
-  function create(host) {
-    var root = el('div', 'pc-peh');
-    var fig = el('div', 'pc-peh-fig');
-    var img = document.createElement('img');
-    img.src = 'peh.png';
-    img.alt = 'Peh, your guide';
-    img.className = 'pc-peh-img';
-    img.onerror = function () { fig.classList.add('pc-peh-fallback'); fig.textContent = '🐿️'; };
-    fig.appendChild(img);
-
-    var col = el('div', 'pc-peh-col');
-    var bubble = el('div', 'pc-bubble');
-    var name = el('div', 'pc-peh-name', 'Peh');
-    var blurb = el('div', 'pc-peh-blurb');
-    var actions = el('div', 'pc-actions');
-
-    col.appendChild(name);
-    col.appendChild(bubble);
-    col.appendChild(blurb);
-    col.appendChild(actions);
-    root.appendChild(fig);
-    root.appendChild(col);
-    host.appendChild(root);
-
-    var actionCb = null;
-    var seed = 0;
-
-    function say(text) { bubble.textContent = text; }
-
-    function greet(scene) {
-      seed++;
-      root.classList.remove('pc-hidden');
-      say(scene.greeting || ("Welcome to " + scene.title + "."));
-      blurb.textContent = scene.blurb || scene.purpose || '';
-      actions.innerHTML = '';
-      (scene.actions || []).forEach(function (a) {
-        var btn = el('button', 'pc-act-btn', a.label);
-        btn.type = 'button';
-        btn.onclick = function () { if (actionCb) actionCb(scene, a); };
-        actions.appendChild(btn);
-      });
-      if (!(scene.actions || []).length) {
-        actions.appendChild(el('div', 'pc-peh-dim', 'Just passing through — nothing to fetch here.'));
-      }
-    }
-
-    return {
-      root: root,
-      greet: greet,
-      say: say,
-      thinking: function () { root.classList.add('pc-busy'); say(pick(THINKING, ++seed)); },
-      done: function (n) {
-        root.classList.remove('pc-busy');
-        if (n === 0) say(pick(EMPTY_LINES, ++seed));
-        else say(pick(DONE, ++seed));
-      },
-      error: function () { root.classList.remove('pc-busy'); say(pick(ERROR_LINES, ++seed)); },
-      onAction: function (cb) { actionCb = cb; },
-      setBusyHint: function (label) { root.classList.add('pc-busy'); say("Fetching " + label.toLowerCase() + "…"); },
-      hide: function () { root.classList.add('pc-hidden'); },
-    };
-  }
-
-  window.PehGuide = { create: create };
+  window.PehGuide = {
+    jot:     jot,
+    entries: function () { return entries.slice(); },
+    thinking: function (n) { return pick(THINKING, n); },
+    done:     function (n) { return pick(DONE, n); },
+    empty:    function (n) { return pick(EMPTY, n); },
+    fail:     function (n) { return pick(FAIL, n); },
+  };
 })();

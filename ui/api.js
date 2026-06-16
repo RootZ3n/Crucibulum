@@ -102,6 +102,16 @@
     adapters: function () { return request('/api/adapters'); },
     adaptersHealth: function () { return request('/api/health/adapters'); },
 
+    // Launch a benchmark run. Returns the run envelope {id, status, ...}.
+    startRun: function (params) {
+      return request('/api/runs', { method: 'POST', body: params });
+    },
+
+    // Launch a full suite run against a model.
+    startSuite: function (params) {
+      return request('/api/run-suite', { method: 'POST', body: params });
+    },
+
     // Convenience: resolve a simple connectivity verdict for the status dot.
     probe: function () {
       return API.health().then(function (r) {

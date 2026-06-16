@@ -2,7 +2,9 @@
 # Full Luak Benchmark Suite — 5 models × all tasks
 set -uo pipefail
 
-cd /pehverse/repos/luak
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LUAK_ROOT="${LUAK_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+cd "$LUAK_ROOT"
 
 # Source API keys from .env.bench (has correct MiMo key)
 source scripts/load-keys.sh 2>/dev/null || true
