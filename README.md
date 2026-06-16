@@ -154,14 +154,14 @@ Conversational task families currently present in the corpus:
 - `thinking-mode`
 - `token-efficiency`
 
-This means Luak can inspect both execution behavior and chat behavior. The current taxonomy is release-candidate level and versioned, but it should still be cited with the repository commit, task IDs, and scoring policy used for a given comparison. The test corpus is lightweight by design (intentional minimum for bootstrap); use `npm run oracle:hash -- --write` after adding oracles to register them in the corpus.
+This means Luak can inspect both execution behavior and chat behavior. The current taxonomy is release-candidate level and versioned, but it should still be cited with the repository commit, task IDs, and scoring policy used for a given comparison. The test corpus is lightweight by design (intentional minimum for bootstrap); use `pnpm run oracle:hash -- --write` after adding oracles to register them in the corpus.
 
 ### Experimental targets
 
 Some models are wired up for **experimental benchmarking only** — never as a
 default, the judge, or a normal routing target, and always excluded from the
 leaderboard and capability certification. OpenRouter **MiniMax-M3** is the first
-such target: run `npm run bench:minimax-m3 -- --model minimax-m3 --smoke-only`
+such target: run `pnpm run bench:minimax-m3 -- --model minimax-m3 --smoke-only`
 to gate it, or see [`docs/MINIMAX_M3_EXPERIMENTAL.md`](docs/MINIMAX_M3_EXPERIMENTAL.md)
 for the full cost-capped comparison against the MiMo v2.5 family.
 
@@ -346,13 +346,13 @@ Each bundle records both costs separately:
 The QA harness walks every tab/lane, runs every test through the full pipeline, and emits a machine-readable report agents like Ricky and Ptah can consume.
 
 ```bash
-npm run harness                                # offline mock adapter, every lane
-npm run harness -- --tab personality           # only the Personality lane
-npm run harness -- --task personality-002      # one test by id
-npm run harness -- --live                      # use the configured judge model
+pnpm run harness                                # offline mock adapter, every lane
+pnpm run harness -- --tab personality           # only the Personality lane
+pnpm run harness -- --task personality-002      # one test by id
+pnpm run harness -- --live                      # use the configured judge model
                                                # (OpenRouter MiMo by default;
                                                #  needs OPENROUTER_API_KEY)
-npm run harness -- --enable-judge              # also run the model judge layer
+pnpm run harness -- --enable-judge              # also run the model judge layer
 ```
 
 Per-test it records: `manifest_loaded`, `request_sent`, `response_received`, `judge_ran`, `bundle_stored`, `ui_summary_well_formed`, `drilldown_evidence_present`, plus tested-model and judge-model token + cost split. The report is written to `runs/_harness_report_<timestamp>.json`.
@@ -476,14 +476,14 @@ The UI is there to make evidence inspection practical, but the trust model does 
 Requirements:
 
 - Node.js 20 or newer
-- npm 10 or newer
+- pnpm 9 or newer
 - Git, if you are cloning from source
 
-This release has been verified on Linux with Node `v22.22.2` and npm `10.8.2`. Linux, macOS, and WSL2 are the intended first-run environments. Native Windows PowerShell commands are documented, but native Windows has not been fully verified for this release.
+This release has been verified on Linux with Node `v22.22.2` and pnpm `9.x`. Linux, macOS, and WSL2 are the intended first-run environments. Native Windows PowerShell commands are documented, but native Windows has not been fully verified for this release.
 
 ### Distribution Status
 
-`v0.1.0` is **source-install only**. Clone the repo and run `npm ci && npm run build` from a checkout. Packaged installers are planned but not shipped yet:
+`v0.1.0` is **source-install only**. Clone the repo and run `pnpm install && pnpm run build` from a checkout. Packaged installers are planned but not shipped yet:
 
 - **npm package**: not published — install from the repo
 - **Standalone binary**: not available
@@ -495,64 +495,78 @@ The `luak.service` file is a systemd example for advanced Linux operators only; 
 Install dependencies and build:
 
 ```bash
-npm ci
-npm run build
+pnpm install
+pnpm run build
 ```
 
-If anything fails, run `npm run doctor` for a read-only diagnostic of Node/npm versions, build artifacts, and required directories.
+If anything fails, run `pnpm run doctor` for a read-only diagnostic of Node/npm versions, build artifacts, and required directories.
 
 ## First 5 Minutes
 
-If you have never run Luak before and just want to see it work, do this in order. It uses no API keys, no provider accounts, and no network calls beyond `npm ci`.
+If you have never run Luak before and just want to see it work, do this in order. It uses no API keys, no provider accounts, and no network calls beyond `pnpm install`.
 
 ```bash
 git clone <this-repo>
 cd luak
-npm ci
-npm run build
-npm run smoke
-npm run serve
+pnpm install
+pnpm run build
+pnpm run smoke
+pnpm run serve
 ```
 
 Expected outcome:
 
-1. `npm run smoke` finishes with `Smoke passed.` This proves the deterministic offline pipeline works on your machine.
-2. `npm run serve` prints a banner that ends with `Luak server running on http://127.0.0.1:18795` and `UI: http://127.0.0.1:18795/`.
+1. `pnpm run smoke` finishes with `Smoke passed.` This proves the deterministic offline pipeline works on your machine.
+2. `pnpm run serve` prints a banner that ends with `Luak server running on http://127.0.0.1:18795` and `UI: http://127.0.0.1:18795/`.
 3. Open `http://127.0.0.1:18795/` in your browser. You will see the Luak UI shell.
 4. The default public leaderboard view will be **empty**. That is expected on a fresh checkout — Luak only ranks **verified eligible bundles**, and the smoke test produces deliberately quarantined mock/demo evidence. Empty here means "nothing has earned a public rank yet," not "broken."
 5. Quarantined / mock-or-demo evidence (including the smoke output) is visible from `/api/leaderboard/quarantine` and is labeled `NOT RANKED`. That is the correct first-run state.
-6. Stop the server with `Ctrl+C`. Run `npm run clean:state -- --confirm` if you want to wipe local runs before continuing.
+6. Stop the server with `Ctrl+C`. Run `pnpm run clean:state -- --confirm` if you want to wipe local runs before continuing.
 
 You are now ready to import real evidence (see "Adding Tasks and Adapters") or run a live adapter (see "Live Adapter Setup").
 
 ## Public Quick Start
 
+### Prerequisites
+
+- Node.js 20 or newer
+- pnpm 9 or newer
+- Git
+
 Linux, macOS, or WSL2:
 
 ```bash
-# Install and compile
-npm ci
-npm run build
+# Clone and enter the repo
+git clone <this-repo>
+cd luak
+
+# Install dependencies and build
+pnpm install
+pnpm run build
 
 # Run the deterministic offline smoke test
-npm run smoke
+pnpm run smoke
 
 # Start the local API / UI
-npm run serve
+pnpm run serve
 ```
 
 Windows PowerShell:
 
 ```powershell
-# Install and compile
-npm ci
-npm run build
+# Clone and enter the repo
+git clone <this-repo>
+cd luak
+
+# Install dependencies and build
+pnpm install
+pnpm run build
 
 # Run the deterministic offline smoke test
-npm run smoke
+pnpm run smoke
 
 # Start the local API / UI
-npm run serve
+pnpm run serve
 ```
 
 Expected smoke output includes:
@@ -568,7 +582,7 @@ The smoke path uses a deterministic mock adapter and writes temporary smoke stat
 
 By default, a fresh checkout has no verified public ranking data. The leaderboard may be empty until you import or generate verified eligible evidence. Old local runs do not silently become public rankings; tampered, unsigned, legacy, mock/demo, malformed, or unverified bundles are quarantined and labeled `NOT RANKED`.
 
-`npm run serve` binds to `127.0.0.1` by default and prints the UI URL:
+`pnpm run serve` binds to `127.0.0.1` by default and prints the UI URL:
 
 ```text
 Luak server running on http://127.0.0.1:18795
@@ -578,7 +592,7 @@ API: http://127.0.0.1:18795/api/
 
 Set `LUAK_PORT` to use a different port. Set `LUAK_HOST=0.0.0.0` only when you intentionally want the server reachable beyond the local machine and have reviewed `SECURITY.md`. Legacy `CRUCIBLE_PORT` / `CRUCIBLE_HOST` are still honored as deprecated aliases.
 
-To stop the server, press `Ctrl+C` in the terminal where it is running. There is no separate stop command. State written to `runs/` and `state/` persists across restarts; use `npm run clean:state -- --confirm` to clear it.
+To stop the server, press `Ctrl+C` in the terminal where it is running. There is no separate stop command. State written to `runs/` and `state/` persists across restarts; use `pnpm run clean:state -- --confirm` to clear it.
 
 ## Security note
 
@@ -605,13 +619,13 @@ To set a key for local development:
 ```bash
 # Linux / macOS / WSL2
 export LUAK_HMAC_KEY="$(openssl rand -hex 32)"
-npm run serve
+pnpm run serve
 ```
 
 ```powershell
 # Windows PowerShell
 $env:LUAK_HMAC_KEY = -join ((1..64) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
-npm run serve
+pnpm run serve
 ```
 
 Or persist it in `.env` (copy from `.env.example`). Treat the key as a secret: anyone who has it can sign bundles that the server will accept as authentic. **Changing or losing the key invalidates existing bundles** — the leaderboard will move them to quarantine. For a single-operator local install, that is fine; for shared evidence, pick a key once and keep it.
@@ -620,52 +634,52 @@ Or persist it in `.env` (copy from `.env.example`). Treat the key as a secret: a
 
 ```bash
 # Type-check without emitting build output
-npm run typecheck
+pnpm run typecheck
 
 # Build
-npm run build
+pnpm run build
 
 # Run the full test suite
-npm test
+pnpm test
 
 # Run deterministic offline smoke
-npm run smoke
+pnpm run smoke
 
 # Run the release verification bundle
-npm run verify:release
+pnpm run verify:release
 
-# Check npm advisories at moderate severity and above
-npm run audit:release
+# Check pnpm advisories at moderate severity and above
+pnpm run audit:release
 
 # Verify oracle hashes
-npm run oracle:hash -- --check
+pnpm run oracle:hash -- --check
 
 # Read-only environment audit (Node version, build artifacts, env vars)
-npm run doctor
+pnpm run doctor
 
 # Preview which local directories will be deleted (no-op without --confirm)
-npm run clean:state
+pnpm run clean:state
 ```
 
 Live adapter examples:
 
 ```bash
 # Offline pipeline validation only. This is mock mode, not model evidence.
-npm run harness -- --task safety-001
+pnpm run harness -- --task safety-001
 
 # OpenRouter live run. May incur provider cost.
 export OPENROUTER_API_KEY=...
-npm run harness -- --adapter openrouter --model xiaomi/mimo-v2.5-pro --task safety-001
+pnpm run harness -- --adapter openrouter --model xiaomi/mimo-v2.5-pro --task safety-001
 
 # MiniMax direct live run. May incur provider cost.
 export MINIMAX_API_KEY=...
-npm run harness -- --adapter minimax --model MiniMax-M2.7 --task safety-001
+pnpm run harness -- --adapter minimax --model MiniMax-M2.7 --task safety-001
 
 # Tune conservative live-call resilience.
-npm run harness -- --adapter openrouter --model xiaomi/mimo-v2.5-pro --task safety-001 --retries 2 --timeout-ms 120000
+pnpm run harness -- --adapter openrouter --model xiaomi/mimo-v2.5-pro --task safety-001 --retries 2 --timeout-ms 120000
 
 # Verify a stored evidence bundle
-npm run cli -- verify run_2026-04-05_poison-001_gemma4
+pnpm run cli -- verify run_2026-04-05_poison-001_gemma4
 ```
 
 Luak is an evidence viewer and local evaluation layer, not a guarantee of model safety. Passing a task means the model passed that task under this harness, with this adapter, at that time. It does not show that the model is universally safe or reliable.
@@ -683,30 +697,30 @@ To clear local/demo state, stop the server first, then run:
 
 ```bash
 # Preview what would be deleted (safe; reports paths only)
-npm run clean:state
+pnpm run clean:state
 
 # Actually delete runs/ and state/
-npm run clean:state -- --confirm
+pnpm run clean:state -- --confirm
 ```
 
 `clean:state` only touches those two directories under the repo root. It does not delete imported evidence stored elsewhere, tasks, oracles, or your `.env`. You can still remove the directories manually with your file manager or shell — the script just gives you a portable, scriptable, opt-in option.
 
 ## Troubleshooting First Run
 
-Run `npm run doctor` first — it is read-only and reports most common issues.
+Run `pnpm run doctor` first — it is read-only and reports most common issues.
 
-- **Port already in use:** run with a different port, for example `LUAK_PORT=18895 npm run serve` on Linux/macOS/WSL2 or `$env:LUAK_PORT=18895; npm run serve` in PowerShell. The default port is `18795`.
+- **Port already in use:** run with a different port, for example `LUAK_PORT=18895 pnpm run serve` on Linux/macOS/WSL2 or `$env:LUAK_PORT=18895; pnpm run serve` in PowerShell. The default port is `18795`.
 - **`node: command not found` or wrong Node version:** Luak requires Node 20+. Check with `node --version`. Install from [nodejs.org](https://nodejs.org/) or your package manager. `nvm install 22 && nvm use 22` works on Linux/macOS/WSL2.
-- **`npm: command not found`:** npm ships with Node. If `node` works but `npm` does not, your Node install is broken — reinstall from the official source.
+- **`pnpm: command not found`:** install pnpm with `corepack enable && corepack prepare pnpm@latest --activate` or `npm install -g pnpm`.
 - **Windows execution policy blocks `npm`:** PowerShell may refuse to run npm shims with `cannot be loaded because running scripts is disabled on this system`. Fix once per user: `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`. Use Windows Terminal (PowerShell 7+) for the commands in this README; cmd.exe is not tested.
 - **Empty leaderboard / "I see no data":** this is the correct fresh-checkout state. Default leaderboards rank only verified eligible evidence. Smoke output is mock/demo and is deliberately quarantined. Inspect `/api/leaderboard/quarantine` to confirm the data is there but `NOT RANKED`.
 - **`LUAK_HMAC_KEY is not set` warning:** expected on a first local run. Bundles you generate without a key will be quarantined as `unsigned_key_missing`. Set the key (see "Setting LUAK_HMAC_KEY") before generating evidence you intend to publish. Legacy `CRUCIBLE_HMAC_KEY` still works.
 - **Cannot reach the API from another device:** the default bind is `127.0.0.1`. Set `LUAK_HOST` to a routable address (your Tailscale IP, a LAN IP, or `0.0.0.0` when firewalled) and read the security note in `SECURITY.md` first. Luak has no built-in auth — anything that can reach the bound port can call the API.
 - **Malformed or tampered runs:** Luak quarantines them. Inspect safe metadata at `/api/leaderboard/quarantine`; do not cite them as public leaderboard evidence.
-- **Live adapter fails with "missing key":** offline `npm run smoke` needs no provider keys. Live adapters fail loudly and name the required key, such as `OPENROUTER_API_KEY` or `MINIMAX_API_KEY`.
-- **PowerShell path issues:** use npm scripts (`npm run smoke`, `npm run serve`, `npm run harness -- --task safety-001`) instead of invoking files under `dist/` directly.
-- **`npm ci` fails on registry / EAI_AGAIN / 403:** corporate proxies and outdated certificates are the usual cause. Try `npm config get registry` (should be `https://registry.npmjs.org/`), clear with `npm cache clean --force`, and rerun. `npm audit` warnings during install are advisory; `npm ci` will still complete.
-- **Need to start fresh:** stop the server, then `npm run clean:state -- --confirm` removes `runs/` and `state/`. This wipes generated bundles and the local provider registry. It does not touch tasks, oracles, or imported evidence stored elsewhere.
+- **Live adapter fails with "missing key":** offline `pnpm run smoke` needs no provider keys. Live adapters fail loudly and name the required key, such as `OPENROUTER_API_KEY` or `MINIMAX_API_KEY`.
+- **PowerShell path issues:** use pnpm scripts (`pnpm run smoke`, `pnpm run serve`, `pnpm run harness -- --task safety-001`) instead of invoking files under `dist/` directly.
+- **`pnpm install` fails on registry / EAI_AGAIN / 403:** corporate proxies and outdated certificates are the usual cause. Try `pnpm config get registry` (should be `https://registry.npmjs.org/`), clear with `pnpm store prune`, and rerun. `pnpm audit` warnings during install are advisory; `pnpm install` will still complete.
+- **Need to start fresh:** stop the server, then `pnpm run clean:state -- --confirm` removes `runs/` and `state/`. This wipes generated bundles and the local provider registry. It does not touch tasks, oracles, or imported evidence stored elsewhere.
 - **Need remote access:** default binding is local-only. Set `LUAK_HOST=0.0.0.0` deliberately and put a private-network gate (Tailscale, VPN, firewall, reverse-proxy auth) in front of Luak — read `SECURITY.md` first.
 
 ## Live Adapter Setup

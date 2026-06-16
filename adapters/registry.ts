@@ -440,6 +440,104 @@ const REGISTRY: RegistryDefinition[] = [
     },
     makeConfig(input) { return { model: input.model } as AdapterConfig; },
   },
+  {
+    id: "groq",
+    name: "Groq Direct",
+    kind: "cloud",
+    provider_mode: "fixed",
+    fixed_provider: "groq",
+    supports_custom_model: true,
+    create: () => new OpenRouterAdapter({ id: "groq", name: "Groq", baseUrl: "https://api.groq.com/openai/v1", apiKeyEnv: "GROQ_API_KEY" }),
+    provider_options: [{ id: "groq", name: "Groq", kind: "cloud", configurable: false }],
+    async listModels() {
+      const apiKey = process.env["GROQ_API_KEY"] ?? "";
+      if (!apiKey) return [];
+      return [
+        { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B", provider: "groq", kind: "cloud" as const, available: true, reason: null },
+        { id: "llama-3.1-8b-instant", name: "Llama 3.1 8B Instant", provider: "groq", kind: "cloud" as const, available: true, reason: null },
+        { id: "mixtral-8x7b-32768", name: "Mixtral 8x7B", provider: "groq", kind: "cloud" as const, available: true, reason: null },
+      ];
+    },
+    makeConfig(input) { return { model: input.model } as AdapterConfig; },
+  },
+  {
+    id: "mistral",
+    name: "Mistral AI Direct",
+    kind: "cloud",
+    provider_mode: "fixed",
+    fixed_provider: "mistral",
+    supports_custom_model: true,
+    create: () => new OpenRouterAdapter({ id: "mistral", name: "Mistral AI", baseUrl: "https://api.mistral.ai/v1", apiKeyEnv: "MISTRAL_API_KEY" }),
+    provider_options: [{ id: "mistral", name: "Mistral AI", kind: "cloud", configurable: false }],
+    async listModels() {
+      const apiKey = process.env["MISTRAL_API_KEY"] ?? "";
+      if (!apiKey) return [];
+      return [
+        { id: "mistral-large-latest", name: "Mistral Large", provider: "mistral", kind: "cloud" as const, available: true, reason: null },
+        { id: "mistral-small-latest", name: "Mistral Small", provider: "mistral", kind: "cloud" as const, available: true, reason: null },
+        { id: "codestral-latest", name: "Codestral", provider: "mistral", kind: "cloud" as const, available: true, reason: null },
+      ];
+    },
+    makeConfig(input) { return { model: input.model } as AdapterConfig; },
+  },
+  {
+    id: "together",
+    name: "Together AI Direct",
+    kind: "cloud",
+    provider_mode: "fixed",
+    fixed_provider: "together",
+    supports_custom_model: true,
+    create: () => new OpenRouterAdapter({ id: "together", name: "Together AI", baseUrl: "https://api.together.xyz/v1", apiKeyEnv: "TOGETHER_API_KEY" }),
+    provider_options: [{ id: "together", name: "Together AI", kind: "cloud", configurable: false }],
+    async listModels() {
+      const apiKey = process.env["TOGETHER_API_KEY"] ?? "";
+      if (!apiKey) return [];
+      return [
+        { id: "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo", name: "Llama 3.1 70B Turbo", provider: "together", kind: "cloud" as const, available: true, reason: null },
+        { id: "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo", name: "Llama 3.1 8B Turbo", provider: "together", kind: "cloud" as const, available: true, reason: null },
+        { id: "mistralai/Mixtral-8x7B-Instruct-v0.1", name: "Mixtral 8x7B", provider: "together", kind: "cloud" as const, available: true, reason: null },
+      ];
+    },
+    makeConfig(input) { return { model: input.model } as AdapterConfig; },
+  },
+  {
+    id: "deepseek",
+    name: "DeepSeek Direct",
+    kind: "cloud",
+    provider_mode: "fixed",
+    fixed_provider: "deepseek",
+    supports_custom_model: true,
+    create: () => new OpenRouterAdapter({ id: "deepseek", name: "DeepSeek", baseUrl: "https://api.deepseek.com/v1", apiKeyEnv: "DEEPSEEK_API_KEY" }),
+    provider_options: [{ id: "deepseek", name: "DeepSeek", kind: "cloud", configurable: false }],
+    async listModels() {
+      const apiKey = process.env["DEEPSEEK_API_KEY"] ?? "";
+      if (!apiKey) return [];
+      return [
+        { id: "deepseek-chat", name: "DeepSeek Chat", provider: "deepseek", kind: "cloud" as const, available: true, reason: null },
+        { id: "deepseek-reasoner", name: "DeepSeek Reasoner", provider: "deepseek", kind: "cloud" as const, available: true, reason: null },
+      ];
+    },
+    makeConfig(input) { return { model: input.model } as AdapterConfig; },
+  },
+  {
+    id: "mimo",
+    name: "Xiaomi MiMo Direct",
+    kind: "cloud",
+    provider_mode: "fixed",
+    fixed_provider: "mimo",
+    supports_custom_model: true,
+    create: () => new OpenRouterAdapter({ id: "mimo", name: "Xiaomi MiMo", baseUrl: "https://api.xiaomimimo.com/v1", apiKeyEnv: "MIMO_API_KEY" }),
+    provider_options: [{ id: "mimo", name: "Xiaomi MiMo", kind: "cloud", configurable: false }],
+    async listModels() {
+      const apiKey = process.env["MIMO_API_KEY"] ?? "";
+      if (!apiKey) return [];
+      return [
+        { id: "mimo-v2.5", name: "MiMo v2.5", provider: "mimo", kind: "cloud" as const, available: true, reason: null },
+        { id: "mimo-v2.5-pro", name: "MiMo v2.5 Pro", provider: "mimo", kind: "cloud" as const, available: true, reason: null },
+      ];
+    },
+    makeConfig(input) { return { model: input.model } as AdapterConfig; },
+  },
 ];
 
 // Test-only registry: lets the run-lifecycle regression harness install a
@@ -640,6 +738,11 @@ const ENV_KEYS: Record<string, string> = {
   minimax: "MINIMAX_API_KEY",
   zai: "ZAI_API_KEY",
   google: "GOOGLE_AI_API_KEY",
+  groq: "GROQ_API_KEY",
+  mistral: "MISTRAL_API_KEY",
+  together: "TOGETHER_API_KEY",
+  deepseek: "DEEPSEEK_API_KEY",
+  mimo: "MIMO_API_KEY",
 };
 
 const NOT_IMPLEMENTED_PROVIDERS: NotImplementedProvider[] = [];
