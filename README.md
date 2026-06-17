@@ -369,14 +369,19 @@ The repo already supports a provider-first flow through adapters and exposes pro
 - `anthropic`
 - `openai`
 - `openrouter`
+- `openai-compatible`
 - `openclaw`
-- `claudecode`
 - `peh`
 - `grimoire-cc`
 - `grimoire-codex`
 - `minimax`
 - `zai`
 - `google`
+- `groq`
+- `mistral`
+- `together`
+- `deepseek`
+- `mimo`
 
 That means you can compare:
 
