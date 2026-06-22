@@ -6469,6 +6469,13 @@ function pehDevSwitchProduct(productId){
 function pehSetMode(mode){
   if(mode!=='immersive'&&mode!=='dashboard')return;
   state.pehverse.mode=mode;
+  // Switching to immersive returns to the scene-first view: close any open
+  // workspaces and clear focus so the scene is unobstructed (no docked panel
+  // surviving the switch).
+  if(mode==='immersive'){
+    state.pehverse.workspaces=[];
+    state.pehverse.focus=null;
+  }
   localStorage.setItem('pehverse-mode',mode);
   render();
 }
