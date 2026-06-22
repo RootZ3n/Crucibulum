@@ -6676,7 +6676,7 @@ function pehSlotMarkup(slot,opts){
   const inline=o.inline; // dashboard/mobile card → static medallion, no % position
   const pos=inline?'' : `left:${slot.x}%;top:${slot.y}%;`;
   const anchor=slot.anchor||'center';
-  return `<div class="peh-slot peh-slot-${anchor} ${inline?'peh-slot-inline':''} ${o.glow?'glow':''}" style="${pos}" data-variant="${esc(variant)}" data-anchor="${esc(anchor)}" title="Peh — your guide here (${esc(variant)})" aria-label="Peh placeholder — ${esc(variant)}">
+  return `<div class="peh-slot peh-slot-${anchor} ${inline?'peh-slot-inline':''} ${o.glow?'glow':''}" style="${pos}" data-variant="${esc(variant)}" data-anchor="${esc(anchor)}" title="Peh — your guide here (click for tour)" aria-label="Peh placeholder — ${esc(variant)}" onclick="pehReplayTour()">
     <span class="peh-slot-medallion" aria-hidden="true">${pehSquirrelSilhouette()}</span>
     ${inline?'':'<span class="peh-slot-tag">Peh</span>'}
   </div>`;
@@ -6753,6 +6753,7 @@ function renderPehTopBar(product,scene){
       <button type="button" class="${pv.mode==='immersive'?'active':''}" aria-pressed="${pv.mode==='immersive'}" onclick="pehSetMode('immersive')">Immersive</button>
       <button type="button" class="${pv.mode==='dashboard'?'active':''}" aria-pressed="${pv.mode==='dashboard'}" onclick="pehSetMode('dashboard')">Dashboard</button>
     </div>
+    <button class="peh-help-btn" type="button" title="Help — replay the guided tour" aria-label="Help — replay the guided tour" onclick="pehReplayTour()">?</button>
   </header>`;
 }
 
@@ -7088,6 +7089,118 @@ window.registryBulkSubmit=registryBulkSubmit;
 window.registryToggleModel=registryToggleModel;
 window.registryRemoveModel=registryRemoveModel;
 
+// ── Peh Onboarding Overlay (first-launch guided tour) ─────────────────
+// Checks localStorage for 'pehverse-onboarded'; if absent, shows Peh's
+// welcome overlay with guided tour option. After tour completes or user
+// skips, the flag is set so it never re-triggers automatically.
+const PEH_ONBOARD_KEY='pehverse-onboarded';
+let __pehOnboardActive=false;
+let __pehTourActive=false;
+
+function pehIsOnboarded(){
+  try{return localStorage.getItem(PEH_ONBOARD_KEY)==='1'}catch(e){return false}
+}
+function pehSetOnboarded(){
+  try{localStorage.setItem(PEH_ONBOARD_KEY,'1')}catch(e){}
+}
+function pehCheckOnboarding(){
+  if(pehIsOnboarded())return;
+  setTimeout(pehShowOnboarding,400);
+}
+function pehShowOnboarding(){
+  if(__pehOnboardActive)return;
+  __pehOnboardActive=true;
+  var product=pehActiveProduct();
+  var mascotSrc=(product&&product.mascotArt)||'assets/peh-vintage-racer-squirrel.png';
+  var overlay=document.createElement('div');
+  overlay.className='peh-onboard-overlay';
+  overlay.id='peh-onboard';
+  overlay.setAttribute('role','dialog');
+  overlay.setAttribute('aria-modal','true');
+  overlay.setAttribute('aria-label','Welcome — Peh introduces himself');
+  overlay.innerHTML='<div class="peh-onboard-card">'
+    +'<div class="peh-onboard-fig"><img src="'+esc(mascotSrc)+'" alt="Peh" class="peh-onboard-img" onerror="this.parentElement.innerHTML=\'🐿️\'"></div>'
+    +'<div class="peh-onboard-body">'
+    +'<div class="peh-onboard-name">Peh</div>'
+    +'<div class="peh-onboard-bubble">Halito! My name is Pehlichi, but my friends call me Peh. I will be joining you on this new adventure. Would you like to get started?</div>'
+    +'<div class="peh-onboard-actions">'
+    +'<button class="peh-onboard-btn primary" id="peh-onboard-yes">Yes, show me around</button>'
+    +'<button class="peh-onboard-btn secondary" id="peh-onboard-skip">Skip — I know what I\'m doing</button>'
+    +'</div></div></div>';
+  document.body.appendChild(overlay);
+  document.getElementById('peh-onboard-yes').addEventListener('click',function(){
+    pehDismissOverlay(function(){pehStartGuidedTour();});
+  });
+  document.getElementById('peh-onboard-skip').addEventListener('click',function(){
+    pehDismissOverlay(function(){pehSetOnboarded();});
+  });
+  // Escape key dismisses overlay (skips tour)
+  overlay.addEventListener('keydown',function(e){
+    if(e.key==='Escape'){pehDismissOverlay(function(){pehSetOnboarded();});}
+  });
+  // Focus the primary button for keyboard users
+  var yesBtn=document.getElementById('peh-onboard-yes');
+  if(yesBtn)setTimeout(function(){yesBtn.focus();},100);
+}
+function pehDismissOverlay(cb){
+  var overlay=document.getElementById('peh-onboard');
+  if(!overlay){if(cb)cb();return}
+  overlay.classList.add('peh-onboard-exit');
+  setTimeout(function(){
+    overlay.remove();
+    __pehOnboardActive=false;
+    if(cb)cb();
+  },300);
+}
+function pehStartGuidedTour(){
+  __pehTourActive=true;
+  var product=pehActiveProduct();
+  var defaultScene=(product&&product.defaultScene)||'speedway';
+  if(state.pehverse.scene!==defaultScene){
+    state.pehverse.scene=defaultScene;
+    state.pehverse.pehPosition=null;
+    try{localStorage.setItem('pehverse-scene',defaultScene)}catch(e){}
+  }
+  var shell=document.querySelector('.peh-shell');
+  if(shell)shell.classList.add('peh-tour-active');
+  var scene=pehCurrentScene();
+  if(!scene||!scene.hotspots||!scene.hotspots.length){pehFinishTour();return}
+  // Filter out "Back to" travel hotspots — the tour shows destination areas only
+  var hotspots=scene.hotspots.filter(function(h){return!/back to/i.test(h.label)});
+  if(!hotspots.length){pehFinishTour();return}
+  render();
+  var i=0;
+  var TOUR_DELAY=2000;
+  function visitNext(){
+    if(i>=hotspots.length){pehFinishTour();return}
+    var h=hotspots[i]; i++;
+    pehSayGreeting(h,scene);
+    setTimeout(visitNext,TOUR_DELAY);
+  }
+  setTimeout(visitNext,600);
+}
+function pehFinishTour(){
+  var scene=pehCurrentScene();
+  var doneHotspot={
+    id:'tour-complete',x:50,y:50,
+    greeting:"You're all set! Click on any area to explore. I'll be here if you need me."
+  };
+  pehSayGreeting(doneHotspot,scene);
+  setTimeout(function(){
+    __pehTourActive=false;
+    var shell=document.querySelector('.peh-shell');
+    if(shell)shell.classList.remove('peh-tour-active');
+    pehSetOnboarded();
+  },7000);
+}
+function pehReplayTour(){
+  if(__pehTourActive)return;
+  pehClearBubbleTimers();
+  state.pehverse.pehBubble=null;
+  state.pehverse.pehPosition=null;
+  pehStartGuidedTour();
+}
+
 // ── Boot ────────────────────────────────────────────────────────────────
 // No sign-in / pairing / token gate. The UI loads directly. If the server
 // is unreachable or first-run data fails to load, render a soft error
@@ -7118,6 +7231,7 @@ async function boot(){
     await loadBootData();
     BootState.status='ready';
     render();
+    pehCheckOnboarding();
     startElapsedTicker();
     startHealthPolling();
     // If the operator landed directly on the Vision tab (saved tab), kick
