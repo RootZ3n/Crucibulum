@@ -35,7 +35,11 @@ const uiCertificationMd = readFileSync(UI_CERTIFICATION_PATH, "utf-8");
 function extractScript(): string {
   const match = uiHtml.match(/^<script>\n([\s\S]*?)\n<\/script>/m);
   assert.ok(match, "ui/index.html must contain a real <script> block");
-  return match![1]!.replace(/\(async function bootstrap\(\)\{[\s\S]*?\}\)\(\);?\s*$/, "");
+  // The UI boots via a trailing `boot();` call. Strip it so the script's
+  // module-level side effects (loadBootData → pehCheckOnboarding's deferred
+  // overlay, health polling) never fire inside the vm sandbox — the tests
+  // drive the exported functions directly with hand-seeded state.
+  return match![1]!.replace(/\nboot\(\);\s*$/, "\n");
 }
 
 function makeJsonResponse(body: Record<string, unknown>) {
