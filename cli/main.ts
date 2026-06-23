@@ -81,9 +81,9 @@ Usage:
                # ollama:gemma3:27b). Adapter = text before the first colon;
                # a bare value with no colon defaults to ollama.
                # See "luak compare --help" for the full worked example.
-  luak init-task [--id <id>] [--family <family>] [--conversational]
-               # scaffold a new task manifest skeleton (provenance stubs,
-               # fixture/oracle dirs, oracle:hash reminder)
+  luak init-task <family> <task-id>
+               # scaffold tasks/<family>/<task-id>/ with provenance stubs,
+               # fixtures/, oracle/, and an npm run oracle:hash reminder
   luak leaderboard [show|submit]
   luak replay  <bundle_id>
   luak oracle-hash [--write|--check|--dry-run]

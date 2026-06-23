@@ -4,7 +4,7 @@
  * Supports both repo-based (task.title) and conversational (description) manifest schemas.
  */
 
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve, join } from "node:path";
 import type { TaskManifest, AgentVisibleManifest } from "../adapters/base.js";
 import { sha256Hex } from "../utils/hashing.js";
@@ -12,11 +12,14 @@ import { log } from "../utils/logger.js";
 import { assertSafeId } from "../utils/safe-id.js";
 import { parseJsonSafe } from "../utils/json-safe.js";
 
-const TASKS_DIR = join(process.cwd(), "tasks");
 const PUBLIC_STATUSES = new Set(["public", "private", "mixed"]);
 const ORACLE_VISIBILITIES = new Set(["hidden", "public", "partially_public"]);
 const GOLD_VISIBILITIES = new Set(["hidden", "public", "not_applicable"]);
 const CONTAMINATION_RISKS = new Set(["low", "medium", "high"]);
+
+function tasksDir(): string {
+  return join(process.cwd(), "tasks");
+}
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -25,7 +28,7 @@ const CONTAMINATION_RISKS = new Set(["low", "medium", "high"]);
  */
 function discoverFamilies(): string[] {
   try {
-    return readdirSync(TASKS_DIR, { withFileTypes: true })
+    return readdirSync(tasksDir(), { withFileTypes: true })
       .filter((d) => d.isDirectory())
       .map((d) => d.name);
   } catch {
@@ -43,7 +46,7 @@ export function loadManifestRaw(taskId: string): any {
   assertSafeId(taskId, "task id");
   const families = discoverFamilies();
   for (const family of families) {
-    const manifestPath = join(TASKS_DIR, family, taskId, "manifest.json");
+    const manifestPath = join(tasksDir(), family, taskId, "manifest.json");
     try {
       const raw = readFileSync(manifestPath, "utf-8");
       const manifest = parseJsonSafe<any>(raw);
@@ -112,11 +115,12 @@ function manifestTitle(manifest: any): string {
 export function resolveRepoPath(manifest: TaskManifest): string {
   const families = discoverFamilies();
   for (const family of families) {
-    const taskDir = join(TASKS_DIR, family, manifest.id);
+    const taskDir = join(tasksDir(), family, manifest.id);
     const repoPath = join(taskDir, "repo");
     try {
       readFileSync(join(taskDir, "manifest.json"));
-      return resolve(repoPath);
+      if (existsSync(repoPath)) return resolve(repoPath);
+      return resolve(manifest.repo.path);
     } catch {
       continue;
     }
@@ -160,7 +164,7 @@ export function listTasks(
   const families = family ? [family] : discoverFamilies();
 
   for (const f of families) {
-    const familyDir = join(TASKS_DIR, f);
+    const familyDir = join(tasksDir(), f);
     try {
       for (const entry of readdirSync(familyDir, { withFileTypes: true })) {
         if (!entry.isDirectory()) continue;
