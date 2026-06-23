@@ -206,7 +206,11 @@ export async function handleRunsList(req: IncomingMessage, res: ServerResponse, 
       review: bundle.review ?? null,
       second_opinion_status: bundle.review?.secondOpinion?.status ?? "skipped",
       qc_review_status: bundle.review?.qcReview?.status ?? "skipped",
-      disagreement: !!(bundle.review?.secondOpinion?.disagreement || bundle.review?.qcReview?.disagreement),
+      // Howa truthfulness advisory: surfaced as its own status + disagreement
+      // signal so the UI can show it apart from the QC/second-opinion legs.
+      howa_review_status: bundle.review?.howaReview?.status ?? "skipped",
+      howa_disagreement: !!bundle.review?.howaReview?.disagreement,
+      disagreement: !!(bundle.review?.secondOpinion?.disagreement || bundle.review?.qcReview?.disagreement || bundle.review?.howaReview?.disagreement),
       repeat_run_count: summary.repeat_run_count,
       pass_at: summary.pass_at,
       reliability: summary.reliability,

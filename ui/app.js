@@ -77,7 +77,23 @@
       '.pc-ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}',
       '.pc-ph h3{margin:0;font-size:var(--text-sm,13px);color:var(--ink,#f0eaff);font-weight:800;text-transform:uppercase;letter-spacing:.05em}',
       '.pc-x{background:none;border:none;color:var(--ink-dim,#9b8ec4);cursor:pointer;font-size:18px;line-height:1;padding:0 4px}',
-      '@media(max-width:640px){.pc-status .pc-word{display:none}.pc-panel{right:6px;left:6px;width:auto}}',
+      // Results table — the panel widens (.pc-wide) so the grid has room.
+      '.pc-panel.pc-wide{width:min(880px,calc(100vw - 24px))}',
+      '.pc-tfbar{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:10px}',
+      '.pc-tf{display:flex;flex-direction:column;gap:3px;font-size:var(--text-xs,11px);color:var(--ink-dim,#9b8ec4);text-transform:uppercase;letter-spacing:.04em;font-weight:700}',
+      '.pc-tf select,.pc-tf input{background:rgba(34,28,72,.6);border:1px solid rgba(139,92,246,.3);color:var(--ink,#f0eaff);border-radius:8px;padding:5px 8px;font-size:var(--text-sm,13px);font-family:inherit;min-width:92px}',
+      '.pc-tf input{width:84px}',
+      '.pc-treset{align-self:flex-end;padding:6px 10px}',
+      '.pc-tscroll{overflow:auto;max-height:42vh;border:1px solid rgba(139,92,246,.18);border-radius:10px}',
+      '.pc-table{border-collapse:collapse;width:100%;font-size:var(--text-xs,12px)}',
+      '.pc-table th,.pc-table td{padding:6px 9px;text-align:left;white-space:nowrap;border-bottom:1px solid rgba(139,92,246,.12)}',
+      '.pc-th{position:sticky;top:0;background:rgba(24,18,52,.98);color:var(--ink-soft,#d4cafe);cursor:pointer;user-select:none;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:var(--text-xs,11px)}',
+      '.pc-th:hover{color:var(--cyan,#22d3ee)}.pc-th.pc-sorted{color:var(--violet-hot,#a78bfa)}',
+      '.pc-table td{color:var(--ink,#f0eaff)}',
+      '.pc-trbad td{opacity:.85}',
+      '.pc-vok{color:var(--teal,#34d399);font-weight:700}.pc-vbad{color:var(--red,#ef4444);font-weight:700}',
+      '.pc-tempty{color:var(--ink-dim,#9b8ec4);font-style:italic;text-align:center;padding:14px}',
+      '@media(max-width:640px){.pc-status .pc-word{display:none}.pc-panel{right:6px;left:6px;width:auto}.pc-panel.pc-wide{width:auto}}',
     ].join('\n');
     var style = el('style'); style.id = 'pc-styles'; style.textContent = css; document.head.appendChild(style);
   }
@@ -129,6 +145,7 @@
   function openScene(scene) {
     if (!scene) return;
     journalEl.classList.remove('pc-show'); journalOpen = false;
+    panel.classList.remove('pc-wide');
     resultEl.innerHTML = '';
     peh.greet(scene);
     showPanel();
@@ -140,8 +157,16 @@
     resultEl.innerHTML = '';
     Promise.resolve(action.run(API)).then(function (res) {
       res = res || {};
-      if (res.error) { peh.error(); renderMessage(res.error, true); jot('⚠️', scene.title + ': ' + action.label + ' failed'); return; }
-      if (res.empty) { peh.done(0); renderMessage(res.empty, false); jot('📋', scene.title + ': ' + action.label + ' (empty)'); return; }
+      if (res.error) { peh.error(); panel.classList.remove('pc-wide'); renderMessage(res.error, true); jot('⚠️', scene.title + ': ' + action.label + ' failed'); return; }
+      if (res.empty) { peh.done(0); panel.classList.remove('pc-wide'); renderMessage(res.empty, false); jot('📋', scene.title + ': ' + action.label + ' (empty)'); return; }
+      if (res.table) {
+        var n = (res.table.runs || []).length;
+        peh.done(n);
+        renderTable(res.table);
+        jot('📊', scene.title + ': ' + action.label + ' (' + n + ' runs)');
+        return;
+      }
+      panel.classList.remove('pc-wide');
       var rows = res.rows || [];
       peh.done(rows.length);
       renderResult(res);
@@ -163,6 +188,140 @@
   }
   function renderMessage(msg, bad) { resultEl.innerHTML = ''; resultEl.appendChild(el('div', 'pc-msg ' + (bad ? 'bad' : ''), escapeHtml(msg))); }
   function escapeHtml(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  // ── Results table (filterable / sortable) ───────────────────────────────
+  // Derive a coarse "model family" from a model id so runs can be grouped:
+  //   openai/gpt-4o-mini -> gpt   ·  gemma3:27b -> gemma  ·  claude-3.5 -> claude
+  function modelFamily(model) {
+    var m = String(model || '').toLowerCase();
+    if (!m || m === '?') return 'unknown';
+    var tail = m.indexOf('/') !== -1 ? m.slice(m.lastIndexOf('/') + 1) : m;
+    var token = tail.split(/[:@]/)[0];          // drop ":tag" / "@ver"
+    token = token.replace(/[-_.]?v?\d.*$/, ''); // drop trailing version/size
+    token = token.replace(/[-_].*$/, '');       // keep first word of remainder
+    return token || tail || 'unknown';
+  }
+  function provOf(r) { return r.provider || r.adapter || '?'; }
+  function num(v, d) { return (v === null || v === undefined || isNaN(v)) ? d : Number(v); }
+  function distinct(arr) { var seen = {}; var out = []; arr.forEach(function (v) { if (v && !seen[v]) { seen[v] = 1; out.push(v); } }); out.sort(); return out; }
+
+  function renderTable(table) {
+    panel.classList.add('pc-wide');
+    var runs = (table.runs || []).map(function (r) {
+      return {
+        model: r.model || '?', family: modelFamily(r.model), prov: provOf(r),
+        lane: r.family || r.task_id || '?', verdict: r.verdict || (r.pass ? 'pass' : 'fail'),
+        pass: !!r.pass, score: num(r.score, 0),
+        cost: num(r.total_cost_usd != null ? r.total_cost_usd : r.cost_usd, 0),
+        latency: num(r.duration_sec, 0), ts: r.timestamp || '',
+        task: r.task_id || '', disagree: !!(r.disagreement || r.howa_disagreement),
+      };
+    });
+
+    var st = { mFam: '', prov: '', lane: '', verdict: '', maxCost: '', maxLat: '', sortKey: 'ts', sortDir: -1 };
+
+    function apply() {
+      var rows = runs.filter(function (r) {
+        if (st.mFam && r.family !== st.mFam) return false;
+        if (st.prov && r.prov !== st.prov) return false;
+        if (st.lane && r.lane !== st.lane) return false;
+        if (st.verdict && r.verdict !== st.verdict) return false;
+        if (st.maxCost !== '' && r.cost > Number(st.maxCost)) return false;
+        if (st.maxLat !== '' && r.latency > Number(st.maxLat)) return false;
+        return true;
+      });
+      rows.sort(function (a, b) {
+        var k = st.sortKey, av = a[k], bv = b[k];
+        if (k === 'ts') { av = new Date(a.ts || 0).getTime(); bv = new Date(b.ts || 0).getTime(); }
+        if (typeof av === 'string') { return st.sortDir * String(av).localeCompare(String(bv)); }
+        return st.sortDir * ((av || 0) - (bv || 0));
+      });
+      return rows;
+    }
+
+    function selOf(label, key, opts) {
+      var wrap = el('label', 'pc-tf');
+      wrap.appendChild(el('span', null, label));
+      var sel = document.createElement('select');
+      sel.appendChild(new Option('all', ''));
+      opts.forEach(function (o) { sel.appendChild(new Option(o, o)); });
+      sel.value = st[key];
+      sel.onchange = function () { st[key] = sel.value; draw(); };
+      wrap.appendChild(sel);
+      return wrap;
+    }
+    function numOf(label, key, ph) {
+      var wrap = el('label', 'pc-tf');
+      wrap.appendChild(el('span', null, label));
+      var inp = document.createElement('input');
+      inp.type = 'number'; inp.min = '0'; inp.step = 'any'; inp.placeholder = ph; inp.value = st[key];
+      inp.oninput = function () { st[key] = inp.value; draw(); };
+      wrap.appendChild(inp);
+      return wrap;
+    }
+
+    var COLS = [
+      { k: 'model', t: 'Model' }, { k: 'family', t: 'Family' }, { k: 'prov', t: 'Provider' },
+      { k: 'lane', t: 'Lane' }, { k: 'verdict', t: 'Verdict' }, { k: 'score', t: 'Score' },
+      { k: 'cost', t: 'Cost' }, { k: 'latency', t: 'Latency' }, { k: 'ts', t: 'When' },
+    ];
+
+    function draw() {
+      var rows = apply();
+      resultEl.innerHTML = '';
+
+      var bar = el('div', 'pc-tfbar');
+      bar.appendChild(selOf('Model family', 'mFam', distinct(runs.map(function (r) { return r.family; }))));
+      bar.appendChild(selOf('Provider', 'prov', distinct(runs.map(function (r) { return r.prov; }))));
+      bar.appendChild(selOf('Lane', 'lane', distinct(runs.map(function (r) { return r.lane; }))));
+      bar.appendChild(selOf('Verdict', 'verdict', distinct(runs.map(function (r) { return r.verdict; }))));
+      bar.appendChild(numOf('Max cost $', 'maxCost', 'any'));
+      bar.appendChild(numOf('Max latency s', 'maxLat', 'any'));
+      var reset = el('button', 'pc-btn pc-treset', 'Reset');
+      reset.onclick = function () { st.mFam = st.prov = st.lane = st.verdict = ''; st.maxCost = st.maxLat = ''; draw(); };
+      bar.appendChild(reset);
+      resultEl.appendChild(bar);
+
+      resultEl.appendChild(el('div', 'pc-note', rows.length + ' of ' + runs.length + ' runs'));
+
+      var scroll = el('div', 'pc-tscroll');
+      var tbl = el('table', 'pc-table');
+      var thead = el('thead'); var htr = el('tr');
+      COLS.forEach(function (c) {
+        var th = el('th', 'pc-th' + (st.sortKey === c.k ? ' pc-sorted' : ''));
+        th.textContent = c.t + (st.sortKey === c.k ? (st.sortDir === 1 ? ' ▲' : ' ▼') : '');
+        th.onclick = function () {
+          if (st.sortKey === c.k) st.sortDir = -st.sortDir; else { st.sortKey = c.k; st.sortDir = (c.k === 'ts' || c.k === 'score') ? -1 : 1; }
+          draw();
+        };
+        htr.appendChild(th);
+      });
+      thead.appendChild(htr); tbl.appendChild(thead);
+
+      var tb = el('tbody');
+      if (!rows.length) {
+        var er = el('tr'); var ec = el('td'); ec.colSpan = COLS.length; ec.className = 'pc-tempty';
+        ec.textContent = 'No runs match these filters.'; er.appendChild(ec); tb.appendChild(er);
+      }
+      rows.forEach(function (r) {
+        var tr = el('tr', r.pass ? '' : 'pc-trbad');
+        function td(txt, cls) { var c = el('td', cls || ''); c.textContent = txt; tr.appendChild(c); }
+        td(r.model); td(r.family); td(r.prov); td(r.lane);
+        var vtxt = (r.verdict || '').toUpperCase() + (r.disagree ? ' ⚑' : '');
+        td(vtxt, r.pass ? 'pc-vok' : 'pc-vbad');
+        td(Math.round(r.score) + '%');
+        td(r.cost ? ('$' + (r.cost < 0.01 ? r.cost.toFixed(4) : r.cost.toFixed(2))) : 'free');
+        td(r.latency ? (r.latency + 's') : '—');
+        td(r.ts ? timeAgo(r.ts) : '—');
+        tb.appendChild(tr);
+      });
+      tbl.appendChild(tb);
+      scroll.appendChild(tbl);
+      resultEl.appendChild(scroll);
+    }
+
+    draw();
+  }
 
   function runCommand(text) {
     text = (text || '').trim();

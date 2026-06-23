@@ -57,6 +57,11 @@ async function main(): Promise<void> {
       await oracleHashCommand(args.slice(1));
       break;
     }
+    case "init-task": {
+      const { initTaskCommand } = await import("./commands/init-task.js");
+      await initTaskCommand(args.slice(1));
+      break;
+    }
     case "harness":
     case "qa": {
       const { harnessCommand } = await import("./commands/harness.js");
@@ -71,7 +76,14 @@ Usage:
   luak list    tasks [--family poison|spec|orchestration]
   luak list    runs [--task <taskId>]
   luak verify  <bundle_id>
-  luak compare --models <a>,<b> --task <taskId> [--runs N]
+  luak compare --models <a>,<b> --task <taskId> [--runs N] [--max-cost-usd N]
+               # model spec is "adapter:model" (e.g. openrouter:openai/gpt-4o-mini,
+               # ollama:gemma3:27b). Adapter = text before the first colon;
+               # a bare value with no colon defaults to ollama.
+               # See "luak compare --help" for the full worked example.
+  luak init-task [--id <id>] [--family <family>] [--conversational]
+               # scaffold a new task manifest skeleton (provenance stubs,
+               # fixture/oracle dirs, oracle:hash reminder)
   luak leaderboard [show|submit]
   luak replay  <bundle_id>
   luak oracle-hash [--write|--check|--dry-run]

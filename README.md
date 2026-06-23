@@ -305,6 +305,7 @@ Luak supports optional review layers such as:
 
 - Second Opinion
 - QC Review
+- Howa Truthfulness Review (advisory)
 
 These are intentionally non-authoritative.
 
@@ -324,6 +325,27 @@ They do not change:
 - bundle evidence
 
 Review inputs are sanitized and structured before model calls. Review outputs are schema-validated and fail closed on malformed output.
+
+### Howa Truthfulness Review
+
+Howa is the ecosystem's truthfulness / lie-detection product. It is wired into
+Luak as a **third advisory review channel** that runs the *same sanitized
+evidence summary* through a truthfulness-focused reviewer — looking for silent
+failures, fabricated success, and self-verification claims the timeline/diff
+don't support. It is advisory only: like Second Opinion and QC Review it never
+changes the deterministic verdict, and it runs on the injection-scanned,
+redacted evidence (blocked entirely if that evidence carries prompt-injection
+indicators).
+
+Enable it globally without threading a flag through every call site:
+
+- `LUAK_HOWA_REVIEW=1` — turn the channel on (legacy alias `CRUCIBLE_HOWA_REVIEW`)
+- `LUAK_HOWA_REVIEW_PROVIDER` / `LUAK_HOWA_REVIEW_MODEL` — override the reviewer
+  (defaults to the configured judge model)
+
+The result appears on each run as `review.howaReview` and is surfaced by
+`/api/runs` as `howa_review_status` plus a `howa_disagreement` advisory signal
+(also folded into the aggregate `disagreement` flag).
 
 ### Default Judge Model
 
@@ -667,6 +689,40 @@ npm run harness -- --adapter openrouter --model xiaomi/mimo-v2.5-pro --task safe
 # Verify a stored evidence bundle
 npm run cli -- verify run_2026-04-05_poison-001_gemma4
 ```
+
+### Comparing models — the `adapter:model` spec
+
+`luak compare` races one task against two or more targets. Each entry in
+`--models` is a **`adapter:model`** spec:
+
+- The text **before the first colon** selects the adapter (the route used to
+  reach the model). Everything **after** it is the model id — and model ids may
+  themselves contain colons, which is why only the *first* colon splits the spec
+  (e.g. the Ollama tag `gemma3:27b` keeps its colon).
+- A bare value with **no colon** defaults to the `ollama` adapter.
+
+| adapter | route |
+|---------|-------|
+| `ollama` | local Ollama daemon (`OLLAMA_URL`, default `localhost:11434`) |
+| `openrouter` | OpenRouter cloud (needs `OPENROUTER_API_KEY`) |
+| `openclaw` | OpenClaw gateway |
+| `claudecode` (alias `claude`) | Claude Code CLI |
+
+Worked example — race a cloud model against a local one on `poison-001`, three
+runs each, with a hard spend ceiling:
+
+```bash
+luak compare \
+  --models openrouter:openai/gpt-4o-mini,ollama:gemma3:27b \
+  --task poison-001 --runs 3 --max-cost-usd 0.50
+```
+
+`--max-cost-usd <N>` (or the `LUAK_MAX_COST_USD` env var) is a **live-run cost
+budget guard**: before each provider call, Luak checks accumulated estimated
+spend and stops the comparison once the budget is reached — so a long sweep can
+never silently overrun. Local (`ollama`) targets report `$0`, so an all-local
+compare never trips the guard. Run `luak compare --help` for the full option
+list.
 
 Luak is an evidence viewer and local evaluation layer, not a guarantee of model safety. Passing a task means the model passed that task under this harness, with this adapter, at that time. It does not show that the model is universally safe or reliable.
 

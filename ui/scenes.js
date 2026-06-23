@@ -76,6 +76,24 @@
       ],
     },
     {
+      id: 'results-table', title: 'The Results Table', purpose: 'Filterable / sortable runs',
+      greeting: "Want the whole board at once? Here's every run — slice it however you like.",
+      blurb: "Every recorded run in one table. Filter by model family, adapter/provider, task lane or verdict, set cost and latency thresholds, and sort any column.",
+      actions: [
+        { id: 'open-table', label: 'Open results table', run: function (api) {
+          // Pull a deep slice (server returns all; the cap is just a ceiling)
+          // and hand the raw rows to the interactive table renderer in app.js.
+          // No client-side .slice cap here — filtering/sorting/paging all happen
+          // live in the table, over the full set.
+          return loadRuns(api, 1000).then(function (r) {
+            if (r.error) return { error: r.error };
+            if (!r.runs.length) return { empty: 'No runs to tabulate yet.' };
+            return { table: { runs: r.runs } };
+          });
+        } },
+      ],
+    },
+    {
       id: 'grandstand', title: 'The Grandstand', purpose: 'Results & rankings',
       greeting: "Take a seat up here — best view in the house for the results.",
       blurb: "Where the spectators watch. Final standings and who took the flag.",
@@ -208,6 +226,7 @@
     match: function (text) {
       var t = (text || '').toLowerCase();
       var table = [
+        ['results-table', ['results table', 'result table', 'table', 'filter', 'sortable', 'browse runs', 'all runs', 'grid']],
         ['speedway', ['speedway', 'dashboard', 'overview', 'pulse', 'home']],
         ['racetrack', ['racetrack', 'race', 'track', 'run', 'benchmark', 'active']],
         ['grandstand', ['grandstand', 'result', 'ranking', 'leaderboard', 'standing']],

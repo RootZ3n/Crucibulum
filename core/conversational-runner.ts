@@ -60,7 +60,7 @@ function containedRepoPath(path: string, label = "path"): string {
 import { interpretBundleResult } from "./interpretation.js";
 import type { StructuredProviderError } from "../types/provider-error.js";
 import { normalizeProviderError } from "./provider-errors.js";
-import { runReviewLayer, DISABLED_REVIEW, type RunReviewConfig } from "./review.js";
+import { runReviewLayer, withHowaReviewFromEnv, DEFAULT_REVIEW_CONFIG, DISABLED_REVIEW, type RunReviewConfig } from "./review.js";
 import { applyReviewJudgeUsage } from "./judge-usage.js";
 import { computeBundleHash } from "./bundle.js";
 import { classifyBenchmarkEvaluation } from "./benchmark-reporting.js";
@@ -775,8 +775,8 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
 
   // 7. Optional review/judge model layer. Only runs when explicitly enabled
   // (avoids surprise spend on harnesses that just want deterministic scoring).
-  const reviewCfg = options.reviewConfig;
-  if (reviewCfg && (reviewCfg.secondOpinion.enabled || reviewCfg.qcReview.enabled)) {
+  const reviewCfg = options.reviewConfig ? withHowaReviewFromEnv(options.reviewConfig) : withHowaReviewFromEnv(DEFAULT_REVIEW_CONFIG);
+  if (reviewCfg && (reviewCfg.secondOpinion.enabled || reviewCfg.qcReview.enabled || reviewCfg.howaReview?.enabled)) {
     bundle.review = await runReviewLayer(reviewCfg, bundle, {
       taskTitle: manifest.description,
       taskDescription: manifest.description,

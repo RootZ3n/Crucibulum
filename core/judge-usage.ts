@@ -40,24 +40,26 @@ export function applyReviewJudgeUsage(bundle: EvidenceBundle): void {
 
   const second = legUsage(review.secondOpinion);
   const qc = legUsage(review.qcReview);
-  const tokensIn = second.tokensIn + qc.tokensIn;
-  const tokensOut = second.tokensOut + qc.tokensOut;
+  const howa = review.howaReview ? legUsage(review.howaReview) : { tokensIn: 0, tokensOut: 0 };
+  const tokensIn = second.tokensIn + qc.tokensIn + howa.tokensIn;
+  const tokensOut = second.tokensOut + qc.tokensOut + howa.tokensOut;
 
   // Pick the configured judge identity. If both legs ran on the same
   // provider/model (the common case — both default to the configured judge)
   // we surface it directly; otherwise we pick the secondOpinion leg first
   // and tag mixed configurations in the note.
+  const legs = [review.secondOpinion, review.qcReview, ...(review.howaReview ? [review.howaReview] : [])];
   const seen = new Set<string>();
-  for (const leg of [review.secondOpinion, review.qcReview]) {
+  for (const leg of legs) {
     if (leg.enabled && leg.provider && leg.model) seen.add(`${leg.provider}:${leg.model}`);
   }
-  const provider = review.secondOpinion.provider || review.qcReview.provider;
-  const model = review.secondOpinion.model || review.qcReview.model;
+  const provider = review.secondOpinion.provider || review.qcReview.provider || review.howaReview?.provider || "";
+  const model = review.secondOpinion.model || review.qcReview.model || review.howaReview?.model || "";
   const cost = (provider && (tokensIn + tokensOut) > 0) ? estimateCost(provider, tokensIn, tokensOut) : 0;
 
   let kind: NonNullable<EvidenceBundle["judge_usage"]>["kind"] = "model";
   let note: string;
-  if ((tokensIn + tokensOut) === 0 && !review.secondOpinion.enabled && !review.qcReview.enabled) {
+  if ((tokensIn + tokensOut) === 0 && !review.secondOpinion.enabled && !review.qcReview.enabled && !review.howaReview?.enabled) {
     kind = "deterministic";
     note = "deterministic judge — no model judge ran";
   } else if ((tokensIn + tokensOut) === 0) {

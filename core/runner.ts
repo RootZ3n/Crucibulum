@@ -16,7 +16,7 @@ import { log } from "../utils/logger.js";
 import { formatDuration } from "../utils/timing.js";
 import { platform, arch } from "node:os";
 import { DETERMINISTIC_JUDGE_METADATA } from "./judge.js";
-import { runReviewLayer, DEFAULT_REVIEW_CONFIG, DISABLED_REVIEW, type RunReviewConfig, type ReviewLayerResult } from "./review.js";
+import { runReviewLayer, withHowaReviewFromEnv, DEFAULT_REVIEW_CONFIG, DISABLED_REVIEW, type RunReviewConfig, type ReviewLayerResult } from "./review.js";
 import { applyReviewJudgeUsage } from "./judge-usage.js";
 import { isConversationalTask, runConversationalTask, type ConversationalRunResult, type ConversationalProgressEvent } from "./conversational-runner.js";
 import { canonicalPercent } from "../types/scores.js";
@@ -167,9 +167,11 @@ export async function runTask(options: RunOptions): Promise<RunResult> {
       runId: options.runId,
     });
 
-    // 10. Review layer (optional, after deterministic judge)
-    const reviewCfg = options.reviewConfig ?? DEFAULT_REVIEW_CONFIG;
-    if (reviewCfg.secondOpinion.enabled || reviewCfg.qcReview.enabled) {
+    // 10. Review layer (optional, after deterministic judge). The Howa
+    // truthfulness channel can be switched on globally via LUAK_HOWA_REVIEW
+    // without the caller passing a reviewConfig.
+    const reviewCfg = withHowaReviewFromEnv(options.reviewConfig ?? DEFAULT_REVIEW_CONFIG);
+    if (reviewCfg.secondOpinion.enabled || reviewCfg.qcReview.enabled || reviewCfg.howaReview?.enabled) {
       log("info", "runner", "Running review layer...");
       bundle.review = await runReviewLayer(reviewCfg, bundle, {
         taskTitle: manifest.task.title,
@@ -197,6 +199,7 @@ export async function runTask(options: RunOptions): Promise<RunResult> {
         },
         secondOpinion: { ...DISABLED_REVIEW },
         qcReview: { ...DISABLED_REVIEW },
+        howaReview: { ...DISABLED_REVIEW },
       };
       bundle.bundle_hash = computeBundleHash(bundle);
     }

@@ -914,6 +914,23 @@ export interface EvidenceBundle {
       tokens_out?: number | undefined;
       duration_ms?: number | undefined;
     };
+    // Howa truthfulness review — advisory. Optional so bundles produced before
+    // the Howa integration (and the no-review fast path) still typecheck.
+    howaReview?: {
+      enabled: boolean;
+      provider: string;
+      model: string;
+      status: "completed" | "invalid_output" | "blocked_injection" | "error" | "skipped";
+      summary: string;
+      flags: string[];
+      confidence: "high" | "medium" | "low";
+      recommendation: "accept" | "rerun" | "challenge" | null;
+      disagreement: boolean;
+      error?: string | undefined;
+      tokens_in?: number | undefined;
+      tokens_out?: number | undefined;
+      duration_ms?: number | undefined;
+    };
   };
   integrations?: {
     veritor?: {
