@@ -1,872 +1,512 @@
-# Luak
-
-Luak turns model and agent trial outputs into auditable scoreboards, receipts, and comparison views.
-
-It helps operators inspect observed behavior by task family, provider, model, adapter, and run evidence. Luak is not a safety certification, not a universal model ranking, and not a replacement for Colosseum-style trial generation.
-
-In the current release sequence, Luak is the benchmark, scoreboard, and evidence-viewer layer. It can still run local harness flows for smoke testing and development, but its public role is to make existing run evidence understandable without overstating what the evidence can support.
-
-## How Luak Fits With The Other Tools
-
-- **Colosseum** generates trial runs and receipts. Use it as the proving ground when you need to create fresh trial evidence.
-- **Luak** views, compares, scores, and explains run evidence. Use it to inspect receipts, compare models/providers/adapters, and understand why a run is or is not ranked.
-- **Verum** is adversarial and probing-oriented. Its outputs can be normalized into Luak score/evidence views when the integration path is used.
-- **Aedis** is governed build orchestration. It can drive controlled workflows that later produce evidence for inspection.
-- **Peh Public** is the broader user-facing AI control surface. Luak is one evidence and scoreboard layer inside that wider release path.
-- **Crucibulum** appears in environment variables, schemas, and API names as the older/internal protocol name for Luak-compatible run and score exchange. Public docs should treat it as compatibility naming, not a separate public product unless the project is split later.
-
-## What Luak Is / Is Not
-
-Luak is:
-
-- a local scoreboard and evidence viewer
-- a lane-scoped comparison UI
-- a provenance and receipt inspection layer
-- an observed-behavior comparison tool
-- a way to preserve adapter/provider/model identity while reviewing results
-
-Luak is not:
-
-- a universal model benchmark
-- a safety certification
-- proof that a model is safe
-- a replacement for external audits
-- a guarantee of local or cloud isolation
-- the primary trial-generation harness when Colosseum owns that role
-
-## Public Leaderboard Trust
-
-Default public leaderboard views rank only verified eligible evidence bundles.
-
-Tampered, forged, legacy, unsigned, unauthenticated, mock/demo, malformed, or otherwise unverified bundles are quarantined and are not ranked. Quarantined evidence may be inspected through safe metadata views such as `/api/leaderboard/quarantine`, but it is labeled `NOT RANKED` and does not influence default scores.
-
-Local historical runs may exist in `runs/`. They are local state, ignored by git, and not treated as public leaderboard evidence unless they pass the current eligibility gate.
-
-## First-Run Mental Model
-
-A fresh checkout does not ship with public ranking data. The offline harness path uses the mock adapter for pipeline validation only; those results are deliberately quarantined from public rankings as mock/demo evidence. Live or imported evidence must be verified before it can appear in the default public leaderboard.
-
-Current desktop and mobile screenshots are in `docs/screenshots/`. Additional GIFs are planned before the final public announcement.
-
-## Evidence Model
-
-Luak is built around a narrow question: what did this model or agent do under a defined task, adapter, provider, and scoring policy, and what evidence supports that observation?
-
-Luak does not grade based on style, self-report, chain-of-thought, or polished explanations. It grades based on observable state:
-
-- what files changed
-- what tests passed or failed
-- what integrity rules were violated
-- how much time and step budget were used
-- what the deterministic judge can verify from the workspace
-
-The core trust model is simple:
-
-- the agent never sees the oracle
-- the deterministic judge is authoritative
-- hidden checks and integrity checks drive scoring
-- review models are advisory only
-- bundles are signed and auditable
-
-## What Luak Does
-
-Luak ingests or creates model/agent run evidence, applies deterministic scoring where configured, and turns that evidence into local scoreboards, receipts, and comparison views.
-
-In practice, that means it can:
-
-- inspect run bundles and receipts
-- compare models across task families and lanes
-- show why evidence is eligible or quarantined
-- run local smoke tasks against a model when needed
-- run a local suite for development and regression checks
-- compare multiple models across repeated runs
-- score outcomes using hidden and public checks
-- enforce integrity constraints like forbidden-path edits and anti-cheat patterns
-- produce replayable, hash-verified evidence bundles
-- expose results through a local API and UI
-- add optional advisory review layers without weakening deterministic authority
-
-## What Problem It Solves
-
-A lot of model evaluation still collapses into one of these failure modes:
-
-- benchmarks that reward explanation instead of execution
-- public-only tasks that are easy to overfit
-- systems that trust the agent's own story about what happened
-- leaderboards that show scores without evidence
-- review layers that quietly blur interpretation with authority
-
-Luak is designed against that.
-
-It treats evaluation as an evidence problem. The key question is not "did the model say the right thing?" It is "what behavior was observed, under what conditions, and can the evidence be inspected independently?"
-
-## How It Works
-
-At a high level, Luak follows this pipeline:
-
-1. Load a task manifest.
-2. Filter the manifest for the agent so the rubric and oracle stay hidden.
-3. Create an isolated workspace from the task repo.
-4. Execute the selected adapter/model in that workspace.
-5. Record timeline and filesystem evidence.
-6. Collect the diff.
-7. Run integrity and security checks.
-8. Judge the outcome deterministically with oracle-backed checks.
-9. Build a signed evidence bundle.
-10. Optionally run advisory review layers on sanitized evidence only.
-
-The implementation is centered on a three-box model:
-
-- `Runner`: orchestration, workspace setup, adapter execution, bundle assembly
-- `Observer`: timeline and file activity capture
-- `Judge`: deterministic scoring from evidence, oracle checks, and integrity rules
-
-The principle behind the system is explicit in the code:
-
-- score is based on observable state transitions
-- narration is not trusted
-- the deterministic judge is the authoritative scoring source for configured checks
-
-## Benchmark Coverage
-
-The current repo contains both repo-execution tasks and conversational tasks.
-
-Repo task families:
-
-- `poison_localization`
-- `spec_discipline`
-- `orchestration`
-
-Conversational task families currently present in the corpus:
-
-- `identity`
-- `truthfulness`
-- `classification`
-- `code`
-- `workflow`
-- `instruction-obedience`
-- `personality`
-- `prompt-sensitivity`
-- `role-stress`
-- `context-degradation`
-- `reasoning`
-- `summarization`
-- `thinking-mode`
-- `token-efficiency`
-
-This means Luak can inspect both execution behavior and chat behavior. The current taxonomy is release-candidate level and versioned, but it should still be cited with the repository commit, task IDs, and scoring policy used for a given comparison. The test corpus is lightweight by design (intentional minimum for bootstrap); use `npm run oracle:hash -- --write` after adding oracles to register them in the corpus.
-
-### Experimental targets
-
-Some models are wired up for **experimental benchmarking only** — never as a
-default, the judge, or a normal routing target, and always excluded from the
-leaderboard and capability certification. OpenRouter **MiniMax-M3** is the first
-such target: run `npm run bench:minimax-m3 -- --model minimax-m3 --smoke-only`
-to gate it, or see [`docs/MINIMAX_M3_EXPERIMENTAL.md`](docs/MINIMAX_M3_EXPERIMENTAL.md)
-for the full cost-capped comparison against the MiMo v2.5 family.
-
-## Scoring Model
-
-Luak judges runs in a fixed order:
-
-1. Integrity
-2. Correctness
-3. Regression
-4. Efficiency
-
-This ordering matters.
-
-Integrity runs first because some failures should hard-fail the run regardless of downstream test outcomes. Examples include:
-
-- forbidden path edits
-- anti-cheat patterns
-- integrity-rule violations from the oracle
-
-Correctness and regression are then judged using hidden and public checks. Efficiency measures how expensive the run was relative to the task budget.
-
-The result is a structured score with:
-
-- total score
-- score breakdown
-- pass/fail
-- pass threshold
-- integrity violation count
-- failure taxonomy
-
-Public API and leaderboard scores are expressed as `0-100` percentages.
-
-Internal bundles currently retain `0-1` fractional totals for backward compatibility, but they now also include explicit percent mirrors and a score-scale marker. That distinction is temporary and documented in [docs/scoring.md](docs/scoring.md).
-
-## Evidence and Bundles
-
-Every run produces an evidence bundle. The bundle is the core artifact of the system.
-
-A bundle contains:
-
-- task identity and manifest hash
-- target model, provider, and adapter
-- environment metadata
-- timeline of observed actions
-- diff evidence
-- security metadata
-- verification results
-- deterministic score
-- usage and cost estimates
-- trust metadata
-- diagnosis metadata
-- optional advisory review results
-
-Bundles are hash-signed so the result can be verified later. The API also produces structured summaries for downstream consumers.
-
-This is important because Luak is not just trying to emit a score. It is trying to emit a score with an audit trail.
-
-## Bundle Immutability and Scoring Honesty
-
-Luak separates "what happened on this run" from "what the current leaderboard says about a model." Both are honest, but they answer different questions, and reading one as the other is the most common way to misinterpret a Luak result.
-
-**Signed bundles are immutable evidence.** Once a run is written to `runs/<bundle_id>.json` and hash-signed, the file is not rewritten — not when scoring rules change, not when judges are upgraded, not when bugs are fixed. The bundle records what the run produced *at the moment it produced it*. Tampering breaks the hash check; the trust layer marks tampered bundles as not ranked.
-
-**Some older bundles carry historical stored scores.** Luak's scoring discipline tightened during the May 2026 trust audit (see `tests/safety-scoring.test.ts`, `tests/lane-scoring.test.ts`). Bundles written before that audit may show a stored `score.total` that included regression / integrity / efficiency credit even when correctness was zero. Those numbers are correct as a record of what the *pre-audit* formula produced. They are not current trust claims.
-
-**The leaderboard, UI warnings, recommendation cards, diagnostics, and exports all use the current trust rules.** Specifically:
-
-- The backend leaderboard composite excludes NC bundles (provider / network / judge / test outages) via `verdict.countsTowardModelScore`. A model that never actually ran does not get a capability score.
-- The repo-mode and conversational score formulas gate secondary credit on non-zero correctness. A run that produced no correct output cannot float to 15–60% on R/I/E defaults.
-- The UI's lane scope banner surfaces `PROVISIONAL · n=<x>`, `ALL NOT-COMPLETE`, `<x>% NC`, `ALL RUNS FAILED`, `<x>% INFRA`, and `<n> HISTORICAL` chips when the conditions are met.
-- The bundle detail panel shows a `STORED HISTORICAL SCORE` banner when a bundle predates current scoring discipline, and a `NOT COUNTED TOWARD LEADERBOARD` banner when the verdict excludes it from the composite.
-- Recommendation cards (Best Overall, Best Value, Fastest Usable) refuse to crown a model with zero composite or zero pass rate. Risky / Avoid is intentionally the opposite — it surfaces failed or invalid models so users see them.
-
-**NC, provider, judge, and test failures stay visible as evidence.** They are not deleted, they are not hidden, and they do not vanish from the run history. They are excluded from *capability averages* because they did not measure the model. They remain counted in `nc_rate`, `failed_provider`, `failed_judge`, and the failure taxonomy.
-
-**Raw `score.total` is historical stored data.** A bundle's `score.total` is what the scoring formula produced when the bundle was written. For a current-discipline interpretation, read the leaderboard endpoint or the UI — both recompute against current rules and exclude bundles that should not count. Do not treat `score.total` from a raw bundle file as the current Luak trust claim for a model.
-
-**JSON and CSV exports carry honesty metadata.** Lane leaderboard exports (`luak.lane.leaderboard.v2` schema) include:
-
-- `counts_in_leaderboard` — true only if the row contributed to the current composite
-- `nc_rate`, `model_failure_rate`, `completion_rate` — so you can tell "model never ran" from "model failed"
-- `reliability_score`, `confidence`, `sample_adequate`, `provisional` — sample-quality signals
-- a `note` field summarizing data quality (e.g. "zero composite — no scoring-eligible runs counted", "75% NC (provider/network/judge outages)")
-- top-level `honesty_notes` explaining what was filtered and what is provisional
-
-Drilldown exports add `counts_toward_leaderboard`, `is_pre_fix_historical`, and `exclusion_reasons` per run so a consumer can route each bundle to the right interpretation.
-
-**Read order for current trust.** If you want the current Luak verdict for a model:
-
-1. Use the UI (lane tab) or the `/api/leaderboard?task_families=<lane>` endpoint.
-2. Use the lane diagnostic: `node scripts/lane-diagnostic.mjs <lane>` — it prints leaderboard-equivalent averages with NC excluded and flags pre-fix bundles still in scope.
-3. Use the lane export (JSON/CSV) — the `note` and `counts_in_leaderboard` columns tell you exactly what each row means.
-
-Reading raw signed bundle files directly is fine for audit (verifying what a run produced) but is not the right surface for "what does Luak currently say about this model."
-
-## Security and Trust Model
-
-Luak assumes prompt injection is a system problem, not just a model problem.
-
-That means:
-
-- task text can be malicious
-- repo files can be malicious
-- diffs and logs can be malicious
-- model outputs can be malicious
-- review-layer outputs can be malicious
-
-The system therefore maintains explicit trust boundaries:
-
-Trusted:
-
-- deterministic judge results
-- hidden oracle data
-- benchmark provenance: source, public/private status, oracle visibility, gold-solution visibility, contamination risk, and known scoring limitations
-- integrity checks
-- system metadata
-
-Untrusted:
-
-- task repo files
-- diffs
-- logs
-- test output
-- agent output
-- review model output
-
-Recent hardening added a Velum-style review defense layer:
-
-- review input sanitization before any model-assisted review call
-- prompt hardening that tells review models they are not authoritative
-- strict JSON-only output validation
-- advisory-only review status and disagreement signals
-- review security telemetry in bundles, summaries, and receipts
-
-Review models may summarize, flag concerns, or recommend reruns. They may not override scoring, mutate pass/fail, or rewrite authoritative evidence.
-
-## Review Layer
-
-Luak supports optional review layers such as:
-
-- Second Opinion
-- QC Review
-- Howa Truthfulness Review (advisory)
-
-These are intentionally non-authoritative.
-
-Their role is to help surface:
-
-- suspicious patterns
-- possible false passes or false fails
-- flaky-looking outcomes
-- reasons a human may want to inspect a run
-
-They do not change:
-
-- deterministic pass/fail
-- score breakdown
-- hidden/public test outcomes
-- integrity verdicts
-- bundle evidence
-
-Review inputs are sanitized and structured before model calls. Review outputs are schema-validated and fail closed on malformed output.
-
-### Howa Truthfulness Review
-
-Howa is the ecosystem's truthfulness / lie-detection product. It is wired into
-Luak as a **third advisory review channel** that runs the *same sanitized
-evidence summary* through a truthfulness-focused reviewer — looking for silent
-failures, fabricated success, and self-verification claims the timeline/diff
-don't support. It is advisory only: like Second Opinion and QC Review it never
-changes the deterministic verdict, and it runs on the injection-scanned,
-redacted evidence (blocked entirely if that evidence carries prompt-injection
-indicators).
-
-Enable it globally without threading a flag through every call site:
-
-- `LUAK_HOWA_REVIEW=1` — turn the channel on (legacy alias `CRUCIBLE_HOWA_REVIEW`)
-- `LUAK_HOWA_REVIEW_PROVIDER` / `LUAK_HOWA_REVIEW_MODEL` — override the reviewer
-  (defaults to the configured judge model)
-
-The result appears on each run as `review.howaReview` and is surfaced by
-`/api/runs` as `howa_review_status` plus a `howa_disagreement` advisory signal
-(also folded into the aggregate `disagreement` flag).
-
-### Default Judge Model
-
-The advisory model judge defaults to **OpenRouter `xiaomi/mimo-v2.5-pro`**. Configure via `OPENROUTER_API_KEY`. Override with:
-
-- `LUAK_JUDGE_PROVIDER` — provider id (default `openrouter`)
-- `LUAK_JUDGE_MODEL` — model id (default `xiaomi/mimo-v2.5-pro`)
-
-Legacy aliases `CRUCIBLE_JUDGE_PROVIDER` / `CRUCIBLE_JUDGE_MODEL` are still honored; prefer the `LUAK_*` names for new setups.
-
-Fallback: when the configured judge provider is unreachable, only the deterministic scorer runs and the model judge is recorded as `judge_usage.kind = "skipped"`. The run is never silently re-routed to a different model.
-
-Each bundle records both costs separately:
-
-- `usage` — tested-model token / cost spend
-- `judge_usage` — judge-model token / cost spend, with `kind: "deterministic" | "model" | "skipped"`
-
-## QA Harness
-
-The QA harness walks every tab/lane, runs every test through the full pipeline, and emits a machine-readable report agents like Ricky and Ptah can consume.
-
-```bash
-npm run harness                                # offline mock adapter, every lane
-npm run harness -- --tab personality           # only the Personality lane
-npm run harness -- --task personality-002      # one test by id
-npm run harness -- --live                      # use the configured judge model
-                                               # (OpenRouter MiMo by default;
-                                               #  needs OPENROUTER_API_KEY)
-npm run harness -- --enable-judge              # also run the model judge layer
-```
-
-Per-test it records: `manifest_loaded`, `request_sent`, `response_received`, `judge_ran`, `bundle_stored`, `ui_summary_well_formed`, `drilldown_evidence_present`, plus tested-model and judge-model token + cost split. The report is written to `runs/_harness_report_<timestamp>.json`.
-
-Exit codes: `0` clean, `1` test failures only, `2` pipeline breakage, `3` conversational task incomplete (verdict neither PASS nor FAIL).
-
-## Adapters and Providers
-
-Luak is meant to evaluate models through adapters rather than binding itself to a single provider.
-
-The repo already supports a provider-first flow through adapters and exposes provider/model metadata in the bundle and API. Supported adapters/providers currently include:
-
-- `ollama`
-- `anthropic`
-- `openai`
-- `openrouter`
-- `openclaw`
-- `claudecode`
-- `peh`
-- `grimoire-cc`
-- `grimoire-codex`
-- `minimax`
-- `zai`
-- `google`
-
-That means you can compare:
-
-- local setups
-- hosted APIs
-- agent wrappers
-- different execution systems
-
-without losing track of who actually ran the task and under what identity.
-
-### Current Release Certification Scope
-
-The current release candidate is not unqualified `FULL_RELEASE_READY`.
-Certification is scoped to the evidence archived in `docs/RELEASE_READINESS.md`.
-
-Certified release-target models:
-
-- OpenRouter / `deepseek/deepseek-v4-pro`
-- OpenRouter / `xiaomi/mimo-v2.5-pro`
-- Ollama / `qwen3.5:9b`
-
-Other providers and models may appear in the UI or adapter registry, but
-visibility does not mean release certification. Those routes remain
-uncertified unless a matching real-provider report is archived. Repo-mode
-certification is representative smoke coverage only, not proof that every
-repo task family has been live-certified. Automated UI-shape checks and the
-manual browser UI checklist pass for the scoped target set, but this remains
-`RELEASE_SCOPED_TO_CERTIFIED_TARGETS`, not `FULL_RELEASE_READY`.
-
-### Vision Capability-Certified (separate from the release-certification scope above)
-
-Vision is currently the one **capability** that has been formally
-promoted under Luak's doctrine-gated capability-certification
-track (`docs/CAPABILITY_CERTIFICATION_DOCTRINE.md`). This is
-**separate from** the general release-certification scope above:
-
-- Vision capability certification is based on Luak's 15-test
-  Vision suite run across **three independent route families**
-  (MiMo, GPT-5, Anthropic) with aggregate pass rate ≥ 80% and no
-  disallowed recurring measurement attribution.
-- It says the **capability evaluation pipeline** works correctly
-  and that real models pass it. It does **not** certify any one
-  model as universally release-ready.
-- It does **not** affect the leaderboard composite
-  (`TAB_CONFIG.vision.scoreFamilies = []`).
-- It does **not** mutate `reports/model-certification/certified-models.json`
-  or `MODEL_CERTIFICATION.models[].tier`. Those files remain
-  byte-identical to their pre-promotion state. The release-
-  certification scope above is unchanged by Vision promotion.
-- Promotion is operator-explicit (signed confirmation phrase at
-  `POST /api/capabilities/vision/promote`). An immutable receipt
-  lives under `reports/capability-promotions/vision/`. Local
-  state lives in `data/capability-certifications.json` and is
-  gitignored — fresh checkouts have no capability-promoted state
-  and render the chip as `EXPERIMENTAL` by default.
-- Full plain-English summary, audit trail, and verification
-  commands: [docs/VISION_CAPABILITY_CERTIFICATION_SUMMARY.md](docs/VISION_CAPABILITY_CERTIFICATION_SUMMARY.md).
-
-Capability badges other than Vision (Roleplay, tool-calling, etc.)
-remain experimental until they reach the same level of
-multi-family evidence under the same doctrine.
-
-## Methodology and Trust Docs
-
-Luak is being documented as a public audit and evidence-inspection system rather than only a codebase. Start here:
-
-- [docs/methodology.md](docs/methodology.md)
-- [docs/scoring.md](docs/scoring.md)
-- [docs/SCORING_FIELDS.md](docs/SCORING_FIELDS.md) — composite vs correctness vs efficiency credit; what each `score.*` field means; why `total_percent` may not match the binary correctness anchors.
-- [docs/versioning.md](docs/versioning.md)
-- [docs/reproducibility.md](docs/reproducibility.md)
-- [docs/CAPABILITY_CERTIFICATION_DOCTRINE.md](docs/CAPABILITY_CERTIFICATION_DOCTRINE.md) — capability-specific certification track (separate from general model certification).
-- [docs/VISION_CAPABILITY_CERTIFICATION_SUMMARY.md](docs/VISION_CAPABILITY_CERTIFICATION_SUMMARY.md) — plain-English audit summary for Vision Capability-Certified (the one currently-promoted capability).
-- [docs/MULTIMODAL_VISION_SUITE.md](docs/MULTIMODAL_VISION_SUITE.md) — Vision suite design, 15-test list, scorers, fixture provenance.
-
-## UI and API
-
-Luak includes a local API and browser UI for inspecting runs, receipts, bundles, quarantined evidence, and comparisons.
-
-The API exposes:
-
-- tasks
-- suites
-- adapters
-- providers
-- runs
-- summaries
-- receipts
-- stats
-- compare views
-- leaderboard quarantine metadata
-
-The UI is there to make evidence inspection practical, but the trust model does not depend on the UI. The source of record remains the bundle and the deterministic judge output.
-
-## Install
-
-Requirements:
-
-- Node.js 20 or newer
-- npm 10 or newer
-- Git, if you are cloning from source
-
-This release has been verified on Linux with Node `v22.22.2` and npm `10.8.2`. Linux, macOS, and WSL2 are the intended first-run environments. Native Windows PowerShell commands are documented, but native Windows has not been fully verified for this release.
-
-### Distribution Status
-
-`v0.1.0` is **source-install only**. Clone the repo and run `npm ci && npm run build` from a checkout. Packaged installers are planned but not shipped yet:
-
-- **npm package**: not published — install from the repo
-- **Standalone binary**: not available
-- **Docker image**: not published
-- **OS installers (deb/rpm/msi/pkg)**: not available
-
-The `luak.service` file is a systemd example for advanced Linux operators only; it is not required for the local quickstart.
-
-Install dependencies and build:
-
-```bash
-npm ci
-npm run build
-```
-
-If anything fails, run `npm run doctor` for a read-only diagnostic of Node/npm versions, build artifacts, and required directories.
-
-## First 5 Minutes
-
-If you have never run Luak before and just want to see it work, do this in order. It uses no API keys, no provider accounts, and no network calls beyond `npm ci`.
-
-```bash
-git clone <this-repo>
-cd luak
-npm ci
-npm run build
-npm run smoke
-npm run serve
-```
-
-Expected outcome:
-
-1. `npm run smoke` finishes with `Smoke passed.` This proves the deterministic offline pipeline works on your machine.
-2. `npm run serve` prints a banner that ends with `Luak server running on http://127.0.0.1:18795` and `UI: http://127.0.0.1:18795/`.
-3. Open `http://127.0.0.1:18795/` in your browser. You will see the Luak UI shell.
-4. The default public leaderboard view will be **empty**. That is expected on a fresh checkout — Luak only ranks **verified eligible bundles**, and the smoke test produces deliberately quarantined mock/demo evidence. Empty here means "nothing has earned a public rank yet," not "broken."
-5. Quarantined / mock-or-demo evidence (including the smoke output) is visible from `/api/leaderboard/quarantine` and is labeled `NOT RANKED`. That is the correct first-run state.
-6. Stop the server with `Ctrl+C`. Run `npm run clean:state -- --confirm` if you want to wipe local runs before continuing.
-
-You are now ready to import real evidence (see "Adding Tasks and Adapters") or run a live adapter (see "Live Adapter Setup").
-
-## Public Quick Start
-
-Linux, macOS, or WSL2:
-
-```bash
-# Install and compile
-npm ci
-npm run build
-
-# Run the deterministic offline smoke test
-npm run smoke
-
-# Start the local API / UI
-npm run serve
-```
-
-Windows PowerShell:
-
-```powershell
-# Install and compile
-npm ci
-npm run build
-
-# Run the deterministic offline smoke test
-npm run smoke
-
-# Start the local API / UI
-npm run serve
-```
-
-Expected smoke output includes:
-
-```text
-Luak smoke test: deterministic offline mock run.
-Luak Harness - MOCK adapter
-Tests:    1 passed / 0 failed (1 total)
-Smoke passed.
-```
-
-The smoke path uses a deterministic mock adapter and writes temporary smoke state under the operating system temp directory. It does not require provider API keys, Colosseum, Peh, private services, or pre-existing `runs/` data. Smoke output is mock/demo evidence and is excluded from public ranking.
-
-By default, a fresh checkout has no verified public ranking data. The leaderboard may be empty until you import or generate verified eligible evidence. Old local runs do not silently become public rankings; tampered, unsigned, legacy, mock/demo, malformed, or unverified bundles are quarantined and labeled `NOT RANKED`.
-
-`npm run serve` binds to `127.0.0.1` by default and prints the UI URL:
-
-```text
-Luak server running on http://127.0.0.1:18795
-UI: http://127.0.0.1:18795/
-API: http://127.0.0.1:18795/api/
-```
-
-Set `LUAK_PORT` to use a different port. Set `LUAK_HOST=0.0.0.0` only when you intentionally want the server reachable beyond the local machine and have reviewed `SECURITY.md`. Legacy `CRUCIBLE_PORT` / `CRUCIBLE_HOST` are still honored as deprecated aliases.
-
-To stop the server, press `Ctrl+C` in the terminal where it is running. There is no separate stop command. State written to `runs/` and `state/` persists across restarts; use `npm run clean:state -- --confirm` to clear it.
-
-## Security note
-
-**Luak has no built-in authentication.** Anything that can reach the bound port can call the API. The default bind is `127.0.0.1`, which keeps the server reachable only from your own machine. This app assumes it is running on a trusted private network. Do not expose it directly to the public internet without adding your own access control.
-
-If you need access from another device, put a private-network gate in front of Luak — pick whichever fits your setup:
-
-- run it behind Tailscale or a VPN and rely on tailnet / VPN-level identity;
-- bind to `0.0.0.0` only when there is a firewall in front and the LAN is trusted;
-- run a reverse proxy (nginx, Caddy, Cloudflare Tunnel, etc.) that handles authentication before forwarding to Luak.
-
-There are no built-in tokens, sign-in screens, or pairing flows to configure. Securing the network path is the operator's responsibility.
-
-## Setting LUAK_HMAC_KEY
-
-Luak signs every evidence bundle with HMAC-SHA-256. The signing key is `LUAK_HMAC_KEY` (legacy `CRUCIBLE_HMAC_KEY` is still honored as a deprecated alias). Without it:
-
-- bundles are still produced, but their `bundle_signature_status` is `unsigned_key_missing`;
-- the public leaderboard quarantines those bundles and labels them `NOT RANKED`;
-- the server prints a startup warning so you do not silently produce unrankable evidence.
-
-To set a key for local development:
-
-```bash
-# Linux / macOS / WSL2
-export LUAK_HMAC_KEY="$(openssl rand -hex 32)"
-npm run serve
-```
-
-```powershell
-# Windows PowerShell
-$env:LUAK_HMAC_KEY = -join ((1..64) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
-npm run serve
-```
-
-Or persist it in `.env` (copy from `.env.example`). Treat the key as a secret: anyone who has it can sign bundles that the server will accept as authentic. **Changing or losing the key invalidates existing bundles** — the leaderboard will move them to quarantine. For a single-operator local install, that is fine; for shared evidence, pick a key once and keep it.
-
-## Common Commands
-
-```bash
-# Type-check without emitting build output
-npm run typecheck
-
-# Build
-npm run build
-
-# Run the full test suite
-npm test
-
-# Run deterministic offline smoke
-npm run smoke
-
-# Run the release verification bundle
-npm run verify:release
-
-# Check npm advisories at moderate severity and above
-npm run audit:release
-
-# Verify oracle hashes
-npm run oracle:hash -- --check
-
-# Read-only environment audit (Node version, build artifacts, env vars)
-npm run doctor
-
-# Preview which local directories will be deleted (no-op without --confirm)
-npm run clean:state
-```
-
-Live adapter examples:
-
-```bash
-# Offline pipeline validation only. This is mock mode, not model evidence.
-npm run harness -- --task safety-001
-
-# OpenRouter live run. May incur provider cost.
-export OPENROUTER_API_KEY=...
-npm run harness -- --adapter openrouter --model xiaomi/mimo-v2.5-pro --task safety-001
-
-# MiniMax direct live run. May incur provider cost.
-export MINIMAX_API_KEY=...
-npm run harness -- --adapter minimax --model MiniMax-M2.7 --task safety-001
-
-# Tune conservative live-call resilience.
-npm run harness -- --adapter openrouter --model xiaomi/mimo-v2.5-pro --task safety-001 --retries 2 --timeout-ms 120000
-
-# Verify a stored evidence bundle
-npm run cli -- verify run_2026-04-05_poison-001_gemma4
-```
-
-### Comparing models — the `adapter:model` spec
-
-`luak compare` races one task against two or more targets. Each entry in
-`--models` is a **`adapter:model`** spec:
-
-- The text **before the first colon** selects the adapter (the route used to
-  reach the model). Everything **after** it is the model id — and model ids may
-  themselves contain colons, which is why only the *first* colon splits the spec
-  (e.g. the Ollama tag `gemma3:27b` keeps its colon).
-- A bare value with **no colon** defaults to the `ollama` adapter.
-
-| adapter | route |
-|---------|-------|
-| `ollama` | local Ollama daemon (`OLLAMA_URL`, default `localhost:11434`) |
-| `openrouter` | OpenRouter cloud (needs `OPENROUTER_API_KEY`) |
-| `openclaw` | OpenClaw gateway |
-| `claudecode` (alias `claude`) | Claude Code CLI |
-
-Worked example — race a cloud model against a local one on `poison-001`, three
-runs each, with a hard spend ceiling:
-
-```bash
-luak compare \
-  --models openrouter:openai/gpt-4o-mini,ollama:gemma3:27b \
-  --task poison-001 --runs 3 --max-cost-usd 0.50
-```
-
-`--max-cost-usd <N>` (or the `LUAK_MAX_COST_USD` env var) is a **live-run cost
-budget guard**: before each provider call, Luak checks accumulated estimated
-spend and stops the comparison once the budget is reached — so a long sweep can
-never silently overrun. Local (`ollama`) targets report `$0`, so an all-local
-compare never trips the guard. Run `luak compare --help` for the full option
-list.
-
-Luak is an evidence viewer and local evaluation layer, not a guarantee of model safety. Passing a task means the model passed that task under this harness, with this adapter, at that time. It does not show that the model is universally safe or reliable.
-
-Mock mode is for offline pipeline validation only. Mock results must not be cited as live model evidence.
-
-## Clearing Local State
-
-Luak writes local runs and state to ignored directories by default:
-
-- `runs/` for generated evidence bundles and harness reports
-- `state/` for provider registry data
-
-To clear local/demo state, stop the server first, then run:
-
-```bash
-# Preview what would be deleted (safe; reports paths only)
-npm run clean:state
-
-# Actually delete runs/ and state/
-npm run clean:state -- --confirm
-```
-
-`clean:state` only touches those two directories under the repo root. It does not delete imported evidence stored elsewhere, tasks, oracles, or your `.env`. You can still remove the directories manually with your file manager or shell — the script just gives you a portable, scriptable, opt-in option.
-
-## Troubleshooting First Run
-
-Run `npm run doctor` first — it is read-only and reports most common issues.
-
-- **Port already in use:** run with a different port, for example `LUAK_PORT=18895 npm run serve` on Linux/macOS/WSL2 or `$env:LUAK_PORT=18895; npm run serve` in PowerShell. The default port is `18795`.
-- **`node: command not found` or wrong Node version:** Luak requires Node 20+. Check with `node --version`. Install from [nodejs.org](https://nodejs.org/) or your package manager. `nvm install 22 && nvm use 22` works on Linux/macOS/WSL2.
-- **`npm: command not found`:** npm ships with Node. If `node` works but `npm` does not, your Node install is broken — reinstall from the official source.
-- **Windows execution policy blocks `npm`:** PowerShell may refuse to run npm shims with `cannot be loaded because running scripts is disabled on this system`. Fix once per user: `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`. Use Windows Terminal (PowerShell 7+) for the commands in this README; cmd.exe is not tested.
-- **Empty leaderboard / "I see no data":** this is the correct fresh-checkout state. Default leaderboards rank only verified eligible evidence. Smoke output is mock/demo and is deliberately quarantined. Inspect `/api/leaderboard/quarantine` to confirm the data is there but `NOT RANKED`.
-- **`LUAK_HMAC_KEY is not set` warning:** expected on a first local run. Bundles you generate without a key will be quarantined as `unsigned_key_missing`. Set the key (see "Setting LUAK_HMAC_KEY") before generating evidence you intend to publish. Legacy `CRUCIBLE_HMAC_KEY` still works.
-- **Cannot reach the API from another device:** the default bind is `127.0.0.1`. Set `LUAK_HOST` to a routable address (your Tailscale IP, a LAN IP, or `0.0.0.0` when firewalled) and read the security note in `SECURITY.md` first. Luak has no built-in auth — anything that can reach the bound port can call the API.
-- **Malformed or tampered runs:** Luak quarantines them. Inspect safe metadata at `/api/leaderboard/quarantine`; do not cite them as public leaderboard evidence.
-- **Live adapter fails with "missing key":** offline `npm run smoke` needs no provider keys. Live adapters fail loudly and name the required key, such as `OPENROUTER_API_KEY` or `MINIMAX_API_KEY`.
-- **PowerShell path issues:** use npm scripts (`npm run smoke`, `npm run serve`, `npm run harness -- --task safety-001`) instead of invoking files under `dist/` directly.
-- **`npm ci` fails on registry / EAI_AGAIN / 403:** corporate proxies and outdated certificates are the usual cause. Try `npm config get registry` (should be `https://registry.npmjs.org/`), clear with `npm cache clean --force`, and rerun. `npm audit` warnings during install are advisory; `npm ci` will still complete.
-- **Need to start fresh:** stop the server, then `npm run clean:state -- --confirm` removes `runs/` and `state/`. This wipes generated bundles and the local provider registry. It does not touch tasks, oracles, or imported evidence stored elsewhere.
-- **Need remote access:** default binding is local-only. Set `LUAK_HOST=0.0.0.0` deliberately and put a private-network gate (Tailscale, VPN, firewall, reverse-proxy auth) in front of Luak — read `SECURITY.md` first.
-
-## Live Adapter Setup
-
-OpenRouter:
-
-```bash
-export OPENROUTER_API_KEY=...
-node dist/cli/main.js harness --adapter openrouter --model xiaomi/mimo-v2.5-pro --task safety-001
-```
-
-MiniMax direct:
-
-```bash
-export MINIMAX_API_KEY=...
-export MINIMAX_BASE_URL=https://api.minimax.io/v1   # optional
-node dist/cli/main.js harness --adapter minimax --model MiniMax-M2.7 --task safety-001
-```
-
-Unknown adapters, missing keys, and missing required model ids fail loudly. Luak does not silently fall back to mock when live mode was requested.
-
-## Interpreting Results
-
-Every bundle and summary separates model failures from provider, runner, and judge failures.
-
-- `PASS`: the task completed and met the pass threshold.
-- `FAIL/MODEL`: the model completed the task but violated requirements or scored below threshold.
-- `NC/PROVIDER` or `NC/NETWORK`: provider rate limit, timeout, empty response, auth, 5xx, network, or unavailable errors. Do not treat these as model quality.
-- `NC/HARNESS`: runner or local environment failure. Inspect diagnostics before rerunning.
-- `NC/JUDGE` or `NC/TEST`: evaluator or test harness could not produce a reliable verdict.
-
-Bundles include `interpretation` with a one-sentence reason, evidence summary, whether the result reflects model capability, retry/provider confidence notes, cost, duration, and recommended interpretation.
-
-Live runs may incur cost. Cost fields are transparent but provider-reported costs are only as accurate as the provider response; otherwise Luak records an estimate.
-
-## Adding Tasks and Adapters
-
-To add a task, create a manifest under `tasks/<family>/<task-id>/manifest.json`. Repo-execution tasks include a fixture repo and oracle file under `oracles/`; conversational tasks define questions and deterministic scoring rules directly in the manifest.
-
-Every release task must declare `metadata.benchmark_provenance` with `source`, `public_status`, `oracle_visibility`, `gold_solution_visibility`, `contamination_risk`, and at least one `known_scoring_limitations` entry. The manifest loader treats missing or empty provenance as a release-gate failure, and bundles, reports, and the UI surface these fields so benchmark claims remain auditable.
-
-To add an adapter, implement `CrucibulumAdapter` from `adapters/base.ts`, register it in `adapters/registry.ts`, and ensure the bundle records adapter, provider, model, usage, provider attempts, and structured provider errors. The `CrucibulumAdapter` name is compatibility naming from the older/internal protocol layer.
-
-## Release Limitations
-
-Luak currently emphasizes deterministic, auditable evidence over broad benchmark coverage. Safety tasks are caveated diagnostics, not a certification or proof of universal safety. Provider behavior, model versions, pricing, and rate-limit behavior can change. Repeat runs are recommended before making claims.
-
-Current release evidence supports scoped certification only: the platform/mock
-gate, representative repo-mode smoke, and broad real-provider smoke for
-OpenRouter DeepSeek, OpenRouter Mimo, and Ollama `qwen3.5:9b`. It does not
-certify every UI-visible provider/model, every repo-mode task family, or the
-full all-provider/all-model release.
-
-See `SECURITY.md` for the public security policy and trust model, and `CHANGELOG.md` for release notes. The included `luak.service` is an advanced Linux/systemd example only; it is not required for the local quickstart.
-
-## Exit Codes
-
-- `0`: task passed
-- `1`: task failed
-- `2`: integrity violation
-- `3`: harness error
-- `4`: injection detected
-- `5`: adapter error
-
-## Why This Is Different
-
-Luak is not trying to be a generic "AI benchmark platform."
-
-Its differentiators are narrower and more technical:
-
-- execution-first, not narration-first
-- deterministic judging with hidden oracle support
-- evidence bundles instead of opaque leaderboard rows
-- explicit integrity and anti-cheat handling
-- provider/adapter identity preserved through the pipeline
-- advisory review layers that cannot silently become authoritative
-- prompt-injection containment as part of the trust model
-
-If you care about whether a coding agent actually performed the task under controlled conditions, these choices matter.
-
-## Good Uses
-
-Luak is a good fit for:
-
-- evaluating coding agents on realistic repo tasks
-- regression testing model/provider changes
-- repeated-run reliability measurement
-- comparing local and hosted model setups
-- building auditable internal model reports
-- testing prompt-injection resilience in coding workflows
-
-It is less useful if what you want is:
-
-- pure code-generation samples without execution
-- subjective style reviews
-- broad chat benchmark scoring
-- a benchmark that depends on trusting the model's own explanation
-
-## Repository Summary
-
-If you need a short description for GitHub, docs, or a project directory:
-
-> Luak turns model and agent trial outputs into auditable scoreboards, receipts, and comparison views, with verified evidence gates for public rankings.
-
-## License
-
-MIT
+> **⚠️ LAB-ONLY PRODUCT — AUTHENTICATION IS YOUR RESPONSIBILITY**
+>
+> This tool is designed for **local/lab use only**. It binds to localhost by default
+> and is meant to run behind Tailscale, a VPN, or on a private network.
+>
+> **If you expose any service to the public internet, YOU are responsible for
+> securing it.** No authentication, rate-limiting, or access control will be added
+> to this product. That is not a bug — it is a design decision.
+>
+> Expose at your own risk.
+
+1|# Luak
+2|
+3|Luak turns model and agent trial outputs into auditable scoreboards, receipts, and comparison views.
+4|
+5|It helps operators inspect observed behavior by task family, provider, model, adapter, and run evidence. Luak is not a safety certification, not a universal model ranking, and not a replacement for Colosseum-style trial generation.
+6|
+7|In the current release sequence, Luak is the benchmark, scoreboard, and evidence-viewer layer. It can still run local harness flows for smoke testing and development, but its public role is to make existing run evidence understandable without overstating what the evidence can support.
+8|
+9|## How Luak Fits With The Other Tools
+10|
+11|- **Colosseum** generates trial runs and receipts. Use it as the proving ground when you need to create fresh trial evidence.
+12|- **Luak** views, compares, scores, and explains run evidence. Use it to inspect receipts, compare models/providers/adapters, and understand why a run is or is not ranked.
+13|- **Verum** is adversarial and probing-oriented. Its outputs can be normalized into Luak score/evidence views when the integration path is used.
+14|- **Aedis** is governed build orchestration. It can drive controlled workflows that later produce evidence for inspection.
+15|- **Peh Public** is the broader user-facing AI control surface. Luak is one evidence and scoreboard layer inside that wider release path.
+16|- **Crucibulum** appears in environment variables, schemas, and API names as the older/internal protocol name for Luak-compatible run and score exchange. Public docs should treat it as compatibility naming, not a separate public product unless the project is split later.
+17|
+18|## What Luak Is / Is Not
+19|
+20|Luak is:
+21|
+22|- a local scoreboard and evidence viewer
+23|- a lane-scoped comparison UI
+24|- a provenance and receipt inspection layer
+25|- an observed-behavior comparison tool
+26|- a way to preserve adapter/provider/model identity while reviewing results
+27|
+28|Luak is not:
+29|
+30|- a universal model benchmark
+31|- a safety certification
+32|- proof that a model is safe
+33|- a replacement for external audits
+34|- a guarantee of local or cloud isolation
+35|- the primary trial-generation harness when Colosseum owns that role
+36|
+37|## Public Leaderboard Trust
+38|
+39|Default public leaderboard views rank only verified eligible evidence bundles.
+40|
+41|Tampered, forged, legacy, unsigned, unauthenticated, mock/demo, malformed, or otherwise unverified bundles are quarantined and are not ranked. Quarantined evidence may be inspected through safe metadata views such as `/api/leaderboard/quarantine`, but it is labeled `NOT RANKED` and does not influence default scores.
+42|
+43|Local historical runs may exist in `runs/`. They are local state, ignored by git, and not treated as public leaderboard evidence unless they pass the current eligibility gate.
+44|
+45|## First-Run Mental Model
+46|
+47|A fresh checkout does not ship with public ranking data. The offline harness path uses the mock adapter for pipeline validation only; those results are deliberately quarantined from public rankings as mock/demo evidence. Live or imported evidence must be verified before it can appear in the default public leaderboard.
+48|
+49|Current desktop and mobile screenshots are in `docs/screenshots/`. Additional GIFs are planned before the final public announcement.
+50|
+51|## Evidence Model
+52|
+53|Luak is built around a narrow question: what did this model or agent do under a defined task, adapter, provider, and scoring policy, and what evidence supports that observation?
+54|
+55|Luak does not grade based on style, self-report, chain-of-thought, or polished explanations. It grades based on observable state:
+56|
+57|- what files changed
+58|- what tests passed or failed
+59|- what integrity rules were violated
+60|- how much time and step budget were used
+61|- what the deterministic judge can verify from the workspace
+62|
+63|The core trust model is simple:
+64|
+65|- the agent never sees the oracle
+66|- the deterministic judge is authoritative
+67|- hidden checks and integrity checks drive scoring
+68|- review models are advisory only
+69|- bundles are signed and auditable
+70|
+71|## What Luak Does
+72|
+73|Luak ingests or creates model/agent run evidence, applies deterministic scoring where configured, and turns that evidence into local scoreboards, receipts, and comparison views.
+74|
+75|In practice, that means it can:
+76|
+77|- inspect run bundles and receipts
+78|- compare models across task families and lanes
+79|- show why evidence is eligible or quarantined
+80|- run local smoke tasks against a model when needed
+81|- run a local suite for development and regression checks
+82|- compare multiple models across repeated runs
+83|- score outcomes using hidden and public checks
+84|- enforce integrity constraints like forbidden-path edits and anti-cheat patterns
+85|- produce replayable, hash-verified evidence bundles
+86|- expose results through a local API and UI
+87|- add optional advisory review layers without weakening deterministic authority
+88|
+89|## What Problem It Solves
+90|
+91|A lot of model evaluation still collapses into one of these failure modes:
+92|
+93|- benchmarks that reward explanation instead of execution
+94|- public-only tasks that are easy to overfit
+95|- systems that trust the agent's own story about what happened
+96|- leaderboards that show scores without evidence
+97|- review layers that quietly blur interpretation with authority
+98|
+99|Luak is designed against that.
+100|
+101|It treats evaluation as an evidence problem. The key question is not "did the model say the right thing?" It is "what behavior was observed, under what conditions, and can the evidence be inspected independently?"
+102|
+103|## How It Works
+104|
+105|At a high level, Luak follows this pipeline:
+106|
+107|1. Load a task manifest.
+108|2. Filter the manifest for the agent so the rubric and oracle stay hidden.
+109|3. Create an isolated workspace from the task repo.
+110|4. Execute the selected adapter/model in that workspace.
+111|5. Record timeline and filesystem evidence.
+112|6. Collect the diff.
+113|7. Run integrity and security checks.
+114|8. Judge the outcome deterministically with oracle-backed checks.
+115|9. Build a signed evidence bundle.
+116|10. Optionally run advisory review layers on sanitized evidence only.
+117|
+118|The implementation is centered on a three-box model:
+119|
+120|- `Runner`: orchestration, workspace setup, adapter execution, bundle assembly
+121|- `Observer`: timeline and file activity capture
+122|- `Judge`: deterministic scoring from evidence, oracle checks, and integrity rules
+123|
+124|The principle behind the system is explicit in the code:
+125|
+126|- score is based on observable state transitions
+127|- narration is not trusted
+128|- the deterministic judge is the authoritative scoring source for configured checks
+129|
+130|## Benchmark Coverage
+131|
+132|The current repo contains both repo-execution tasks and conversational tasks.
+133|
+134|Repo task families:
+135|
+136|- `poison_localization`
+137|- `spec_discipline`
+138|- `orchestration`
+139|
+140|Conversational task families currently present in the corpus:
+141|
+142|- `identity`
+143|- `truthfulness`
+144|- `classification`
+145|- `code`
+146|- `workflow`
+147|- `instruction-obedience`
+148|- `personality`
+149|- `prompt-sensitivity`
+150|- `role-stress`
+151|- `context-degradation`
+152|- `reasoning`
+153|- `summarization`
+154|- `thinking-mode`
+155|- `token-efficiency`
+156|
+157|This means Luak can inspect both execution behavior and chat behavior. The current taxonomy is release-candidate level and versioned, but it should still be cited with the repository commit, task IDs, and scoring policy used for a given comparison. The test corpus is lightweight by design (intentional minimum for bootstrap); use `npm run oracle:hash -- --write` after adding oracles to register them in the corpus.
+158|
+159|### Experimental targets
+160|
+161|Some models are wired up for **experimental benchmarking only** — never as a
+162|default, the judge, or a normal routing target, and always excluded from the
+163|leaderboard and capability certification. OpenRouter **MiniMax-M3** is the first
+164|such target: run `npm run bench:minimax-m3 -- --model minimax-m3 --smoke-only`
+165|to gate it, or see [`docs/MINIMAX_M3_EXPERIMENTAL.md`](docs/MINIMAX_M3_EXPERIMENTAL.md)
+166|for the full cost-capped comparison against the MiMo v2.5 family.
+167|
+168|## Scoring Model
+169|
+170|Luak judges runs in a fixed order:
+171|
+172|1. Integrity
+173|2. Correctness
+174|3. Regression
+175|4. Efficiency
+176|
+177|This ordering matters.
+178|
+179|Integrity runs first because some failures should hard-fail the run regardless of downstream test outcomes. Examples include:
+180|
+181|- forbidden path edits
+182|- anti-cheat patterns
+183|- integrity-rule violations from the oracle
+184|
+185|Correctness and regression are then judged using hidden and public checks. Efficiency measures how expensive the run was relative to the task budget.
+186|
+187|The result is a structured score with:
+188|
+189|- total score
+190|- score breakdown
+191|- pass/fail
+192|- pass threshold
+193|- integrity violation count
+194|- failure taxonomy
+195|
+196|Public API and leaderboard scores are expressed as `0-100` percentages.
+197|
+198|Internal bundles currently retain `0-1` fractional totals for backward compatibility, but they now also include explicit percent mirrors and a score-scale marker. That distinction is temporary and documented in [docs/scoring.md](docs/scoring.md).
+199|
+200|## Evidence and Bundles
+201|
+202|Every run produces an evidence bundle. The bundle is the core artifact of the system.
+203|
+204|A bundle contains:
+205|
+206|- task identity and manifest hash
+207|- target model, provider, and adapter
+208|- environment metadata
+209|- timeline of observed actions
+210|- diff evidence
+211|- security metadata
+212|- verification results
+213|- deterministic score
+214|- usage and cost estimates
+215|- trust metadata
+216|- diagnosis metadata
+217|- optional advisory review results
+218|
+219|Bundles are hash-signed so the result can be verified later. The API also produces structured summaries for downstream consumers.
+220|
+221|This is important because Luak is not just trying to emit a score. It is trying to emit a score with an audit trail.
+222|
+223|## Bundle Immutability and Scoring Honesty
+224|
+225|Luak separates "what happened on this run" from "what the current leaderboard says about a model." Both are honest, but they answer different questions, and reading one as the other is the most common way to misinterpret a Luak result.
+226|
+227|**Signed bundles are immutable evidence.** Once a run is written to `runs/<bundle_id>.json` and hash-signed, the file is not rewritten — not when scoring rules change, not when judges are upgraded, not when bugs are fixed. The bundle records what the run produced *at the moment it produced it*. Tampering breaks the hash check; the trust layer marks tampered bundles as not ranked.
+228|
+229|**Some older bundles carry historical stored scores.** Luak's scoring discipline tightened during the May 2026 trust audit (see `tests/safety-scoring.test.ts`, `tests/lane-scoring.test.ts`). Bundles written before that audit may show a stored `score.total` that included regression / integrity / efficiency credit even when correctness was zero. Those numbers are correct as a record of what the *pre-audit* formula produced. They are not current trust claims.
+230|
+231|**The leaderboard, UI warnings, recommendation cards, diagnostics, and exports all use the current trust rules.** Specifically:
+232|
+233|- The backend leaderboard composite excludes NC bundles (provider / network / judge / test outages) via `verdict.countsTowardModelScore`. A model that never actually ran does not get a capability score.
+234|- The repo-mode and conversational score formulas gate secondary credit on non-zero correctness. A run that produced no correct output cannot float to 15–60% on R/I/E defaults.
+235|- The UI's lane scope banner surfaces `PROVISIONAL · n=<x>`, `ALL NOT-COMPLETE`, `<x>% NC`, `ALL RUNS FAILED`, `<x>% INFRA`, and `<n> HISTORICAL` chips when the conditions are met.
+236|- The bundle detail panel shows a `STORED HISTORICAL SCORE` banner when a bundle predates current scoring discipline, and a `NOT COUNTED TOWARD LEADERBOARD` banner when the verdict excludes it from the composite.
+237|- Recommendation cards (Best Overall, Best Value, Fastest Usable) refuse to crown a model with zero composite or zero pass rate. Risky / Avoid is intentionally the opposite — it surfaces failed or invalid models so users see them.
+238|
+239|**NC, provider, judge, and test failures stay visible as evidence.** They are not deleted, they are not hidden, and they do not vanish from the run history. They are excluded from *capability averages* because they did not measure the model. They remain counted in `nc_rate`, `failed_provider`, `failed_judge`, and the failure taxonomy.
+240|
+241|**Raw `score.total` is historical stored data.** A bundle's `score.total` is what the scoring formula produced when the bundle was written. For a current-discipline interpretation, read the leaderboard endpoint or the UI — both recompute against current rules and exclude bundles that should not count. Do not treat `score.total` from a raw bundle file as the current Luak trust claim for a model.
+242|
+243|**JSON and CSV exports carry honesty metadata.** Lane leaderboard exports (`luak.lane.leaderboard.v2` schema) include:
+244|
+245|- `counts_in_leaderboard` — true only if the row contributed to the current composite
+246|- `nc_rate`, `model_failure_rate`, `completion_rate` — so you can tell "model never ran" from "model failed"
+247|- `reliability_score`, `confidence`, `sample_adequate`, `provisional` — sample-quality signals
+248|- a `note` field summarizing data quality (e.g. "zero composite — no scoring-eligible runs counted", "75% NC (provider/network/judge outages)")
+249|- top-level `honesty_notes` explaining what was filtered and what is provisional
+250|
+251|Drilldown exports add `counts_toward_leaderboard`, `is_pre_fix_historical`, and `exclusion_reasons` per run so a consumer can route each bundle to the right interpretation.
+252|
+253|**Read order for current trust.** If you want the current Luak verdict for a model:
+254|
+255|1. Use the UI (lane tab) or the `/api/leaderboard?task_families=<lane>` endpoint.
+256|2. Use the lane diagnostic: `node scripts/lane-diagnostic.mjs <lane>` — it prints leaderboard-equivalent averages with NC excluded and flags pre-fix bundles still in scope.
+257|3. Use the lane export (JSON/CSV) — the `note` and `counts_in_leaderboard` columns tell you exactly what each row means.
+258|
+259|Reading raw signed bundle files directly is fine for audit (verifying what a run produced) but is not the right surface for "what does Luak currently say about this model."
+260|
+261|## Security and Trust Model
+262|
+263|Luak assumes prompt injection is a system problem, not just a model problem.
+264|
+265|That means:
+266|
+267|- task text can be malicious
+268|- repo files can be malicious
+269|- diffs and logs can be malicious
+270|- model outputs can be malicious
+271|- review-layer outputs can be malicious
+272|
+273|The system therefore maintains explicit trust boundaries:
+274|
+275|Trusted:
+276|
+277|- deterministic judge results
+278|- hidden oracle data
+279|- benchmark provenance: source, public/private status, oracle visibility, gold-solution visibility, contamination risk, and known scoring limitations
+280|- integrity checks
+281|- system metadata
+282|
+283|Untrusted:
+284|
+285|- task repo files
+286|- diffs
+287|- logs
+288|- test output
+289|- agent output
+290|- review model output
+291|
+292|Recent hardening added a Velum-style review defense layer:
+293|
+294|- review input sanitization before any model-assisted review call
+295|- prompt hardening that tells review models they are not authoritative
+296|- strict JSON-only output validation
+297|- advisory-only review status and disagreement signals
+298|- review security telemetry in bundles, summaries, and receipts
+299|
+300|Review models may summarize, flag concerns, or recommend reruns. They may not override scoring, mutate pass/fail, or rewrite authoritative evidence.
+301|
+302|## Review Layer
+303|
+304|Luak supports optional review layers such as:
+305|
+306|- Second Opinion
+307|- QC Review
+308|- Howa Truthfulness Review (advisory)
+309|
+310|These are intentionally non-authoritative.
+311|
+312|Their role is to help surface:
+313|
+314|- suspicious patterns
+315|- possible false passes or false fails
+316|- flaky-looking outcomes
+317|- reasons a human may want to inspect a run
+318|
+319|They do not change:
+320|
+321|- deterministic pass/fail
+322|- score breakdown
+323|- hidden/public test outcomes
+324|- integrity verdicts
+325|- bundle evidence
+326|
+327|Review inputs are sanitized and structured before model calls. Review outputs are schema-validated and fail closed on malformed output.
+328|
+329|### Howa Truthfulness Review
+330|
+331|Howa is the ecosystem's truthfulness / lie-detection product. It is wired into
+332|Luak as a **third advisory review channel** that runs the *same sanitized
+333|evidence summary* through a truthfulness-focused reviewer — looking for silent
+334|failures, fabricated success, and self-verification claims the timeline/diff
+335|don't support. It is advisory only: like Second Opinion and QC Review it never
+336|changes the deterministic verdict, and it runs on the injection-scanned,
+337|redacted evidence (blocked entirely if that evidence carries prompt-injection
+338|indicators).
+339|
+340|Enable it globally without threading a flag through every call site:
+341|
+342|- `LUAK_HOWA_REVIEW=1` — turn the channel on (legacy alias `CRUCIBLE_HOWA_REVIEW`)
+343|- `LUAK_HOWA_REVIEW_PROVIDER` / `LUAK_HOWA_REVIEW_MODEL` — override the reviewer
+344|  (defaults to the configured judge model)
+345|
+346|The result appears on each run as `review.howaReview` and is surfaced by
+347|`/api/runs` as `howa_review_status` plus a `howa_disagreement` advisory signal
+348|(also folded into the aggregate `disagreement` flag).
+349|
+350|### Default Judge Model
+351|
+352|The advisory model judge defaults to **OpenRouter `xiaomi/mimo-v2.5-pro`**. Configure via `OPENROUTER_API_KEY`. Override with:
+353|
+354|- `LUAK_JUDGE_PROVIDER` — provider id (default `openrouter`)
+355|- `LUAK_JUDGE_MODEL` — model id (default `xiaomi/mimo-v2.5-pro`)
+356|
+357|Legacy aliases `CRUCIBLE_JUDGE_PROVIDER` / `CRUCIBLE_JUDGE_MODEL` are still honored; prefer the `LUAK_*` names for new setups.
+358|
+359|Fallback: when the configured judge provider is unreachable, only the deterministic scorer runs and the model judge is recorded as `judge_usage.kind = "skipped"`. The run is never silently re-routed to a different model.
+360|
+361|Each bundle records both costs separately:
+362|
+363|- `usage` — tested-model token / cost spend
+364|- `judge_usage` — judge-model token / cost spend, with `kind: "deterministic" | "model" | "skipped"`
+365|
+366|## QA Harness
+367|
+368|The QA harness walks every tab/lane, runs every test through the full pipeline, and emits a machine-readable report agents like Ricky and Ptah can consume.
+369|
+370|```bash
+371|npm run harness                                # offline mock adapter, every lane
+372|npm run harness -- --tab personality           # only the Personality lane
+373|npm run harness -- --task personality-002      # one test by id
+374|npm run harness -- --live                      # use the configured judge model
+375|                                               # (OpenRouter MiMo by default;
+376|                                               #  needs OPENROUTER_API_KEY)
+377|npm run harness -- --enable-judge              # also run the model judge layer
+378|```
+379|
+380|Per-test it records: `manifest_loaded`, `request_sent`, `response_received`, `judge_ran`, `bundle_stored`, `ui_summary_well_formed`, `drilldown_evidence_present`, plus tested-model and judge-model token + cost split. The report is written to `runs/_harness_report_<timestamp>.json`.
+381|
+382|Exit codes: `0` clean, `1` test failures only, `2` pipeline breakage, `3` conversational task incomplete (verdict neither PASS nor FAIL).
+383|
+384|## Adapters and Providers
+385|
+386|Luak is meant to evaluate models through adapters rather than binding itself to a single provider.
+387|
+388|The repo already supports a provider-first flow through adapters and exposes provider/model metadata in the bundle and API. Supported adapters/providers currently include:
+389|
+390|- `ollama`
+391|- `anthropic`
+392|- `openai`
+393|- `openrouter`
+394|- `openclaw`
+395|- `claudecode`
+396|- `peh`
+397|- `grimoire-cc`
+398|- `grimoire-codex`
+399|- `minimax`
+400|- `zai`
+401|- `google`
+402|
+403|That means you can compare:
+404|
+405|- local setups
+406|- hosted APIs
+407|- agent wrappers
+408|- different execution systems
+409|
+410|without losing track of who actually ran the task and under what identity.
+411|
+412|### Current Release Certification Scope
+413|
+414|The current release candidate is not unqualified `FULL_RELEASE_READY`.
+415|Certification is scoped to the evidence archived in `docs/RELEASE_READINESS.md`.
+416|
+417|Certified release-target models:
+418|
+419|- OpenRouter / `deepseek/deepseek-v4-pro`
+420|- OpenRouter / `xiaomi/mimo-v2.5-pro`
+421|- Ollama / `qwen3.5:9b`
+422|
+423|Other providers and models may appear in the UI or adapter registry, but
+424|visibility does not mean release certification. Those routes remain
+425|uncertified unless a matching real-provider report is archived. Repo-mode
+426|certification is representative smoke coverage only, not proof that every
+427|repo task family has been live-certified. Automated UI-shape checks and the
+428|manual browser UI checklist pass for the scoped target set, but this remains
+429|`RELEASE_SCOPED_TO_CERTIFIED_TARGETS`, not `FULL_RELEASE_READY`.
+430|
+431|### Vision Capability-Certified (separate from the release-certification scope above)
+432|
+433|Vision is currently the one **capability** that has been formally
+434|promoted under Luak's doctrine-gated capability-certification
+435|track (`docs/CAPABILITY_CERTIFICATION_DOCTRINE.md`). This is
+436|**separate from** the general release-certification scope above:
+437|
+438|- Vision capability certification is based on Luak's 15-test
+439|  Vision suite run across **three independent route families**
+440|  (MiMo, GPT-5, Anthropic) with aggregate pass rate ≥ 80% and no
+441|  disallowed recurring measurement attribution.
+442|- It says the **capability evaluation pipeline** works correctly
+443|  and that real models pass it. It does **not** certify any one
+444|  model as universally release-ready.
+445|- It does **not** affect the leaderboard composite
+446|  (`TAB_CONFIG.vision.scoreFamilies = []`).
+447|- It does **not** mutate `reports/model-certification/certified-models.json`
+448|  or `MODEL_CERTIFICATION.models[].tier`. Those files remain
+449|  byte-identical to their pre-promotion state. The release-
+450|  certification scope above is unchanged by Vision promotion.
+451|- Promotion is operator-explicit (signed confirmation phrase at
+452|  `POST /api/capabilities/vision/promote`). An immutable receipt
+453|  lives under `reports/capability-promotions/vision/`. Local
+454|  state lives in `data/capability-certifications.json` and is
+455|  gitignored — fresh checkouts have no capability-promoted state
+456|  and render the chip as `EXPERIMENTAL` by default.
+457|- Full plain-English summary, audit trail, and verification
+458|  commands: [docs/VISION_CAPABILITY_CERTIFICATION_SUMMARY.md](docs/VISION_CAPABILITY_CERTIFICATION_SUMMARY.md).
+459|
+460|Capability badges other than Vision (Roleplay, tool-calling, etc.)
+461|remain experimental until they reach the same level of
+462|multi-family evidence under the same doctrine.
+463|
+464|## Methodology and Trust Docs
+465|
+466|Luak is being documented as a public audit and evidence-inspection system rather than only a codebase. Start here:
+467|
+468|- [docs/methodology.md](docs/methodology.md)
+469|- [docs/scoring.md](docs/scoring.md)
+470|- [docs/SCORING_FIELDS.md](docs/SCORING_FIELDS.md) — composite vs correctness vs efficiency credit; what each `score.*` field means; why `total_percent` may not match the binary correctness anchors.
+471|- [docs/versioning.md](docs/versioning.md)
+472|- [docs/reproducibility.md](docs/reproducibility.md)
+473|- [docs/CAPABILITY_CERTIFICATION_DOCTRINE.md](docs/CAPABILITY_CERTIFICATION_DOCTRINE.md) — capability-specific certification track (separate from general model certification).
+474|- [docs/VISION_CAPABILITY_CERTIFICATION_SUMMARY.md](docs/VISION_CAPABILITY_CERTIFICATION_SUMMARY.md) — plain-English audit summary for Vision Capability-Certified (the one currently-promoted capability).
+475|- [docs/MULTIMODAL_VISION_SUITE.md](docs/MULTIMODAL_VISION_SUITE.md) — Vision suite design, 15-test list, scorers, fixture provenance.
+476|
+477|## UI and API
+478|
+479|Luak includes a local API and browser UI for inspecting runs, receipts, bundles, quarantined evidence, and comparisons.
+480|
+481|The API exposes:
+482|
+483|- tasks
+484|- suites
+485|- adapters
+486|- providers
+487|- runs
+488|- summaries
+489|- receipts
+490|- stats
+491|- compare views
+492|- leaderboard quarantine metadata
+493|
+494|The UI is there to make evidence inspection practical, but the trust model does not depend on the UI. The source of record remains the bundle and the deterministic judge output.
+495|
+496|## Install
+497|
+498|Requirements:
+499|
+500|- Node.js 20 or newer
+501|
