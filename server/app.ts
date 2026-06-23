@@ -35,7 +35,6 @@ import { handleRunBatch } from "./routes/batch.js";
 import * as capExport from "./routes/export.js";
 import * as vision from "./routes/vision.js";
 import * as capVision from "./routes/capabilities-vision.js";
-import * as roleplay from "./routes/roleplay.js";
 
 const DEFAULT_PORT = parseInt(envValue("LUAK_PORT", "CRUCIBLE_PORT", "CRUCIBULUM_PORT") ?? "18795", 10);
 const DEFAULT_HOST = envValue("LUAK_HOST", "CRUCIBLE_HOST", "CRUCIBULUM_HOST") ?? "127.0.0.1";
@@ -218,9 +217,6 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Cr
     // + an immutable receipt under reports/capability-promotions/vision/.
     // Never touches certified-models.json or MODEL_CERTIFICATION.tier.
     if (path === "/api/capabilities/vision/promote" && method === "POST") return void await capVision.handlePromote(req, res);
-
-    // ── Roleplay (experimental, not in leaderboard/certification) ────────
-    if (path === "/api/roleplay/latest-smoke" && method === "GET") return void await roleplay.handleLatestSmoke(req, res);
 
     // ── Capability export ────────────────────────────────────────────────
     if (path === "/api/export/capability-summary" && method === "GET") return void await capExport.handleCapabilitySummary(req, res);

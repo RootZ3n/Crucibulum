@@ -6,7 +6,7 @@
 
 import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, resolve, relative, isAbsolute } from "node:path";
 import type {
   CrucibulumAdapter,
   AdapterConfig,
@@ -444,7 +444,9 @@ function executeToolCalls(
 
   for (const filePath of readPaths) {
     const absPath = resolve(workspacePath, filePath);
-    if (!absPath.startsWith(resolve(workspacePath))) {
+    const workspaceResolved = resolve(workspacePath);
+    const rel = relative(workspaceResolved, absPath);
+    if (rel.startsWith("..") || isAbsolute(rel)) {
       observer.recordError(`Path escape attempt: ${filePath}`);
       feedback.push(`ERROR: ${filePath} is outside the workspace`);
       continue;
@@ -659,8 +661,9 @@ function doWriteFile(
   currentEdits: number,
 ): boolean {
   const absPath = resolve(workspacePath, filePath);
-
-  if (!absPath.startsWith(resolve(workspacePath))) {
+  const workspaceResolved = resolve(workspacePath);
+  const rel = relative(workspaceResolved, absPath);
+  if (rel.startsWith("..") || isAbsolute(rel)) {
     observer.recordError(`Path escape attempt: ${filePath}`);
     feedback.push(`ERROR: ${filePath} is outside the workspace`);
     return false;
