@@ -6469,12 +6469,33 @@ function pehDevSwitchProduct(productId){
 function pehSetMode(mode){
   if(mode!=='immersive'&&mode!=='dashboard')return;
   state.pehverse.mode=mode;
-  // Switching to immersive returns to the scene-first view: close any open
-  // workspaces and clear focus so the scene is unobstructed (no docked panel
-  // surviving the switch).
   if(mode==='immersive'){
+    // Return to scene-first view: close all workspaces.
     state.pehverse.workspaces=[];
     state.pehverse.focus=null;
+  }
+  if(mode==='dashboard'){
+    // POP-UP BOOK: opening dashboard opens ALL workspaces for this product
+    // at their predetermined positions. Each window has a fixed "home" slot.
+    const productId=pehActiveProductId();
+    const allDefs=Object.entries(WORKSPACE_REGISTRY)
+      .filter(([id,def])=>(def.product===productId||def.product===null)&&def.kind!=='deck')
+      .map(([id,def])=>({id,def}));
+    // Only open workspaces that aren't already open
+    const existing=new Set(state.pehverse.workspaces.map((w)=>w.defId));
+    for(const {id,def} of allDefs){
+      if(!existing.has(id)){
+        state.pehverse.workspaces.push({
+          uid:'ws'+(++state.pehverse.wsSeq),
+          defId:id,
+          dock:def.dock||'right',
+          min:false
+        });
+      }
+    }
+    // Focus the dashboard/overview if it exists
+    const overview=state.pehverse.workspaces.find((w)=>w.defId==='speedway-overview');
+    if(overview)pehFocusWorkspace(overview.uid,false);
   }
   localStorage.setItem('pehverse-mode',mode);
   render();

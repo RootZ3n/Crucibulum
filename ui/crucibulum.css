@@ -2691,6 +2691,15 @@ body::after {
 
 /* ── Scene (immersive) ─────────────────────────────────────────────── */
 .peh-scene{position:relative;flex:1 1 auto;min-height:0;width:100%;overflow:hidden}
+/* POP-UP BOOK: When dashboard has all windows open, hide the scene background.
+   The world is still there underneath — it reappears when any window closes. */
+.peh-mode-dashboard .peh-scene-atmos{opacity:0;transition:opacity .3s ease}
+.peh-mode-dashboard .peh-hotspots{display:none}
+.peh-mode-dashboard .peh-slot{display:none}
+.peh-mode-dashboard .peh-bubble-layer{display:none}
+.peh-mode-dashboard .peh-scene-caption{opacity:0;pointer-events:none}
+/* Immersive mode: everything visible */
+.peh-mode-immersive .peh-scene-atmos{opacity:1;transition:opacity .3s ease}
 .peh-scene-atmos{
   position:absolute;inset:0;z-index:0;
   background:
@@ -2799,16 +2808,38 @@ body::after {
 .peh-slot-right{transform:translate(0,-50%)}
 .peh-slot-left{transform:translate(-100%,-50%)}
 .peh-slot-medallion{
-  width:clamp(46px,8vw,72px);height:clamp(46px,8vw,72px);border-radius:50%;
-  display:flex;align-items:center;justify-content:center;padding:9px;
-  color:#3a2a18;
-  background:radial-gradient(circle at 50% 32%,#f6ecd2 0%,#e8d6ab 60%,#cdb37e 100%);
-  border:2px solid #b8965b;
-  box-shadow:0 0 0 4px color-mix(in srgb,var(--peh-accent) 26%,transparent),0 8px 22px rgba(0,0,0,.5);
+  width:clamp(46px,8vw,72px);height:clamp(46px,8vw,72px);
+  display:flex;align-items:flex-end;justify-content:center;
+  padding:0;
   pointer-events:auto;cursor:pointer;
+  /* No circle, no chip — Peh emerges from the world */
+  background:transparent;
+  border:none;
+  box-shadow:none;
+  /* Crop to show Peh from waist up, like he's standing behind the map */
+  overflow:visible;
+  position:relative;
+}
+.peh-slot-medallion::before{
+  /* Subtle shadow/ground effect so Peh looks grounded in the scene */
+  content:'';
+  position:absolute;
+  bottom:-4px;left:10%;right:10%;height:8px;
+  background:radial-gradient(ellipse at center,rgba(0,0,0,.35) 0%,transparent 70%);
+  border-radius:50%;
+  z-index:0;
 }
 .peh-slot-medallion:hover{transform:scale(1.08);filter:brightness(1.1)}
-.peh-squirrel{display:block;opacity:.92}
+.peh-squirrel{
+  display:block;opacity:1;
+  /* Scale Peh to fill the medallion, positioned so he looks like he's standing */
+  width:100%;height:auto;
+  object-fit:contain;
+  object-position:bottom center;
+  position:relative;z-index:1;
+  /* Slight 3D pop — Peh is IN the world, not flat on it */
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.3));
+}
 .peh-slot-tag{
   font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
   color:var(--ink);background:rgba(12,10,26,.82);border:1px solid var(--border-subtle);
@@ -2821,10 +2852,13 @@ body::after {
 /* ── Peh-as-guide: speaking glow + contextual speech bubble ─────────── */
 /* When Peh is "speaking" (a bubble is active) the medallion pulses a gentle
    cyan/violet halo so the eye is drawn to the guide. */
-.peh-slot.glow .peh-slot-medallion{animation:pehSlotGlow 1.8s ease-in-out infinite}
+/* When Peh is "speaking" (a bubble is active) the squirrel glows gently */
+.peh-slot.glow .peh-squirrel{
+  animation:pehSlotGlow 1.8s ease-in-out infinite;
+}
 @keyframes pehSlotGlow{
-  0%,100%{box-shadow:0 0 0 4px color-mix(in srgb,var(--peh-accent) 26%,transparent),0 8px 22px rgba(0,0,0,.5)}
-  50%{box-shadow:0 0 0 7px color-mix(in srgb,#67e8f9 38%,transparent),0 0 26px color-mix(in srgb,var(--peh-accent) 60%,transparent),0 8px 24px rgba(0,0,0,.55)}
+  0%,100%{filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))}
+  50%{filter:drop-shadow(0 0 12px color-mix(in srgb,#67e8f9 60%,transparent)) drop-shadow(0 2px 4px rgba(0,0,0,.3))}
 }
 
 /* The bubble layer spans the scene but is click-through — only the bubble
@@ -2908,8 +2942,27 @@ body::after {
 .peh-dash-here h1{font-size:clamp(20px,5vw,28px);margin:2px 0 4px;font-weight:800}
 .peh-dash-here p{margin:0 0 8px;color:var(--ink-soft);font-size:13px;max-width:56ch}
 .peh-dash .peh-waypoints{position:static;padding:0;margin-top:4px}
-.peh-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px;align-items:start}
-@media (max-width:768px){.peh-grid{grid-template-columns:1fr}}
+.peh-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  grid-template-rows:auto;
+  gap:12px;padding:12px;
+  align-items:start;
+}
+/* First item (Dashboard) spans full width */
+.peh-grid.multi > *:first-child{
+  grid-column:1/-1;
+}
+/* On smaller screens, use 2 columns */
+@media (max-width:1200px){
+  .peh-grid{grid-template-columns:repeat(2,1fr)}
+  .peh-grid.multi > *:first-child{grid-column:1/-1}
+}
+/* On mobile, single column */
+@media (max-width:768px){
+  .peh-grid{grid-template-columns:1fr}
+  .peh-grid.multi > *:first-child{grid-column:auto}
+}
 .peh-tile{min-height:60vh}
 .peh-tile .peh-panel-body{max-height:none}
 
@@ -3000,8 +3053,8 @@ body::after {
   .peh-panel.dock-fullscreen{inset:14px;width:auto;border-radius:16px}
 
   /* Dashboard: tile open workspaces side by side (two columns). */
-  .peh-grid{grid-template-columns:1fr 1fr;padding:16px;gap:16px}
-  .peh-grid.multi{grid-template-columns:repeat(2,1fr)}
+  .peh-grid{grid-template-columns:repeat(3,1fr);padding:16px;gap:16px}
+  .peh-grid.multi{grid-template-columns:repeat(3,1fr)}
   .peh-tile{min-height:min(70vh,680px)}
   .peh-chooser{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
 
