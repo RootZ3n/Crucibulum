@@ -134,9 +134,11 @@ describe("Roleplay Phase 4 · UI readability (offline)", () => {
 
   // -------- backend route --------
 
-  it("RPP4-P10 · /api/roleplay/latest-smoke route is wired + re-asserts experimental/exclusion flags", () => {
-    assert.match(APP_SRC, /\/api\/roleplay\/latest-smoke/);
-    assert.match(APP_SRC, /roleplay\.handleLatestSmoke/);
+  it("RPP4-P10 · roleplay latest-smoke handler preserved (route unmounted from app.ts) + re-asserts experimental/exclusion flags", () => {
+    // The /api/roleplay/latest-smoke route was removed from server/app.ts
+    // (dead route — commit 1e57ec8) but the handler module is preserved.
+    assert.doesNotMatch(APP_SRC, /\/api\/roleplay\/latest-smoke/);
+    assert.match(ROLEPLAY_ROUTE, /export async function handleLatestSmoke/);
     // Handler must re-assert all three posture fields on the wire.
     assert.match(ROLEPLAY_ROUTE, /experimental:\s*parsed\.experimental\s*!==\s*false/);
     assert.match(ROLEPLAY_ROUTE, /affectsLeaderboard:\s*parsed\.affectsLeaderboard\s*===\s*true/);

@@ -247,9 +247,12 @@ describe("Roleplay Phase 8 · drift scoring calibration (offline)", () => {
     assert.match(JUDGE_SRC, /classifyRoleplayRefusalIntent/);          // Phase 6
     assert.match(JUDGE_SRC, /classifyPersonaVoice/);                  // Phase 8
     assert.match(JUDGE_SRC, /scoreRoleplayContinuityFactMatch/);      // Phase 1
-    // Vision Phase-7 route still mounted in the server.
+    // Vision Phase-7 route still mounted in the server; the roleplay
+    // route was removed from app.ts (dead route — commit 1e57ec8) but its
+    // handler module is preserved.
     const appSrc = readFileSync(join(ROOT, "server", "app.ts"), "utf-8");
     assert.match(appSrc, /\/api\/vision\/latest-smoke/);
-    assert.match(appSrc, /\/api\/roleplay\/latest-smoke/);
+    assert.doesNotMatch(appSrc, /\/api\/roleplay\/latest-smoke/);
+    assert.match(readFileSync(join(ROOT, "server", "routes", "roleplay.ts"), "utf-8"), /export async function handleLatestSmoke/);
   });
 });

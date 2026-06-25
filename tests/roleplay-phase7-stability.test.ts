@@ -143,7 +143,10 @@ describe("Roleplay Phase 7 · stability profile (offline)", () => {
 
   it("RPP7-P12 · Vision Phase-7 route + Vision UI panel unchanged by Phase 7", () => {
     assert.match(APP_SRC, /\/api\/vision\/latest-smoke/);
-    assert.match(APP_SRC, /\/api\/roleplay\/latest-smoke/);
+    // Roleplay route removed from app.ts (dead route — commit 1e57ec8);
+    // its handler module is preserved.
+    assert.doesNotMatch(APP_SRC, /\/api\/roleplay\/latest-smoke/);
+    assert.match(readFileSync(join(ROOT, "server", "routes", "roleplay.ts"), "utf-8"), /export async function handleLatestSmoke/);
     assert.match(HTML, /function renderVisionLanePanel/);
     assert.match(HTML, /VISION_TESTED_ROUTES/);
     assert.match(HTML, /modelId:'xiaomi\/mimo-v2-omni'/);
