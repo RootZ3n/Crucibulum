@@ -22,6 +22,7 @@ import type {
 } from "./base.js";
 import { Observer } from "../core/observer.js";
 import { makeEmptyResponseError, makeHttpProviderError, makeInvalidResponseError, makeProviderFailureError, normalizeProviderError, providerErrorSummary, providerErrorDetail } from "../core/provider-errors.js";
+import { withProviderRetries } from "../core/retry.js";
 import { log } from "../utils/logger.js";
 
 const GOOGLE_BASE = "https://generativelanguage.googleapis.com/v1beta";
@@ -40,6 +41,7 @@ export class GoogleAdapter implements CrucibulumAdapter {
 
   private model: string = "gemini-2.0-flash";
   private apiKey: string = "";
+  private retries = 3;
 
   supports(_family: "poison" | "spec" | "orchestration"): boolean {
     return true;
@@ -72,12 +74,13 @@ export class GoogleAdapter implements CrucibulumAdapter {
         });
       }
     }
-    const result = await callGoogle(this.apiKey, this.model, systemParts.join("\n\n"), contents, options);
+    const result = await callGoogle(this.apiKey, this.model, systemParts.join("\n\n"), contents, options, { timeoutMs: MODEL_TIMEOUT_MS, retries: this.retries });
     return {
       text: result.text,
       tokens_in: result.tokensIn,
       tokens_out: result.tokensOut,
       duration_ms: Date.now() - start,
+      provider_attempts: result.attempts,
     };
   }
 
@@ -86,6 +89,7 @@ export class GoogleAdapter implements CrucibulumAdapter {
     if (c.model) this.model = c.model;
     // Per-run inline key first, then env. No process.env mutation. (Audit H3.)
     this.apiKey = c.api_key || process.env["GOOGLE_AI_API_KEY"] || "";
+    if (typeof c.retries === "number" && c.retries >= 0) this.retries = Math.floor(c.retries);
   }
 
   async healthCheck() {
@@ -145,7 +149,16 @@ export class GoogleAdapter implements CrucibulumAdapter {
 
       let response: string;
       try {
-        const result = await callGoogle(this.apiKey, this.model, systemPrompt, contents);
+        const result = await callGoogle(this.apiKey, this.model, systemPrompt, contents, undefined, { timeoutMs: MODEL_TIMEOUT_MS, retries: this.retries });
+        for (const attempt of result.attempts) {
+          observer.record({
+            type: "provider_attempt",
+            attempt: attempt.attempt,
+            detail: attempt.error_type ? `${attempt.error_type}: ${attempt.retry_decision}` : "success",
+            provider_error: attempt.provider_error,
+            retry_decision: attempt.retry_decision,
+          });
+        }
         response = result.text;
         totalTokensIn += result.tokensIn;
         totalTokensOut += result.tokensOut;
@@ -210,53 +223,63 @@ async function callGoogle(
   systemInstruction: string,
   contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }>,
   options?: ChatOptions,
-): Promise<{ text: string; tokensIn: number; tokensOut: number }> {
+  retryOptions?: { timeoutMs: number; retries: number },
+): Promise<{ text: string; tokensIn: number; tokensOut: number; attempts: NonNullable<ChatResult["provider_attempts"]> }> {
   const generationConfig = buildGoogleGenerationConfig(options);
-  const res = await fetch(
-    `${GOOGLE_BASE}/models/${encodeURIComponent(model)}:generateContent`,
-    {
-      method: "POST",
-      // Key in the header, not the query string. (Audit H2/L6.)
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemInstruction }] },
-        contents,
-        generationConfig,
-      }),
-      signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
-    },
-  );
+  const attempts: NonNullable<ChatResult["provider_attempts"]> = [];
 
-  if (!res.ok) {
-    throw makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "google", adapter: "google" });
-  }
+  const retryResult = await withProviderRetries(async (attempt) => {
+    const res = await fetch(
+      `${GOOGLE_BASE}/models/${encodeURIComponent(model)}:generateContent`,
+      {
+        method: "POST",
+        // Key in the header, not the query string. (Audit H2/L6.)
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemInstruction }] },
+          contents,
+          generationConfig,
+        }),
+        signal: AbortSignal.timeout(retryOptions?.timeoutMs ?? MODEL_TIMEOUT_MS),
+      },
+    );
 
-  const rawBody = await res.text();
-  let data: {
-    candidates?: Array<{
-      content?: { parts?: Array<{ text?: string }> };
-    }>;
-    usageMetadata?: {
-      promptTokenCount?: number;
-      candidatesTokenCount?: number;
+    if (!res.ok) {
+      throw makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "google", adapter: "google", attempt });
+    }
+
+    const rawBody = await res.text();
+    let data: {
+      candidates?: Array<{
+        content?: { parts?: Array<{ text?: string }> };
+      }>;
+      usageMetadata?: {
+        promptTokenCount?: number;
+        candidatesTokenCount?: number;
+      };
     };
-  };
-  try {
-    data = JSON.parse(rawBody) as typeof data;
-  } catch {
-    throw makeInvalidResponseError({ provider: "google", adapter: "google" }, `Google AI returned non-JSON body: ${rawBody.slice(0, 400)}`);
-  }
+    try {
+      data = JSON.parse(rawBody) as typeof data;
+    } catch {
+      throw makeInvalidResponseError({ provider: "google", adapter: "google", attempt }, `Google AI returned non-JSON body: ${rawBody.slice(0, 400)}`);
+    }
 
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-  if (!text.trim()) {
-    throw makeEmptyResponseError({ provider: "google", adapter: "google" }, `Google AI returned empty response for model ${model}`);
-  }
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    if (!text.trim()) {
+      throw makeEmptyResponseError({ provider: "google", adapter: "google", attempt }, `Google AI returned empty response for model ${model}. Raw body: ${rawBody.slice(0, 400)}`);
+    }
 
-  return {
-    text,
-    tokensIn: data.usageMetadata?.promptTokenCount ?? 0,
-    tokensOut: data.usageMetadata?.candidatesTokenCount ?? 0,
-  };
+    return {
+      text,
+      tokensIn: data.usageMetadata?.promptTokenCount ?? 0,
+      tokensOut: data.usageMetadata?.candidatesTokenCount ?? 0,
+    };
+  }, { provider: "google", adapter: "google" }, {
+    retries: retryOptions?.retries ?? 3,
+    onAttempt: (record) => attempts.push(record),
+  });
+
+  return { ...retryResult.value, attempts };
 }
 
 export function buildGoogleGenerationConfig(options?: ChatOptions): Record<string, unknown> {

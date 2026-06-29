@@ -20,6 +20,7 @@ import type {
 } from "./base.js";
 import { Observer } from "../core/observer.js";
 import { makeEmptyResponseError, makeHttpProviderError, makeInvalidResponseError, makeProviderFailureError, normalizeProviderError, providerErrorSummary, providerErrorDetail } from "../core/provider-errors.js";
+import { withProviderRetries } from "../core/retry.js";
 import { log } from "../utils/logger.js";
 
 const ZAI_BASE = "https://open.bigmodel.cn/api/paas/v4";
@@ -38,6 +39,7 @@ export class ZAIAdapter implements CrucibulumAdapter {
 
   private model: string = "glm-4-plus";
   private apiKey: string = "";
+  private retries = 3;
 
   supports(_family: "poison" | "spec" | "orchestration"): boolean {
     return true;
@@ -54,12 +56,13 @@ export class ZAIAdapter implements CrucibulumAdapter {
   async chat(messages: ChatMessage[], _options?: ChatOptions): Promise<ChatResult> {
     if (!this.apiKey) throw new Error("Z.AI: ZAI_API_KEY not set");
     const start = Date.now();
-    const result = await callZAI(this.apiKey, this.model, messages);
+    const result = await callZAI(this.apiKey, this.model, messages, { timeoutMs: MODEL_TIMEOUT_MS, retries: this.retries });
     return {
       text: result.text,
       tokens_in: result.tokensIn,
       tokens_out: result.tokensOut,
       duration_ms: Date.now() - start,
+      provider_attempts: result.attempts,
     };
   }
 
@@ -68,6 +71,7 @@ export class ZAIAdapter implements CrucibulumAdapter {
     if (c.model) this.model = c.model;
     // Per-run inline key first, then env. No process.env mutation. (Audit H3.)
     this.apiKey = c.api_key || process.env["ZAI_API_KEY"] || "";
+    if (typeof c.retries === "number" && c.retries >= 0) this.retries = Math.floor(c.retries);
   }
 
   async healthCheck() {
@@ -123,7 +127,16 @@ export class ZAIAdapter implements CrucibulumAdapter {
 
       let response: string;
       try {
-        const result = await callZAI(this.apiKey, this.model, messages);
+        const result = await callZAI(this.apiKey, this.model, messages, { timeoutMs: MODEL_TIMEOUT_MS, retries: this.retries });
+        for (const attempt of result.attempts) {
+          observer.record({
+            type: "provider_attempt",
+            attempt: attempt.attempt,
+            detail: attempt.error_type ? `${attempt.error_type}: ${attempt.retry_decision}` : "success",
+            provider_error: attempt.provider_error,
+            retry_decision: attempt.retry_decision,
+          });
+        }
         response = result.text;
         totalTokensIn += result.tokensIn;
         totalTokensOut += result.tokensOut;
@@ -189,13 +202,11 @@ async function callZAI(
   // API and surface as FAIL_PROVIDER. ZAI adapters that need image
   // input must opt-in via a future imageTransport implementation.
   messages: Array<{ role: string; content: unknown }>,
-): Promise<{ text: string; tokensIn: number; tokensOut: number }> {
-  let lastError: Error | null = null;
-  for (let attempt = 0; attempt <= ZAI_MAX_RETRIES; attempt++) {
-    if (attempt > 0) {
-      log("warn", "zai",`Z.AI empty/failed response on attempt ${attempt}, retrying (${attempt}/${ZAI_MAX_RETRIES})…`);
-      await new Promise((r) => setTimeout(r, 1000 * attempt));
-    }
+  retryOptions?: { timeoutMs: number; retries: number },
+): Promise<{ text: string; tokensIn: number; tokensOut: number; attempts: NonNullable<ChatResult["provider_attempts"]> }> {
+  const attempts: NonNullable<ChatResult["provider_attempts"]> = [];
+
+  const retryResult = await withProviderRetries(async (attempt) => {
     const res = await fetch(`${ZAI_BASE}/chat/completions`, {
       method: "POST",
       headers: {
@@ -208,12 +219,11 @@ async function callZAI(
         max_tokens: 8192,
         temperature: 0.1,
       }),
-      signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
+      signal: AbortSignal.timeout(retryOptions?.timeoutMs ?? MODEL_TIMEOUT_MS),
     });
 
     if (!res.ok) {
-      lastError = makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "zai", adapter: "zai", attempt: attempt + 1 });
-      continue;
+      throw makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "zai", adapter: "zai", attempt });
     }
 
     const rawBody = await res.text();
@@ -224,20 +234,12 @@ async function callZAI(
     try {
       data = JSON.parse(rawBody) as typeof data;
     } catch {
-      lastError = makeInvalidResponseError({ provider: "zai", adapter: "zai", attempt: attempt + 1 }, `Z.AI returned non-JSON body: ${rawBody.slice(0, 400)}`);
-      continue;
+      throw makeInvalidResponseError({ provider: "zai", adapter: "zai", attempt }, `Z.AI returned non-JSON body: ${rawBody.slice(0, 400)}`);
     }
 
     const text = data.choices?.[0]?.message?.content ?? "";
-    if (!text && attempt < ZAI_MAX_RETRIES) {
-      log("warn", "zai",`Z.AI returned empty content for model ${model}, will retry`);
-      lastError = makeEmptyResponseError({ provider: "zai", adapter: "zai", attempt: attempt + 1 }, `Z.AI returned empty response for model ${model}`);
-      continue;
-    }
-    if (!text) {
-      log("warn", "zai",`Z.AI returned empty content for model ${model} after ${ZAI_MAX_RETRIES + 1} attempts`);
-      lastError = makeEmptyResponseError({ provider: "zai", adapter: "zai", attempt: attempt + 1 }, `Z.AI returned empty response for model ${model}`);
-      continue;
+    if (!text.trim()) {
+      throw makeEmptyResponseError({ provider: "zai", adapter: "zai", attempt }, `Z.AI returned empty response for model ${model}. Raw body: ${rawBody.slice(0, 400)}`);
     }
 
     return {
@@ -245,8 +247,12 @@ async function callZAI(
       tokensIn: data.usage?.prompt_tokens ?? 0,
       tokensOut: data.usage?.completion_tokens ?? 0,
     };
-  }
-  throw lastError ?? makeEmptyResponseError({ provider: "zai", adapter: "zai", attempt: ZAI_MAX_RETRIES + 1 }, `Z.AI call failed after ${ZAI_MAX_RETRIES + 1} attempts`);
+  }, { provider: "zai", adapter: "zai" }, {
+    retries: retryOptions?.retries ?? 3,
+    onAttempt: (record) => attempts.push(record),
+  });
+
+  return { ...retryResult.value, attempts };
 }
 
 // ── Shared agentic loop infrastructure ─────────────────────────────────────

@@ -20,6 +20,7 @@ import type {
 } from "./base.js";
 import { Observer } from "../core/observer.js";
 import { makeEmptyResponseError, makeHttpProviderError, makeInvalidResponseError, makeProviderFailureError, normalizeProviderError, providerErrorSummary, providerErrorDetail } from "../core/provider-errors.js";
+import { withProviderRetries } from "../core/retry.js";
 import { log } from "../utils/logger.js";
 
 const ANTHROPIC_BASE = "https://api.anthropic.com/v1";
@@ -38,6 +39,7 @@ export class AnthropicAdapter implements CrucibulumAdapter {
 
   private model: string = "claude-sonnet-4-6";
   private apiKey: string = "";
+  private retries = 3;
 
   supports(_family: "poison" | "spec" | "orchestration"): boolean {
     return true;
@@ -67,12 +69,13 @@ export class AnthropicAdapter implements CrucibulumAdapter {
       if (m.role === "system") systemParts.push(asText(m.content));
       else convo.push({ role: m.role, content: asText(m.content) });
     }
-    const result = await callAnthropic(this.apiKey, this.model, systemParts.join("\n\n"), convo);
+    const result = await callAnthropic(this.apiKey, this.model, systemParts.join("\n\n"), convo, { timeoutMs: MODEL_TIMEOUT_MS, retries: this.retries });
     return {
       text: result.text,
       tokens_in: result.tokensIn,
       tokens_out: result.tokensOut,
       duration_ms: Date.now() - start,
+      provider_attempts: result.attempts,
     };
   }
 
@@ -81,6 +84,7 @@ export class AnthropicAdapter implements CrucibulumAdapter {
     if (c.model) this.model = c.model;
     // Per-run inline key first, then env. No process.env mutation. (Audit H3.)
     this.apiKey = c.api_key || process.env["ANTHROPIC_API_KEY"] || "";
+    if (typeof c.retries === "number" && c.retries >= 0) this.retries = Math.floor(c.retries);
   }
 
   async healthCheck() {
@@ -153,7 +157,16 @@ export class AnthropicAdapter implements CrucibulumAdapter {
 
       let response: string;
       try {
-        const result = await callAnthropic(this.apiKey, this.model, systemPrompt, messages);
+        const result = await callAnthropic(this.apiKey, this.model, systemPrompt, messages, { timeoutMs: MODEL_TIMEOUT_MS, retries: this.retries });
+        for (const attempt of result.attempts) {
+          observer.record({
+            type: "provider_attempt",
+            attempt: attempt.attempt,
+            detail: attempt.error_type ? `${attempt.error_type}: ${attempt.retry_decision}` : "success",
+            provider_error: attempt.provider_error,
+            retry_decision: attempt.retry_decision,
+          });
+        }
         response = result.text;
         totalTokensIn += result.tokensIn;
         totalTokensOut += result.tokensOut;
@@ -244,48 +257,58 @@ async function callAnthropic(
   model: string,
   system: string,
   messages: Array<{ role: string; content: string }>,
-): Promise<{ text: string; tokensIn: number; tokensOut: number }> {
-  const res = await fetch(`${ANTHROPIC_BASE}/messages`, {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 8192,
-      system,
-      messages,
-    }),
-    signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
+  retryOptions?: { timeoutMs: number; retries: number },
+): Promise<{ text: string; tokensIn: number; tokensOut: number; attempts: NonNullable<ChatResult["provider_attempts"]> }> {
+  const attempts: NonNullable<ChatResult["provider_attempts"]> = [];
+
+  const retryResult = await withProviderRetries(async (attempt) => {
+    const res = await fetch(`${ANTHROPIC_BASE}/messages`, {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 8192,
+        system,
+        messages,
+      }),
+      signal: AbortSignal.timeout(retryOptions?.timeoutMs ?? MODEL_TIMEOUT_MS),
+    });
+
+    if (!res.ok) {
+      throw makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "anthropic", adapter: "anthropic", attempt });
+    }
+
+    const rawBody = await res.text();
+    let data: {
+      content?: Array<{ type: string; text?: string }>;
+      usage?: { input_tokens?: number; output_tokens?: number };
+    };
+    try {
+      data = JSON.parse(rawBody) as typeof data;
+    } catch {
+      throw makeInvalidResponseError({ provider: "anthropic", adapter: "anthropic", attempt }, `Anthropic returned non-JSON body: ${rawBody.slice(0, 400)}`);
+    }
+
+    const text = data.content?.find(b => b.type === "text")?.text ?? "";
+    if (!text.trim()) {
+      throw makeEmptyResponseError({ provider: "anthropic", adapter: "anthropic", attempt }, `Anthropic returned empty response for model ${model}. Raw body: ${rawBody.slice(0, 400)}`);
+    }
+
+    return {
+      text,
+      tokensIn: data.usage?.input_tokens ?? 0,
+      tokensOut: data.usage?.output_tokens ?? 0,
+    };
+  }, { provider: "anthropic", adapter: "anthropic" }, {
+    retries: retryOptions?.retries ?? 3,
+    onAttempt: (record) => attempts.push(record),
   });
 
-  if (!res.ok) {
-    throw makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "anthropic", adapter: "anthropic" });
-  }
-
-  const rawBody = await res.text();
-  let data: {
-    content?: Array<{ type: string; text?: string }>;
-    usage?: { input_tokens?: number; output_tokens?: number };
-  };
-  try {
-    data = JSON.parse(rawBody) as typeof data;
-  } catch {
-    throw makeInvalidResponseError({ provider: "anthropic", adapter: "anthropic" }, `Anthropic returned non-JSON body: ${rawBody.slice(0, 400)}`);
-  }
-
-  const text = data.content?.find(b => b.type === "text")?.text ?? "";
-  if (!text.trim()) {
-    throw makeEmptyResponseError({ provider: "anthropic", adapter: "anthropic" }, `Anthropic returned empty response for model ${model}`);
-  }
-
-  return {
-    text,
-    tokensIn: data.usage?.input_tokens ?? 0,
-    tokensOut: data.usage?.output_tokens ?? 0,
-  };
+  return { ...retryResult.value, attempts };
 }
 
 // ── Shared agentic loop infrastructure ─────────────────────────────────────

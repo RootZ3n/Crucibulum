@@ -323,7 +323,8 @@ const state={
     // Peh-as-guide: when a hotspot is clicked Peh "speaks" — a contextual
     // speech bubble appears at the hotspot and the medallion glides there.
     pehBubble:null,  // {text, x, y, anchor, variant, hotspotId, phase} — active bubble
-    pehPosition:null // {x, y} — current Peh medallion position (for the glide)
+    pehPosition:null, // {x, y} — current Peh medallion position (for the glide)
+    pehPopUp:null      // {x, y} — Peh mascot pop-up at clicked hotspot
   },
   tasks:[],
   adapters:[],
@@ -6268,13 +6269,13 @@ const SCENE_REGISTRY={
       // x/y seat each pin into the painted ring "socket" on the speedway map
       // comp (assets/luak-vintage-racing-map.png) — compromise % that read on
       // both the landscape and portrait comps, since one registry drives both.
-      {id:'sp-overview', label:'Dashboard',         x:51, y:46, workspace:'speedway-overview', scene:'speedway',     greeting:"Welcome to the Speedway! This is where we keep an eye on everything at a glance."},
-      {id:'sp-track',    label:'The Racetrack',     x:20, y:73, workspace:'benchmark-runs',     scene:'racetrack',    greeting:"Right this way — the track's where models get put through their paces!"},
-      {id:'sp-stand',    label:'The Grandstand',    x:52, y:26, workspace:'grandstand-results', scene:'grandstand',   greeting:"Take a seat up here — best view in the house for the results."},
-      {id:'sp-tower',    label:'The Timing Tower',  x:20, y:39, workspace:'timing-metrics',     scene:'timing-tower', greeting:"Up in the tower, we measure every tenth of a second. Precision wins races."},
-      {id:'sp-pit',      label:'The Pit Lane',      x:83, y:44, workspace:'pit-lane-config',    scene:'pit-lane',     greeting:"The pit's where we tune the machine. Every adjustment counts."},
-      {id:'sp-victory',  label:'The Victory Circle',x:49, y:75, workspace:'victory-achievements',scene:'victory-circle',greeting:"This is what it's all about. Every win, every record — right here."},
-      {id:'sp-shop',     label:'The Workshop',      x:82, y:75, workspace:'workshop-diagnostics',scene:'workshop',    greeting:"My workshop. Tools, diagnostics, and a lot of elbow grease."}
+      {id:'sp-overview', label:'Dashboard',         x:17,  y:24,  workspace:'speedway-overview', scene:'speedway',     greeting:"Welcome to the Speedway! This is where we keep an eye on everything at a glance."},
+      {id:'sp-track',    label:'The Racetrack',     x:50.3,y:24,  workspace:'benchmark-runs',     scene:'racetrack',    greeting:"Right this way — the track's where models get put through their paces!"},
+      {id:'sp-stand',    label:'The Grandstand',    x:83.7,y:24,  workspace:'grandstand-results', scene:'grandstand',   greeting:"Take a seat up here — best view in the house for the results."},
+      {id:'sp-tower',    label:'The Timing Tower',  x:17,  y:71.5,workspace:'timing-metrics',     scene:'timing-tower', greeting:"Up in the tower, we measure every tenth of a second. Precision wins races."},
+      {id:'sp-pit',      label:'The Pit Lane',      x:50.3,y:71.5,workspace:'pit-lane-config',    scene:'pit-lane',     greeting:"The pit's where we tune the machine. Every adjustment counts."},
+      {id:'sp-victory',  label:'The Victory Circle',x:83.7,y:71.5,workspace:'victory-achievements',scene:'victory-circle',greeting:"This is what it's all about. Every win, every record — right here."},
+      {id:'sp-shop',     label:'The Workshop',      x:50.25,y:95.5,workspace:'workshop-diagnostics',scene:'workshop',    greeting:"My workshop. Tools, diagnostics, and a lot of elbow grease."}
     ]},
     {id:'racetrack', title:'The Racetrack', purpose:'Active benchmarks', route:'/racetrack',
      desc:'Where the cars race. Push a model hard and watch it run, lap after lap, under load.', peh:'gauge',
@@ -6352,13 +6353,13 @@ const WORKSPACE_REGISTRY={
   //    its page all agree. kind:'lane' wraps a real functional lane;
   //    kind:'placeholder' is an atmospheric stub that still reaches a live
   //    console via relatedTab. ──
-  'speedway-overview':   {product:'luak', title:'Dashboard',          kind:'lane', tab:'dashboard',  route:'/dashboard',    dock:'fullscreen', peh:'flag'},
-  'benchmark-runs':      {product:'luak', title:'Active Benchmarks',  kind:'lane', tab:'benchmark',  route:'/racetrack',    dock:'right',      peh:'gauge'},
-  'grandstand-results':  {product:'luak', title:'Results & Rankings', kind:'lane', tab:'dashboard',  route:'/results',      dock:'right',      peh:'trophy'},
-  'timing-metrics':      {product:'luak', title:'Performance Metrics',kind:'placeholder', route:'/metrics',  dock:'bottom', peh:'gauge',  relatedTab:'benchmark', blurb:'Lap times, throughput, and tokens-per-second land here when the timing pipeline ships.'},
-  'pit-lane-config':     {product:'luak', title:'Configuration & Tuning', kind:'lane', tab:'providers', route:'/config',     dock:'right',      peh:'wrench'},
-  'victory-achievements':{product:'luak', title:'Achievements',       kind:'placeholder', route:'/achievements', dock:'right', peh:'trophy', relatedTab:'dashboard', blurb:'Milestones and records that held up under trial are tracked here.'},
-  'workshop-diagnostics':{product:'luak', title:'Tools & Diagnostics',kind:'placeholder', route:'/diagnostics', dock:'bottom', peh:'wrench', relatedTab:'providers', blurb:'System health, diagnostics, and the mechanic’s toolbox for the fleet.'},
+  'speedway-overview':   {product:'luak', title:'Dashboard',          kind:'lane', tab:'dashboard',  route:'/dashboard',    dock:'fullscreen', peh:'flag',       gx:0.5,  gy:0.5,  gw:33, gh:47},
+  'benchmark-runs':      {product:'luak', title:'Active Benchmarks',  kind:'lane', tab:'benchmark',  route:'/racetrack',    dock:'right',      peh:'gauge',      gx:33.8, gy:0.5,  gw:33, gh:47},
+  'grandstand-results':  {product:'luak', title:'Results & Rankings', kind:'lane', tab:'dashboard',  route:'/results',      dock:'right',      peh:'trophy',     gx:67.2, gy:0.5,  gw:33, gh:47},
+  'timing-metrics':      {product:'luak', title:'Performance Metrics',kind:'placeholder', route:'/metrics',  dock:'bottom', peh:'gauge',  relatedTab:'benchmark', blurb:'Lap times, throughput, and tokens-per-second land here when the timing pipeline ships.', gx:0.5,  gy:48,   gw:33, gh:47},
+  'pit-lane-config':     {product:'luak', title:'Configuration & Tuning', kind:'lane', tab:'providers', route:'/config',     dock:'right',      peh:'wrench',     gx:33.8, gy:48,   gw:33, gh:47},
+  'victory-achievements':{product:'luak', title:'Achievements',       kind:'placeholder', route:'/achievements', dock:'right', peh:'trophy', relatedTab:'dashboard', blurb:'Milestones and records that held up under trial are tracked here.', gx:67.2, gy:48,   gw:33, gh:47},
+  'workshop-diagnostics':{product:'luak', title:'Tools & Diagnostics',kind:'placeholder', route:'/diagnostics', dock:'bottom', peh:'wrench', relatedTab:'providers', blurb:'System health, diagnostics, and the mechanic\'s toolbox for the fleet.', gx:0.5, gy:91.5, gw:99.5, gh:8},
   // ── Howa (product:'howa') ──
   'stress-tests':        {product:'howa', title:'Stress Tests',       kind:'lane', tab:'safety', dock:'right',      peh:'shield'},
   'adversarial-trials':  {product:'howa', title:'Adversarial Trials', kind:'lane', tab:'poison', dock:'right',      peh:'bug'},
@@ -6369,6 +6370,78 @@ const WORKSPACE_REGISTRY={
   //    product is active; it shows that runtime's own classic deck). ──
   'console':             {product:null, title:'Full Console', kind:'deck', dock:'fullscreen', peh:'orbit'}
 };
+
+// ════════════════════════════════════════════════════════════════════════
+// TRANSFORMING DASHBOARD PANEL SYSTEM  ·  reusable ecosystem template
+// ────────────────────────────────────────────────────────────────────────
+// A "Voltron / pop-up book" panel system. Every hotspot panel renders in one
+// of three modes through a single shell (renderTransformingPanel):
+//   • solo      — one rich panel pops up NEAR its hotspot (at-a-glance, no
+//                 internal scroll for normal use). The map stays the hero.
+//   • dashboard — ALL panels MERGE into one parent surface (DashboardSurface)
+//                 laid out by a saved preset. Tiles touch seamlessly, share
+//                 one frame, and show compact summaries (no per-tile scroll).
+//   • detail    — a single panel expanded full-screen; scrollable.
+//
+// Three data layers make it reusable across products (Howa, Kokuli, Toba …):
+//   PANEL_META     — per-panel template metadata (role, priority, solo size).
+//                    This is the "panelRegistry"; it augments WORKSPACE_REGISTRY
+//                    (the single source of title/icon/route/grid) rather than
+//                    forking it. To onboard a product, add its panels here.
+//   LAYOUT_PRESETS — per-product merged-dashboard presets ("layoutPresets"):
+//                    a CSS grid (areas + tracks) + a panelId→area slot map.
+//                    Dashboard mode = "activate this preset", NOT "open all
+//                    windows". Add one entry per product to get its own wall.
+//   PANEL_CONTENT  — per-panel renderSolo()/renderDashboard()/renderDetail().
+//                    dashboard() MUST summarise (metrics/badges/meters/buttons)
+//                    so a tile never needs its own scrollbar.
+// ════════════════════════════════════════════════════════════════════════
+
+// Per-panel template metadata. `solo` is the solo-mode window size (the panel
+// is positioned at its hotspot); `role` themes the dashboard tile and maps to
+// a race-control region; `priority` orders tiles when a preset is absent.
+const PANEL_META={
+  'speedway-overview':   {role:'status',      priority:1, solo:{w:'min(560px,52vw)', h:'70%'}},
+  'benchmark-runs':      {role:'benchmark',   priority:2, solo:{w:'min(480px,46vw)', h:'64%'}},
+  'grandstand-results':  {role:'results',     priority:3, solo:{w:'min(540px,50vw)', h:'68%'}},
+  'timing-metrics':      {role:'metrics',     priority:4, solo:{w:'min(460px,44vw)', h:'58%'}},
+  'pit-lane-config':     {role:'config',      priority:5, solo:{w:'min(500px,46vw)', h:'64%'}},
+  'victory-achievements':{role:'achievements',priority:6, solo:{w:'min(460px,44vw)', h:'54%'}},
+  'workshop-diagnostics':{role:'diagnostics', priority:7, solo:{w:'min(480px,46vw)', h:'54%'}}
+};
+function pehPanelMeta(defId){return PANEL_META[defId]||{}}
+
+// Per-product dashboard presets. Each preset is ONE CSS grid that the merged
+// DashboardSurface paints; `slots` assigns each panel (by WORKSPACE_REGISTRY
+// id) to a named grid area. Luak's wall is a race-control cockpit:
+//   ┌─────────── status (top strip) ───────────┐
+//   │ benchmark │      results       │ config   │
+//   │ metrics   │   (live + ranks)   │ diagnost.│
+//   └────────── achievements (bottom) ──────────┘
+const LAYOUT_PRESETS={
+  luak:{
+    id:'race-control',
+    label:'Race Control',
+    columns:'minmax(0,1fr) minmax(0,1.6fr) minmax(0,1fr)',
+    rows:'auto minmax(0,1fr) minmax(0,1fr) auto',
+    areas:[
+      '"status status status"',
+      '"benchmark results config"',
+      '"metrics results diagnostics"',
+      '"achievements achievements achievements"'
+    ].join(' '),
+    slots:{
+      'speedway-overview':   'status',
+      'benchmark-runs':      'benchmark',
+      'timing-metrics':      'metrics',
+      'grandstand-results':  'results',
+      'pit-lane-config':     'config',
+      'workshop-diagnostics':'diagnostics',
+      'victory-achievements':'achievements'
+    }
+  }
+};
+function pehLayoutPreset(productId){return LAYOUT_PRESETS[productId]||null}
 
 // ── Registry lookups ───────────────────────────────────────────────────
 function pehProduct(id){return PRODUCT_REGISTRY.find((p)=>p.id===id)||null}
@@ -6469,34 +6542,12 @@ function pehDevSwitchProduct(productId){
 function pehSetMode(mode){
   if(mode!=='immersive'&&mode!=='dashboard')return;
   state.pehverse.mode=mode;
-  if(mode==='immersive'){
-    // Return to scene-first view: close all workspaces.
-    state.pehverse.workspaces=[];
-    state.pehverse.focus=null;
-  }
-  if(mode==='dashboard'){
-    // POP-UP BOOK: opening dashboard opens ALL workspaces for this product
-    // at their predetermined positions. Each window has a fixed "home" slot.
-    const productId=pehActiveProductId();
-    const allDefs=Object.entries(WORKSPACE_REGISTRY)
-      .filter(([id,def])=>(def.product===productId||def.product===null)&&def.kind!=='deck')
-      .map(([id,def])=>({id,def}));
-    // Only open workspaces that aren't already open
-    const existing=new Set(state.pehverse.workspaces.map((w)=>w.defId));
-    for(const {id,def} of allDefs){
-      if(!existing.has(id)){
-        state.pehverse.workspaces.push({
-          uid:'ws'+(++state.pehverse.wsSeq),
-          defId:id,
-          dock:def.dock||'right',
-          min:false
-        });
-      }
-    }
-    // Focus the dashboard/overview if it exists
-    const overview=state.pehverse.workspaces.find((w)=>w.defId==='speedway-overview');
-    if(overview)pehFocusWorkspace(overview.uid,false);
-  }
+  // Dashboard is NOT "open all windows": it is a single merged surface
+  // (renderDashboardSurface) driven by the product's LAYOUT_PRESET. Immersive
+  // returns to the map. Both modes start from a clean slate — no per-hotspot
+  // windows survive the switch — so each mode renders its own canonical view.
+  state.pehverse.workspaces=[];
+  state.pehverse.focus=null;
   localStorage.setItem('pehverse-mode',mode);
   render();
 }
@@ -6518,11 +6569,35 @@ function pehOpenWorkspace(defId,opts){
   }
   let ws=state.pehverse.workspaces.find((w)=>w.defId===defId); // de-dupe
   if(!ws){
+    // Use predetermined grid position from registry if available
+    var gx=def.gx!=null?def.gx:null;
+    var gy=def.gy!=null?def.gy:null;
     ws={uid:'ws'+(++state.pehverse.wsSeq),defId,dock:(opts&&opts.dock)||def.dock||'right',min:false};
+    if(gx!=null)ws.x=gx;
+    if(gy!=null)ws.y=gy;
     state.pehverse.workspaces.push(ws);
   }
   ws.min=false;
   pehFocusWorkspace(ws.uid,true);
+  render();
+}
+// Open a workspace window positioned at a specific map location (x/y %).
+// Called when a hotspot pin is clicked. Deduplicates — if the workspace is
+// already open, just focuses it (doesn't move it back to the hotspot).
+function pehOpenWorkspaceAt(defId,x,y){
+  const def=pehWorkspaceDef(defId); if(!def)return;
+  if(!pehWorkspaceBelongsToActive(def))return;
+  let ws=state.pehverse.workspaces.find((w)=>w.defId===defId);
+  if(ws){pehFocusWorkspace(ws.uid);return}
+  // SOLO placement: anchor the panel at its HOTSPOT (x,y) so it pops up next
+  // to where Peh appears. (Dashboard tiling no longer flows through here — it
+  // is the merged surface — so the hotspot point wins; gx/gy is a last resort
+  // for programmatic opens that pass no coordinates.)
+  var sx=x!=null?x:(def.gx!=null?def.gx:50);
+  var sy=y!=null?y:(def.gy!=null?def.gy:50);
+  ws={uid:'ws'+(++state.pehverse.wsSeq),defId,x:sx,y:sy,min:false};
+  state.pehverse.workspaces.push(ws);
+  state.pehverse.focus=ws.uid;
   render();
 }
 // ── Peh-as-guide: contextual speech bubble ─────────────────────────────
@@ -6602,12 +6677,10 @@ function pehHotspot(defId,sceneId){
 function pehHotspotActivate(sceneId,hotspotId){
   const scene=pehScene(pehActiveProductId(),sceneId);
   const hotspot=scene&&scene.hotspots?scene.hotspots.find((h)=>h.id===hotspotId):null;
-  if(hotspot)pehSayGreeting(hotspot,scene);
-  setTimeout(()=>{
-    if(!hotspot)return;
-    if(hotspot.workspace)pehHotspot(hotspot.workspace,hotspot.scene);
-    else if(hotspot.scene)pehSetScene(hotspot.scene);
-  },300);
+  if(!hotspot||!hotspot.workspace)return;
+  // Peh pops up at the hotspot location
+  state.pehverse.pehPopUp={x:hotspot.x,y:hotspot.y};
+  pehOpenWorkspaceAt(hotspot.workspace,hotspot.x,hotspot.y);
 }
 function pehFocusWorkspace(uid,skipRender){
   const ws=state.pehverse.workspaces.find((w)=>w.uid===uid);
@@ -6641,6 +6714,13 @@ function pehMinimizeWorkspace(uid){
 function pehCloseAllWorkspaces(){
   state.pehverse.workspaces=[]; state.pehverse.focus=null; render();
 }
+// Dashboard: open ALL workspace windows at their hotspot positions.
+// Called by the Dashboard button in the top bar. Opens each speedway
+// workspace at its map pin position — the pop-up book view.
+// The Dashboard button activates the merged race-control surface — a saved
+// layout preset inside ONE parent surface — rather than opening every panel
+// as its own window. (renderDashboardSurface paints LAYOUT_PRESETS[product].)
+function pehOpenAllDashboard(){pehSetMode('dashboard');}
 // Persistent "back to the map" affordance — especially important on mobile,
 // where a workspace opens as a full-screen sheet over the world map. Closes
 // the focused workspace (revealing the scene/map underneath) and ensures we
@@ -6750,7 +6830,13 @@ function renderPehGuide(product){
 function renderPehverse(deckMarkup){
   const pv=state.pehverse;
   const product=pehActiveProduct();
-  const scene=pehCurrentScene();
+  let scene=pehCurrentScene();
+  // Luak's world map is a SINGLE speedway hub: the painted art carries all
+  // seven location "sockets", so the immersive map ALWAYS presents the hub and
+  // its 7 hotspots. Sub-locations open as panels — they are not separate maps.
+  // (Without this, a stale persisted sub-scene shows only its 1-2 hotspots over
+  // the 7-socket hub art.)
+  if(product.id==='luak')scene=pehScene('luak',product.defaultScene)||scene;
   const styleVars=`--peh-accent:${product.accent};--peh-accent2:${product.accent2||product.accent}`;
   return `<div class="peh-shell peh-mode-${pv.mode} peh-product-${product.id}" data-product="${product.id}" style="${styleVars}">
     ${renderPehTopBar(product,scene)}
@@ -6765,29 +6851,37 @@ function renderPehTopBar(product,scene){
   const dev=pehDevMode();
   return `<header class="peh-topbar">
     <div class="peh-brand"><span class="peh-brand-mark" title="Pehverse ecosystem">PEH</span><span class="peh-brand-word">${esc(product.displayName)}</span>${dev?'<span class="peh-dev-badge" title="Dev mode — product switcher enabled (hidden in release)">DEV</span>':''}</div>
-    <button class="peh-travel-btn" type="button" onclick="pehToggleFastTravel()" aria-haspopup="dialog" aria-expanded="${pv.fastTravel?'true':'false'}" title="Fast travel — areas in ${esc(product.displayName)} (Alt+T)">
-      <span class="peh-travel-glyph" aria-hidden="true">✦</span>
-      <span class="peh-here"><b>${esc(product.displayName)}</b><i>${esc(scene?scene.title:product.tagline)}</i></span>
-      <span class="peh-travel-cta">Fast travel</span>
-    </button>
-    <div class="peh-mode-toggle" role="group" aria-label="View mode (Alt+M to toggle)">
-      <button type="button" class="${pv.mode==='immersive'?'active':''}" aria-pressed="${pv.mode==='immersive'}" onclick="pehSetMode('immersive')">Immersive</button>
-      <button type="button" class="${pv.mode==='dashboard'?'active':''}" aria-pressed="${pv.mode==='dashboard'}" onclick="pehSetMode('dashboard')">Dashboard</button>
-    </div>
+    <span class="peh-here"><b>${esc(product.displayName)}</b><i>${esc(scene?scene.title:product.tagline)}</i></span>
+    <button class="peh-dashboard-btn" type="button" title="Open all workspace windows" aria-label="Open all workspace windows" onclick="pehOpenAllDashboard()">Dashboard</button>
     <button class="peh-help-btn" type="button" title="Help — replay the guided tour" aria-label="Help — replay the guided tour" onclick="pehReplayTour()">?</button>
   </header>`;
 }
 
+// Two canonical views, one stage. Dashboard mode hands off to the merged
+// race-control surface (DashboardSurface); immersive mode is the map with
+// solo panels popping up at their hotspots. The map renderer is unchanged so
+// the hotspot/Peh fantasy experience stays the core product experience.
 function renderPehStage(product,scene,deckMarkup){
-  return state.pehverse.mode==='dashboard'
-    ? renderPehDashboard(product,scene,deckMarkup)
-    : renderPehImmersive(product,scene,deckMarkup);
+  if(state.pehverse.mode==='dashboard')return renderDashboardSurface(product,scene,deckMarkup);
+  return renderPehMap(product,scene,deckMarkup);
 }
 
-// Immersive: scene-first. Background atmosphere + caption + hotspots, with
-// open workspaces docking over the scene (or as mobile bottom sheets). Only
-// the active product's scene/hotspots are ever shown.
-function renderPehImmersive(product,scene,deckMarkup){
+// Peh mascot pop-up — appears at the clicked hotspot with a bounce animation.
+// Shows Peh's vintage racer squirrel PNG. Stays until another hotspot is clicked.
+function renderPehPopUp(){
+  const pop=state.pehverse.pehPopUp;
+  if(!pop)return'';
+  const product=pehActiveProduct();
+  const src=(product&&product.mascotArt)||'assets/peh-vintage-racer-squirrel.png';
+  return `<div class="peh-popup" style="left:${pop.x}%;top:${pop.y}%">
+    <img class="peh-popup-img" src="${esc(src)}" alt="Peh">
+  </div>`;
+}
+
+// Map-first rendering: the speedway map is always visible, hotspots are
+// always clickable, and workspace windows open AT their hotspot positions.
+// No scene switching, no mode toggle — the map is the only view.
+function renderPehMap(product,scene,deckMarkup){
   return `<div class="peh-scene" data-scene="${scene?scene.id:''}">
     <div class="peh-scene-atmos" aria-hidden="true"></div>
     <div class="peh-scene-caption">
@@ -6795,29 +6889,269 @@ function renderPehImmersive(product,scene,deckMarkup){
       <h1 class="peh-scene-title">${esc(scene?scene.title:product.displayName)}</h1>
       <p class="peh-scene-desc">${esc(scene?scene.desc:product.blurb)}</p>
     </div>
-    ${renderPehSlot(scene)}
-    ${renderPehBubble()}
-    ${renderPehGuide(product)}
     ${renderHotspotLayer(scene)}
-    ${renderPehWaypoints(product,scene)}
-    ${renderWorkspaceOverlays(deckMarkup)}
+    ${renderWorkspaceWindows(deckMarkup)}
+    ${renderPehPopUp()}
   </div>`;
 }
 
-// Dashboard: workspace-first. Thin scene strip on top, open workspaces tile
-// in a grid. When nothing is open, show a chooser of THIS product's spaces.
-function renderPehDashboard(product,scene,deckMarkup){
+// ── Positioned workspace windows (map overlay) — SOLO mode ─────────────
+// Each open workspace renders as a rich, draggable panel pinned BESIDE its
+// hotspot on the map. Size comes from PANEL_META.solo; the panel flips to the
+// opposite side/edge of the hotspot so it never runs off the map. (Dashboard
+// tiling no longer flows through here — that is the merged surface.)
+function renderWorkspaceWindows(deckMarkup){
   const open=state.pehverse.workspaces;
-  const grid=open.length
-    ? open.map((w)=>renderWorkspaceTile(w,deckMarkup)).join('')
-    : pehWorkspaceChooser(product);
-  return `<div class="peh-dash">
-    <div class="peh-dash-head">
-      <div class="peh-dash-here">${scene&&scene.pehSlot?pehSlotMarkup(scene.pehSlot,{inline:true}):''}<span class="peh-scene-tag">${esc(product.displayName)}</span><h1>${esc(scene?scene.title:product.displayName)}</h1><p>${esc(scene?scene.desc:product.blurb)}</p></div>
-      ${renderPehWaypoints(product,scene)}
-    </div>
-    <div class="peh-grid ${open.length>1?'multi':''}">${grid}</div>
+  if(!open.length)return'';
+  return `<div class="peh-ws-windows">${open.map((w)=>{
+    const def=pehWorkspaceDef(w.defId)||{};
+    const meta=pehPanelMeta(w.defId);
+    const solo=meta.solo||{};
+    const x=w.x!=null?w.x:50;
+    const y=w.y!=null?w.y:50;
+    const focused=state.pehverse.focus===w.uid;
+    const z=focused?25:15;
+    // SOLO placement: anchor the panel to the stage edge/corner NEAREST its
+    // hotspot, with a hard size cap so it ALWAYS stays inside the map stage and
+    // can never slip under the top header or overflow the bottom. Dragged
+    // panels (w.moved) keep the spot the user dropped them at.
+    const wStyle=solo.w?`width:${solo.w}`:'width:min(460px,44vw)';
+    const hStyle=';max-height:calc(100% - 28px)';
+    let posStyle;
+    if(w.moved){
+      posStyle=`left:${x}%;top:${y}%`;
+    }else{
+      const hPos=x<50?'left:14px;right:auto':'right:14px;left:auto';
+      const vPos=y<50?'top:14px;bottom:auto':'bottom:14px;top:auto';
+      posStyle=`${hPos};${vPos}`;
+    }
+    return `<div class="peh-ws-window solo ${focused?'focused':''}" data-uid="${w.uid}" style="${posStyle};z-index:${z};${wStyle}${hStyle}" onmousedown="pehFocusWorkspace('${w.uid}')">
+      <div class="peh-ws-header" onmousedown="event.stopPropagation();pehDragStart(event,'${w.uid}')">
+        <span class="peh-ws-glyph">${pehGlyph(def.peh)}</span>
+        <span class="peh-ws-title">${esc(def.title||w.defId)}</span>
+        <button class="peh-ws-close" onclick="event.stopPropagation();pehCloseWorkspace('${w.uid}')">×</button>
+      </div>
+      <div class="peh-ws-body">${pehWorkspaceBody(w,deckMarkup)}</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ── Drag handling for workspace windows ─────────────────────────────────
+let __pehDrag=null;
+function pehDragStart(e,uid){
+  e.preventDefault();e.stopPropagation();
+  // Don't start drag when clicking the close button
+  if(e.target.closest('.peh-ws-close'))return;
+  const win=e.target.closest('.peh-ws-window');if(!win)return;
+  const scene=win.closest('.peh-scene');if(!scene)return;
+  // Skip render so the DOM node stays live for dragging
+  pehFocusWorkspace(uid,true);
+  __pehDrag={uid,win,scene,startMouseX:e.clientX,startMouseY:e.clientY,startWinX:win.offsetLeft,startWinY:win.offsetTop};
+  document.addEventListener('mousemove',pehDragMove);
+  document.addEventListener('mouseup',pehDragEnd);
+}
+function pehDragMove(e){
+  if(!__pehDrag)return;
+  const dx=e.clientX-__pehDrag.startMouseX;
+  const dy=e.clientY-__pehDrag.startMouseY;
+  __pehDrag.win.style.left=(__pehDrag.startWinX+dx)+'px';
+  __pehDrag.win.style.top=(__pehDrag.startWinY+dy)+'px';
+}
+function pehDragEnd(e){
+  if(!__pehDrag)return;
+  const ws=state.pehverse.workspaces.find((w)=>w.uid===__pehDrag.uid);
+  if(ws){
+    const sceneRect=__pehDrag.scene.getBoundingClientRect();
+    const winRect=__pehDrag.win.getBoundingClientRect();
+    ws.x=((winRect.left-sceneRect.left)/sceneRect.width)*100;
+    ws.y=((winRect.top-sceneRect.top)/sceneRect.height)*100;
+    ws.moved=true; // respect manual placement: drop the hotspot auto-flip
+  }
+  __pehDrag=null;
+  document.removeEventListener('mousemove',pehDragMove);
+  document.removeEventListener('mouseup',pehDragEnd);
+  render();
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// DashboardSurface + PanelShell + compact panel content  (see PANEL_META /
+// LAYOUT_PRESETS / PANEL_CONTENT above). This is the merged "Race Control"
+// wall that replaces the old "open all windows" behaviour.
+// ════════════════════════════════════════════════════════════════════════
+
+// ── Compact tile widgets — reuse the design-system classes so a merged tile
+//    reads as native cockpit instrumentation, never an embedded mini-app. ──
+function pehScoreCls(n){return n>=80?'teal':n>=55?'orange':'red';}
+function pehDashMeter(label,value,unit,pct,cls){
+  const w=Math.max(0,Math.min(100,Number(pct)||0));
+  return `<div class="vital pd-meter"><div class="v-label">${esc(label)}</div><div class="v-readout ${cls||''}">${esc(String(value))}${unit?`<span class="v-unit">${esc(unit)}</span>`:''}</div><div class="v-bar"><div class="v-fill ${cls||''}" style="width:${w}%"></div></div></div>`;
+}
+function pehDashStat(label,value,cls){
+  return `<div class="pd-stat"><span class="pd-stat-label">${esc(label)}</span><span class="pd-stat-value ${cls||''}">${esc(String(value))}</span></div>`;
+}
+function pehDashEmpty(msg){return `<div class="pd-empty">${esc(msg||'No signal yet')}</div>`;}
+function pehOpenDetailBtn(defId,label){
+  return `<button class="pd-open" type="button" onclick="pehOpenSolo('${defId}')">${esc(label||'Open detail')} →</button>`;
+}
+
+// renderDashboard() per panel — MUST summarise (metrics/badges/meters/buttons)
+// so a tile never needs its own scrollbar. solo/detail reuse the rich body.
+const PANEL_CONTENT={
+  // Top strip — at-a-glance vitals + the three headline recommendations.
+  'speedway-overview':{dashboard(){
+    const s=dashboardStats();const avg=Math.round(s.avgScore||0);const pass=Math.round(s.passRate||0);
+    const rs=reviewSummary('dashboard');
+    return `<div class="pd-status">
+      <div class="pd-meters">
+        ${pehDashMeter('TRUST SCORE',avg,'%',avg,pehScoreCls(avg))}
+        ${pehDashMeter('ACCURACY',pass,'%',pass,pehScoreCls(pass))}
+        ${pehDashMeter('TOTAL RUNS',s.totalRuns||0,'',Math.min(100,(s.totalRuns||0)*5),'')}
+        ${pehDashMeter('AVG SPEED',fmtMs(s.avgTime).replace(/\s+/g,''),'',Math.min(100,Math.max(8,(s.avgTime||0)/150)),'cyan')}
+      </div>
+      <div class="pd-champs">
+        ${rs.best?`<span class="chip teal">BEST · ${esc(rs.best.model)}</span>`:''}
+        ${rs.value?`<span class="chip orange">VALUE · ${esc(rs.value.model)}</span>`:''}
+        ${rs.fastest&&rs.fastest.durationAvg>0?`<span class="chip cyan">FASTEST · ${esc(rs.fastest.model)}</span>`:''}
+      </div>
+    </div>`;
+  }},
+  // Left — benchmark posture.
+  'benchmark-runs':{dashboard(){
+    const s=dashboardStats();const rs=reviewSummary('benchmark');
+    const lanes=laneBreakdown();const bench=lanes.find((l)=>/bench/i.test(l.label))||lanes[0];
+    return `<div class="pd-col">
+      ${pehDashStat('Runs indexed',s.totalRuns||0)}
+      ${pehDashStat('Pass rate',`${Math.round(s.passRate||0)}%`,pehScoreCls(Math.round(s.passRate||0)))}
+      ${rs.best?pehDashStat('Leading model',rs.best.model,'teal'):''}
+      ${bench?pehDashMeter('LANE COVERAGE',bench.avg,'%',bench.avg,pehScoreCls(bench.avg)):''}
+      ${pehOpenDetailBtn('benchmark-runs','Open the racetrack')}
+    </div>`;
+  }},
+  // Left — performance metrics (placeholder data today, real meter for latency).
+  'timing-metrics':{dashboard(){
+    const s=dashboardStats();
+    return `<div class="pd-col">
+      ${pehDashMeter('AVG LATENCY',fmtMs(s.avgTime).replace(/\s+/g,''),'',Math.min(100,Math.max(8,(s.avgTime||0)/150)),'cyan')}
+      ${pehDashStat('Samples',s.totalRuns||0)}
+      <div class="pd-note">Lap charts &amp; tokens/sec land here when the timing pipeline ships.</div>
+      ${pehOpenDetailBtn('timing-metrics','Open the tower')}
+    </div>`;
+  }},
+  // Center — the standings (top ranked models).
+  'grandstand-results':{dashboard(){
+    const rs=reviewSummary('dashboard');const top=(rs.rollups||[]).slice(0,6);
+    if(!top.length)return pehDashEmpty('No results yet — run a benchmark to fill the grandstand.');
+    return `<div class="pd-ranks">${top.map((e,i)=>{const sc=Math.round(e.avgOverall||0);const cls=pehScoreCls(sc);return `<div class="pd-rank"><span class="pd-rank-no">${i+1}</span><span class="pd-rank-model">${esc(e.model)}</span><span class="pd-rank-bar"><span class="pd-rank-fill ${cls}" style="width:${sc}%"></span></span><span class="pd-rank-score ${cls}">${sc}%</span></div>`;}).join('')}
+      ${pehOpenDetailBtn('grandstand-results','Full standings')}
+    </div>`;
+  }},
+  // Right — configuration / tuning posture.
+  'pit-lane-config':{dashboard(){
+    const provs=Array.isArray(state.providers)?state.providers:[];
+    const ready=provs.filter((p)=>p&&(p.ready||p.configured||p.available||p.enabled||p.hasKey)).length;
+    const pct=provs.length?Math.round((ready/provs.length)*100):0;
+    return `<div class="pd-col">
+      ${pehDashStat('Providers',provs.length||0)}
+      ${pehDashStat('Configured',ready,ready>0?'teal':'red')}
+      ${pehDashMeter('READINESS',pct,'%',pct,ready>0?'teal':'red')}
+      ${pehOpenDetailBtn('pit-lane-config','Open the pit lane')}
+    </div>`;
+  }},
+  // Right — diagnostics / health.
+  'workshop-diagnostics':{dashboard(){
+    const h=state.health||{};const sum=h.summary||'unknown';
+    const ok=h.net?typeof h.net.ok==='boolean'?h.net.ok:sum!=='offline':sum!=='offline';
+    const rl=h.rateLimit;
+    return `<div class="pd-col pd-diag">
+      <div class="pd-badges">
+        <span class="chip ${ok?'teal':'red'}">${ok?'ONLINE':'OFFLINE'}</span>
+        ${rl?'<span class="chip orange">RATE-LIMITED</span>':'<span class="chip dim">API OK</span>'}
+      </div>
+      ${pehDashStat('Health',String(sum).toUpperCase(),ok?'teal':'red')}
+      ${pehOpenDetailBtn('workshop-diagnostics','Open the workshop')}
+    </div>`;
+  }},
+  // Bottom strip — records / achievements (synthesised from current stats).
+  'victory-achievements':{dashboard(){
+    const s=dashboardStats();const rs=reviewSummary('dashboard');const avg=Math.round(s.avgScore||0);
+    const badges=[];
+    if((s.totalRuns||0)>0)badges.push({t:`${s.totalRuns} RUNS LOGGED`,c:'teal'});
+    if(avg>=80)badges.push({t:`TRUST ${avg}% · GOLD`,c:'orange'});
+    else if(avg>=55)badges.push({t:`TRUST ${avg}% · SILVER`,c:'cyan'});
+    if(rs.best)badges.push({t:`CHAMPION · ${rs.best.model}`,c:'teal'});
+    if(rs.fastest&&rs.fastest.durationAvg>0)badges.push({t:`LAP RECORD · ${rs.fastest.model}`,c:'cyan'});
+    return badges.length?`<div class="pd-trophies">${badges.map((b)=>`<span class="pd-trophy chip ${b.c}">🏁 ${esc(b.t)}</span>`).join('')}</div>`:pehDashEmpty('No records yet — every win posts here.');
+  }}
+};
+
+// DashboardSurface — the ONE parent that owns the merged dashboard. In this
+// mode panels are children of this surface, NOT free-floating windows: tiles
+// are placed by the product's LAYOUT_PRESET and share a single seamless frame.
+// No preset for a product → fall back to the map so onboarding never hard-fails.
+function renderDashboardSurface(product,scene,deckMarkup){
+  const preset=pehLayoutPreset(product.id);
+  if(!preset)return renderPehMap(product,scene,deckMarkup);
+  const ids=Object.keys(preset.slots).filter((id)=>{const d=WORKSPACE_REGISTRY[id];return d&&pehWorkspaceBelongsToActive(d);});
+  const tiles=ids.map((id)=>renderTransformingPanel(id,'dashboard',preset)).join('');
+  // grid-template-areas rows MUST be single-quoted here: the whole style sits
+  // inside a double-quoted style="" attribute, so double quotes would close
+  // the attribute and silently kill the grid (tiles pile in one corner).
+  const areas=String(preset.areas).replace(/"/g,"'");
+  const wallStyle=`grid-template-columns:${preset.columns};grid-template-rows:${preset.rows};grid-template-areas:${areas}`;
+  return `<div class="peh-dash-surface" data-preset="${esc(preset.id)}" role="group" aria-label="${esc(product.displayName)} ${esc(preset.label)}">
+    <header class="peh-dash-bar">
+      <button class="peh-backmap" type="button" title="Back to the map" aria-label="Back to the world map" onclick="pehSetMode('immersive')"><span aria-hidden="true">‹</span> Map</button>
+      <span class="peh-dash-bar-title">${esc(product.displayName)} · ${esc(preset.label)}</span>
+      <span class="peh-dash-bar-tag">${esc(scene?scene.title:product.tagline)}</span>
+    </header>
+    <div class="peh-dash-wall" style="${wallStyle}">${tiles}</div>
   </div>`;
+}
+
+// PanelShell — renders a panel in one of three modes from the same metadata.
+//   dashboard: a seamless tile inside the DashboardSurface (compact summary).
+//   solo/detail: handled by the existing window chrome (renderWorkspaceWindows
+//   places the rich body next to the hotspot; dock:'fullscreen' = detail), so
+//   every existing functional lane is preserved unchanged.
+function renderTransformingPanel(defId,mode,preset){
+  const def=WORKSPACE_REGISTRY[defId]||{};
+  const meta=pehPanelMeta(defId);
+  if(mode==='dashboard'){
+    const area=preset&&preset.slots?preset.slots[defId]:'';
+    return `<section class="peh-dash-tile role-${esc(meta.role||'panel')}" style="${area?`grid-area:${area}`:''}" data-panel="${esc(defId)}" aria-label="${esc(def.title||defId)}">
+      <header class="peh-dash-tile-head">
+        <span class="peh-dash-tile-glyph">${pehGlyph(def.peh)}</span>
+        <span class="peh-dash-tile-title">${esc(def.title||defId)}</span>
+        <button class="peh-dash-open" type="button" title="Open ${esc(def.title||defId)}" aria-label="Open ${esc(def.title||defId)}" onclick="pehOpenSolo('${esc(defId)}')">⤢</button>
+      </header>
+      <div class="peh-dash-tile-body">${pehPanelDashboardBody(defId,def)}</div>
+    </section>`;
+  }
+  return '';
+}
+function pehPanelDashboardBody(defId,def){
+  const c=PANEL_CONTENT[defId];
+  if(c&&typeof c.dashboard==='function'){
+    try{return c.dashboard(def);}catch(err){return pehDashEmpty('—');}
+  }
+  // Generic compact fallback so a panel without a bespoke summary still merges
+  // cleanly (status line + open-detail), never an embedded mini-app.
+  return `<div class="pd-col">${pehDashStat('Panel',def.title||defId)}${def.blurb?`<div class="pd-note">${esc(def.blurb)}</div>`:''}${pehOpenDetailBtn(defId,'Open')}</div>`;
+}
+
+// Open a single panel in SOLO mode from a dashboard tile: leave the merged
+// surface, return to the map, and pop the panel up next to its own hotspot.
+function pehOpenSolo(defId){
+  const def=WORKSPACE_REGISTRY[defId];if(!def)return;
+  state.pehverse.mode='immersive';
+  localStorage.setItem('pehverse-mode','immersive');
+  state.pehverse.workspaces=[];
+  state.pehverse.focus=null;
+  const scenes=pehScenes(pehActiveProductId());
+  let hs=null;
+  for(const s of scenes){const found=(s.hotspots||[]).find((h)=>h.workspace===defId);if(found){hs=found;break;}}
+  if(hs){state.pehverse.pehPopUp={x:hs.x,y:hs.y};pehOpenWorkspaceAt(defId,hs.x,hs.y);}
+  else{pehOpenWorkspaceAt(defId);}
 }
 
 // ── HotspotLayer ───────────────────────────────────────────────────────
@@ -6832,14 +7166,6 @@ function renderHotspotLayer(scene){
       <span class="peh-hotspot-label">${esc(h.label)}${kind==='lane'?'<i class="peh-dot-live"></i>':''}</span>
     </button>`;
   }).join('')}</div>`;
-}
-
-// Scene-to-scene waypoints — fast hops between the active product's own
-// areas. Hidden when the product has fewer than two scenes.
-function renderPehWaypoints(product,scene){
-  const scenes=pehScenes(product.id);
-  if(scenes.length<2)return'';
-  return `<nav class="peh-waypoints" aria-label="${esc(product.displayName)} areas">${scenes.map((s)=>`<button type="button" class="peh-waypoint ${scene&&s.id===scene.id?'active':''}" aria-current="${scene&&s.id===scene.id?'true':'false'}" onclick="pehSetScene('${s.id}')">${esc(s.title)}</button>`).join('')}</nav>`;
 }
 
 // ── WorkspaceManager: panel + tile + body renderers ────────────────────
@@ -6860,13 +7186,6 @@ function renderWorkspacePanel(w,deckMarkup){
   return `<section class="peh-panel dock-${w.dock} ${focused?'focused':''} ${w.min?'min':''}" data-uid="${w.uid}" onmousedown="pehFocusWorkspace('${w.uid}')" aria-label="${esc(def.title||w.defId)} workspace">
     ${renderWorkspaceHeader(w,def,false)}
     <div class="peh-panel-body">${w.min?'':pehWorkspaceBody(w,deckMarkup)}</div>
-  </section>`;
-}
-function renderWorkspaceTile(w,deckMarkup){
-  const def=pehWorkspaceDef(w.defId)||{};
-  return `<section class="peh-tile ${state.pehverse.focus===w.uid?'focused':''}" data-uid="${w.uid}" onmousedown="pehFocusWorkspace('${w.uid}')" aria-label="${esc(def.title||w.defId)} workspace">
-    ${renderWorkspaceHeader(w,def,true)}
-    <div class="peh-panel-body">${pehWorkspaceBody(w,deckMarkup)}</div>
   </section>`;
 }
 function renderWorkspaceHeader(w,def,isTile){
@@ -6905,29 +7224,6 @@ function pehPlaceholderBody(def){
     ${def.relatedTab?`<button class="button secondary" type="button" onclick="pehOpenRelatedLane('${def.relatedTab}')">Open ${esc(TAB_CONFIG[def.relatedTab]?TAB_CONFIG[def.relatedTab].label:def.relatedTab)} console</button>`:''}
     <div class="peh-ph-tag">PLACEHOLDER · atmospheric</div>
   </div>`;
-}
-
-// Workspaces owned by a product (its own + the per-product legacy console).
-// This is the ONLY list the workspace manager / chooser ever shows — another
-// product's workspaces are never enumerable here.
-function pehProductWorkspaces(productId){
-  return Object.keys(WORKSPACE_REGISTRY).filter((id)=>{
-    const d=WORKSPACE_REGISTRY[id];
-    return d.product===productId||d.product==null;
-  });
-}
-// Dashboard chooser — shown when no workspace is open. Cards for every space
-// owned by the active product only.
-function pehWorkspaceChooser(product){
-  const defs=pehProductWorkspaces(product.id);
-  return `<div class="peh-chooser">${defs.map((id)=>{
-    const d=WORKSPACE_REGISTRY[id];
-    return `<button class="peh-choice" type="button" onclick="pehOpenWorkspace('${id}')">
-      <span class="peh-choice-glyph">${pehGlyph(d.peh)}</span>
-      <span class="peh-choice-title">${esc(d.title)}</span>
-      <span class="peh-choice-kind">${d.kind==='lane'?'live lane':d.kind==='deck'?'console':'placeholder'}</span>
-    </button>`;
-  }).join('')}</div>`;
 }
 
 // ── Taskbar (Debian-workspaces-style switcher; always reachable) ───────

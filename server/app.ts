@@ -111,6 +111,22 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Cr
       }
     }
 
+    // Nested asset directories (e.g. /assets/luak-vintage-racing-map.png).
+    // Allows one subdirectory level under UI_DIR — no traversal, no deeper nesting.
+    if (method === "GET" && /^\/assets\/[a-zA-Z0-9_\-]+\.(png|jpg|jpeg|svg|webp|gif|ico)$/.test(path)) {
+      const assetPath = join(UI_DIR, path.slice(1));
+      if (existsSync(assetPath)) {
+        const ext = path.split(".").pop()!.toLowerCase();
+        const mime: Record<string, string> = {
+          png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
+          svg: "image/svg+xml", webp: "image/webp", gif: "image/gif", ico: "image/x-icon",
+        };
+        res.writeHead(200, { "Content-Type": mime[ext] || "application/octet-stream", "Cache-Control": "public, max-age=3600" });
+        res.end(readFileSync(assetPath));
+        return;
+      }
+    }
+
     // UI guide modules (api.js, scenes.js, peh-guide.js, app.js). The shell is
     // still a single index.html, but the Peh-guide concourse loads as a handful
     // of flat, dependency-free ES scripts. Same safe-filename pattern as the

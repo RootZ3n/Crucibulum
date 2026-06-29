@@ -53,7 +53,7 @@ export class MiniMaxAdapter implements CrucibulumAdapter {
   private apiKey: string = "";
   private baseUrl: string = MINIMAX_BASE_DEFAULT;
   private timeoutMs = MODEL_TIMEOUT_MS;
-  private retries = 1;
+  private retries = 3;
 
   supports(_family: "poison" | "spec" | "orchestration"): boolean {
     return true;
@@ -343,7 +343,7 @@ async function callMiniMax(
       tokensOut: data.usage?.completion_tokens ?? 0,
     };
   }, { provider: "minimax", adapter: "minimax" }, {
-    retries: retryOptions?.retries ?? 1,
+    retries: retryOptions?.retries ?? 3,
     onAttempt: (record) => attempts.push(record),
   });
   return { ...retryResult.value, attempts };

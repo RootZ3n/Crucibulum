@@ -150,9 +150,12 @@ describe('Luak world map — Peh placeholder slot per location', () => {
   it('the Peh slot is RENDERED from location data (squirrel placeholder)', () => {
     assert.ok(/function renderPehSlot\(/.test(HTML), 'renderPehSlot() must exist');
     assert.ok(/function pehSlotMarkup\(/.test(HTML), 'pehSlotMarkup() must exist');
-    // Immersive scene renders the slot, driven by scene.pehSlot.
-    const imm = HTML.match(/function renderPehImmersive\([\s\S]*?\n\}/);
-    assert.ok(imm && imm[0].includes('renderPehSlot(scene)'), 'immersive scene must render the Peh slot');
+    // Map-first renderer: hotspots + workspace windows, no Peh slot overlay
+    // (the painted map art has Peh baked in; the CSS hides the slot for Luak).
+    const mapFn = HTML.match(/function renderPehMap\([\s\S]*?\n\}/);
+    assert.ok(mapFn, 'renderPehMap() must exist');
+    assert.ok(mapFn![0].includes('renderHotspotLayer(scene)'), 'map must render hotspot layer');
+    assert.ok(mapFn![0].includes('renderWorkspaceWindows('), 'map must render workspace windows');
     // Placeholder is a squirrel silhouette (swappable for real Peh art later).
     assert.ok(/function pehSquirrelSilhouette\(/.test(HTML), 'squirrel silhouette placeholder must exist');
     assert.ok(/left:\$\{slot\.x\}%;top:\$\{slot\.y\}%/.test(HTML), 'slot must be positioned from pehSlot {x,y}');

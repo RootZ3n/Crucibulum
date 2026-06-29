@@ -18,6 +18,7 @@ import type {
 } from "./base.js";
 import { Observer } from "../core/observer.js";
 import { makeEmptyResponseError, makeHttpProviderError, makeInvalidResponseError, normalizeProviderError, providerErrorSummary } from "../core/provider-errors.js";
+import { withProviderRetries } from "../core/retry.js";
 import { log } from "../utils/logger.js";
 
 const DEFAULT_OLLAMA_URL = process.env["OLLAMA_URL"] ?? "http://localhost:11434";
@@ -36,6 +37,7 @@ export class OllamaAdapter implements CrucibulumAdapter {
 
   private url: string = DEFAULT_OLLAMA_URL;
   private model: string = "gemma3:27b";
+  private retries = 3;
 
   supports(_family: "poison" | "spec" | "orchestration"): boolean {
     return true;
@@ -53,6 +55,7 @@ export class OllamaAdapter implements CrucibulumAdapter {
     const c = config as OllamaConfig;
     if (c.ollama_url) this.url = c.ollama_url;
     if (c.model) this.model = c.model;
+    if (typeof c.retries === "number" && c.retries >= 0) this.retries = Math.floor(c.retries);
   }
 
   async healthCheck() {
@@ -75,12 +78,13 @@ export class OllamaAdapter implements CrucibulumAdapter {
 
   async chat(messages: ChatMessage[], _options?: ChatOptions): Promise<ChatResult> {
     const start = Date.now();
-    const result = await callOllama(this.url, this.model, messages);
+    const result = await callOllama(this.url, this.model, messages, { timeoutMs: MODEL_TIMEOUT_MS, retries: this.retries });
     return {
       text: stripModelArtifacts(result.text),
       tokens_in: result.tokensIn,
       tokens_out: result.tokensOut,
       duration_ms: Date.now() - start,
+      provider_attempts: result.attempts,
     };
   }
 
@@ -130,7 +134,16 @@ export class OllamaAdapter implements CrucibulumAdapter {
       // Call model
       let response: string;
       try {
-        const result = await callOllama(this.url, this.model, messages);
+        const result = await callOllama(this.url, this.model, messages, { timeoutMs: MODEL_TIMEOUT_MS, retries: this.retries });
+        for (const attempt of result.attempts) {
+          observer.record({
+            type: "provider_attempt",
+            attempt: attempt.attempt,
+            detail: attempt.error_type ? `${attempt.error_type}: ${attempt.retry_decision}` : "success",
+            provider_error: attempt.provider_error,
+            retry_decision: attempt.retry_decision,
+          });
+        }
         response = stripModelArtifacts(result.text);
         totalTokensIn += result.tokensIn;
         totalTokensOut += result.tokensOut;
@@ -262,45 +275,55 @@ async function callOllama(
   // format. Current behaviour: forward verbatim and let the upstream
   // reject non-string content for non-vision models.
   messages: Array<{ role: string; content: unknown }>,
-): Promise<{ text: string; tokensIn: number; tokensOut: number }> {
-  const res = await fetch(`${url}/api/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      messages,
-      stream: false,
-      options: { temperature: 0.1, num_predict: 8192 },
-    }),
-    signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
+  retryOptions?: { timeoutMs: number; retries: number },
+): Promise<{ text: string; tokensIn: number; tokensOut: number; attempts: NonNullable<ChatResult["provider_attempts"]> }> {
+  const attempts: NonNullable<ChatResult["provider_attempts"]> = [];
+
+  const retryResult = await withProviderRetries(async (attempt) => {
+    const res = await fetch(`${url}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        messages,
+        stream: false,
+        options: { temperature: 0.1, num_predict: 8192 },
+      }),
+      signal: AbortSignal.timeout(retryOptions?.timeoutMs ?? MODEL_TIMEOUT_MS),
+    });
+
+    if (!res.ok) {
+      throw makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "ollama", adapter: "ollama", attempt });
+    }
+
+    const rawBody = await res.text();
+    let data: {
+      message?: { content?: string };
+      eval_count?: number;
+      prompt_eval_count?: number;
+    };
+    try {
+      data = JSON.parse(rawBody) as typeof data;
+    } catch {
+      throw makeInvalidResponseError({ provider: "ollama", adapter: "ollama", attempt }, `Ollama returned non-JSON body: ${rawBody.slice(0, 400)}`);
+    }
+
+    const text = data.message?.content ?? "";
+    if (!text.trim()) {
+      throw makeEmptyResponseError({ provider: "ollama", adapter: "ollama", attempt }, `Ollama returned empty response for model ${model}. Raw body: ${rawBody.slice(0, 400)}`);
+    }
+
+    return {
+      text,
+      tokensIn: data.prompt_eval_count ?? 0,
+      tokensOut: data.eval_count ?? 0,
+    };
+  }, { provider: "ollama", adapter: "ollama" }, {
+    retries: retryOptions?.retries ?? 3,
+    onAttempt: (record) => attempts.push(record),
   });
 
-  if (!res.ok) {
-    throw makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "ollama", adapter: "ollama" });
-  }
-
-  const rawBody = await res.text();
-  let data: {
-    message?: { content?: string };
-    eval_count?: number;
-    prompt_eval_count?: number;
-  };
-  try {
-    data = JSON.parse(rawBody) as typeof data;
-  } catch {
-    throw makeInvalidResponseError({ provider: "ollama", adapter: "ollama" }, `Ollama returned non-JSON body: ${rawBody.slice(0, 400)}`);
-  }
-
-  const text = data.message?.content ?? "";
-  if (!text.trim()) {
-    throw makeEmptyResponseError({ provider: "ollama", adapter: "ollama" }, `Ollama returned empty response for model ${model}`);
-  }
-
-  return {
-    text,
-    tokensIn: data.prompt_eval_count ?? 0,
-    tokensOut: data.eval_count ?? 0,
-  };
+  return { ...retryResult.value, attempts };
 }
 
 async function getOllamaVersion(url: string): Promise<string> {

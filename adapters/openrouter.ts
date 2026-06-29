@@ -49,7 +49,7 @@ export class OpenRouterAdapter implements CrucibulumAdapter {
   private apiKey: string;
   private model: string;
   private timeoutMs = MODEL_TIMEOUT_MS;
-  private retries = 1;
+  private retries = 3;
 
   constructor(opts?: OpenAICompatibleAdapterOpts) {
     this.id = opts?.id ?? "openrouter";

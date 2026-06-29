@@ -22,6 +22,7 @@ import type {
 } from "./base.js";
 import { Observer } from "../core/observer.js";
 import { makeEmptyResponseError, makeHttpProviderError, makeInvalidResponseError, makeProviderFailureError, normalizeProviderError, providerErrorSummary, providerErrorDetail } from "../core/provider-errors.js";
+import { withProviderRetries } from "../core/retry.js";
 import { log } from "../utils/logger.js";
 
 const OPENAI_BASE = "https://api.openai.com/v1";
@@ -53,6 +54,7 @@ export class OpenAIAdapter implements CrucibulumAdapter {
 
   private model: string = "gpt-5.4";
   private apiKey: string = "";
+  private retries = 3;
 
   supports(_family: "poison" | "spec" | "orchestration"): boolean {
     return true;
@@ -69,12 +71,13 @@ export class OpenAIAdapter implements CrucibulumAdapter {
   async chat(messages: ChatMessage[], options?: ChatOptions): Promise<ChatResult> {
     if (!this.apiKey) throw new Error("OpenAI: OPENAI_API_KEY not set");
     const start = Date.now();
-    const result = await callOpenAI(this.apiKey, this.model, messages, options);
+    const result = await callOpenAI(this.apiKey, this.model, messages, options, { timeoutMs: MODEL_TIMEOUT_MS, retries: this.retries });
     return {
       text: result.text,
       tokens_in: result.tokensIn,
       tokens_out: result.tokensOut,
       duration_ms: Date.now() - start,
+      provider_attempts: result.attempts,
     };
   }
 
@@ -84,6 +87,7 @@ export class OpenAIAdapter implements CrucibulumAdapter {
     // Per-run inline key (from the Providers tab) takes precedence; fall back
     // to the exported env var. No global process.env mutation. (Audit H3.)
     this.apiKey = c.api_key || process.env["OPENAI_API_KEY"] || "";
+    if (typeof c.retries === "number" && c.retries >= 0) this.retries = Math.floor(c.retries);
   }
 
   async healthCheck() {
@@ -142,7 +146,16 @@ export class OpenAIAdapter implements CrucibulumAdapter {
 
       let response: string;
       try {
-        const result = await callOpenAI(this.apiKey, this.model, messages);
+        const result = await callOpenAI(this.apiKey, this.model, messages, undefined, { timeoutMs: MODEL_TIMEOUT_MS, retries: this.retries });
+        for (const attempt of result.attempts) {
+          observer.record({
+            type: "provider_attempt",
+            attempt: attempt.attempt,
+            detail: attempt.error_type ? `${attempt.error_type}: ${attempt.retry_decision}` : "success",
+            provider_error: attempt.provider_error,
+            retry_decision: attempt.retry_decision,
+          });
+        }
         response = result.text;
         totalTokensIn += result.tokensIn;
         totalTokensOut += result.tokensOut;
@@ -205,43 +218,52 @@ async function callOpenAI(
   // type. OpenAI accepts both string and content-part arrays.
   messages: Array<{ role: string; content: unknown }>,
   options?: ChatOptions,
-): Promise<{ text: string; tokensIn: number; tokensOut: number }> {
+  retryOptions?: { timeoutMs: number; retries: number },
+): Promise<{ text: string; tokensIn: number; tokensOut: number; attempts: NonNullable<ChatResult["provider_attempts"]> }> {
   const body = buildOpenAIChatBody(model, messages, options);
+  const attempts: NonNullable<ChatResult["provider_attempts"]> = [];
 
-  const res = await fetch(`${OPENAI_BASE}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
+  const retryResult = await withProviderRetries(async (attempt) => {
+    const res = await fetch(`${OPENAI_BASE}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(retryOptions?.timeoutMs ?? MODEL_TIMEOUT_MS),
+    });
+
+    if (!res.ok) {
+      throw makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "openai", adapter: "openai", attempt });
+    }
+
+    const rawBody = await res.text();
+    let data: {
+      choices?: Array<{ message?: { content?: string } }>;
+      usage?: { prompt_tokens?: number; completion_tokens?: number };
+    };
+    try {
+      data = JSON.parse(rawBody) as typeof data;
+    } catch {
+      throw makeInvalidResponseError({ provider: "openai", adapter: "openai", attempt }, `OpenAI returned non-JSON body: ${rawBody.slice(0, 400)}`);
+    }
+    const text = data.choices?.[0]?.message?.content ?? "";
+    if (!text.trim()) {
+      throw makeEmptyResponseError({ provider: "openai", adapter: "openai", attempt }, `OpenAI returned empty response for model ${model}. Raw body: ${rawBody.slice(0, 400)}`);
+    }
+
+    return {
+      text,
+      tokensIn: data.usage?.prompt_tokens ?? 0,
+      tokensOut: data.usage?.completion_tokens ?? 0,
+    };
+  }, { provider: "openai", adapter: "openai" }, {
+    retries: retryOptions?.retries ?? 3,
+    onAttempt: (record) => attempts.push(record),
   });
 
-  if (!res.ok) {
-    throw makeHttpProviderError(res, await res.text().catch(() => ""), { provider: "openai", adapter: "openai" });
-  }
-
-  const rawBody = await res.text();
-  let data: {
-    choices?: Array<{ message?: { content?: string } }>;
-    usage?: { prompt_tokens?: number; completion_tokens?: number };
-  };
-  try {
-    data = JSON.parse(rawBody) as typeof data;
-  } catch {
-    throw makeInvalidResponseError({ provider: "openai", adapter: "openai" }, `OpenAI returned non-JSON body: ${rawBody.slice(0, 400)}`);
-  }
-  const text = data.choices?.[0]?.message?.content ?? "";
-  if (!text.trim()) {
-    throw makeEmptyResponseError({ provider: "openai", adapter: "openai" }, `OpenAI returned empty response for model ${model}`);
-  }
-
-  return {
-    text,
-    tokensIn: data.usage?.prompt_tokens ?? 0,
-    tokensOut: data.usage?.completion_tokens ?? 0,
-  };
+  return { ...retryResult.value, attempts };
 }
 
 export function buildOpenAIChatBody(
