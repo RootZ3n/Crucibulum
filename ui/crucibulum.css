@@ -3539,3 +3539,43 @@ body::after {
 .peh-product-luak .peh-help-btn:hover{
   background:rgba(200,150,46,.25);border-color:var(--luak-brass);color:var(--luak-brass-hi);
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   Voltron transformation (2026-06-30) — pack-tight wall + morph.
+   Dashboard packs whatever is open into a seamless, hole-free wall of
+   balanced rows; windows fly between floating and tiled via the View
+   Transitions API (shared view-transition-name per panel). The dashboard
+   is re-themed wood/brass so a tiled panel belongs to the same world as
+   the floating windows.
+   ════════════════════════════════════════════════════════════════════ */
+.peh-dash-wall-flex{display:flex;flex-direction:column;gap:1px}
+.peh-dash-row{display:flex;flex:1 1 0;gap:1px;min-height:0}
+.peh-dash-wall-flex .peh-dash-tile{flex:1 1 0;min-width:0}
+
+/* Make the merge a glide, not a snap (default VT is .25s ease). */
+::view-transition-group(*){animation-duration:.5s;animation-timing-function:cubic-bezier(.22,1,.36,1)}
+@media (prefers-reduced-motion: reduce){::view-transition-group(*){animation-duration:.01ms}}
+
+/* Luak (1920s paddock) dashboard theme — wood & brass. */
+.peh-product-luak .peh-dash-surface{
+  background:
+    radial-gradient(120% 80% at 50% -10%,color-mix(in srgb,var(--luak-brass) 14%,transparent),transparent 60%),
+    linear-gradient(180deg,rgba(20,14,6,.55),rgba(14,10,5,.85));
+}
+.peh-product-luak .peh-dash-wall{
+  background:var(--luak-brass-dk);
+  border:2px solid var(--luak-brass);
+  box-shadow:0 22px 70px rgba(0,0,0,.65),0 0 0 1px rgba(244,221,146,.15) inset;
+}
+.peh-product-luak .peh-dash-tile{background:linear-gradient(180deg,#1f1810,#14100a)}
+.peh-product-luak .peh-dash-tile-head{
+  background:linear-gradient(180deg,var(--luak-leather),transparent);
+  border-bottom:1px solid var(--luak-brass-dk);
+}
+.peh-product-luak .peh-dash-tile-title{font-family:var(--luak-display);color:var(--luak-paper)}
+.peh-product-luak .peh-dash-tile-glyph{color:var(--luak-brass)}
+.peh-product-luak .peh-dash-open{border-color:var(--luak-brass-dk);color:var(--luak-paper)}
+.peh-product-luak .peh-dash-open:hover{border-color:var(--luak-brass);color:var(--luak-brass-hi)}
+.peh-product-luak .peh-dash-bar-title{font-family:var(--luak-display);color:var(--luak-brass-hi)}
+.peh-product-luak .peh-dash-bar-tag{color:var(--luak-brass-dk)}
+.peh-product-luak .peh-dash-surface .peh-backmap{border-color:var(--luak-brass-dk);color:var(--luak-paper)}

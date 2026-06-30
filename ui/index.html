@@ -6539,17 +6539,65 @@ function pehDevSwitchProduct(productId){
   try{localStorage.setItem('pehverse-product',p.id);if(state.pehverse.scene)localStorage.setItem('pehverse-scene',state.pehverse.scene)}catch(e){}
   render();
 }
+// The Voltron transformation. Dashboard = press the button and EVERY hotspot
+// window flies into a single seamless, pack-tight wall; Map = they scatter back
+// into floating, draggable windows. The morph is real (windows travel + reshape),
+// done with the View Transitions API so it survives the innerHTML re-render: each
+// panel carries a stable `view-transition-name` (peh-panel-<id>) in both its
+// floating-window form and its borderless-tile form, so the browser animates the
+// same element between the two. PACK-TIGHT: the wall fits whatever is open with
+// no holes (2 open → clean 2-tile wall; 7 → full cockpit) — see pehPackRows.
 function pehSetMode(mode){
   if(mode!=='immersive'&&mode!=='dashboard')return;
-  state.pehverse.mode=mode;
-  // Dashboard is NOT "open all windows": it is a single merged surface
-  // (renderDashboardSurface) driven by the product's LAYOUT_PRESET. Immersive
-  // returns to the map. Both modes start from a clean slate — no per-hotspot
-  // windows survive the switch — so each mode renders its own canonical view.
-  state.pehverse.workspaces=[];
-  state.pehverse.focus=null;
-  localStorage.setItem('pehverse-mode',mode);
-  render();
+  pehMorph(()=>{
+    state.pehverse.mode=mode;
+    if(mode==='dashboard')pehEnsureAllOpen(); // dashboard assembles the full cockpit
+    state.pehverse.focus=null;
+    try{localStorage.setItem('pehverse-mode',mode)}catch(e){}
+    render();
+  });
+}
+// Run a state change inside a View Transition when available (Chromium/Brave);
+// otherwise just apply it. This is what makes the merge a transformation, not a swap.
+function pehMorph(fn){
+  try{ if(typeof document!=='undefined'&&typeof document.startViewTransition==='function'){ document.startViewTransition(fn); return; } }catch(e){}
+  fn();
+}
+// The hotspot panels for the active product, ordered by PANEL_META.priority.
+function pehProductPanelIds(){
+  return Object.keys(PANEL_META)
+    .filter((id)=>{const d=WORKSPACE_REGISTRY[id];return d&&pehWorkspaceBelongsToActive(d);})
+    .sort((a,b)=>(pehPanelMeta(a).priority||99)-(pehPanelMeta(b).priority||99));
+}
+function pehHotspotForPanel(defId){
+  for(const s of pehScenes(pehActiveProductId())){
+    const h=(s.hotspots||[]).find((x)=>x.workspace===defId);
+    if(h)return h;
+  }
+  return null;
+}
+// Open every product panel that isn't already open, seeding each window's
+// position from its hotspot so the reverse morph (dashboard → map) scatters them
+// back to where they live on the speedway instead of stacking at center.
+function pehEnsureAllOpen(){
+  for(const id of pehProductPanelIds()){
+    if(state.pehverse.workspaces.find((w)=>w.defId===id))continue;
+    const def=WORKSPACE_REGISTRY[id]||{};
+    const ws={uid:'ws'+(++state.pehverse.wsSeq),defId:id,dock:(def.dock||'right'),min:false};
+    const h=pehHotspotForPanel(id);
+    if(h){ws.x=h.x;ws.y=h.y;}
+    state.pehverse.workspaces.push(ws);
+  }
+}
+// Pack-tight row plan: split n tiles into balanced rows so the wall always fills
+// with no holes. n=7 → [3,2,2]; n=4 → [2,2]; n=2 → [2]; n=1 → [1].
+function pehPackRows(n){
+  if(n<=1)return[n];
+  const cols=Math.ceil(Math.sqrt(n));
+  const rows=Math.ceil(n/cols);
+  const base=Math.floor(n/rows), extra=n%rows;
+  const out=[]; for(let r=0;r<rows;r++)out.push(base+(r<extra?1:0));
+  return out;
 }
 function pehToggleMode(){pehSetMode(state.pehverse.mode==='immersive'?'dashboard':'immersive')}
 function pehToggleFastTravel(force){
@@ -6925,7 +6973,7 @@ function renderWorkspaceWindows(deckMarkup){
       const vPos=y<50?'top:14px;bottom:auto':'bottom:14px;top:auto';
       posStyle=`${hPos};${vPos}`;
     }
-    return `<div class="peh-ws-window solo ${focused?'focused':''}" data-uid="${w.uid}" style="${posStyle};z-index:${z};${wStyle}${hStyle}" onmousedown="pehFocusWorkspace('${w.uid}')">
+    return `<div class="peh-ws-window solo ${focused?'focused':''}" data-uid="${w.uid}" style="${posStyle};z-index:${z};${wStyle}${hStyle};view-transition-name:peh-panel-${w.defId}" onmousedown="pehFocusWorkspace('${w.uid}')">
       <div class="peh-ws-header" onmousedown="event.stopPropagation();pehDragStart(event,'${w.uid}')">
         <span class="peh-ws-glyph">${pehGlyph(def.peh)}</span>
         <span class="peh-ws-title">${esc(def.title||w.defId)}</span>
@@ -7089,22 +7137,27 @@ const PANEL_CONTENT={
 // are placed by the product's LAYOUT_PRESET and share a single seamless frame.
 // No preset for a product → fall back to the map so onboarding never hard-fails.
 function renderDashboardSurface(product,scene,deckMarkup){
-  const preset=pehLayoutPreset(product.id);
-  if(!preset)return renderPehMap(product,scene,deckMarkup);
-  const ids=Object.keys(preset.slots).filter((id)=>{const d=WORKSPACE_REGISTRY[id];return d&&pehWorkspaceBelongsToActive(d);});
-  const tiles=ids.map((id)=>renderTransformingPanel(id,'dashboard',preset)).join('');
-  // grid-template-areas rows MUST be single-quoted here: the whole style sits
-  // inside a double-quoted style="" attribute, so double quotes would close
-  // the attribute and silently kill the grid (tiles pile in one corner).
-  const areas=String(preset.areas).replace(/"/g,"'");
-  const wallStyle=`grid-template-columns:${preset.columns};grid-template-rows:${preset.rows};grid-template-areas:${areas}`;
-  return `<div class="peh-dash-surface" data-preset="${esc(preset.id)}" role="group" aria-label="${esc(product.displayName)} ${esc(preset.label)}">
+  const open=state.pehverse.workspaces.filter((w)=>!w.min&&WORKSPACE_REGISTRY[w.defId]);
+  if(!open.length)return renderPehMap(product,scene,deckMarkup);
+  // Pack the open panels into balanced rows — a seamless, hole-free wall that
+  // fits however many are open (PACK-TIGHT). Each tile is the panel's borderless
+  // form and shares its view-transition-name with the floating window, so the
+  // browser morphs window→tile when the mode flips.
+  const rows=pehPackRows(open.length);
+  let i=0;
+  const wall=rows.map((count)=>{
+    let cells='';
+    for(let k=0;k<count;k++){const w=open[i++];if(w)cells+=renderTransformingPanel(w.defId,'dashboard');}
+    return `<div class="peh-dash-row">${cells}</div>`;
+  }).join('');
+  const label=(pehLayoutPreset(product.id)||{}).label||'Race Control';
+  return `<div class="peh-dash-surface" data-mode="dashboard" role="group" aria-label="${esc(product.displayName)} ${esc(label)}">
     <header class="peh-dash-bar">
       <button class="peh-backmap" type="button" title="Back to the map" aria-label="Back to the world map" onclick="pehSetMode('immersive')"><span aria-hidden="true">‹</span> Map</button>
-      <span class="peh-dash-bar-title">${esc(product.displayName)} · ${esc(preset.label)}</span>
-      <span class="peh-dash-bar-tag">${esc(scene?scene.title:product.tagline)}</span>
+      <span class="peh-dash-bar-title">${esc(product.displayName)} · ${esc(label)}</span>
+      <span class="peh-dash-bar-tag">${open.length} panel${open.length===1?'':'s'}</span>
     </header>
-    <div class="peh-dash-wall" style="${wallStyle}">${tiles}</div>
+    <div class="peh-dash-wall peh-dash-wall-flex">${wall}</div>
   </div>`;
 }
 
@@ -7117,8 +7170,7 @@ function renderTransformingPanel(defId,mode,preset){
   const def=WORKSPACE_REGISTRY[defId]||{};
   const meta=pehPanelMeta(defId);
   if(mode==='dashboard'){
-    const area=preset&&preset.slots?preset.slots[defId]:'';
-    return `<section class="peh-dash-tile role-${esc(meta.role||'panel')}" style="${area?`grid-area:${area}`:''}" data-panel="${esc(defId)}" aria-label="${esc(def.title||defId)}">
+    return `<section class="peh-dash-tile role-${esc(meta.role||'panel')}" style="view-transition-name:peh-panel-${esc(defId)}" data-panel="${esc(defId)}" aria-label="${esc(def.title||defId)}">
       <header class="peh-dash-tile-head">
         <span class="peh-dash-tile-glyph">${pehGlyph(def.peh)}</span>
         <span class="peh-dash-tile-title">${esc(def.title||defId)}</span>
