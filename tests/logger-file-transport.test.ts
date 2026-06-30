@@ -69,4 +69,22 @@ describe("logger file transport (C1)", () => {
   it("logFilePath honors the LUAK_LOG_FILE override", () => {
     assert.equal(logFilePath(), logFile);
   });
+
+  // The file transport documents that every message+payload is passed through
+  // redactSecrets before it is written. Without this test that guarantee was
+  // only asserted at the redactSecrets unit level — nothing proved a real key
+  // is gone by the time it lands on disk, which is the path that actually leaks
+  // to a detached operator tailing server.log.
+  it("redacts secrets in both the message and the structured payload before they reach disk", () => {
+    const orKey = "sk-or-v1-deadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+    const bearer = "Bearer abcdef0123456789abcdef0123456789";
+    log("error", "leak-probe", `provider 401 echoed ${orKey} and header ${bearer}`, {
+      provider_error: { rawMessage: `auth failed with ${orKey}`, header: bearer },
+    });
+
+    const raw = readFileSync(logFile, "utf-8");
+    assert.ok(!raw.includes(orKey), "OpenRouter key must not appear verbatim in the log file");
+    assert.ok(!raw.includes("abcdef0123456789abcdef0123456789"), "bearer token must not appear verbatim in the log file");
+    assert.ok(raw.includes("[redacted]"), "redaction marker must be present where the secret was");
+  });
 });

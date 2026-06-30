@@ -146,6 +146,32 @@ describe("bundle HMAC signing (C2)", () => {
     }
   });
 
+  it("rejects a directly forged/edited signature even when the real key is present", () => {
+    // Threat model: an attacker edits the bundle JSON on disk while the
+    // verifier still has the legitimate key. Key rotation (above) covers a
+    // wrong key; this covers a fabricated signature value under the right key.
+    process.env["LUAK_HMAC_KEY"] = "c2-test-secret-key";
+    delete process.env["CRUCIBLE_HMAC_KEY"];
+
+    const valid = signBundle(buildUnsignedBundle());
+    const goodSig = valid.signature as string;
+
+    const forgeries: Array<[string, string]> = [
+      ["garbage value", "hmac-sha256:" + "0".repeat(64)],
+      ["truncated", goodSig.slice(0, goodSig.length - 8)],
+      ["bit-flipped last char", goodSig.slice(0, -1) + (goodSig.endsWith("a") ? "b" : "a")],
+      ["prefix only", "hmac-sha256:"],
+    ];
+
+    for (const [label, sig] of forgeries) {
+      const bundle = signBundle(buildUnsignedBundle());
+      bundle.signature = sig;
+      const result = verifyBundle(bundle);
+      assert.equal(result.valid, false, `${label}: a forged signature must not verify`);
+      assert.equal(result.signature_status, "forged", `${label}: must classify as forged, got ${result.signature_status}`);
+    }
+  });
+
   it("a signed bundle without a key at verify time fails gracefully", () => {
     process.env["LUAK_HMAC_KEY"] = "c2-test-secret-key";
     delete process.env["CRUCIBLE_HMAC_KEY"];

@@ -75,6 +75,30 @@ describe("oracle integrity verification", () => {
     assert.throws(() => loadOracleWithIntegrity(manifest("task-missing", path, `sha256:${"0".repeat(64)}`)), /missing/);
   });
 
+  it("an oracle swapped via a traversal path is caught by the hash pin (H5)", () => {
+    // resolveOraclePath deliberately allows `..` because in-repo manifests use
+    // relative oracle refs; the H5 defense is the mandatory sha256 pin, not the
+    // path. Prove it: an attacker redirects oracle_ref.path at a planted oracle
+    // (valid shape, same task_id, but tampered scoring), while the manifest hash
+    // stays pinned to the legitimate oracle. The swap must NOT load.
+    const dir = mkdtempSync(join(tmpdir(), "oracle-traversal-"));
+    const legitRaw = oracleRaw("task-swap");
+    const legitHash = hashOracleBytes(legitRaw);
+    // Planted attacker oracle: same task_id (so the task_id check passes), but
+    // different bytes — a hostile decoy/forbidden-pattern set, say.
+    const attackerRaw = legitRaw.replace('"correct_fix_pattern": "fix"', '"correct_fix_pattern": "attacker-controlled"');
+    const attackerPath = join(dir, "sub", "evil.oracle.json");
+    mkdirSync(join(dir, "sub"), { recursive: true });
+    writeFileSync(attackerPath, attackerRaw, "utf-8");
+    // Reach the attacker file through a traversal-style relative path.
+    const traversalPath = join(dir, "sub", "..", "sub", "evil.oracle.json");
+    assert.throws(
+      () => loadOracleWithIntegrity(manifest("task-swap", traversalPath, legitHash)),
+      /mismatch/,
+      "a path-swapped oracle whose bytes differ from the pinned hash must be rejected",
+    );
+  });
+
   it("malformed oracle hash throws", () => {
     const dir = mkdtempSync(join(tmpdir(), "oracle-malformed-"));
     const path = join(dir, "task.oracle.json");
