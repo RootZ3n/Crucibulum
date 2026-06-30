@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Luak</title>
-<link rel="stylesheet" href="/crucibulum.css?v=20260525-mascot">
+<link rel="stylesheet" href="/crucibulum.css?v=20260630-voltron2">
 </head>
 <body>
 <div id="app"></div>
@@ -324,7 +324,9 @@ const state={
     // speech bubble appears at the hotspot and the medallion glides there.
     pehBubble:null,  // {text, x, y, anchor, variant, hotspotId, phase} — active bubble
     pehPosition:null, // {x, y} — current Peh medallion position (for the glide)
-    pehPopUp:null      // {x, y} — Peh mascot pop-up at clicked hotspot
+    pehPopUp:null,      // {x, y} — Peh mascot pop-up at clicked hotspot
+    workshop:{disc:null,task:null,run:null},  // Evidence Room selection (Workshop)
+    grandstand:{disc:'__ALL__'}               // Grandstand discipline selection
   },
   tasks:[],
   adapters:[],
@@ -6269,13 +6271,13 @@ const SCENE_REGISTRY={
       // x/y seat each pin into the painted ring "socket" on the speedway map
       // comp (assets/luak-vintage-racing-map.png) — compromise % that read on
       // both the landscape and portrait comps, since one registry drives both.
-      {id:'sp-overview', label:'Dashboard',         x:17,  y:24,  workspace:'speedway-overview', scene:'speedway',     greeting:"Welcome to the Speedway! This is where we keep an eye on everything at a glance."},
-      {id:'sp-track',    label:'The Racetrack',     x:50.3,y:24,  workspace:'benchmark-runs',     scene:'racetrack',    greeting:"Right this way — the track's where models get put through their paces!"},
-      {id:'sp-stand',    label:'The Grandstand',    x:83.7,y:24,  workspace:'grandstand-results', scene:'grandstand',   greeting:"Take a seat up here — best view in the house for the results."},
-      {id:'sp-tower',    label:'The Timing Tower',  x:17,  y:71.5,workspace:'timing-metrics',     scene:'timing-tower', greeting:"Up in the tower, we measure every tenth of a second. Precision wins races."},
-      {id:'sp-pit',      label:'The Pit Lane',      x:50.3,y:71.5,workspace:'pit-lane-config',    scene:'pit-lane',     greeting:"The pit's where we tune the machine. Every adjustment counts."},
-      {id:'sp-victory',  label:'The Victory Circle',x:83.7,y:71.5,workspace:'victory-achievements',scene:'victory-circle',greeting:"This is what it's all about. Every win, every record — right here."},
-      {id:'sp-shop',     label:'The Workshop',      x:50.25,y:95.5,workspace:'workshop-diagnostics',scene:'workshop',    greeting:"My workshop. Tools, diagnostics, and a lot of elbow grease."}
+      {id:'sp-overview', label:'Dashboard',         x:53, y:59, workspace:'speedway-overview', scene:'speedway',     greeting:"Welcome to the Speedway! This is where we keep an eye on everything at a glance."},
+      {id:'sp-track',    label:'The Racetrack',     x:24, y:88, workspace:'benchmark-runs',     scene:'racetrack',    greeting:"Right this way — the track's where models get put through their paces!"},
+      {id:'sp-stand',    label:'The Grandstand',    x:53, y:37, workspace:'grandstand-results', scene:'grandstand',   greeting:"Take a seat up here — best view in the house for the results."},
+      {id:'sp-tower',    label:'The Timing Tower',  x:23, y:49, workspace:'timing-metrics',     scene:'timing-tower', greeting:"Up in the tower, we measure every tenth of a second. Precision wins races."},
+      {id:'sp-pit',      label:'The Pit Lane',      x:83, y:54, workspace:'pit-lane-config',    scene:'pit-lane',     greeting:"The pit's where we tune the machine. Every adjustment counts."},
+      {id:'sp-victory',  label:'The Victory Circle',x:52, y:90, workspace:'victory-achievements',scene:'victory-circle',greeting:"This is what it's all about. Every win, every record — right here."},
+      {id:'sp-shop',     label:'The Workshop',      x:86, y:88, workspace:'workshop-diagnostics',scene:'workshop',    greeting:"My workshop. Tools, diagnostics, and a lot of elbow grease."}
     ]},
     {id:'racetrack', title:'The Racetrack', purpose:'Active benchmarks', route:'/racetrack',
      desc:'Where the cars race. Push a model hard and watch it run, lap after lap, under load.', peh:'gauge',
@@ -6401,13 +6403,13 @@ const WORKSPACE_REGISTRY={
 // is positioned at its hotspot); `role` themes the dashboard tile and maps to
 // a race-control region; `priority` orders tiles when a preset is absent.
 const PANEL_META={
-  'speedway-overview':   {role:'status',      priority:1, solo:{w:'min(560px,52vw)', h:'70%'}},
-  'benchmark-runs':      {role:'benchmark',   priority:2, solo:{w:'min(480px,46vw)', h:'64%'}},
-  'grandstand-results':  {role:'results',     priority:3, solo:{w:'min(540px,50vw)', h:'68%'}},
+  'speedway-overview':   {role:'status',      priority:1, console:true, solo:{w:'min(560px,52vw)', h:'70%'}},
+  'benchmark-runs':      {role:'benchmark',   priority:2, console:true, solo:{w:'min(480px,46vw)', h:'64%'}},
+  'grandstand-results':  {role:'results',     priority:3, console:true, solo:{w:'min(540px,50vw)', h:'68%'}},
   'timing-metrics':      {role:'metrics',     priority:4, solo:{w:'min(460px,44vw)', h:'58%'}},
-  'pit-lane-config':     {role:'config',      priority:5, solo:{w:'min(500px,46vw)', h:'64%'}},
+  'pit-lane-config':     {role:'config',      priority:5, console:true, solo:{w:'min(500px,46vw)', h:'64%'}},
   'victory-achievements':{role:'achievements',priority:6, solo:{w:'min(460px,44vw)', h:'54%'}},
-  'workshop-diagnostics':{role:'diagnostics', priority:7, solo:{w:'min(480px,46vw)', h:'54%'}}
+  'workshop-diagnostics':{role:'diagnostics', priority:7, console:true, solo:{w:'min(480px,46vw)', h:'54%'}}
 };
 function pehPanelMeta(defId){return PANEL_META[defId]||{}}
 
@@ -6551,7 +6553,8 @@ function pehSetMode(mode){
   if(mode!=='immersive'&&mode!=='dashboard')return;
   pehMorph(()=>{
     state.pehverse.mode=mode;
-    if(mode==='dashboard')pehEnsureAllOpen(); // dashboard assembles the full cockpit
+    if(mode==='dashboard')pehEnsureAllOpen();      // dashboard assembles the full cockpit
+    else state.pehverse.workspaces=[];             // Map returns CLEAN — no stacked windows
     state.pehverse.focus=null;
     try{localStorage.setItem('pehverse-mode',mode)}catch(e){}
     render();
@@ -6889,7 +6892,6 @@ function renderPehverse(deckMarkup){
   return `<div class="peh-shell peh-mode-${pv.mode} peh-product-${product.id}" data-product="${product.id}" style="${styleVars}">
     ${renderPehTopBar(product,scene)}
     <div class="peh-stage">${renderPehStage(product,scene,deckMarkup)}</div>
-    ${renderPehTaskbar()}
     ${renderFastTravelMenu()}
   </div>`;
 }
@@ -6959,24 +6961,34 @@ function renderWorkspaceWindows(deckMarkup){
     const y=w.y!=null?w.y:50;
     const focused=state.pehverse.focus===w.uid;
     const z=focused?25:15;
+    const isConsoleClass=!!meta.console;
+    const consoleOn=isConsoleClass&&w.console;
     // SOLO placement: anchor the panel to the stage edge/corner NEAREST its
-    // hotspot, with a hard size cap so it ALWAYS stays inside the map stage and
-    // can never slip under the top header or overflow the bottom. Dragged
-    // panels (w.moved) keep the spot the user dropped them at.
-    const wStyle=solo.w?`width:${solo.w}`:'width:min(460px,44vw)';
-    const hStyle=';max-height:calc(100% - 28px)';
-    let posStyle;
-    if(w.moved){
-      posStyle=`left:${x}%;top:${y}%`;
+    // hotspot, capped so it stays inside the stage. Console-class panels expand
+    // (Console button) into a large centred workspace — that's how a small
+    // window "gets bigger" without leaving its hotspot (Zen's requirement).
+    let wStyle,hStyle,posStyle;
+    if(consoleOn){
+      wStyle='width:min(1040px,94vw)';
+      hStyle=';height:min(82vh,720px);max-height:calc(100% - 18px)';
+      posStyle='left:50%;top:50%;transform:translate(-50%,-50%);right:auto;bottom:auto';
     }else{
-      const hPos=x<50?'left:14px;right:auto':'right:14px;left:auto';
-      const vPos=y<50?'top:14px;bottom:auto':'bottom:14px;top:auto';
-      posStyle=`${hPos};${vPos}`;
+      wStyle=solo.w?`width:${solo.w}`:'width:min(460px,44vw)';
+      hStyle=';max-height:calc(100% - 28px)';
+      if(w.moved){
+        posStyle=`left:${x}%;top:${y}%`;
+      }else{
+        const hPos=x<50?'left:14px;right:auto':'right:14px;left:auto';
+        const vPos=y<50?'top:14px;bottom:auto':'bottom:14px;top:auto';
+        posStyle=`${hPos};${vPos}`;
+      }
     }
-    return `<div class="peh-ws-window solo ${focused?'focused':''}" data-uid="${w.uid}" style="${posStyle};z-index:${z};${wStyle}${hStyle};view-transition-name:peh-panel-${w.defId}" onmousedown="pehFocusWorkspace('${w.uid}')">
+    const consoleBtn=isConsoleClass?`<button class="peh-ws-console" type="button" title="${consoleOn?'Shrink to card':'Open the full console'}" aria-label="${consoleOn?'Shrink to card':'Open the full console'}" onclick="event.stopPropagation();pehToggleConsole('${w.uid}')">${consoleOn?'▢ Card':'⤢ Console'}</button>`:'';
+    return `<div class="peh-ws-window solo ${focused?'focused':''} ${consoleOn?'console':''}" data-uid="${w.uid}" style="${posStyle};z-index:${z};${wStyle}${hStyle};view-transition-name:peh-panel-${w.defId}" onmousedown="pehFocusWorkspace('${w.uid}')">
       <div class="peh-ws-header" onmousedown="event.stopPropagation();pehDragStart(event,'${w.uid}')">
         <span class="peh-ws-glyph">${pehGlyph(def.peh)}</span>
         <span class="peh-ws-title">${esc(def.title||w.defId)}</span>
+        ${consoleBtn}
         <button class="peh-ws-close" onclick="event.stopPropagation();pehCloseWorkspace('${w.uid}')">×</button>
       </div>
       <div class="peh-ws-body">${pehWorkspaceBody(w,deckMarkup)}</div>
@@ -6988,8 +7000,9 @@ function renderWorkspaceWindows(deckMarkup){
 let __pehDrag=null;
 function pehDragStart(e,uid){
   e.preventDefault();e.stopPropagation();
-  // Don't start drag when clicking the close button
-  if(e.target.closest('.peh-ws-close'))return;
+  // Don't start a drag when clicking a header control (close / console toggle) —
+  // otherwise the drag + re-render swallows the button's click.
+  if(e.target.closest('.peh-ws-close,.peh-ws-console'))return;
   const win=e.target.closest('.peh-ws-window');if(!win)return;
   const scene=win.closest('.peh-scene');if(!scene)return;
   // Skip render so the DOM node stays live for dragging
@@ -7044,6 +7057,128 @@ function pehOpenDetailBtn(defId,label){
 
 // renderDashboard() per panel — MUST summarise (metrics/badges/meters/buttons)
 // so a tile never needs its own scrollbar. solo/detail reuse the rich body.
+// ════════════════════════════════════════════════════════════════════════
+// Rich native panel consoles (2026-06-30) — the Workshop Evidence Room and the
+// Grandstand leaderboards, rendered from the live data layer (state.tasks +
+// allRuns()). Selection lives in state.pehverse.{workshop,grandstand}; clicks
+// mutate it and re-render, matching the app's onclick→render pattern. These are
+// the SOLO/console bodies (the dashboard tile keeps its compact summary).
+// ════════════════════════════════════════════════════════════════════════
+
+// Discipline = test TYPE (how Zen thinks of tests), derived from the task id —
+// NOT the engine's scoring family. (Coding, Build, Poison-Repo, …)
+const PEH_DISC=[['vision','Vision'],['roleplay','Roleplay'],['role-stress','Role Stress'],['code','Coding'],['coord','Build'],['poison','Poison-Repo'],['spec','Spec'],['tool','Tools'],['op-','Operational Trust'],['safety','Safety'],['memory','Memory'],['personality','Personality'],['reasoning','Reasoning'],['truthfulness','Truthfulness'],['classification','Classification'],['context-degradation','Context'],['summarization','Summarization'],['workflow','Workflow'],['token-efficiency','Efficiency'],['thinking-mode','Efficiency'],['instruction-obedience','Instruction-Obedience'],['prompt-sensitivity','Prompt Sensitivity'],['identity','Identity']];
+function pehDisc(id){const s=String(id||'');for(const x of PEH_DISC)if(s.startsWith(x[0]))return x[1];return 'Other';}
+function pehIsMockRun(r){return r.adapter==='harness-mock'||/(^|[^a-z])mock([^a-z]|$)/i.test(String(r.model||''));}
+function pehPct(v){return v==null?null:(Math.abs(v)<=1?Math.round(v*100):Math.round(v));}
+
+// Console-class panels expand/shrink (the Console button). Morph the resize.
+function pehToggleConsole(uid){
+  const ws=state.pehverse.workspaces.find((w)=>w.uid===uid); if(!ws)return;
+  pehFocusWorkspace(uid,true);
+  pehMorph(()=>{ ws.console=!ws.console; render(); });
+}
+
+// ── Workshop · the Evidence Room ─────────────────────────────────────────
+function pehWkPick(kind,val){
+  const s=state.pehverse.workshop;
+  if(kind==='disc'){s.disc=val;s.task=null;s.run=null;}
+  else if(kind==='task'){s.task=val;s.run=null;}
+  else if(kind==='run'){s.run=val;}
+  render();
+}
+function renderWorkshopConsole(w){
+  const tasks=Array.isArray(state.tasks)?state.tasks:[];
+  const runs=allRuns();
+  if(!tasks.length)return '<div class="peh-ph"><p class="peh-ph-blurb">Loading the test library…</p></div>';
+  const byDisc={}; tasks.forEach((t)=>{const d=pehDisc(t.id);(byDisc[d]=byDisc[d]||[]).push(t);});
+  const runsByTask={}; runs.forEach((r)=>{const k=r.task;if(k)(runsByTask[k]=runsByTask[k]||[]).push(r);});
+  const sel=state.pehverse.workshop;
+  const discs=Object.keys(byDisc).sort((a,b)=>byDisc[b].length-byDisc[a].length);
+  if((!sel.disc||!byDisc[sel.disc])&&discs.length)sel.disc=discs[0];
+  const fams=discs.map((d)=>{
+    let p=0,n=0; byDisc[d].forEach((t)=>(runsByTask[t.id]||[]).forEach((r)=>{n++;if(r.pass)p++;}));
+    const pr=n?Math.round(p/n*100):null;
+    return `<button class="peh-wk-fam ${d===sel.disc?'on':''}" type="button" onclick="pehWkPick('disc','${esc(d)}')"><span class="nm">${esc(d)}</span><span class="ct">${byDisc[d].length}</span>${pr!=null?`<span class="pr"><i style="width:${pr}%"></i></span>`:''}</button>`;
+  }).join('');
+  const tests=byDisc[sel.disc]||[];
+  const testList=tests.map((t)=>{
+    const rs=runsByTask[t.id]||[]; const pp=rs.filter((r)=>r.pass).length, ff=rs.length-pp;
+    return `<button class="peh-wk-test ${t.id===sel.task?'on':''}" type="button" onclick="pehWkPick('task','${esc(t.id)}')">
+      <div class="tt">${esc(t.display_name||t.id)}</div>
+      <div class="pp">${esc(t.diagnostic_purpose||t.title||'')}</div>
+      <div class="meta"><span class="diff d-${esc(t.difficulty||'na')}">${esc(t.difficulty||'—')}</span><span class="q">${t.question_count||1}Q</span><span class="tal">${rs.length?`${pp}✓ ${ff}✗`:'no runs'}</span></div>
+    </button>`;
+  }).join('')||'<div class="peh-wk-empty">No tests in this discipline.</div>';
+  let detail='<div class="peh-wk-empty">Pick a test — see what it checks, how it scored, and where it passed or failed.</div>';
+  const t=tests.find((x)=>x.id===sel.task);
+  if(t){
+    const rs=(runsByTask[t.id]||[]).slice().sort((a,b)=>new Date(b.timestamp||0)-new Date(a.timestamp||0));
+    const pp=rs.filter((r)=>r.pass).length;
+    const lim=(t.benchmark_provenance&&t.benchmark_provenance.known_scoring_limitations)||[];
+    const resList=rs.length?rs.slice(0,40).map((r)=>`<div class="peh-wk-res ${r.bundleId===sel.run?'on':''}" onclick="pehWkPick('run','${esc(r.bundleId)}')"><span class="bdg ${r.pass?'p':'f'}">${r.pass?'PASS':'FAIL'}</span><span class="m">${esc(r.model)}</span><span class="sc">${Math.round(r.overall)}%</span></div>`).join(''):'<div class="peh-wk-empty">No runs yet — race this test from the Racetrack.</div>';
+    let receipt='';
+    const rr=rs.find((x)=>x.bundleId===sel.run);
+    if(rr){
+      const bd=rr.breakdown||{};
+      const rows=[['Correctness',bd.correctness],['Regression',bd.regression],['Integrity',bd.integrity],['Efficiency',bd.efficiency]];
+      const vsum=rr.verdictSummary||(rr.verdict&&rr.verdict.failureReasonSummary)||'';
+      receipt=`<div class="peh-wk-receipt">
+        <div class="rt"><span class="vd ${rr.pass?'p':'f'}">${rr.pass?'✓ PASS':'✗ FAIL'}</span><span class="ov">${Math.round(rr.overall)}%</span><span class="md">${esc(rr.model)}</span></div>
+        <div class="bd">${rows.map(([n,v])=>{const x=pehPct(v);return `<div class="br"><span class="bn">${n}</span><span class="bt"><span class="bf" style="width:${x==null?0:x}%"></span></span><span class="bv">${x==null?'—':x+'%'}</span></div>`;}).join('')}</div>
+        ${vsum?`<div class="rl"><b>Verdict:</b> ${esc(vsum)}</div>`:''}
+        <div class="rl rid">${esc(rr.bundleId||'')}</div>
+      </div>`;
+    }
+    detail=`<h3 class="peh-wk-h3">${esc(t.display_name||t.id)}</h3>
+      <div class="peh-wk-sub">${esc(t.id)} · ${esc(pehDisc(t.id))} · ${t.question_count||1} question${(t.question_count||1)===1?'':'s'} · scored as ${esc(humanizeToken(t.family))} · ${esc(t.difficulty||'')}</div>
+      <div class="peh-wk-card"><div class="lab">What this test checks</div><div class="cpurpose">${esc(t.diagnostic_purpose||t.title||'—')}</div>${lim.length?`<div class="warn">⚠ ${esc(lim[0])}</div>`:''}</div>
+      <div class="peh-wk-card"><div class="lab">Results · ${rs.length} run${rs.length===1?'':'s'} · ${rs.length?Math.round(pp/rs.length*100):0}% pass</div><div class="peh-wk-results">${resList}</div></div>
+      ${receipt}`;
+  }
+  return `<div class="peh-wk">
+    <div class="peh-wk-col fams"><div class="peh-wk-paneh">Disciplines</div>${fams}</div>
+    <div class="peh-wk-col tests"><div class="peh-wk-paneh">${esc(sel.disc||'')} · ${tests.length} test${tests.length===1?'':'s'}</div>${testList}</div>
+    <div class="peh-wk-col detail">${detail}</div>
+  </div>`;
+}
+
+// ── Grandstand · per-discipline leaderboards ─────────────────────────────
+function pehGsPick(d){state.pehverse.grandstand.disc=d;render();}
+function renderGrandstandConsole(w){
+  const runs=allRuns().filter((r)=>!pehIsMockRun(r));
+  if(!runs.length)return '<div class="peh-ph"><p class="peh-ph-blurb">No runs yet — race some models to crown a boss.</p></div>';
+  const sel=state.pehverse.grandstand;
+  const counts={}; runs.forEach((r)=>{const d=pehDisc(r.task);counts[d]=(counts[d]||0)+1;});
+  const discs=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+  const chips=`<button class="peh-gs-chip ${sel.disc==='__ALL__'?'on':''}" type="button" onclick="pehGsPick('__ALL__')">Overall<span class="c">${runs.length}</span></button>`+discs.map((d)=>`<button class="peh-gs-chip ${sel.disc===d?'on':''}" type="button" onclick="pehGsPick('${esc(d)}')">${esc(d)}<span class="c">${counts[d]}</span></button>`).join('');
+  const rows=sel.disc==='__ALL__'?runs:runs.filter((r)=>pehDisc(r.task)===sel.disc);
+  const m={}; rows.forEach((r)=>{const k=r.model||'unknown';const o=m[k]||(m[k]={s:0,n:0,p:0});o.s+=(Number(r.overall)||0);o.n++;if(r.pass)o.p++;});
+  const list2=Object.entries(m).map(([k,o])=>({model:k,avg:Math.round(o.s/o.n),pass:Math.round(o.p/o.n*100),n:o.n})).sort((a,b)=>b.avg-a.avg);
+  const label=sel.disc==='__ALL__'?'Overall':sel.disc;
+  let body;
+  if(!list2.length){body='<div class="peh-wk-empty">No runs in this discipline yet.</div>';}
+  else{
+    const boss=list2[0]; const max=Math.max.apply(null,list2.map((x)=>x.avg).concat([1]));
+    body=`<div class="peh-gs-boss"><span class="cr">👑</span><div class="who"><div class="k">${esc(label)} boss</div><div class="nm">${esc(boss.model)}</div></div><div class="st"><div class="n">${boss.avg}%</div><div class="l">avg · ${boss.pass}% pass</div></div></div>
+      <div class="peh-gs-rows">${list2.map((x,i)=>`<div class="peh-gs-row ${i===0?'top':''}"><span class="rk">${i+1}</span><span class="md" title="${esc(x.model)}">${esc(x.model)}</span><span class="bar"><span class="fl" style="width:${Math.round(x.avg/max*100)}%"></span></span><span class="sc">${x.avg}%</span><span class="me">${x.pass}% · ${x.n}</span></div>`).join('')}</div>`;
+  }
+  return `<div class="peh-gs"><div class="peh-gs-pick">${chips}</div><div class="peh-gs-body">${body}</div></div>`;
+}
+
+// Timing + Achievements have no bespoke console yet — render their real
+// compact summary (PANEL_CONTENT.dashboard) in solo instead of a placeholder.
+function renderPanelSummarySolo(w){
+  const def=WORKSPACE_REGISTRY[w.defId]||{};
+  return `<div class="peh-panel-summary">${pehPanelDashboardBody(w.defId,def)}</div>`;
+}
+const PEH_PANEL_CONSOLE={
+  'workshop-diagnostics':renderWorkshopConsole,
+  'grandstand-results':renderGrandstandConsole,
+  'timing-metrics':renderPanelSummarySolo,
+  'victory-achievements':renderPanelSummarySolo
+};
+
 const PANEL_CONTENT={
   // Top strip — at-a-glance vitals + the three headline recommendations.
   'speedway-overview':{dashboard(){
@@ -7138,7 +7273,16 @@ const PANEL_CONTENT={
 // No preset for a product → fall back to the map so onboarding never hard-fails.
 function renderDashboardSurface(product,scene,deckMarkup){
   const open=state.pehverse.workspaces.filter((w)=>!w.min&&WORKSPACE_REGISTRY[w.defId]);
-  if(!open.length)return renderPehMap(product,scene,deckMarkup);
+  // Never fall back to renderPehMap here: dashboard-mode CSS hides the scene
+  // (scene-atmos opacity:0), so a map fallback shows as a blank screen. Show an
+  // explicit empty-cockpit prompt instead.
+  if(!open.length)return `<div class="peh-dash-surface" data-mode="dashboard" role="group" aria-label="${esc(product.displayName)} Race Control">
+    <header class="peh-dash-bar">
+      <button class="peh-backmap" type="button" onclick="pehSetMode('immersive')"><span aria-hidden="true">‹</span> Map</button>
+      <span class="peh-dash-bar-title">${esc(product.displayName)} · Race Control</span>
+    </header>
+    <div style="flex:1 1 auto;display:flex;align-items:center;justify-content:center;color:var(--ink-dim);font-style:italic;text-align:center;padding:24px">All panels are closed — <button type="button" class="peh-backmap" style="margin:0 6px" onclick="pehSetMode('immersive')">return to the map</button> to reopen hotspots.</div>
+  </div>`;
   // Pack the open panels into balanced rows — a seamless, hole-free wall that
   // fits however many are open (PACK-TIGHT). Each tile is the panel's borderless
   // form and shares its view-transition-name with the floating window, so the
@@ -7257,6 +7401,18 @@ function renderWorkspaceHeader(w,def,isTile){
 }
 function pehWorkspaceBody(w,deckMarkup){
   const def=pehWorkspaceDef(w.defId); if(!def)return'';
+  // SMALL form (not expanded) → always the compact summary, sized to fit the
+  // little window. The full console (registry / Evidence Room / leaderboards /
+  // the benchmark run+live panel) only renders when the panel is expanded via
+  // the Console button (w.console), where it finally has room. The "deck" (Full
+  // Console) is its own thing and always renders in full.
+  if(!w.console && def.kind!=='deck'){
+    return `<div class="peh-panel-summary">${pehPanelDashboardBody(w.defId,def)}</div>`;
+  }
+  // Rich native consoles (Evidence Room, leaderboards) take precedence over the
+  // generic kind-based body — they render from state.tasks + allRuns().
+  const custom=PEH_PANEL_CONSOLE[w.defId];
+  if(custom){try{return custom(w)}catch(err){return `<div class="peh-ph"><p class="peh-ph-blurb">Panel error: ${esc(String(err&&err.message||err))}</p></div>`}}
   if(def.kind==='deck')return `<div class="peh-deck-wrap">${deckMarkup}</div>`;
   if(def.kind==='lane'){
     const prev=state.activeTab;
@@ -7356,6 +7512,10 @@ document.addEventListener('keydown',(e)=>{
 });
 // Finalize which single product is live before the first render.
 pehInitProduct();
+// If the persisted mode is dashboard, populate the cockpit BEFORE the first
+// render — otherwise the dashboard surface would fall back to the map, which
+// dashboard-mode CSS hides (scene-atmos opacity:0), leaving a blank screen.
+if(state.pehverse.mode==='dashboard')pehEnsureAllOpen();
 
 function render(){
   // Luna-style command deck composition. Top: command rail with brand,
