@@ -7757,6 +7757,10 @@ function bootErrorMarkup(err){
 async function boot(){
   BootState.status='loading';
   try{
+    // Paint the speedway map + hotspots IMMEDIATELY. They are static scene data
+    // and must not wait on the multi-second, per-lane run-data load (6,554
+    // bundles × ~11 lanes). Data fills in on the re-render below.
+    render();
     await loadBootData();
     BootState.status='ready';
     render();
