@@ -1,10 +1,15 @@
 /**
- * Luak — Roleplay Phase 5: second-route comparison (offline).
+ * Luak — Roleplay Phase 5 landing + exclusion-contract regression (offline).
  *
- * 10 deterministic source/contract assertions covering Phase 5's
- * scope: second tested route added + comparison report present +
- * UI lists two routes + exclusion preserved + Vision untouched +
- * inventory unchanged. No provider calls. No network.
+ * SCOPE NOTE: this is NOT a roleplay-quality test. It does not evaluate how
+ * well any model role-plays. It is a deterministic landing snapshot that pins
+ * Phase 5's plumbing: a second tested route was added, its smoke report is on
+ * disk, the UI lists two routes, and — the durable part — roleplay stays
+ * excluded from the leaderboard composite and from model certification.
+ * Roleplay quality itself is exercised by the scorer-level tests
+ * (conversational-judge / roleplay continuity + persona scorers).
+ *
+ * 10 deterministic source/contract assertions. No provider calls. No network.
  *
  * Live smoke evidence:
  *   reports/capability-expansion/roleplay-smoke/2026-05-26T10-51-01Z.{json,md}  (mimo Phase 4)
@@ -24,7 +29,7 @@ const CERTIFIED_MODELS_JSON = join(ROOT, "reports", "model-certification", "cert
 const PHASE5_SMOKE_JSON = join(ROOT, "reports", "capability-expansion", "roleplay-smoke", "2026-05-26T11-04-01Z.json");
 const CANDIDATE_INVENTORY = join(ROOT, "reports", "capability-expansion", "roleplay-phase5-second-route", "candidate-inventory.md");
 
-describe("Roleplay Phase 5 · second-route comparison (offline)", () => {
+describe("Roleplay Phase 5 landing + exclusion contract (offline — not a quality test)", () => {
   it("RPP5-P01 · candidate-inventory.md exists and names deepseek/deepseek-v4-flash as the selected route", () => {
     assert.ok(existsSync(CANDIDATE_INVENTORY), `${CANDIDATE_INVENTORY} must exist`);
     const md = readFileSync(CANDIDATE_INVENTORY, "utf-8");

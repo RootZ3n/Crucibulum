@@ -1,11 +1,15 @@
 /**
- * Luak — Roleplay Phase 9: Experimental v1 baseline (offline).
+ * Luak — Roleplay Phase 9 baseline-report + exclusion-contract regression (offline).
  *
- * 13 deterministic assertions covering Phase 9's scope: machine-
- * readable baseline JSON shape, accompanying markdown, UI baseline
- * note, documentation update, exclusion guarantees, inventory pin.
+ * SCOPE NOTE: this is NOT a roleplay-quality test. It does not judge how well
+ * any model role-plays. It pins the SHAPE of the Experimental v1 baseline
+ * report (machine-readable JSON + markdown), the UI baseline note, the docs
+ * reference, and — the durable part — that roleplay stays excluded from the
+ * leaderboard composite and model certification. Roleplay quality itself is
+ * exercised by the scorer-level tests (conversational-judge / roleplay
+ * continuity + persona scorers).
  *
- * No provider calls. No network.
+ * 13 deterministic assertions. No provider calls. No network.
  */
 
 import { describe, it } from "node:test";
@@ -21,7 +25,7 @@ const ROLEPLAY_DOC = readFileSync(join(ROOT, "docs", "ROLEPLAY_TEST_SUITE.md"), 
 const HTML = readFileSync(join(ROOT, "ui", "index.html"), "utf-8");
 const CERTIFIED_MODELS_JSON = join(ROOT, "reports", "model-certification", "certified-models.json");
 
-describe("Roleplay Phase 9 · Experimental v1 baseline (offline)", () => {
+describe("Roleplay Phase 9 baseline-report + exclusion contract (offline — not a quality test)", () => {
   // -------- file presence --------
 
   it("RPP9-P01 · Roleplay Experimental v1 latest.md exists at the canonical path", () => {
