@@ -6,7 +6,7 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { join } from "node:path";
 
@@ -18,6 +18,8 @@ import type {
   TimelineEvent,
 } from "../adapters/base.js";
 import { runTask } from "../core/runner.js";
+
+let lastWorkspacePath: string | null = null;
 
 /**
  * MockAdapter that performs the actual fix in the workspace:
@@ -53,6 +55,7 @@ class E2EMockAdapter implements CrucibulumAdapter {
     const startMs = Date.now();
     const timeline: TimelineEvent[] = [];
     let t = 0;
+    lastWorkspacePath = input.workspace_path;
 
     // Step 1: task_start
     timeline.push({ t: t++, type: "task_start", detail: "workspace initialized" });
@@ -111,6 +114,7 @@ class E2EMockAdapter implements CrucibulumAdapter {
 describe("end-to-end pipeline with mock adapter", () => {
   it("runs poison-001 through full pipeline and produces valid bundle", async () => {
     const adapter = new E2EMockAdapter();
+    lastWorkspacePath = null;
 
     const result = await runTask({
       taskId: "poison-001",
@@ -127,6 +131,29 @@ describe("end-to-end pipeline with mock adapter", () => {
 
     // Bundle structure
     const bundle = result.bundle;
+    const requiredTopLevelFields = [
+      "bundle_id",
+      "bundle_hash",
+      "bundle_version",
+      "task",
+      "agent",
+      "environment",
+      "timeline",
+      "diff",
+      "security",
+      "verification_results",
+      "score",
+      "usage",
+      "judge",
+      "trust",
+      "diagnosis",
+      "verdict",
+      "review",
+      "integrations",
+    ];
+    for (const field of requiredTopLevelFields) {
+      assert.ok(field in bundle, `bundle missing required top-level field: ${field}`);
+    }
     assert.ok(bundle.bundle_id.length > 0);
     assert.ok(bundle.bundle_hash.startsWith("sha256:"));
     assert.equal(bundle.bundle_version, "1.0.0");
@@ -143,13 +170,20 @@ describe("end-to-end pipeline with mock adapter", () => {
     assert.ok(bundle.timeline.length > 0);
     assert.equal(bundle.timeline[0]!.type, "task_start");
 
-    // Diff should show files_changed (we modified login.js)
-    // The diff is captured via git, so it depends on git workspace setup working
-    // At minimum the diff object should exist with proper structure
+    // Diff should show the exact edit made by the mock adapter.
     assert.ok(Array.isArray(bundle.diff.files_changed));
     assert.ok(Array.isArray(bundle.diff.files_created));
     assert.ok(Array.isArray(bundle.diff.files_deleted));
     assert.ok(Array.isArray(bundle.diff.forbidden_paths_touched));
+    assert.deepEqual(bundle.diff.files_changed.map((f) => f.path).sort(), ["src/auth/login.js"]);
+    assert.deepEqual(bundle.diff.files_created, []);
+    assert.deepEqual(bundle.diff.files_deleted, []);
+    assert.deepEqual(bundle.diff.forbidden_paths_touched, []);
+    assert.match(bundle.diff.files_changed[0]!.patch, /token\.expiry >= Date\.now\(\)/);
+    if (bundle.diff.files_changed[0]!.patch.startsWith("diff --git")) {
+      assert.match(bundle.diff.files_changed[0]!.patch, /-.*token\.expiry > Date\.now\(\)/);
+      assert.match(bundle.diff.files_changed[0]!.patch, /\+.*token\.expiry >= Date\.now\(\)/);
+    }
 
     // Score structure
     assert.equal(typeof bundle.score.total, "number");
@@ -177,7 +211,11 @@ describe("end-to-end pipeline with mock adapter", () => {
     assert.equal(typeof bundle.diagnosis.first_fix_correct, "boolean");
     assert.equal(typeof bundle.diagnosis.self_verified, "boolean");
 
-    // The fix should pass (>= instead of >) — score > 0
-    assert.ok(result.score > 0, `Expected score > 0, got ${result.score}`);
+    // The fix should pass (>= instead of >), and the workspace should be destroyed.
+    assert.equal(result.passed, true);
+    assert.equal(bundle.score.pass, true);
+    assert.equal(bundle.verdict?.completionState, "PASS");
+    assert.equal(lastWorkspacePath !== null, true, "mock adapter should capture workspace path");
+    assert.equal(existsSync(lastWorkspacePath!), false, "workspace should be cleaned up after run");
   });
 });

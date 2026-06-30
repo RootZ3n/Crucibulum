@@ -20,7 +20,7 @@
  */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, readdirSync, existsSync, symlinkSync, utimesSync, statSync } from "node:fs";
+import { chmodSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, symlinkSync, utimesSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -32,6 +32,7 @@ import {
   runRetention,
   type RetentionConfig,
 } from "../core/retention.js";
+import { computeBundleHash, loadVerifiedBundle } from "../core/bundle.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -252,6 +253,52 @@ describe("retention: symlink / path traversal refusal", () => {
     // Apply the plan and confirm the outside file survives.
     applyRetentionPlan(plan, { dryRun: false });
     assert.ok(existsSync(outsideFile), "outside file must still exist after apply");
+  });
+});
+
+describe("retention: deletion error paths", () => {
+  it("reports a permission-denied unlink without counting the file as deleted", (t) => {
+    if (typeof process.getuid === "function" && process.getuid() === 0) {
+      t.skip("chmod permission-denial semantics are bypassed for uid 0");
+      return;
+    }
+
+    const runsDir = makeRunsDir();
+    const bundlePath = writeBundle(runsDir, { bundleId: "run_unlink-denied", ageMs: 90 * DAY_MS, pass: true });
+    const hashPath = join(runsDir, "run_unlink-denied.hash");
+    const plan = buildRetentionPlan({ config: baseConfig({ keepSuccessDays: 1 }), runsDir });
+    assert.ok(plan.toDelete.some((d) => d.path === bundlePath), "bundle should be eligible before chmod");
+
+    chmodSync(runsDir, 0o555);
+    try {
+      const apply = applyRetentionPlan(plan, { dryRun: false });
+      assert.equal(apply.deleted.length, 0, "permission-denied unlink must not be reported as deleted");
+      assert.ok(apply.errors.length >= 1, "unlink failure should be recorded");
+      assert.ok(apply.errors.some((e) => /EACCES|EPERM|permission/i.test(e.error)), JSON.stringify(apply.errors));
+      assert.equal(existsSync(bundlePath), true);
+      assert.equal(existsSync(hashPath), true);
+    } finally {
+      chmodSync(runsDir, 0o700);
+    }
+  });
+
+  it("marks a corrupted bundle hash as unverified instead of trusting the stored flag", () => {
+    const runsDir = makeRunsDir();
+    const bundlePath = writeBundle(runsDir, { bundleId: "run_corrupt-hash", ageMs: 1 * DAY_MS, pass: true });
+    const bundle = JSON.parse(readFileSync(bundlePath, "utf-8")) as Record<string, unknown>;
+    bundle["trust"] = { ...(bundle["trust"] as Record<string, unknown>), bundle_verified: true };
+    bundle["bundle_hash"] = computeBundleHash(bundle as never);
+    (bundle["score"] as { total: number }).total = 0.25;
+    writeFileSync(bundlePath, JSON.stringify(bundle, null, 2), "utf-8");
+
+    const loaded = loadVerifiedBundle(readFileSync(bundlePath, "utf-8"), "run_corrupt-hash.json");
+    assert.ok(loaded, "corrupted-but-parseable bundle should remain inspectable");
+    assert.equal(loaded.trust.bundle_verified, false);
+    assert.equal((loaded.trust as { bundle_signature_status?: string }).bundle_signature_status, "tampered");
+
+    const scanned = scanRunsDir({ runsDir });
+    const entry = scanned.entries.find((e) => e.name === "run_corrupt-hash.json");
+    assert.equal(entry?.classification, "bundle_success", "retention should still classify parseable bundles even when hash verification fails");
   });
 });
 

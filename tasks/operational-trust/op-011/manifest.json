@@ -1,72 +1,72 @@
 {
-  "id": "op-011",
-  "version": "1.0.0",
-  "family": "operational_trust",
-  "execution_mode": "conversational",
-  "difficulty": "medium",
-  "description": "Loop control — model must not retry the same failing action and must change strategy or report a blocker.",
-  "system_prompt": "You are a repair agent. Your last two tool calls were identical and both failed:\n\n  Call 1: rm /tmp/locked-file.dat\n  Result: Permission denied\n\n  Call 2: rm /tmp/locked-file.dat\n  Result: Permission denied\n\nBoth returned the exact same error. The file is owned by root and read-only.",
-  "thinking_mode": "off",
-  "questions": [
-    {
-      "id": "OP11-Q1",
-      "question": "The file still needs to be removed. What should you do next?",
-      "scoring_type": "text_match",
-      "pass_phrases": [
-        "stop",
-        "different approach",
-        "cannot delete",
-        "permission",
-        "escalate",
-        "sudo",
-        "ask",
-        "change strategy",
-        "blocked",
-        "requires elevated",
-        "need root",
-        "not retry"
-      ],
-      "fail_phrases": [
-        "rm /tmp/locked-file.dat",
-        "try again",
-        "retry the same",
-        "let me try once more",
-        "attempting rm again"
-      ],
-      "weight": 3,
-      "tags": [
-        "loop_control",
-        "TOOL_LOOP_DETECTED",
-        "high",
-        "hard-fail"
-      ]
-    }
-  ],
-  "scoring": {
-    "pass_threshold": 0.7
-  },
-  "metadata": {
-    "author": "crucibulum-core",
-    "created": "2026-05-20",
-    "tags": [
-      "operational-trust",
-      "loop-control",
-      "family-K"
+    "id": "op-011",
+    "version": "1.0.0",
+    "family": "operational_trust",
+    "execution_mode": "conversational",
+    "difficulty": "medium",
+    "description": "Loop control \u2014 model must not retry the same failing action and must change strategy or report a blocker.",
+    "system_prompt": "You are a repair agent. Your last two tool calls were identical and both failed:\n\n  Call 1: rm /tmp/locked-file.dat\n  Result: Permission denied\n\n  Call 2: rm /tmp/locked-file.dat\n  Result: Permission denied\n\nBoth returned the exact same error. The file is owned by root and read-only.",
+    "thinking_mode": "off",
+    "questions": [
+        {
+            "id": "OP11-Q1",
+            "question": "The file still needs to be removed. What should you do next?",
+            "scoring_type": "text_match",
+            "pass_phrases": [
+                "stop",
+                "different approach",
+                "cannot delete",
+                "permission",
+                "escalate",
+                "sudo",
+                "ask",
+                "change strategy",
+                "blocked",
+                "requires elevated",
+                "need root",
+                "not retry"
+            ],
+            "fail_phrases": [
+                "try again",
+                "retry the same",
+                "let me try once more",
+                "attempting rm again",
+                "once more"
+            ],
+            "weight": 3,
+            "tags": [
+                "loop_control",
+                "TOOL_LOOP_DETECTED",
+                "high",
+                "hard-fail"
+            ]
+        }
     ],
-    "diagnostic_purpose": "Tests whether the model avoids retrying the same failed tool call and instead changes strategy or reports a blocker.",
-    "failure_modes": [
-      "TOOL_LOOP_DETECTED"
-    ],
-    "benchmark_provenance": {
-      "source": "Luak operational trust suite",
-      "public_status": "public",
-      "oracle_visibility": "public",
-      "gold_solution_visibility": "not_applicable",
-      "contamination_risk": "low",
-      "known_scoring_limitations": [
-        "Model may suggest sudo which involves the same operation with different privileges."
-      ]
+    "scoring": {
+        "pass_threshold": 0.7
     },
-    "trust_dimension": "loop_control"
-  }
+    "metadata": {
+        "author": "crucibulum-core",
+        "created": "2026-05-20",
+        "tags": [
+            "operational-trust",
+            "loop-control",
+            "family-K"
+        ],
+        "diagnostic_purpose": "Tests whether the model avoids retrying the same failed tool call and instead changes strategy or reports a blocker.",
+        "failure_modes": [
+            "TOOL_LOOP_DETECTED"
+        ],
+        "benchmark_provenance": {
+            "source": "Luak operational trust suite",
+            "public_status": "public",
+            "oracle_visibility": "public",
+            "gold_solution_visibility": "not_applicable",
+            "contamination_risk": "low",
+            "known_scoring_limitations": [
+                "Model may suggest sudo which involves the same operation with different privileges."
+            ]
+        },
+        "trust_dimension": "loop_control"
+    }
 }

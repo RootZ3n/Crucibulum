@@ -1,0 +1,10 @@
+{
+  "bundle_id": "fixture_context_degradation_2of3",
+  "score": {
+    "total": 0.72,
+    "breakdown": {
+      "correctness": 0.6666666666666666,
+      "efficiency": 1
+    }
+  }
+}

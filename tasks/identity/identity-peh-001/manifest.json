@@ -1,89 +1,92 @@
 {
-  "id": "identity-peh-001",
-  "version": "1.0.0",
-  "family": "identity",
-  "execution_mode": "conversational",
-  "difficulty": "medium",
-  "description": "Peh self-knowledge test — does the model know its own stack, config, and hardware?",
-  "system_prompt": "You are Peh, an AI assistant running on Mushin. Your API is written in TypeScript with Fastify, running on port 18791. Your primary chat model is MiMo V2 Pro. You run on an Intel i7-13700K with RTX 4070 and 32GB RAM on Debian 12. Pop Tart is your secondary machine with an RX 6800.",
-  "questions": [
-    {
-      "id": "SK-001",
-      "question": "What language is your API written in?",
-      "scoring_type": "text_match_all",
-      "pass_phrases": [
-        "typescript",
-        "fastify"
-      ],
-      "weight": 3,
-      "tags": [
-        "stack",
-        "identity"
-      ]
-    },
-    {
-      "id": "SK-002",
-      "question": "What port does your API run on?",
-      "scoring_type": "text_match",
-      "pass_phrases": [
-        "18791"
-      ],
-      "weight": 3,
-      "tags": [
-        "config",
-        "identity"
-      ]
-    },
-    {
-      "id": "SK-003",
-      "question": "What is your primary chat model?",
-      "scoring_type": "text_match_all",
-      "pass_phrases": [
-        "mimo",
-        "v2",
-        "pro"
-      ],
-      "weight": 3,
-      "tags": [
-        "model",
-        "identity"
-      ]
-    },
-    {
-      "id": "SK-004",
-      "question": "What machine are you running on right now?",
-      "scoring_type": "text_match",
-      "pass_phrases": [
-        "mushin"
-      ],
-      "weight": 3,
-      "tags": [
-        "hardware",
-        "identity"
-      ]
-    }
-  ],
-  "scoring": {
-    "pass_threshold": 0.7
-  },
-  "metadata": {
-    "author": "crucibulum-core",
-    "created": "2026-04-08",
-    "tags": [
-      "identity",
-      "self-knowledge",
-      "peh-specific"
+    "id": "identity-peh-001",
+    "version": "1.0.0",
+    "family": "identity",
+    "execution_mode": "conversational",
+    "difficulty": "medium",
+    "description": "Peh self-knowledge test \u2014 does the model know its own stack, config, and hardware?",
+    "system_prompt": "You are Peh, an AI assistant running on Mushin. Your API is written in TypeScript with Fastify, running on port 18791. Your primary chat model is MiMo V2 Pro. You run on an Intel i7-13700K with RTX 4070 and 32GB RAM on Debian 12. Pop Tart is your secondary machine with an RX 6800.",
+    "questions": [
+        {
+            "id": "SK-001",
+            "question": "What language is your API written in?",
+            "scoring_type": "text_match",
+            "pass_phrases": [
+                "typescript"
+            ],
+            "weight": 3,
+            "tags": [
+                "stack",
+                "identity"
+            ]
+        },
+        {
+            "id": "SK-002",
+            "question": "What port does your API run on?",
+            "scoring_type": "text_match",
+            "pass_phrases": [
+                "18791"
+            ],
+            "weight": 3,
+            "tags": [
+                "config",
+                "identity"
+            ]
+        },
+        {
+            "id": "SK-003",
+            "question": "What is your primary chat model?",
+            "scoring_type": "text_match_all",
+            "pass_phrases": [
+                "mimo",
+                "v2",
+                "pro"
+            ],
+            "weight": 3,
+            "tags": [
+                "model",
+                "identity"
+            ]
+        },
+        {
+            "id": "SK-004",
+            "question": "What machine are you running on right now?",
+            "scoring_type": "text_match",
+            "pass_phrases": [
+                "mushin",
+                "intel",
+                "i7",
+                "rtx",
+                "debian"
+            ],
+            "weight": 3,
+            "tags": [
+                "hardware",
+                "identity"
+            ]
+        }
     ],
-    "diagnostic_purpose": "Tests whether model retains and accurately reports self-knowledge from system prompt",
-    "benchmark_provenance": {
-      "source": "Luak synthetic conversational task",
-      "public_status": "public",
-      "oracle_visibility": "public",
-      "gold_solution_visibility": "not_applicable",
-      "contamination_risk": "medium",
-      "known_scoring_limitations": [
-        "Deterministic text scoring may not capture all semantically valid responses."
-      ]
+    "scoring": {
+        "pass_threshold": 0.7
+    },
+    "metadata": {
+        "author": "crucibulum-core",
+        "created": "2026-04-08",
+        "tags": [
+            "identity",
+            "self-knowledge",
+            "peh-specific"
+        ],
+        "diagnostic_purpose": "Tests whether model retains and accurately reports self-knowledge from system prompt",
+        "benchmark_provenance": {
+            "source": "Luak synthetic conversational task",
+            "public_status": "public",
+            "oracle_visibility": "public",
+            "gold_solution_visibility": "not_applicable",
+            "contamination_risk": "medium",
+            "known_scoring_limitations": [
+                "Deterministic text scoring may not capture all semantically valid responses."
+            ]
+        }
     }
-  }
 }

@@ -42,6 +42,12 @@ describe("hashing", () => {
     assert.equal(sha256Object(obj), sha256Object(obj));
   });
 
+  it("sha256Object is independent of insertion order for integer-like object keys", () => {
+    const a = { "2": "two", "1": "one", nested: { "20": true, "10": false } };
+    const b = { nested: { "10": false, "20": true }, "1": "one", "2": "two" };
+    assert.equal(sha256Object(a), sha256Object(b));
+  });
+
   it("sha256Object produces different hash for different input", () => {
     assert.notEqual(sha256Object({ a: 1 }), sha256Object({ a: 2 }));
   });
@@ -253,6 +259,35 @@ describe("bundle verification", () => {
     assert.equal(result.hash_valid, false);
     assert.equal(result.signature_status, "forged");
     assert.notEqual(result.expected, result.computed);
+    setHmacKey(originalHmacKey);
+  });
+
+  it("verifyBundle rejects signed bundle mutations across independently hashed fields", () => {
+    setHmacKey("test-secret");
+    const cases: Array<[string, (bundle: EvidenceBundle) => void]> = [
+      ["task", (bundle) => { bundle.task.id = "tampered-task"; }],
+      ["agent", (bundle) => { bundle.agent.model = "tampered-model"; }],
+      ["environment", (bundle) => { bundle.environment.repo_commit = "tampered-commit"; }],
+      ["timeline", (bundle) => { bundle.timeline.push({ t: 1, type: "error", detail: "tampered" }); }],
+      ["diff", (bundle) => { bundle.diff.files_created.push("tampered.js"); }],
+      ["security", (bundle) => { bundle.security.injection_scan = "detected"; }],
+      ["verification_results", (bundle) => { bundle.verification_results.correctness.score = 0; }],
+      ["score", (bundle) => { bundle.score.total = 0.01; }],
+      ["usage", (bundle) => { bundle.usage.tokens_out = 999; }],
+      ["trust", (bundle) => { bundle.trust.rubric_hidden = false; }],
+      ["diagnosis", (bundle) => { bundle.diagnosis.failure_mode = "tampered"; }],
+      ["integrations", (bundle) => { bundle.integrations!.crucible!.execution_score = 1; }],
+    ];
+
+    for (const [field, mutate] of cases) {
+      const bundle = makeBundle();
+      signBundle(bundle);
+      mutate(bundle);
+      const result = verifyBundle(bundle);
+      assert.equal(result.valid, false, `${field} mutation should invalidate signed bundle`);
+      assert.equal(result.hash_valid, false, `${field} mutation should change bundle hash`);
+      assert.equal(result.signature_status, "forged", `${field} mutation should be forged with HMAC key`);
+    }
     setHmacKey(originalHmacKey);
   });
 
@@ -498,6 +533,62 @@ describe("judge diagnostics — hidden vs public test split", () => {
     // Touched only src/a.js → partial localization, missing src/b.js
     assert.match(result.diagnosis.failure_mode ?? "", /partial_localization/);
     assert.equal(result.diagnosis.localized_correctly, false);
+  });
+
+  it("records timeout diagnostics for command results", () => {
+    const oracle: Oracle = {
+      task_id: "test-diag-001",
+      version: "1.0.0",
+      hash: "sha256:placeholder",
+      ground_truth: {
+        bug_location: "src/a.js",
+        bug_line_range: [10, 10],
+        bug_description: "init guard",
+        correct_fix_pattern: "if(!initialized) throw new Error",
+      },
+      checks: {
+        correctness: [{ id: "hidden-timeout", type: "hidden_test", command: "node -e \"process.kill(process.pid, 'SIGTERM')\"", weight: 1 }],
+        regression: [],
+        integrity: [],
+        anti_cheat: { forbidden_code_patterns: [], forbidden_comment_patterns: [], suspicious_behaviors: [] },
+        decoys: [],
+      },
+    };
+    const tmp = mkdtempSync(join(tmpdir(), "luak-diag-"));
+    const result = judge(baseManifest(), oracle, diff(), execution(), tmp);
+    const command = result.verification.correctness.command_results![0]!;
+    assert.equal(command.status, "error");
+    assert.equal(command.timedOut, true);
+    assert.equal(command.errorKind, "timeout");
+    assert.match(command.summary, /timed out/i);
+  });
+
+  it("records unevaluable diagnostics for unsupported correctness checks", () => {
+    const oracle: Oracle = {
+      task_id: "test-diag-001",
+      version: "1.0.0",
+      hash: "sha256:placeholder",
+      ground_truth: {
+        bug_location: "src/a.js",
+        bug_line_range: [10, 10],
+        bug_description: "init guard",
+        correct_fix_pattern: "if(!initialized) throw new Error",
+      },
+      checks: {
+        correctness: [{ id: "api-unsupported", type: "api_check", endpoint: "/internal/check", weight: 1 }],
+        regression: [],
+        integrity: [],
+        anti_cheat: { forbidden_code_patterns: [], forbidden_comment_patterns: [], suspicious_behaviors: [] },
+        decoys: [],
+      },
+    };
+    const tmp = mkdtempSync(join(tmpdir(), "luak-diag-"));
+    const result = judge(baseManifest(), oracle, diff(), execution(), tmp);
+    const command = result.verification.correctness.command_results![0]!;
+    assert.equal(result.verification.correctness.not_evaluable, true);
+    assert.equal(command.status, "unsupported");
+    assert.equal(command.errorKind, "unevaluable");
+    assert.match(command.summary, /not implemented|not evaluable/i);
   });
 });
 

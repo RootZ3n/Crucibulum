@@ -38,7 +38,7 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import {
@@ -164,28 +164,24 @@ describe("Luak scoring-invariant · context-degradation-001 (offline)", () => {
 
   // -------- positive evidence: every actual bundle on disk passes --------
 
-  it("P13 · every existing context-degradation-001 bundle on disk passes the invariant (no historical scoring corruption)", () => {
-    const runsDir = join(ROOT, "runs");
-    if (!existsSync(runsDir)) return; // CI environments without local runs
-    const files = readdirSync(runsDir).filter((f) => f.startsWith("run_") && f.includes("context-degradation-001") && f.endsWith(".json"));
+  it("P13 · checked-in context-degradation-001 fixture bundles pass the invariant", () => {
+    const fixturesDir = join(ROOT, "tests", "fixtures", "scoring");
+    const files = readdirSync(fixturesDir).filter((f) => f.startsWith("context-degradation-001-") && f.endsWith(".json"));
     let n = 0;
     for (const f of files) {
-      const bundle = JSON.parse(readFileSync(join(runsDir, f), "utf-8")) as { score?: { total: number; breakdown: { correctness: number; efficiency: number } } };
-      // Some legacy bundles (e.g. the harness-mock 0/3 case) may not
-      // have a populated breakdown. Skip those rather than fail; the
-      // invariant is about catching positive pipeline bugs.
-      if (!bundle.score || !bundle.score.breakdown || typeof bundle.score.breakdown.correctness !== "number" || typeof bundle.score.breakdown.efficiency !== "number") {
-        continue;
-      }
+      const bundle = JSON.parse(readFileSync(join(fixturesDir, f), "utf-8")) as { score?: { total: number; breakdown: { correctness: number; efficiency: number } } };
+      assert.ok(bundle.score, `fixture ${f} must include score`);
+      assert.equal(typeof bundle.score.breakdown.correctness, "number", `fixture ${f} must include correctness`);
+      assert.equal(typeof bundle.score.breakdown.efficiency, "number", `fixture ${f} must include efficiency`);
       n++;
       const r = validateBinaryConversationalBundleScoreShape(MANIFEST, bundle);
-      assert.equal(r.valid, true, `bundle ${f} must pass invariant; reason: ${r.reason}`);
+      assert.equal(r.valid, true, `fixture ${f} must pass invariant; reason: ${r.reason}`);
       // Spot-check that the well-known 43 case is recognised as legal.
       if (close(bundle.score.breakdown.correctness, 1 / 3)) {
-        assert.ok(close(bundle.score.total, 0.43), `1-of-3 bundle ${f} expected total ≈ 0.43; got ${bundle.score.total}`);
+        assert.ok(close(bundle.score.total, 0.43), `1-of-3 fixture ${f} expected total ≈ 0.43; got ${bundle.score.total}`);
       }
     }
-    assert.ok(n >= 5, `expected to inspect at least 5 historical context-degradation-001 bundles; got ${n}`);
+    assert.equal(n, 4, `expected to inspect the four binary anchor fixtures; got ${n}`);
   });
 
   // -------- regression guards --------

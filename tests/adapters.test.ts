@@ -1,152 +1,235 @@
 /**
- * Luak — Adapter Tests
- * Covers: mock adapter contract, OllamaAdapter construction.
+ * Luak — adapter contract tests
+ *
+ * Exercises the real built-in adapters through their public registry and
+ * health/chat seams. Network calls are mocked; no provider is contacted.
  */
 
-import { describe, it } from "node:test";
+import { afterEach, describe, it, mock } from "node:test";
 import assert from "node:assert/strict";
 
-import type {
-  CrucibulumAdapter,
-  AdapterConfig,
-  ExecutionInput,
-  ExecutionResult,
-} from "../adapters/base.js";
-import { OllamaAdapter } from "../adapters/ollama.js";
+import type { AdapterConfig, ChatMessage, CrucibulumAdapter } from "../adapters/base.js";
+import { resolveAdapter } from "../adapters/registry.js";
 
-// ── Mock Adapter ────────────────────────────────────────────────────────────
+const ADAPTER_IDS = [
+  "openai",
+  "anthropic",
+  "openrouter",
+  "ollama",
+  "minimax",
+  "google",
+  "zai",
+  "peh",
+] as const;
 
-class MockAdapter implements CrucibulumAdapter {
-  id = "mock";
-  name = "Mock";
-  version = "1.0.0";
+type AdapterId = typeof ADAPTER_IDS[number];
 
-  supports(_family: "poison" | "spec" | "orchestration"): boolean {
-    return true;
-  }
+const ENV_KEYS: Partial<Record<AdapterId, string>> = {
+  openai: "OPENAI_API_KEY",
+  anthropic: "ANTHROPIC_API_KEY",
+  openrouter: "OPENROUTER_API_KEY",
+  minimax: "MINIMAX_API_KEY",
+  google: "GOOGLE_AI_API_KEY",
+  zai: "ZAI_API_KEY",
+};
 
-  supportsToolCalls(): boolean {
-    return false;
-  }
-  supportsChat() { return false; }
+const MODELS: Record<AdapterId, string> = {
+  openai: "gpt-5.4-mini",
+  anthropic: "claude-sonnet-4-6",
+  openrouter: "openai/gpt-5.4-mini",
+  ollama: "llama3.2",
+  minimax: "MiniMax-Text-01",
+  google: "gemini-2.0-flash",
+  zai: "glm-4-plus",
+  peh: "peh:test-model",
+};
 
-  async init(_config: AdapterConfig): Promise<void> {
-    // no-op
-  }
+const AUTH_EXPECTATIONS: Record<AdapterId, Record<string, string | null>> = {
+  openai: { authorization: "Bearer test-openai-key" },
+  anthropic: { "x-api-key": "test-anthropic-key", "anthropic-version": "2023-06-01" },
+  openrouter: { authorization: "Bearer test-openrouter-key" },
+  ollama: { authorization: null, "x-api-key": null, "x-goog-api-key": null },
+  minimax: { authorization: "Bearer test-minimax-key", "content-type": "application/json" },
+  google: { "x-goog-api-key": "test-google-key", authorization: null },
+  zai: { authorization: "Bearer test-zai-key" },
+  peh: { authorization: null, "x-api-key": null, "x-goog-api-key": null },
+};
 
-  async healthCheck(): Promise<{ ok: boolean; reason?: string | undefined }> {
-    return { ok: true };
-  }
+const originalEnv = new Map<string, string | undefined>();
 
-  async teardown(): Promise<void> {
-    // no-op
-  }
-
-  async execute(input: ExecutionInput): Promise<ExecutionResult> {
-    return {
-      exit_reason: "complete",
-      timeline: [
-        { t: 0, type: "task_start", detail: "mock start" },
-        { t: 1, type: "task_complete", detail: "mock complete" },
-      ],
-      duration_ms: 1000,
-      steps_used: 2,
-      files_read: [],
-      files_written: [],
-      tokens_in: 100,
-      tokens_out: 50,
-      adapter_metadata: {
-        adapter_id: "mock",
-        adapter_version: "1.0.0",
-        system_version: "mock-1.0",
-        model: "mock-model",
-        provider: "local",
-      },
-    };
-  }
+function rememberEnv(key: string): void {
+  if (!originalEnv.has(key)) originalEnv.set(key, process.env[key]);
 }
 
-// ── Mock adapter contract ───────────────────────────────────────────────────
+function seedProviderEnv(): void {
+  for (const [adapterId, key] of Object.entries(ENV_KEYS) as Array<[AdapterId, string]>) {
+    rememberEnv(key);
+    process.env[key] = `test-${adapterId}-key`;
+  }
+  rememberEnv("PEH_URL");
+  process.env["PEH_URL"] = "http://127.0.0.1:18791";
+}
 
-describe("mock adapter contract", () => {
-  it("has all required interface methods", () => {
-    const adapter = new MockAdapter();
-    assert.equal(typeof adapter.id, "string");
-    assert.equal(typeof adapter.name, "string");
-    assert.equal(typeof adapter.version, "string");
-    assert.equal(typeof adapter.supports, "function");
-    assert.equal(typeof adapter.supportsToolCalls, "function");
-    assert.equal(typeof adapter.init, "function");
-    assert.equal(typeof adapter.healthCheck, "function");
-    assert.equal(typeof adapter.teardown, "function");
-    assert.equal(typeof adapter.execute, "function");
-  });
-
-  it("execute returns proper result shape", async () => {
-    const adapter = new MockAdapter();
-    const input: ExecutionInput = {
-      task: {
-        task: { title: "test", description: "test", entrypoints: [] },
-        constraints: { time_limit_sec: 60, max_steps: 10, allowed_tools: [], network_allowed: false },
-        verification: { public_tests_command: null, build_command: null },
-      },
-      workspace_path: "/tmp/test",
-      budget: { time_limit_sec: 60, max_steps: 10, max_file_edits: 5, network_allowed: false },
-    };
-
-    const result = await adapter.execute(input);
-
-    assert.ok(["complete", "timeout", "budget_exceeded", "error", "injection_detected"].includes(result.exit_reason));
-    assert.ok(Array.isArray(result.timeline));
-    assert.equal(typeof result.duration_ms, "number");
-    assert.equal(typeof result.steps_used, "number");
-    assert.ok(Array.isArray(result.files_read));
-    assert.ok(Array.isArray(result.files_written));
-    assert.equal(typeof result.adapter_metadata.adapter_id, "string");
-    assert.equal(typeof result.adapter_metadata.provider, "string");
-  });
-
-  it("healthCheck returns ok shape", async () => {
-    const adapter = new MockAdapter();
-    const health = await adapter.healthCheck();
-    assert.equal(typeof health.ok, "boolean");
-    assert.equal(health.ok, true);
-  });
+afterEach(() => {
+  mock.restoreAll();
+  for (const [key, value] of originalEnv) {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
+  originalEnv.clear();
 });
 
-// ── OllamaAdapter construction ──────────────────────────────────────────────
+function headerValue(headers: unknown, name: string): string | null {
+  const lower = name.toLowerCase();
+  if (!headers) return null;
+  if (headers instanceof Headers) return headers.get(name);
+  if (Array.isArray(headers)) {
+    const hit = headers.find(([k]) => String(k).toLowerCase() === lower);
+    return hit ? String(hit[1]) : null;
+  }
+  if (typeof headers === "object") {
+    for (const [k, v] of Object.entries(headers as Record<string, unknown>)) {
+      if (k.toLowerCase() === lower) return String(v);
+    }
+  }
+  return null;
+}
 
-describe("OllamaAdapter", () => {
-  it("implements all required interface properties and methods", () => {
-    const adapter = new OllamaAdapter();
-    assert.equal(typeof adapter.id, "string");
-    assert.equal(typeof adapter.name, "string");
-    assert.equal(typeof adapter.version, "string");
-    assert.equal(typeof adapter.supports, "function");
-    assert.equal(typeof adapter.supportsToolCalls, "function");
-    assert.equal(typeof adapter.init, "function");
-    assert.equal(typeof adapter.healthCheck, "function");
-    assert.equal(typeof adapter.teardown, "function");
-    assert.equal(typeof adapter.execute, "function");
+function makeJsonResponse(body: unknown, init: ResponseInit = { status: 200 }): Response {
+  return new Response(JSON.stringify(body), {
+    status: init.status ?? 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function successfulFetch(url: string): Response {
+  if (url.endsWith("/api/tags")) {
+    return makeJsonResponse({ models: [{ name: "llama3.2", details: { family: "llama", parameter_size: "3B" } }] });
+  }
+  if (url.endsWith("/nous/models")) {
+    return makeJsonResponse([{ model: "peh:test-model", name: "Peh Test Model", provider: "peh", active: true }]);
+  }
+  if (url.includes("openrouter.ai") && url.endsWith("/models")) {
+    return makeJsonResponse({ data: [{ id: "openai/gpt-5.4-mini", name: "GPT 5.4 Mini" }] });
+  }
+  if (url.includes("api.openai.com") && url.endsWith("/models")) {
+    return makeJsonResponse({ data: [{ id: "gpt-5.4-mini", owned_by: "openai" }] });
+  }
+  return makeJsonResponse({ ok: true, choices: [{ message: { content: "ok" } }], base_resp: { status_code: 0 } });
+}
+
+function initConfig(adapterId: AdapterId): AdapterConfig {
+  const config = resolveAdapter(adapterId).makeConfig({ model: MODELS[adapterId], provider: adapterId });
+  const envKey = ENV_KEYS[adapterId];
+  if (envKey) {
+    (config as AdapterConfig & { api_key: string }).api_key = process.env[envKey] ?? "";
+  }
+  if (adapterId === "peh") {
+    (config as AdapterConfig & { peh_url: string; provider: string }).peh_url = "http://127.0.0.1:18791";
+    (config as AdapterConfig & { provider: string }).provider = "peh";
+  }
+  if (adapterId === "ollama") {
+    (config as AdapterConfig & { ollama_url: string }).ollama_url = "http://127.0.0.1:11434";
+  }
+  return config;
+}
+
+async function initializedAdapter(adapterId: AdapterId): Promise<CrucibulumAdapter> {
+  const adapter = resolveAdapter(adapterId).create();
+  await adapter.init(initConfig(adapterId));
+  return adapter;
+}
+
+describe("built-in adapter registry contracts", () => {
+  it("makeConfig returns the expected per-adapter shape", () => {
+    seedProviderEnv();
+    for (const adapterId of ADAPTER_IDS) {
+      const entry = resolveAdapter(adapterId);
+      const config = entry.makeConfig({ model: MODELS[adapterId], provider: "provider-hint" }) as Record<string, unknown>;
+
+      assert.equal(config.model, MODELS[adapterId], `${adapterId}: model must round-trip through makeConfig`);
+      assert.equal(entry.create().id, adapterId, `${adapterId}: registry must create the real adapter`);
+      assert.equal(typeof entry.create().supportsChat, "function", `${adapterId}: adapter must expose supportsChat`);
+      if (adapterId === "peh") {
+        assert.equal(config.provider, "provider-hint", "peh config must preserve routed provider");
+      }
+    }
   });
 
-  it("supports all families", () => {
-    const adapter = new OllamaAdapter();
-    assert.equal(adapter.supports("poison"), true);
-    assert.equal(adapter.supports("spec"), true);
-    assert.equal(adapter.supports("orchestration"), true);
+  it("model listing returns non-empty catalog entries without live network", async () => {
+    seedProviderEnv();
+    mock.method(globalThis, "fetch", async (url: string | URL | Request) => successfulFetch(String(url)));
+
+    for (const adapterId of ADAPTER_IDS) {
+      const entry = resolveAdapter(adapterId);
+      const models = await entry.listModels();
+      assert.ok(models.length > 0, `${adapterId}: expected at least one listed model`);
+      for (const model of models) {
+        assert.equal(typeof model.id, "string", `${adapterId}: model id`);
+        assert.equal(model.provider.length > 0, true, `${adapterId}: provider should be populated`);
+        assert.equal(model.available, true, `${adapterId}: mocked listed model should be available`);
+      }
+    }
   });
 
-  it("init accepts config without error", async () => {
-    const adapter = new OllamaAdapter();
-    await adapter.init({ timeout_ms: 5000 });
-    // Should not throw
-    assert.ok(true);
+  it("health checks send the correct provider auth headers", async () => {
+    seedProviderEnv();
+    const calls: Array<{ adapterId: AdapterId; url: string; headers: unknown }> = [];
+    let active: AdapterId = "openai";
+    mock.method(globalThis, "fetch", async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ adapterId: active, url: String(url), headers: init?.headers });
+      return successfulFetch(String(url));
+    });
+
+    for (const adapterId of ADAPTER_IDS) {
+      active = adapterId;
+      const adapter = await initializedAdapter(adapterId);
+      const health = await adapter.healthCheck();
+      assert.equal(health.ok, true, `${adapterId}: mocked health check should pass`);
+    }
+
+    for (const adapterId of ADAPTER_IDS) {
+      const call = calls.find((c) => c.adapterId === adapterId);
+      assert.ok(call, `${adapterId}: expected a fetch call`);
+      for (const [header, expected] of Object.entries(AUTH_EXPECTATIONS[adapterId])) {
+        assert.equal(headerValue(call.headers, header), expected, `${adapterId}: ${header}`);
+      }
+    }
   });
 
-  it("teardown completes without error", async () => {
-    const adapter = new OllamaAdapter();
-    await adapter.teardown();
-    assert.ok(true);
+  it("provider errors are normalized on failed health checks", async () => {
+    seedProviderEnv();
+
+    for (const adapterId of ADAPTER_IDS) {
+      mock.restoreAll();
+      mock.method(globalThis, "fetch", async () => new Response("upstream unavailable", { status: 503 }));
+      const adapter = await initializedAdapter(adapterId);
+      const health = await adapter.healthCheck();
+
+      assert.equal(health.ok, false, `${adapterId}: failing upstream must mark health false`);
+      assert.equal(health.providerError?.kind, "UNAVAILABLE", `${adapterId}: HTTP 503 should normalize`);
+      assert.equal(health.providerError?.adapter, adapterId, `${adapterId}: normalized error adapter`);
+      assert.match(health.reason ?? "", /temporarily unavailable|unavailable/i, `${adapterId}: reason should be operator-readable`);
+    }
+  });
+
+  it("chat failures expose structured provider errors for adapters that throw them", async () => {
+    seedProviderEnv();
+    const messages: ChatMessage[] = [{ role: "user", content: "hello" }];
+
+    for (const adapterId of ["openrouter", "minimax"] as const) {
+      mock.restoreAll();
+      mock.method(globalThis, "fetch", async () => new Response("rate limited", { status: 429 }));
+      const adapter = await initializedAdapter(adapterId);
+      await assert.rejects(
+        () => adapter.chat!(messages, { retries: 0, timeoutMs: 1000 }),
+        (err: unknown) => {
+          const structured = (err as { structured?: { kind?: string; adapter?: string } }).structured;
+          assert.equal(structured?.kind, "RATE_LIMIT", `${adapterId}: chat error kind`);
+          assert.equal(structured?.adapter, adapterId, `${adapterId}: chat error adapter`);
+          return true;
+        },
+      );
+    }
   });
 });

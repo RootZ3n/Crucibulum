@@ -38,18 +38,15 @@ describe("resolveScoringWeights", () => {
     assert.deepEqual(result, taskWeights);
   });
 
-  it("task-level partial override works correctly", () => {
-    const taskWeights: SuiteScoringWeights = {
+  it("task-level partial weight override falls back to defaults for omitted weights", () => {
+    const taskWeights = {
       correctness: 0.90,
-      regression: 0.05,
-      integrity: 0.03,
-      efficiency: 0.02,
-    };
-    const result = resolveScoringWeights(taskWeights, "v1");
+    } as Partial<SuiteScoringWeights> as SuiteScoringWeights;
+    const result = resolveScoringWeights(taskWeights, undefined);
     assert.equal(result.correctness, 0.90);
-    assert.equal(result.regression, 0.05);
-    assert.equal(result.integrity, 0.03);
-    assert.equal(result.efficiency, 0.02);
+    assert.equal(result.regression, DEFAULT_WEIGHTS.regression);
+    assert.equal(result.integrity, DEFAULT_WEIGHTS.integrity);
+    assert.equal(result.efficiency, DEFAULT_WEIGHTS.efficiency);
   });
 
   it("weights sum check (task-level)", () => {
@@ -84,6 +81,13 @@ describe("resolvePassThreshold", () => {
   it("task-level threshold overrides suite-level", () => {
     const result = resolvePassThreshold(0.85, "v1");
     assert.equal(result, 0.85);
+  });
+
+  it("task-level threshold override does not imply task-level weight overrides", () => {
+    const weights = resolveScoringWeights(undefined, undefined);
+    const threshold = resolvePassThreshold(0.72, undefined);
+    assert.deepEqual(weights, DEFAULT_WEIGHTS);
+    assert.equal(threshold, 0.72);
   });
 });
 
