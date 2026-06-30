@@ -3600,6 +3600,34 @@ body::after {
 .peh-product-luak .peh-ws-console:hover{border-color:var(--luak-brass);color:var(--luak-brass-hi)}
 .peh-ws-window.console{max-width:none}
 .peh-ws-window.console .peh-ws-body{padding:0;display:flex;flex:1 1 auto;min-height:0;overflow:hidden}
+/* The console body is a flex box (overflow:hidden) so the bespoke flex consoles
+   (Evidence Room / leaderboards) manage their own column scroll. The classic
+   app-shell consoles (Overview / Race Control / Pit Lane) drop a tall lane-/
+   deck-wrap into that box — it MUST scroll, or 2000px+ of content gets clipped
+   with no way to reach it. Make those wraps the scrollers. */
+.peh-ws-window.console .peh-ws-body>.peh-lane-wrap,
+.peh-ws-window.console .peh-ws-body>.peh-deck-wrap,
+.peh-ws-window.console .peh-ws-body>.peh-ph{flex:1 1 auto;min-width:0;min-height:0;overflow:auto}
+
+/* ── Brass scrollbars ──────────────────────────────────────────────────
+   Chromium's overlay scrollbars are 0-px wide, so a scrollable console read
+   as "cut off" with no hint that it scrolls (and no way to reach the rest of
+   the disciplines / providers / content). Force a classic, always-visible
+   paddock-brass scrollbar on every scroller inside a workspace window.
+   NOTE: the standard scrollbar-width/-color props (Firefox) are gated behind
+   @supports-not below — setting them in Chromium would suppress the webkit
+   pseudo-elements and leave the 0-px overlay bar we're trying to kill. */
+.peh-product-luak .peh-ws-window ::-webkit-scrollbar{width:12px;height:12px}
+.peh-product-luak .peh-ws-window ::-webkit-scrollbar-track{background:rgba(20,13,4,.5)}
+.peh-product-luak .peh-ws-window ::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--luak-brass),var(--luak-brass-dk));border-radius:8px;border:2px solid rgba(20,13,4,.5);background-clip:padding-box}
+.peh-product-luak .peh-ws-window ::-webkit-scrollbar-thumb:hover{background:var(--luak-brass-hi);background-clip:padding-box;border:2px solid rgba(20,13,4,.5)}
+.peh-product-luak .peh-ws-window ::-webkit-scrollbar-corner{background:transparent}
+/* Firefox already shows always-visible classic scrollbars; just theme them.
+   Scoped Firefox-only so the standard props don't suppress ::-webkit-scrollbar
+   (which they would in Chromium, re-introducing the 0-px overlay bar). */
+@-moz-document url-prefix(){
+  .peh-product-luak .peh-ws-window *{scrollbar-width:thin;scrollbar-color:var(--luak-brass-dk) rgba(20,13,4,.5)}
+}
 
 /* shared bits */
 .peh-wk-empty{color:var(--luak-brass-dk);font-style:italic;font-size:12.5px;padding:18px;text-align:center}
@@ -3683,3 +3711,9 @@ body::after {
 .peh-gs-row.top .fl{background:linear-gradient(90deg,#2f7d4f,#62c08a)}
 .peh-gs-row .sc{width:46px;text-align:right;font-family:var(--luak-mono,monospace);font-size:12px;color:var(--luak-paper)}
 .peh-gs-row .me{width:92px;text-align:right;font-family:var(--luak-mono,monospace);font-size:10px;color:var(--luak-brass-dk)}
+
+/* ── Racetrack · the run cockpit ── the whole console scrolls as one column
+   (run controls → live run → history) inside the overflow:hidden console body. */
+.peh-race{flex:1 1 auto;min-width:0;min-height:0;overflow:auto;width:100%;padding:12px;display:flex;flex-direction:column;gap:12px}
+.peh-race .command-card-stack{display:flex;flex-direction:column;gap:12px}
+.peh-race .test-list{max-height:230px}

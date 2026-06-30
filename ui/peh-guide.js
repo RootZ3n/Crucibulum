@@ -43,7 +43,9 @@
     var root = el('div', 'pc-peh');
     var fig = el('div', 'pc-peh-fig');
     var img = document.createElement('img');
-    img.src = 'peh.png';
+    img.src = (typeof window !== 'undefined' && typeof window.pehMascotSrc === 'function')
+      ? window.pehMascotSrc()
+      : 'assets/peh-vintage-racer-squirrel.png';
     img.alt = 'Peh, your guide';
     img.className = 'pc-peh-img';
     img.onerror = function () { fig.classList.add('pc-peh-fallback'); fig.textContent = '🐿️'; };

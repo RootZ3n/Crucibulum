@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Luak</title>
-<link rel="stylesheet" href="/crucibulum.css?v=20260630-voltron2">
+<link rel="stylesheet" href="/crucibulum.css?v=20260630-racetrack2">
 </head>
 <body>
 <div id="app"></div>
@@ -326,7 +326,8 @@ const state={
     pehPosition:null, // {x, y} — current Peh medallion position (for the glide)
     pehPopUp:null,      // {x, y} — Peh mascot pop-up at clicked hotspot
     workshop:{disc:null,task:null,run:null},  // Evidence Room selection (Workshop)
-    grandstand:{disc:'__ALL__'}               // Grandstand discipline selection
+    grandstand:{disc:'__ALL__'},              // Grandstand discipline selection
+    race:{disc:'__ALL__'}                     // Racetrack test-picker discipline filter
   },
   tasks:[],
   adapters:[],
@@ -6032,7 +6033,7 @@ function renderCommandRail(){
   // hidden below for that contract.
   return`<header class="cmd-rail" role="banner">
     <div class="cmd-rail-brand">
-      <img class="cmd-rail-mascot" src="peh.png" alt="" aria-hidden="true" width="52" height="52">
+      <img class="cmd-rail-mascot" src="${esc(pehMascotSrc())}" alt="" aria-hidden="true" width="52" height="52" onerror="this.style.display='none'">
       <div class="cmd-rail-title-stack">
         <span class="cmd-rail-mark">${esc(scope.tabLabel)} · Judge Deck</span>
         <span class="cmd-rail-title">Luak</span>
@@ -6482,6 +6483,13 @@ function pehActiveProduct(){
   return (p&&p.status==='public')?p:pehProduct(PEH_DEFAULT_PRODUCT);
 }
 function pehActiveProductId(){const p=pehActiveProduct();return p?p.id:PEH_DEFAULT_PRODUCT}
+// Single source for "Peh's portrait for the active product/era". Each product
+// ships its own mascotArt in PRODUCT_REGISTRY; everything that draws Peh (the
+// command-rail badge, the peh-guide.js floating guide) reads through here so a
+// product swap re-skins Peh in one place. Mirrored onto window for peh-guide.js.
+const PEH_MASCOT_FALLBACK='assets/peh-vintage-racer-squirrel.png';
+function pehMascotSrc(){const p=pehActiveProduct();return (p&&p.mascotArt)||PEH_MASCOT_FALLBACK;}
+if(typeof window!=='undefined')window.pehMascotSrc=pehMascotSrc;
 function pehCurrentScene(){
   const p=pehActiveProduct(); if(!p)return null;
   const sid=state.pehverse.scene||p.defaultScene;
@@ -7166,6 +7174,106 @@ function renderGrandstandConsole(w){
   return `<div class="peh-gs"><div class="peh-gs-pick">${chips}</div><div class="peh-gs-body">${body}</div></div>`;
 }
 
+// ── Racetrack · the run cockpit ──────────────────────────────────────────
+// The ONE window where you actually run Luak: pick any test(s) from the whole
+// library, arm any model(s), green-flag a run, watch it live, and clear/stop —
+// all without leaving the Racetrack. Bound to the 'benchmark' tabKey (route
+// /racetrack) so it reuses every run primitive (handleRun/runBatch/runState/
+// live status/history); only the picker is widened to the full library, since
+// handleRun runs selectedTasks directly and never re-filters by family.
+const RACE_TAB='benchmark';
+function pehRaceState(){return state.tabData[RACE_TAB]||(state.tabData[RACE_TAB]=defaultTabState());}
+function pehRaceSelectAllVisible(ids){
+  const s=pehRaceState();const set=new Set(s.selectedTasks||[]);ids.forEach((id)=>set.add(id));
+  const selectedTasks=Array.from(set);
+  state.tabData[RACE_TAB]={...s,selectedTasks,selectedTask:selectedTasks[0]||''};render();
+}
+function pehRaceFilter(d){state.pehverse.race.disc=d;render();}
+function pehRaceClear(){
+  const r=state.runState[RACE_TAB];
+  if(r&&['running','starting','queued'].indexOf(r.status)>=0)r.batchAbort=true;
+  delete state.runState[RACE_TAB];delete state.focusedResult[RACE_TAB];render();
+}
+async function pehRaceRunAll(){
+  const s=pehRaceState();const models=gateSelectedModels(s.selectedModels||[]);
+  if(models===null){surfaceBlockedDispatch(RACE_TAB,'All tests');return;}
+  await runBatch(RACE_TAB,(state.tasks||[]).map((t)=>t.id),models,'All tests');
+}
+function renderRacetrackConsole(w){
+  const tasks=Array.isArray(state.tasks)?state.tasks:[];
+  if(!tasks.length)return '<div class="peh-ph"><p class="peh-ph-blurb">Loading the test library…</p></div>';
+  const s=pehRaceState();
+  const selected=new Set(s.selectedTasks||[]);
+  const modelCount=(s.selectedModels||[]).length;
+  // Group the full library by DISCIPLINE (how Zen thinks of tests), same as the
+  // Workshop — so the filter chips here line up with the Evidence Room.
+  const byDisc={};tasks.forEach((t)=>{const d=pehDisc(t.id);(byDisc[d]=byDisc[d]||[]).push(t);});
+  const discs=Object.keys(byDisc).sort((a,b)=>byDisc[b].length-byDisc[a].length);
+  const sel=state.pehverse.race;if(sel.disc!=='__ALL__'&&!byDisc[sel.disc])sel.disc='__ALL__';
+  const chips=`<button class="filter-chip ${sel.disc==='__ALL__'?'on':''}" onclick="pehRaceFilter('__ALL__')">ALL · ${tasks.length}</button>`+
+    discs.map((d)=>`<button class="filter-chip ${sel.disc===d?'on':''}" onclick="pehRaceFilter('${esc(d)}')">${esc(d)} · ${byDisc[d].length}</button>`).join('');
+  const visible=sel.disc==='__ALL__'?tasks:byDisc[sel.disc]||[];
+  const visibleIds=visible.map((t)=>t.id);
+  const items=visible.map((t)=>{
+    const on=selected.has(t.id);const diff=(t.difficulty||'').toLowerCase();
+    const diffCls=diff==='easy'?'teal':diff==='hard'?'red':'';
+    return `<button class="test-toggle ${on?'on':''}" role="checkbox" aria-checked="${on?'true':'false'}" onclick="toggleTaskSelection('${RACE_TAB}','${esc(t.id)}')">
+      <span class="tt-check" aria-hidden="true"></span>
+      <span class="tt-name">${esc(t.display_name||humanizeToken(t.id))}</span>
+      <span class="tt-meta"><span class="tag dim">${esc(pehDisc(t.id))}</span>${diff?`<span class="tag ${diffCls}">${esc(diff.toUpperCase())}</span>`:''}</span>
+    </button>`;
+  }).join('')||'<div class="test-list-empty">No tests in this discipline.</div>';
+  const task=currentTask(RACE_TAB);
+  const running=(()=>{const r=state.runState[RACE_TAB];return r&&['running','starting','queued'].indexOf(r.status)>=0;})();
+  return `<div class="peh-race">
+    <section class="panel command-card" style="padding:14px">
+      <div class="section-head"><div><div class="mini-label">RUN CONTROLS</div><h3>Green-Flag a Run</h3></div><span class="chip orange hot">${selected.size} TEST${selected.size===1?'':'S'} · ${modelCount} MODEL${modelCount===1?'':'S'}</span></div>
+      <div class="command-card-stack">
+        <div class="cc-section cc-tests">
+          <div class="field test-picker">
+            <label>TESTS · ${selected.size}/${tasks.length} SELECTED</label>
+            <div class="test-picker-toolbar">
+              <button class="button tiny" onclick="pehRaceSelectAllVisible(${JSON.stringify(visibleIds).replace(/"/g,'&quot;')})" title="Select every test shown">SELECT SHOWN</button>
+              <button class="button tiny ghost" onclick="clearAllTasks('${RACE_TAB}')" title="Clear all selected tests">CLEAR</button>
+            </div>
+            <div class="filter-chips">${chips}</div>
+            <div class="test-list" role="group" aria-label="Tests">${items}</div>
+          </div>
+        </div>
+        <div class="cc-section cc-routing">
+          <div class="cc-route-grid">
+            <div class="field"><label>ADAPTER</label><select class="select" onchange="setRoutingFilter('${RACE_TAB}','adapter',this.value)">${renderAdapterOptions(RACE_TAB)}</select></div>
+            <div class="field"><label>PROVIDER</label><select class="select" onchange="setRoutingFilter('${RACE_TAB}','provider',this.value)">${renderProviderOptions(RACE_TAB)}</select></div>
+          </div>
+        </div>
+        <div class="cc-section cc-models">
+          <div class="field cc-model-field"><label>MODELS · ${modelCount} ARMED</label><select class="select cc-model-select" multiple size="8" onchange="updateSelectedModels('${RACE_TAB}',this)">${renderModelOptions(RACE_TAB)}</select><div class="field-note">${esc(modelSelectionNote(RACE_TAB))}</div></div>
+        </div>
+        <div class="cc-section cc-runcount">${renderRunCount(RACE_TAB)}</div>
+        <div class="cc-section cc-actions">
+          <div class="action-grid">
+            <button class="button primary action-primary" onclick="handleRun('${RACE_TAB}')" title="Run the selected tests against the armed models">🏁 GREEN FLAG</button>
+            <button class="button secondary action-primary" onclick="pehRaceRunAll()" title="Run every test in the library against the armed models">▶▶ RUN ALL</button>
+            <button class="button secondary" onclick="selectModelBatch('${RACE_TAB}','local')" title="Arm only local (Ollama) models">LOCAL</button>
+            <button class="button secondary" onclick="selectModelBatch('${RACE_TAB}','cloud')" title="Arm only cloud models">CLOUD</button>
+            <button class="button ghost" onclick="pehRaceClear()" title="${running?'Stop the run and clear the panel':'Clear the last run from the panel'}">${running?'⏹ STOP':'⊘ CLEAR LAST RUN'}</button>
+            <button class="button secondary" onclick="reloadLane('${RACE_TAB}')" title="Refresh models + run data">↻ REFRESH</button>
+          </div>
+          ${task?`<div class="fact-list cc-active-test"><div class="fact-strip"><div class="fs-label">ACTIVE TEST</div><div class="fs-value teal">${esc(task.display_name||humanizeToken(task.id))}</div></div><div class="fact-strip"><div class="fs-label">SCORING</div><div class="fs-value dim">${esc(taskScoringNote(task)||'Automatic')}</div></div></div>`:''}
+        </div>
+      </div>
+    </section>
+    <section class="panel live-status-panel" style="padding:14px">
+      <div class="section-head"><div><div class="mini-label">MISSION CONTROL</div><h3>Live Run</h3></div></div>
+      ${renderLiveStatus(RACE_TAB)}
+    </section>
+    <section class="panel" style="padding:14px">
+      <div class="section-head"><div><div class="mini-label">RUN HISTORY</div><h3>Recent Runs</h3></div><span class="chip dim">${(s.runs||[]).length} TOTAL</span></div>
+      ${renderRuns(RACE_TAB)}
+    </section>
+  </div>`;
+}
+
 // Timing + Achievements have no bespoke console yet — render their real
 // compact summary (PANEL_CONTENT.dashboard) in solo instead of a placeholder.
 function renderPanelSummarySolo(w){
@@ -7175,6 +7283,7 @@ function renderPanelSummarySolo(w){
 const PEH_PANEL_CONSOLE={
   'workshop-diagnostics':renderWorkshopConsole,
   'grandstand-results':renderGrandstandConsole,
+  'benchmark-runs':renderRacetrackConsole,
   'timing-metrics':renderPanelSummarySolo,
   'victory-achievements':renderPanelSummarySolo
 };
