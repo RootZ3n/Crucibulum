@@ -607,11 +607,23 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
           durationMs: Date.now() - questionStartMs,
         });
         const errorText = structured.rawMessage.slice(0, 200);
-        terminalChatError = structured.rawMessage;
-        terminalProviderError = structured;
-        log("warn", "conv-runner", `[${question.id}] Setup message failed: ${errorText}`);
-        timeline.push({ t: t(), type: "error", detail: `setup failed: ${errorText}`, provider_error: structured });
-        break;
+        if (structured.kind === "EMPTY_RESPONSE") {
+          // A blank setup ack doesn't lose the instruction — the codeword /
+          // context lives in the user turn already in history. Keep going
+          // rather than aborting the whole task on one empty completion.
+          log("warn", "conv-runner", `[${question.id}] Setup message returned empty — continuing`);
+          // Record as a provider_attempt, NOT an `error` event: normalizeVerdict
+          // promotes the last `error` event's provider_error to a run-terminal
+          // NC verdict, and this empty is per-turn, not terminal.
+          timeline.push({ t: t(), type: "provider_attempt", detail: `setup empty (continued): ${errorText}`, provider_error: structured, retry_decision: "stop" });
+          messages.push({ role: "assistant", content: "" });
+        } else {
+          terminalChatError = structured.rawMessage;
+          terminalProviderError = structured;
+          log("warn", "conv-runner", `[${question.id}] Setup message failed: ${errorText}`);
+          timeline.push({ t: t(), type: "error", detail: `setup failed: ${errorText}`, provider_error: structured });
+          break;
+        }
       }
 
       // 2. Send gap filler messages (to test recall across conversation turns)
@@ -635,6 +647,13 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
             adapter: adapter.id,
             durationMs: Date.now() - questionStartMs,
           });
+          if (structured.kind === "EMPTY_RESPONSE") {
+            // A blank gap-filler turn doesn't lose the remembered context;
+            // keep filling the gap rather than aborting the recall question.
+            timeline.push({ t: t(), type: "provider_attempt", detail: `gap empty (continued): ${structured.rawMessage.slice(0, 160)}`, provider_error: structured, retry_decision: "stop" });
+            messages.push({ role: "assistant", content: "" });
+            continue;
+          }
           terminalChatError = structured.rawMessage;
           terminalProviderError = structured;
           timeline.push({ t: t(), type: "error", detail: structured.rawMessage, provider_error: structured });
@@ -702,6 +721,37 @@ export async function runConversationalTask(options: ConversationalRunOptions): 
         adapter: adapter.id,
         durationMs: Date.now() - questionStartMs,
       });
+      if (structured.kind === "EMPTY_RESPONSE") {
+        // An empty completion is a per-question artifact — thinking models
+        // that emit only reasoning, or a transient blank — NOT a reason to
+        // abandon the rest of the task. Previously this set terminalChatError
+        // and broke the loop, so one blank answer on question N zeroed out
+        // every later question as UNATTEMPTED (a single transient empty turned
+        // a 9/10 run into a 3/10 "provider failure"). Record this one question
+        // as a provider-empty failure and carry on; genuinely terminal errors
+        // (auth/network/rate-limit) still break below to avoid burning budget.
+        log("warn", "conv-runner", `[${question.id}] Empty response — recording as a provider failure and continuing`);
+        // Record as a provider_attempt, NOT an `error` event: normalizeVerdict
+        // treats the last `error` event's provider_error as a run-terminal NC
+        // failure. This empty fails only this question (scored below), so a
+        // 9/10 run still reads as a real model PASS instead of "provider failed".
+        timeline.push({ t: t(), type: "provider_attempt", detail: `empty response (continued): ${structured.rawMessage.slice(0, 160)}`, provider_error: structured, retry_decision: "stop" });
+        messages.push({ role: "assistant", content: "" });
+        results.push({
+          question_id: question.id,
+          question: question.question,
+          response: "",
+          passed: false,
+          score: 0,
+          weight: question.weight,
+          failure_reason: "PROVIDER_EMPTY_RESPONSE: provider returned an empty completion for this question",
+          duration_ms: Date.now() - questionStartMs,
+          tokens_in: 0,
+          tokens_out: 0,
+        });
+        options.onProgress?.({ kind: "question_done", question_id: question.id, index: qIndex, total: manifest.questions.length, passed: false });
+        continue;
+      }
       terminalChatError = structured.rawMessage;
       terminalProviderError = structured;
       log("error", "conv-runner", `[${question.id}] Chat failed: ${structured.rawMessage.slice(0, 200)}`);
