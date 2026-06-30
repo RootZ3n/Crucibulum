@@ -121,25 +121,10 @@ describe('Phase 5 · numeric_fact_match scorer', () => {
     assert.ok(!m.questions[0].pattern, 'old regex pattern should be removed');
   });
 
-  describe('Phase 5 tactical guards', () => {
-    it('vision results still excluded from leaderboard (TAB_CONFIG vision.experimental:true)', () => {
-      const html = readFileSync(join(ROOT, 'ui', 'index.html'), 'utf-8');
-      assert.match(html, /vision:\{[^}]*experimental:true/, 'vision tab must stay experimental:true (excluded from composite)');
-    });
-
-    it('vision results still excluded from cert promotion (vision smoke writes affectsCertification:false)', () => {
-      const src = readFileSync(join(ROOT, 'scripts', 'vision-smoke.mjs'), 'utf-8');
-      assert.match(src, /affectsCertification:\s*false/, 'vision-smoke must declare affectsCertification:false');
-      assert.match(src, /affectsLeaderboard:\s*false/, 'vision-smoke must declare affectsLeaderboard:false');
-    });
-
-    it('all 5 vision test cards exist under reports/test-validity/cards/vision/', () => {
-      for (const id of ['vision-ocr-001', 'vision-ui-001', 'vision-chart-001', 'vision-object-count-001', 'vision-uncertainty-001']) {
-        const p = join(ROOT, 'reports', 'test-validity', 'cards', 'vision', `${id}.md`);
-        const txt = readFileSync(p, 'utf-8');
-        assert.match(txt, /Test card · vision-/, `${id} card missing or malformed`);
-        assert.match(txt, /Concision is part of the test/, `${id} card must state whether concision is measured`);
-      }
-    });
-  });
+  // NOTE: the off-topic "Phase 5 tactical guards" that used to live here
+  // (UI `vision.experimental:true` source-pin, vision-smoke.mjs grep, vision
+  // test-card files) were removed — they don't exercise the numeric_fact_match
+  // scorer and were a UI source-pin landmine. Those exclusion/card contracts
+  // are covered behaviorally by roleplay-vision-phase3/phase4 (skip + TAB_CONFIG)
+  // and vision-phase6-all-poc (test cards).
 });

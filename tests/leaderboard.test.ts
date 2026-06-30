@@ -9,6 +9,14 @@ import assert from "node:assert/strict";
 import { aggregateByModel, buildLeaderboardEntry, filterVerifiedBundles } from "../leaderboard/aggregator.js";
 import type { EvidenceBundle } from "../adapters/base.js";
 
+// Monotonic counter so every mock bundle gets a unique id by default. The old
+// `run_${taskId}_${Date.now()}` collided when several bundles were built inside
+// the same millisecond, giving identical bundle_ids — and since pass@k orders a
+// task's runs by sha256(bundle_id), identical ids made "which run is first"
+// nondeterministic and flaked the pass@1 assertions. Tests that care about the
+// canonical first run pass an explicit `bundleId`.
+let mockBundleSeq = 0;
+
 function makeMockBundle(overrides: Partial<{
   adapter: string;
   provider: string;
@@ -24,6 +32,7 @@ function makeMockBundle(overrides: Partial<{
   timestampStart: string;
   timestampEnd: string;
   verified: boolean;
+  bundleId: string;
 }>): EvidenceBundle {
   const o = {
     adapter: "mock",
@@ -40,11 +49,12 @@ function makeMockBundle(overrides: Partial<{
     timestampStart: "2026-01-01T00:00:00Z",
     timestampEnd: "2026-01-01T00:01:00Z",
     verified: true,
+    bundleId: "",
     ...overrides,
   };
 
   return {
-    bundle_id: `run_${o.taskId}_${Date.now()}`,
+    bundle_id: o.bundleId || `run_${o.taskId}_${++mockBundleSeq}`,
     bundle_hash: "sha256:test",
     bundle_version: "1.0.0",
     task: { id: o.taskId, manifest_hash: "sha256:abc", family: "poison_localization", difficulty: "medium" },
@@ -182,10 +192,14 @@ describe("buildLeaderboardEntry", () => {
 
 describe("pass@k", () => {
   it("pass@1 = false when first run fails, pass@3 = true when any passes", () => {
+    // pass@k orders runs by sha256(bundle_id), so the "first" run is the
+    // lowest-hash id, not array position. These ids are chosen so a FAILING
+    // run (pk-fail-03) deterministically hash-sorts first → pass@1 = false,
+    // while at least one run passes → pass@3 = true.
     const bundles = [
-      makeMockBundle({ taskId: "task-pk", pass: false, total: 0.2, failureMode: "wrong_fix" }),
-      makeMockBundle({ taskId: "task-pk", pass: true, total: 0.9 }),
-      makeMockBundle({ taskId: "task-pk", pass: false, total: 0.3, failureMode: "wrong_fix" }),
+      makeMockBundle({ bundleId: "pk-fail-01", taskId: "task-pk", pass: false, total: 0.2, failureMode: "wrong_fix" }),
+      makeMockBundle({ bundleId: "pk-pass-02", taskId: "task-pk", pass: true, total: 0.9 }),
+      makeMockBundle({ bundleId: "pk-fail-03", taskId: "task-pk", pass: false, total: 0.3, failureMode: "wrong_fix" }),
     ];
 
     const entry = buildLeaderboardEntry("mock:local:mock-model", bundles);
@@ -198,9 +212,11 @@ describe("pass@k", () => {
   });
 
   it("pass@1 = true when first run passes", () => {
+    // pk2-pass-01 hash-sorts before pk2-fail-02, so the canonical first run is
+    // the passing one → pass@1 = true.
     const bundles = [
-      makeMockBundle({ taskId: "task-pk2", pass: true, total: 0.9 }),
-      makeMockBundle({ taskId: "task-pk2", pass: false, total: 0.2, failureMode: "wrong_fix" }),
+      makeMockBundle({ bundleId: "pk2-pass-01", taskId: "task-pk2", pass: true, total: 0.9 }),
+      makeMockBundle({ bundleId: "pk2-fail-02", taskId: "task-pk2", pass: false, total: 0.2, failureMode: "wrong_fix" }),
     ];
 
     const entry = buildLeaderboardEntry("mock:local:mock-model", bundles);
