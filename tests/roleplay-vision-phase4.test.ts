@@ -168,9 +168,10 @@ describe('Phase 4 · skip-card rendering + image transport', () => {
     });
     // Phase 14 / Roadmap C bumped tasks 77 → 87 + conversational
     // 52 → 62 (Vision suite expansion 5 → 15). Families unchanged.
+    // Coding suite (2026-06-29): tasks 87 → 90 + conversational 62 → 65 (code-002/003/004).
     assert.match(out, /families:\s+23/);
-    assert.match(out, /tasks total:\s+87/);
-    assert.match(out, /conversational:\s+62/);
+    assert.match(out, /tasks total:\s+90/);
+    assert.match(out, /conversational:\s+65/);
   });
 
   describe('Phase 4 tactical guards', () => {

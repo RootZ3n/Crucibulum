@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Workshop · Test Library & Evidence Room — prototype</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+  :root{
+    --wood-0:#120c05; --wood-3:#33230f;
+    --parch:#f3e8cc; --parch-2:#e7d7af;
+    --brass:#c9a227; --brass-hot:#e7c552; --brass-deep:#9c7a1a;
+    --bm:rgba(201,162,39,.36); --bs:rgba(201,162,39,.2); --bb:rgba(201,162,39,.55);
+    --teal:#3f9d6a; --teal-hot:#62c08a; --cyan:#4ea7ad; --red:#bb4534; --red-hot:#e0907f; --orange:#dd9128;
+    --ink:#f4e9cf; --ink-soft:#e3d2a7; --ink-dim:#b69a68; --ink-ghost:rgba(182,154,104,.5);
+    --display:"Cinzel",Georgia,serif; --body:"Spectral",Georgia,ui-serif,serif; --mono:"SF Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:var(--body); color:var(--ink); height:100vh; overflow:hidden;
+    background:linear-gradient(rgba(20,13,4,.30),rgba(20,13,4,.44)),url("http://localhost:18795/assets/luak-vintage-racing-map.png") center/cover fixed no-repeat,var(--wood-0)}
+  .win{position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:min(1020px,92vw); height:min(74vh,680px);
+    display:flex; flex-direction:column; border-radius:14px; overflow:hidden;
+    background:linear-gradient(180deg,rgba(30,20,10,.97),rgba(40,27,12,.98)); border:1px solid var(--bb);
+    box-shadow:0 40px 110px rgba(0,0,0,.72),0 0 0 3px rgba(60,42,19,.5),0 0 0 4px rgba(201,162,39,.26)}
+  .xbtn{width:28px;height:28px;border-radius:7px;border:1px solid var(--bm);background:transparent;color:var(--ink-dim);cursor:pointer;font-size:15px;font-family:var(--display);margin-left:10px}
+  .xbtn:hover{color:var(--red-hot);border-color:var(--bb);background:rgba(187,69,52,.14)}
+  .head{display:flex; align-items:center; gap:12px; padding:13px 18px; flex:0 0 auto;
+    background:linear-gradient(180deg,rgba(57,39,17,.96),rgba(36,24,11,.4)); border-bottom:1px solid var(--bm)}
+  .head h1{margin:0; font-family:var(--display); font-size:18px; font-weight:700; letter-spacing:.6px; color:var(--brass-hot)}
+  .head p{margin:1px 0 0; font-size:11.5px; font-style:italic; color:var(--ink-dim)}
+  .head .loc{margin-left:auto; font-family:var(--display); font-size:11px; letter-spacing:2px; color:var(--brass); border:1px solid var(--bm); padding:5px 11px; border-radius:999px}
+  .cols{flex:1 1 auto; display:grid; grid-template-columns:215px 290px 1fr; min-height:0}
+  .pane{overflow:auto; min-height:0; border-right:1px solid var(--bs); padding:12px}
+  .pane:last-child{border-right:none}
+  .pane h2{margin:0 0 9px; font-family:var(--display); font-size:11px; letter-spacing:1.6px; text-transform:uppercase; color:var(--ink-dim)}
+
+  .fam{display:flex; align-items:center; gap:9px; width:100%; text-align:left; cursor:pointer; font-family:inherit; color:var(--ink);
+    background:transparent; border:1px solid transparent; border-radius:9px; padding:8px 10px; margin-bottom:3px; transition:.12s}
+  .fam:hover{background:rgba(201,162,39,.08)}
+  .fam.on{background:rgba(201,162,39,.14); border-color:var(--bm)}
+  .fam .nm{font-size:13px; font-weight:600; flex:1}
+  .fam .ct{font-family:var(--mono); font-size:10.5px; color:var(--ink-dim)}
+  .pr{height:5px; border-radius:3px; background:rgba(20,13,4,.5); overflow:hidden; margin-top:5px}
+  .pr i{display:block; height:100%; background:linear-gradient(90deg,var(--red),var(--orange),var(--teal))}
+
+  .test{width:100%; text-align:left; cursor:pointer; font-family:inherit; color:var(--ink); background:var(--wood-3,#33230f);
+    background:linear-gradient(180deg,rgba(44,30,14,.6),rgba(44,30,14,.3)); border:1px solid var(--bs); border-radius:10px; padding:9px 11px; margin-bottom:7px; transition:.12s}
+  .test:hover{border-color:var(--bb)}
+  .test.on{border-color:var(--brass); background:rgba(201,162,39,.1)}
+  .test .tt{font-size:12.5px; font-weight:600; display:flex; align-items:center; gap:7px}
+  .test .pp{font-size:11px; color:var(--ink-dim); font-style:italic; margin-top:3px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .test .meta{display:flex; gap:6px; margin-top:6px; align-items:center}
+  .diff{font-family:var(--display); font-size:8.5px; letter-spacing:.5px; text-transform:uppercase; padding:2px 6px; border-radius:5px; border:1px solid var(--bm); color:var(--ink-dim)}
+  .diff.easy{color:var(--teal-hot); border-color:rgba(63,157,106,.4)} .diff.medium{color:var(--orange); border-color:rgba(221,145,40,.4)} .diff.hard{color:var(--red-hot); border-color:rgba(187,69,52,.4)}
+  .tally{font-family:var(--mono); font-size:10px; margin-left:auto; color:var(--ink-dim)}
+  .tally b.p{color:var(--teal-hot)} .tally b.f{color:var(--red-hot)}
+
+  .detail h3{margin:0 0 4px; font-family:var(--display); font-size:16px; color:var(--brass-hot)}
+  .detail .sub{font-size:11px; color:var(--ink-dim); font-family:var(--mono); margin-bottom:12px}
+  .card{background:linear-gradient(180deg,rgba(44,30,14,.55),rgba(44,30,14,.3)); border:1px solid var(--bs); border-radius:11px; padding:13px; margin-bottom:12px}
+  .card .lab{font-family:var(--display); font-size:10px; letter-spacing:1.4px; text-transform:uppercase; color:var(--ink-dim); margin-bottom:6px}
+  .card .purpose{font-size:13.5px; line-height:1.5; color:var(--ink-soft)}
+  .tags{display:flex; flex-wrap:wrap; gap:5px; margin-top:9px}
+  .tag{font-family:var(--mono); font-size:10px; padding:2px 7px; border-radius:5px; background:rgba(20,13,4,.5); border:1px solid var(--bs); color:var(--ink-dim)}
+  .warn{font-size:11.5px; color:var(--orange); font-style:italic; margin-top:9px; line-height:1.4}
+  .results{display:flex; flex-direction:column; gap:5px}
+  .res{display:flex; align-items:center; gap:9px; cursor:pointer; padding:7px 9px; border-radius:8px; border:1px solid transparent; font-size:12px}
+  .res:hover{background:rgba(201,162,39,.07); border-color:var(--bs)}
+  .res.on{background:rgba(201,162,39,.12); border-color:var(--bm)}
+  .res .badge{font-family:var(--display); font-size:9px; font-weight:700; letter-spacing:.5px; padding:2px 7px; border-radius:5px}
+  .res .badge.pass{background:rgba(63,157,106,.2); color:var(--teal-hot); border:1px solid rgba(63,157,106,.45)}
+  .res .badge.fail{background:rgba(187,69,52,.18); color:var(--red-hot); border:1px solid rgba(187,69,52,.45)}
+  .res .mdl{font-weight:600; flex:1}
+  .res .sc{font-family:var(--mono); color:var(--ink-soft)}
+  .res .dt{font-family:var(--mono); font-size:10px; color:var(--ink-ghost)}
+
+  /* Receipt */
+  .receipt{background:linear-gradient(180deg,var(--parch),var(--parch-2)); color:#3a2c14; border:1px solid #b89240; border-radius:12px; padding:15px; box-shadow:0 4px 14px rgba(0,0,0,.35)}
+  .receipt .rtop{display:flex; align-items:center; gap:10px; border-bottom:1px dashed #b89240; padding-bottom:10px; margin-bottom:11px}
+  .receipt .rverdict{font-family:var(--display); font-size:20px; font-weight:700}
+  .receipt .rverdict.pass{color:#256b43} .receipt .rverdict.fail{color:#9a3a2c}
+  .receipt .rmodel{margin-left:auto; font-family:var(--mono); font-size:11px; color:#6b5526; text-align:right}
+  .bd{display:flex; flex-direction:column; gap:7px; margin:4px 0 10px}
+  .bd .brow{display:flex; align-items:center; gap:9px; font-size:11.5px}
+  .bd .bn{width:84px; font-family:var(--display); font-size:10px; letter-spacing:.6px; text-transform:uppercase; color:#6b5526}
+  .bd .bt{flex:1; height:9px; background:rgba(58,44,20,.15); border-radius:5px; overflow:hidden}
+  .bd .bf{height:100%; border-radius:5px}
+  .bd .bf.hi{background:#2f7d4f} .bd .bf.mid{background:#c08a1e} .bd .bf.lo{background:#9a3a2c}
+  .bd .bv{width:40px; text-align:right; font-family:var(--mono); font-size:11px; color:#4a3a18}
+  .rline{font-size:12px; line-height:1.5; color:#4a3a18; margin-top:6px}
+  .rline b{color:#2a2008}
+  .diag{display:flex; flex-wrap:wrap; gap:5px; margin-top:9px}
+  .dchip{font-family:var(--mono); font-size:10px; padding:2px 7px; border-radius:5px; border:1px solid #b89240}
+  .dchip.y{background:rgba(47,125,79,.16); color:#256b43} .dchip.n{background:rgba(154,58,44,.14); color:#9a3a2c}
+  .empty{color:var(--ink-dim); font-style:italic; font-size:12.5px; padding:18px; text-align:center; border:1px dashed var(--bm); border-radius:10px}
+
+  .peh{position:fixed; left:30px; bottom:26px; display:flex; align-items:flex-end; gap:11px; z-index:60; max-width:380px; transition:opacity .6s,transform .6s}
+  .peh.gone{opacity:0; transform:translateY(14px); pointer-events:none}
+  .peh img{width:72px; filter:drop-shadow(0 10px 16px rgba(0,0,0,.55)); animation:bob 3.4s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+  .bubble{background:linear-gradient(180deg,#fdfaf0,#f0e6cf); color:#352a17; border:1px solid #cdb578; border-radius:12px; padding:10px 13px; font-size:12px; line-height:1.5; box-shadow:0 12px 28px rgba(0,0,0,.45); margin-bottom:14px; position:relative}
+  .bubble:after{content:"";position:absolute;left:-9px;bottom:14px;border:9px solid transparent;border-right-color:#f0e6cf;border-left:0}
+  .bubble b{color:#8a5a14}
+  .proto-tag{position:fixed; top:6px; right:14px; font-size:10px; letter-spacing:1px; color:rgba(244,233,207,.45); z-index:90; font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div class="proto-tag">PROTOTYPE · live → :18795 · real receipts</div>
+<div class="win">
+  <div class="head">
+    <span style="font-size:21px">🛠️</span>
+    <div><h1>The Workshop</h1><p>Test Library &amp; Evidence Room — what each test checks, how it scored, where it passed or failed</p></div>
+    <span class="loc" id="loc">loading…</span>
+    <button class="xbtn" title="Close — back to the speedway" onclick="closeWin()">×</button>
+  </div>
+  <div class="cols">
+    <div class="pane"><h2>Disciplines</h2><div id="families"></div></div>
+    <div class="pane"><h2 id="testsHead">Tests</h2><div id="tests"><div class="empty">Pick a family</div></div></div>
+    <div class="pane detail" id="detail"><div class="empty">Pick a test to see what it checks and how runs went.</div></div>
+  </div>
+</div>
+
+<button id="reopen" onclick="openWin()" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:40;font-family:var(--display);font-weight:700;letter-spacing:1px;font-size:14px;cursor:pointer;padding:14px 26px;border-radius:10px;border:1px solid var(--brass);color:#241a07;background:linear-gradient(180deg,#d8b23e,#a8801c);box-shadow:0 14px 34px rgba(0,0,0,.55)">🛠️ Open the Workshop</button>
+
+<div class="peh">
+  <div class="bubble" id="bubble">Welcome to <b>The Workshop</b> — the manual room. Pick a <b>family</b>, then a <b>test</b>: I'll show you what it checks, every run's score, and a plain-English receipt of where it passed or failed. 🐿️</div>
+  <img src="http://localhost:18795/assets/peh-vintage-racer-squirrel.png" alt="Peh">
+</div>
+
+<script>
+const API="http://localhost:18795";
+let TASKS=[], RUNS=[], BYTASK={}, BYFAM={};
+let selFam=null, selTask=null, selRun=null;
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const human=s=>String(s||'').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+const cls=n=>n>=70?'hi':n>=45?'mid':'lo';
+// Discipline = how Zen thinks of tests (type), not the engine's scoring family.
+const DISC=[['vision','Vision'],['roleplay','Roleplay'],['role-stress','Role Stress'],['code','Coding'],['coord','Build'],['poison','Poison-Repo'],['spec','Spec'],['tool','Tools'],['op-','Operational Trust'],['safety','Safety'],['memory','Memory'],['personality','Personality'],['reasoning','Reasoning'],['truthfulness','Truthfulness'],['classification','Classification'],['context-degradation','Context'],['summarization','Summarization'],['workflow','Workflow'],['token-efficiency','Efficiency'],['thinking-mode','Efficiency'],['instruction-obedience','Instruction-Obedience'],['prompt-sensitivity','Prompt Sensitivity'],['identity','Identity']];
+const disc=id=>{const s=String(id||'');for(const x of DISC)if(s.startsWith(x[0]))return x[1];return 'Other';};
+
+async function load(){
+  const tj=await fetch(API+'/api/tasks').then(r=>r.json());
+  TASKS=Array.isArray(tj)?tj:(tj.tasks||[]);
+  const rj=await fetch(API+'/api/runs').then(r=>r.json());
+  RUNS=Array.isArray(rj)?rj:(rj.runs||rj.items||[]);
+  BYTASK={}; RUNS.forEach(r=>{(BYTASK[r.task_id]=BYTASK[r.task_id]||[]).push(r)});
+  BYFAM={}; TASKS.forEach(t=>{const d=disc(t.id);(BYFAM[d]=BYFAM[d]||[]).push(t)});
+  document.getElementById('loc').textContent=Object.keys(BYFAM).length+' disciplines · '+TASKS.length+' tests · '+RUNS.length+' runs';
+  renderFamilies();
+}
+function famPass(fam){
+  let p=0,n=0; (BYFAM[fam]||[]).forEach(t=>(BYTASK[t.id]||[]).forEach(r=>{n++; if(r.pass)p++;}));
+  return n?Math.round(p/n*100):null;
+}
+function renderFamilies(){
+  const fams=Object.keys(BYFAM).sort((a,b)=>BYFAM[b].length-BYFAM[a].length);
+  document.getElementById('families').innerHTML=fams.map(f=>{
+    const pr=famPass(f);
+    return `<button class="fam ${f===selFam?'on':''}" onclick="pickFam('${esc(f)}')">
+      <div style="flex:1">
+        <div style="display:flex;align-items:center"><span class="nm">${esc(human(f))}</span><span class="ct">${BYFAM[f].length}</span></div>
+        ${pr!=null?`<div class="pr"><i style="width:${pr}%"></i></div>`:''}
+      </div></button>`;
+  }).join('');
+}
+function pickFam(f){selFam=f; selTask=null; selRun=null; renderFamilies(); renderTests(); document.getElementById('detail').innerHTML='<div class="empty">Pick a test.</div>';}
+function renderTests(){
+  document.getElementById('testsHead').textContent=human(selFam)+' · '+BYFAM[selFam].length+' tests';
+  document.getElementById('tests').innerHTML=BYFAM[selFam].map(t=>{
+    const runs=BYTASK[t.id]||[]; const p=runs.filter(r=>r.pass).length, f=runs.length-p;
+    return `<button class="test ${t.id===selTask?'on':''}" onclick="pickTask('${esc(t.id)}')">
+      <div class="tt">${esc(t.display_name||t.id)}</div>
+      <div class="pp">${esc(t.diagnostic_purpose||t.title||'')}</div>
+      <div class="meta"><span class="diff ${esc(t.difficulty||'')}">${esc(t.difficulty||'—')}</span>
+        <span class="tag">${t.question_count||1} Q</span>
+        <span class="tally">${runs.length?`<b class="p">${p}✓</b> <b class="f">${f}✗</b>`:'no runs'}</span></div>
+    </button>`;
+  }).join('');
+}
+function pickTask(id){selTask=id; selRun=null; renderTests(); renderDetail();}
+function shortDate(ts){try{const d=new Date(ts);return d.toISOString().slice(2,10).replace(/-/g,'.');}catch(e){return''}}
+function renderDetail(){
+  const t=TASKS.find(x=>x.id===selTask); if(!t)return;
+  const runs=(BYTASK[t.id]||[]).slice().sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+  const p=runs.filter(r=>r.pass).length;
+  const lim=(t.benchmark_provenance&&t.benchmark_provenance.known_scoring_limitations)||[];
+  document.getElementById('detail').innerHTML=`
+    <h3>${esc(t.display_name||t.id)}</h3>
+    <div class="sub">${esc(t.id)} · ${esc(disc(t.id))} · ${t.question_count||1} question${(t.question_count||1)===1?'':'s'} · scored as ${esc(human(t.family))} · ${esc(t.difficulty||'')}</div>
+    <div class="card">
+      <div class="lab">What this test checks</div>
+      <div class="purpose">${esc(t.diagnostic_purpose||t.title||'—')}</div>
+      <div class="tags"><span class="tag">${t.question_count||1} questions</span><span class="tag">${esc(t.execution_mode||'')}</span>${(t.tags||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>
+      ${lim.length?`<div class="warn">⚠ Scoring caveat: ${esc(lim[0])}</div>`:''}
+    </div>
+    <div class="card">
+      <div class="lab">Results · ${runs.length} run${runs.length===1?'':'s'} · ${runs.length?Math.round(p/runs.length*100):0}% pass</div>
+      ${runs.length?`<div class="results">${runs.slice(0,40).map(r=>`
+        <div class="res ${r.bundle_id===selRun?'on':''}" onclick="pickRun('${esc(r.bundle_id)}')">
+          <span class="badge ${r.pass?'pass':'fail'}">${r.pass?'PASS':'FAIL'}</span>
+          <span class="mdl">${esc(r.model)}</span>
+          <span class="sc">${r.score}%</span>
+          <span class="dt">${shortDate(r.timestamp)}</span>
+        </div>`).join('')}</div>`:'<div class="empty">No runs yet — race this test from the Racetrack.</div>'}
+    </div>
+    <div id="receipt"></div>`;
+  if(selRun)renderReceipt();
+}
+function pickRun(id){selRun=id; renderDetail(); document.getElementById('receipt').scrollIntoView({behavior:'smooth',block:'nearest'});}
+function renderReceipt(){
+  const r=RUNS.find(x=>x.bundle_id===selRun); if(!r)return;
+  const bd=r.breakdown||{}; const v=r.verdict||{};
+  const rows=[['Correctness',bd.correctness],['Regression',bd.regression],['Integrity',bd.integrity],['Efficiency',bd.efficiency]];
+  document.getElementById('receipt').innerHTML=`
+    <div class="receipt">
+      <div class="rtop">
+        <span class="rverdict ${r.pass?'pass':'fail'}">${r.pass?'✓ PASS':'✗ FAIL'}</span>
+        <span class="sc" style="font-family:var(--mono);font-size:15px;color:#4a3a18">${r.score}%</span>
+        <span class="rmodel">${esc(r.model)}<br>${esc(shortDate(r.timestamp))} · ${r.duration_sec!=null?r.duration_sec+'s':''}</span>
+      </div>
+      <div class="bd">${rows.map(([n,val])=>{const x=val==null?0:val;return `<div class="brow"><span class="bn">${n}</span><span class="bt"><span class="bf ${cls(x)}" style="width:${x}%"></span></span><span class="bv">${x}%</span></div>`}).join('')}</div>
+      <div class="rline"><b>Threshold:</b> needs ≥ ${r.pass_threshold}% to pass${r.integrity_violations?` · <span style="color:#9a3a2c">${r.integrity_violations} integrity violation(s)</span>`:''}</div>
+      ${v.failureReasonSummary?`<div class="rline"><b>Verdict:</b> ${esc(v.failureReasonSummary)}</div>`:''}
+      ${v.completionState&&v.completionState!=='PASS'?`<div class="rline"><b>State:</b> ${esc(v.completionState)}${v.failureOrigin?` (origin: ${esc(v.failureOrigin)})`:''}</div>`:''}
+      <div class="rline" style="font-size:10.5px;color:#6b5526;margin-top:8px">receipt ${esc(r.bundle_id)}</div>
+    </div>`;
+}
+
+function closeWin(){document.querySelector('.win').style.display='none';document.getElementById('reopen').style.display='block';document.querySelector('.peh').classList.remove('gone');document.getElementById('bubble').innerHTML="Closed the Workshop — see, the speedway's right here behind me. In real Luak this drops you back to the map. 🐿️";}
+function openWin(){document.querySelector('.win').style.display='flex';document.getElementById('reopen').style.display='none';}
+// Peh auto-hide
+let pt=setTimeout(()=>document.querySelector('.peh').classList.add('gone'),5000);
+load();
+</script>
+</body>
+</html>

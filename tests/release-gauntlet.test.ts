@@ -61,9 +61,11 @@ describe("release-gauntlet: --dry-run-inventory", () => {
     // conversational 52 → 62 by the Vision suite expansion (5 → 15
     // Vision tests under tasks/vision/). Families unchanged at 23 —
     // Vision is one family.
+    // Coding suite (2026-06-29): bumped tasks 87 → 90 + conversational
+    // 62 → 65 by adding code-002/003/004 (comprehension/debugging/spec).
     assert.match(stdout, /families:\s+23/);
-    assert.match(stdout, /tasks total:\s+87/);
-    assert.match(stdout, /conversational:\s+62/);
+    assert.match(stdout, /tasks total:\s+90/);
+    assert.match(stdout, /conversational:\s+65/);
     assert.match(stdout, /repo:\s+25/);
     assert.match(stdout, /registered adapters:\s+13/);
     // Sample of expected families.

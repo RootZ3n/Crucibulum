@@ -364,9 +364,10 @@ describe("Vision Phase 14 · suite expansion 5 → 15 tests (offline + live API)
       encoding: "utf-8",
       timeout: 30_000,
     });
+    // Coding suite (2026-06-29): tasks 87 → 90 + conversational 62 → 65 (code-002/003/004).
     assert.match(out, /families:\s+23/);
-    assert.match(out, /tasks total:\s+87/);
-    assert.match(out, /conversational:\s+62/);
+    assert.match(out, /tasks total:\s+90/);
+    assert.match(out, /conversational:\s+65/);
   });
 
   it("P25 · docs document the Phase 14 / Roadmap C suite expansion + the new absence_honesty scorer", () => {

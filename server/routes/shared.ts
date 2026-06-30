@@ -103,6 +103,27 @@ function bundleDirSignature(): { key: string; files: string[] } | null {
   return { key: parts.join("|"), files: entries };
 }
 
+// Older bundles (the pre-2026-06 "vision" batch — 180 of 6,554) predate several
+// structures that every list/summary/verdict path assumes exist. A single
+// missing one (timestamp_start, diff, security, provider_attempts) threw a
+// TypeError and 500'd the ENTIRE list (/api/runs, /api/stats, /api/leaderboard,
+// /api/receipts) even though the other 6,374 bundles were perfect. Backfill the
+// canonical empty shapes (mirroring core/bundle.ts) so one legacy bundle can
+// never blind every list view again.
+function backfillLegacyBundle(bundle: EvidenceBundle, file: string): void {
+  const b = bundle as unknown as Record<string, unknown>;
+  const env = (b.environment ??= {}) as { timestamp_start?: string };
+  if (!env.timestamp_start || Number.isNaN(new Date(env.timestamp_start).getTime())) {
+    const m = file.match(/run_(\d{4}-\d{2}-\d{2})/);
+    env.timestamp_start = m ? `${m[1]}T00:00:00.000Z` : new Date(0).toISOString();
+  }
+  if (!b.diff) b.diff = { files_changed: [], files_created: [], files_deleted: [], forbidden_paths_touched: [] };
+  if (!b.security) b.security = { injection_scan: "clean", forbidden_paths_violations: 0, anti_cheat_violations: 0, workspace_escape_attempts: 0 };
+  if (!Array.isArray(b.provider_attempts)) b.provider_attempts = [];
+  const vr = b.verification_results as { integrity?: { score: number; details: Record<string, unknown>; violations: string[] } } | undefined;
+  if (vr && !vr.integrity) vr.integrity = { score: 0, details: {}, violations: [] };
+}
+
 export function loadBundles(): EvidenceBundle[] {
   try {
     const sig = bundleDirSignature();
@@ -116,7 +137,7 @@ export function loadBundles(): EvidenceBundle[] {
         // Re-verifies the bundle hash on every read; tampered/corrupted files get
         // trust.bundle_verified=false instead of silently inheriting the stored flag.
         const bundle = loadVerifiedBundle(raw, f);
-        if (bundle) bundles.push(bundle);
+        if (bundle) { backfillLegacyBundle(bundle, f); bundles.push(bundle); }
         else log("warn", "bundles", `Rejecting malformed bundle file ${f}`);
       } catch (err) {
         // Surface corruption instead of silently hiding it — operators need to see this in logs.

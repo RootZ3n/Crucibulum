@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Speedway · Voltron transformation — prototype</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+  :root{
+    --wood-0:#120c05; --wood-3:#33230f;
+    --parch:#f3e8cc; --parch-2:#e7d7af;
+    --brass:#c9a227; --brass-hot:#e7c552; --brass-deep:#9c7a1a;
+    --border-medium:rgba(201,162,39,.36); --border-bright:rgba(201,162,39,.58); --border-subtle:rgba(201,162,39,.22);
+    --teal:#3f9d6a; --teal-hot:#62c08a; --cyan:#4ea7ad; --red:#bb4534;
+    --ink:#f4e9cf; --ink-soft:#e3d2a7; --ink-dim:#b69a68; --ink-ghost:rgba(182,154,104,.5);
+    --display:"Cinzel",Georgia,serif; --body:"Spectral",Georgia,ui-serif,serif; --mono:"SF Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:var(--body); color:var(--ink); overflow:hidden; height:100vh;
+    background:linear-gradient(rgba(20,13,4,.28),rgba(20,13,4,.42)),url("http://localhost:18795/assets/luak-vintage-racing-map.png") center/cover fixed no-repeat,var(--wood-0)}
+
+  .topbar{position:fixed; top:0; left:0; right:0; height:52px; z-index:60; display:flex; align-items:center; gap:14px; padding:0 18px;
+    background:linear-gradient(180deg,rgba(18,12,5,.92),rgba(18,12,5,.5)); border-bottom:1px solid var(--border-medium)}
+  .brand{font-family:var(--display); font-weight:700; letter-spacing:2px; color:var(--brass-hot); font-size:15px}
+  .brand small{display:block; font-size:10px; letter-spacing:1px; color:var(--ink-dim); font-weight:400; font-style:italic}
+  .dash-btn{margin-left:auto; font-family:var(--display); font-weight:700; letter-spacing:1.5px; font-size:12px; cursor:pointer;
+    padding:8px 18px; border-radius:7px; border:1px solid var(--brass); color:var(--brass-hot); background:rgba(201,162,39,.08)}
+  .dash-btn.on{background:linear-gradient(180deg,#d8b23e,#a8801c); color:#241a07}
+  .dash-btn:hover{filter:brightness(1.1)}
+  .hint{position:fixed; top:60px; left:50%; transform:translateX(-50%); z-index:55; font-size:11.5px; font-style:italic; color:var(--ink-soft);
+    background:rgba(18,12,5,.72); border:1px solid var(--border-subtle); padding:5px 13px; border-radius:999px}
+
+  .stage{position:fixed; inset:52px 0 0 0; overflow:hidden}
+  /* The brass wall backdrop — shows through the 1px seams between tiles */
+  .wall-bg{position:absolute; border-radius:14px; background:var(--brass-deep);
+    box-shadow:0 30px 90px rgba(0,0,0,.7), 0 0 0 2px var(--brass), 0 0 0 1px rgba(231,197,82,.2) inset;
+    opacity:0; pointer-events:none; transition:opacity .4s ease; z-index:10}
+  .wall-bg.show{opacity:1}
+
+  /* A panel window — the SAME element in both modes; geometry + chrome animate */
+  .win{position:absolute; z-index:20; background:linear-gradient(180deg,rgba(30,20,10,.97),rgba(40,27,12,.98));
+    border:1px solid var(--border-bright); border-radius:13px; overflow:hidden; display:flex; flex-direction:column;
+    box-shadow:0 26px 70px rgba(0,0,0,.66),0 0 0 3px rgba(60,42,19,.5),0 0 0 4px rgba(201,162,39,.26);
+    transition:left .58s cubic-bezier(.22,1,.36,1), top .58s cubic-bezier(.22,1,.36,1),
+               width .58s cubic-bezier(.22,1,.36,1), height .58s cubic-bezier(.22,1,.36,1),
+               border-radius .42s ease, border-color .42s ease, box-shadow .42s ease;}
+  .win.dragging{transition:none; z-index:50; box-shadow:0 36px 90px rgba(0,0,0,.8),0 0 0 4px rgba(201,162,39,.55)}
+  /* TILED = the card with its chrome stripped: borderless, square, no shadow */
+  .win.tiled{border-radius:0; border-color:transparent; box-shadow:none}
+  .win.tiled .win-ctrls{opacity:0; pointer-events:none}      /* Console disabled in dashboard */
+  .win.tiled .win-head{padding:6px 12px; cursor:default}
+  .win-head{display:flex; align-items:center; gap:9px; padding:9px 11px; cursor:grab; flex:0 0 auto;
+    background:linear-gradient(180deg,rgba(57,39,17,.96),rgba(36,24,11,.4)); border-bottom:1px solid var(--border-medium); transition:padding .42s ease}
+  .win-head:active{cursor:grabbing}
+  .win-glyph{font-size:14px}
+  .win-title{font-family:var(--display); font-weight:600; font-size:12px; letter-spacing:.4px; color:var(--brass-hot)}
+  .win-ctrls{margin-left:auto; display:flex; gap:5px; transition:opacity .3s ease}
+  .wc{height:21px;border-radius:6px;border:1px solid var(--border-medium);background:transparent;color:var(--ink-dim);cursor:pointer;font-size:11px;font-family:var(--display);padding:0 6px}
+  .wc:hover{color:var(--ink);border-color:var(--border-bright)}
+  .wc.console{color:var(--brass-hot)}
+  .win-body{padding:10px 12px; overflow:hidden; flex:1 1 auto; min-height:0}
+
+  /* compact widgets */
+  .vrow{display:flex; gap:7px}
+  .vital{flex:1; background:linear-gradient(180deg,var(--parch),var(--parch-2)); border:1px solid #b89240; border-radius:8px; padding:7px 8px}
+  .vital .n{font-family:var(--display); font-size:18px; font-weight:700; color:#5a3d12; line-height:1}
+  .vital .n.teal{color:#2f7d4f} .vital .n.red{color:#9a3a2c} .vital .n.cyan{color:#2b6f74}
+  .vital .l{font-size:8px; letter-spacing:.8px; text-transform:uppercase; color:#7a5f2b; margin-top:3px; font-family:var(--display)}
+  .ranks{display:flex; flex-direction:column; gap:5px}
+  .rank{display:flex; align-items:center; gap:8px; font-size:11.5px}
+  .rank .no{font-family:var(--display); color:var(--brass-hot); width:13px}
+  .rank .bar{flex:1; height:6px; background:rgba(20,13,4,.5); border-radius:3px; overflow:hidden}
+  .rank .fill{height:100%; background:linear-gradient(90deg,var(--teal),var(--brass))}
+  .rank .sc{font-family:var(--mono); font-size:10.5px; color:var(--ink-soft)}
+  .meter .l{font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--ink-dim); font-family:var(--display)}
+  .meter .track{height:8px; background:rgba(20,13,4,.5); border-radius:4px; overflow:hidden; margin-top:4px}
+  .meter .fill{height:100%; background:linear-gradient(90deg,var(--cyan),var(--brass))}
+  .chips{display:flex; flex-wrap:wrap; gap:5px}
+  .pchip{font-size:10px; font-family:var(--display); letter-spacing:.3px; padding:3px 7px; border-radius:6px; background:rgba(201,162,39,.14); border:1px solid var(--border-medium); color:var(--brass-hot)}
+  .pchip.green{background:rgba(47,125,84,.18); border-color:rgba(47,125,84,.4); color:var(--teal-hot)}
+  .note{font-size:11px; color:var(--ink-dim); font-style:italic; line-height:1.45}
+  .startbtn{margin-top:7px; font-family:var(--display); font-weight:700; letter-spacing:1px; font-size:10.5px; cursor:pointer; padding:6px 13px; border-radius:6px; border:1px solid var(--teal); color:var(--teal-hot); background:rgba(47,125,84,.14)}
+  .mini-stat{display:flex; justify-content:space-between; font-size:11.5px; padding:3px 0; border-bottom:1px dotted rgba(201,162,39,.16)}
+  .mini-stat b{color:var(--ink)}
+
+  .peh{position:fixed; left:20px; bottom:14px; display:flex; align-items:flex-end; gap:11px; z-index:60; max-width:min(400px,78vw); transition:opacity .6s ease, transform .6s ease}
+  .peh.gone{opacity:0; transform:translateY(14px); pointer-events:none}
+  .peh img{width:74px; filter:drop-shadow(0 10px 16px rgba(0,0,0,.55)); animation:bob 3.4s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+  .bubble{background:linear-gradient(180deg,#fdfaf0,#f0e6cf); color:#352a17; border:1px solid #cdb578; border-radius:12px; padding:10px 13px; font-size:12px; line-height:1.5; box-shadow:0 12px 28px rgba(0,0,0,.45); margin-bottom:14px; position:relative}
+  .bubble:after{content:"";position:absolute;left:-9px;bottom:14px;border:9px solid transparent;border-right-color:#f0e6cf;border-left:0}
+  .bubble b{color:#8a5a14}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">LUAK<small>Luak Speedway</small></div>
+  <button class="dash-btn" id="dashBtn" onclick="toggleDash()">▦ DASHBOARD</button>
+</div>
+<div class="hint" id="hint">Drag any window by its brass header — then hit DASHBOARD and watch them fly into formation</div>
+
+<div class="stage" id="stage">
+  <div class="wall-bg" id="wallBg"></div>
+</div>
+
+<div class="peh">
+  <div class="bubble" id="bubble"></div>
+  <img src="http://localhost:18795/assets/peh-vintage-racer-squirrel.png" alt="Peh">
+</div>
+
+<script>
+const API="http://localhost:18795";
+let MODE='solo';
+let GARAGE={providers:0,models:0,local:0};
+let WORK={ok:true,scorers:1,families:11};
+
+const PANELS=[
+  {id:'overview',glyph:'🏁',title:'Speedway',sx:36,sy:4,console:false,render:()=>`
+    <div class="vrow">
+      <div class="vital"><div class="n red">27%</div><div class="l">Trust</div></div>
+      <div class="vital"><div class="n">62%</div><div class="l">Accuracy</div></div>
+      <div class="vital"><div class="n cyan">5</div><div class="l">Models</div></div>
+      <div class="vital"><div class="n">18</div><div class="l">Runs</div></div>
+    </div>
+    <div class="chips" style="margin-top:8px"><span class="pchip green">BEST · deepseek-v4-pro</span><span class="pchip">FASTEST · mimo-v2.5</span></div>`},
+  {id:'benchmark',glyph:'🏎️',title:'Racetrack',sx:3,sy:20,console:true,render:()=>`
+    <div class="note">Pick models and drop the green flag to race them, lap by lap.</div>
+    <button class="startbtn">▸ START A RACE</button>`},
+  {id:'results',glyph:'🏆',title:'Grandstand',sx:69,sy:14,console:false,render:()=>`
+    <div class="ranks">${[['deepseek-v4-pro',88],['MiniMax-M3',74],['mimo-v2.5',61]].map((r,i)=>`<div class="rank"><span class="no">${i+1}</span><span style="flex:1">${r[0]}</span><span class="bar"><span class="fill" style="width:${r[1]}%"></span></span><span class="sc">${r[1]}%</span></div>`).join('')}</div>`},
+  {id:'metrics',glyph:'⏱️',title:'Timing Tower',sx:3,sy:56,console:false,render:()=>`
+    <div class="meter"><div class="l">Avg latency</div><div class="track"><span class="fill" style="width:42%"></span></div></div>
+    <div class="mini-stat" style="margin-top:7px"><span>Fastest lap</span><b>0.8s · mimo</b></div>
+    <div class="mini-stat"><span>Slowest</span><b>4.1s · M3</b></div>`},
+  {id:'config',glyph:'🔧',title:'Pit Lane',sx:69,sy:48,console:true,render:()=>`
+    <div class="vrow">
+      <div class="vital"><div class="n teal">${GARAGE.providers}</div><div class="l">Garages</div></div>
+      <div class="vital"><div class="n cyan">${GARAGE.models}</div><div class="l">Cars</div></div>
+      <div class="vital"><div class="n">${GARAGE.local}</div><div class="l">Local</div></div>
+    </div>
+    <div class="note" style="margin-top:7px">Your cars. Add, tune &amp; test models. <b>Console</b> opens the full registry.</div>`},
+  {id:'diagnostics',glyph:'🛠️',title:'Workshop',sx:69,sy:74,console:true,render:()=>`
+    <div class="chips"><span class="pchip ${WORK.ok?'green':''}">${WORK.ok?'RIG ONLINE':'OFFLINE'}</span><span class="pchip green">${WORK.scorers} JUDGE${WORK.scorers===1?'':'S'} OK</span><span class="pchip">CIRCUITS CLEAR</span></div>
+    <div class="note" style="margin-top:8px">📖 <b>Peh's Rulebook</b> — ${WORK.families} test families. What each checks &amp; how it's judged.</div>
+    <div class="note" style="margin-top:4px">Plus the rig's health &amp; repair bench. <b>Console</b> opens the toolbox.</div>`},
+  {id:'achievements',glyph:'🥇',title:'Victory Circle',sx:36,sy:80,console:false,render:()=>`
+    <div class="chips"><span class="pchip">🏁 18 RUNS LOGGED</span><span class="pchip green">CHAMPION · deepseek-v4-pro</span><span class="pchip">LAP RECORD · mimo-v2.5</span></div>`}
+];
+const PANEL=Object.fromEntries(PANELS.map(p=>[p.id,p]));
+const solo={};   // id -> {x,y,w,h} px (current solo geometry; updated on drag)
+const els={};    // id -> element
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function stageSize(){const s=document.getElementById('stage');return {w:s.clientWidth,h:s.clientHeight}}
+
+function build(){
+  const stage=document.getElementById('stage');
+  PANELS.forEach(p=>{
+    const el=document.createElement('div'); el.className='win'; el.dataset.id=p.id;
+    el.innerHTML=`<div class="win-head"><span class="win-glyph">${p.glyph}</span><span class="win-title">${esc(p.title)}</span>
+      <span class="win-ctrls">${p.console?`<button class="wc console">Console</button>`:''}<button class="wc">×</button></span></div>
+      <div class="win-body">${p.render()}</div>`;
+    stage.appendChild(el); els[p.id]=el;
+    el.querySelector('.win-head').addEventListener('mousedown',e=>headDown(e,p.id));
+  });
+  // measure natural heights at 300px wide, set explicit px solo geometry
+  const {w:SW,h:SH}=stageSize();
+  PANELS.forEach(p=>{
+    const el=els[p.id]; el.style.width='300px';
+    const h=el.offsetHeight;
+    solo[p.id]={x:p.sx/100*SW, y:p.sy/100*SH, w:300, h};
+    place(el,solo[p.id]);
+  });
+}
+function place(el,r){el.style.left=r.x+'px';el.style.top=r.y+'px';el.style.width=r.w+'px';el.style.height=r.h+'px';}
+
+// Predetermined dashboard slots — the "Race Control" wall mapped to px
+function slots(){
+  const {w:SW,h:SH}=stageSize();
+  const M=22, P=6, G=1;                        // outer margin, frame pad, seam gap
+  const WX=M, WY=M, WW=SW-2*M, WH=SH-2*M;      // wall rect
+  const x=WX+P, y=WY+P, w=WW-2*P, h=WH-2*P;    // inner area
+  const ratios=[1,1.6,1], rs=3.6, uw=w-2*G;
+  const cw=ratios.map(r=>uw*r/rs);
+  const cx=[x, x+cw[0]+G, x+cw[0]+G+cw[1]+G];
+  const topH=128, botH=62, uh=h-topH-botH-3*G, mid=uh/2;
+  const ry0=y, ry1=y+topH+G, ry2=ry1+mid+G, ry3=ry2+mid+G;
+  return {
+    wall:{x:WX,y:WY,w:WW,h:WH},
+    overview:{x:x,y:ry0,w:w,h:topH},
+    benchmark:{x:cx[0],y:ry1,w:cw[0],h:mid},
+    metrics:{x:cx[0],y:ry2,w:cw[0],h:mid},
+    results:{x:cx[1],y:ry1,w:cw[1],h:mid+G+mid},
+    config:{x:cx[2],y:ry1,w:cw[2],h:mid},
+    diagnostics:{x:cx[2],y:ry2,w:cw[2],h:mid},
+    achievements:{x:x,y:ry3,w:w,h:botH}
+  };
+}
+
+function toggleDash(force){
+  const want = typeof force==='string' ? force : (MODE==='solo'?'dashboard':'solo');
+  MODE=want; const dash=MODE==='dashboard';
+  document.getElementById('dashBtn').classList.toggle('on',dash);
+  const S=slots(); const wallBg=document.getElementById('wallBg');
+  if(dash){ place(wallBg,S.wall); wallBg.classList.add('show'); }
+  else { wallBg.classList.remove('show'); }
+  PANELS.forEach(p=>{
+    const el=els[p.id];
+    if(dash){ el.classList.add('tiled'); place(el,S[p.id]); }
+    else { el.classList.remove('tiled'); place(el,solo[p.id]); }
+  });
+  document.getElementById('hint').textContent=dash
+    ? 'One seamless wall. Now grab any tile and pull — the formation breaks and they fly back to windows.'
+    : 'Drag any window by its brass header — then hit DASHBOARD and watch them fly into formation';
+  document.getElementById('bubble').innerHTML=dash
+    ? "See that? Every window <b>flew to its spot</b>, dropped its frame, and joined into one. Pull a tile out and we scatter back. 🐿️"
+    : "Each window is its own card you can <b>drag</b>. Hit <b>DASHBOARD</b> and watch the transformation.";
+  pehFlash();
+}
+
+// Peh pops in to say his piece, then takes a bow after ~4.5s.
+let pehTimer=null;
+function pehFlash(){
+  const peh=document.querySelector('.peh'); if(!peh)return;
+  peh.classList.remove('gone');
+  if(pehTimer)clearTimeout(pehTimer);
+  pehTimer=setTimeout(()=>peh.classList.add('gone'),4500);
+}
+
+// ── Pointer handling: drag in solo; pull-to-break in dashboard ──
+let drag=null;
+function headDown(e,id){
+  if(e.target.closest('.wc'))return;
+  e.preventDefault();
+  const el=els[id];
+  if(MODE==='dashboard'){
+    // pull-to-break: this tile keeps its current spot as its new solo home,
+    // everyone else flies back apart, then we drag this one.
+    const r=el.getBoundingClientRect(), st=document.getElementById('stage').getBoundingClientRect();
+    solo[id]={x:r.left-st.left, y:r.top-st.top, w:300, h:PANEL_h(id)};
+    toggleDash('solo');
+    startDrag(e,id,true);
+  } else {
+    startDrag(e,id,false);
+  }
+}
+function PANEL_h(id){ // natural solo height (re-measure cheaply)
+  const el=els[id]; const wasTiled=el.classList.contains('tiled');
+  return solo[id]?solo[id].h:160;
+}
+function startDrag(e,id,fromBreak){
+  const el=els[id]; const st=document.getElementById('stage');
+  el.classList.add('dragging'); el.style.width='300px'; el.style.height=solo[id].h+'px';
+  drag={id,el,st,sx:e.clientX,sy:e.clientY,ox:el.offsetLeft,oy:el.offsetTop};
+  document.addEventListener('mousemove',dragMove); document.addEventListener('mouseup',dragEnd);
+}
+function dragMove(e){
+  if(!drag)return; const r=drag.st.getBoundingClientRect();
+  let nx=drag.ox+(e.clientX-drag.sx), ny=drag.oy+(e.clientY-drag.sy);
+  nx=Math.max(0,Math.min(r.width-80,nx)); ny=Math.max(0,Math.min(r.height-40,ny));
+  drag.el.style.left=nx+'px'; drag.el.style.top=ny+'px';
+}
+function dragEnd(){
+  if(!drag)return; const r=drag.st.getBoundingClientRect();
+  solo[drag.id]={x:drag.el.offsetLeft,y:drag.el.offsetTop,w:300,h:solo[drag.id].h};
+  drag.el.classList.remove('dragging'); drag=null;
+  document.removeEventListener('mousemove',dragMove); document.removeEventListener('mouseup',dragEnd);
+}
+
+async function loadGarage(){
+  try{const s=await fetch(API+'/api/registry/state').then(r=>r.json());
+    GARAGE.providers=(s.providers||[]).length; GARAGE.models=(s.models||[]).length;
+    GARAGE.local=(s.providers||[]).filter(p=>p.adapter==='ollama'||p.kind==='local').length;
+  }catch(e){}
+  try{const h=await fetch(API+'/api/health').then(r=>r.json()); WORK.ok=(h&&h.status==='ok');}catch(e){}
+  try{const sc=await fetch(API+'/api/scorers').then(r=>r.json());
+    WORK.scorers=Array.isArray(sc)?sc.length:(sc&&Array.isArray(sc.scorers)?sc.scorers.length:WORK.scorers);}catch(e){}
+  // refresh the two live tiles
+  for(const id of ['config','diagnostics']){const el=els[id]; if(el) el.querySelector('.win-body').innerHTML=PANEL[id].render();}
+}
+
+build();
+document.getElementById('bubble').innerHTML="Each window is its own card you can <b>drag</b>. Hit <b>DASHBOARD</b> and watch the transformation.";
+pehFlash();
+loadGarage();
+window.addEventListener('resize',()=>{ if(MODE==='dashboard') toggleDash('dashboard'); });
+</script>
+</body>
+</html>

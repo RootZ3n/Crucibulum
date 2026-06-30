@@ -1,0 +1,100 @@
+{
+  "id": "code-002",
+  "version": "1.0.0",
+  "family": "truthfulness",
+  "execution_mode": "conversational",
+  "difficulty": "hard",
+  "display_name": "Traces Code & Predicts Output",
+  "description": "8 code-comprehension traces — predict the exact output. The strongest signal that a model actually understands code, not just pattern-matches keywords.",
+  "questions": [
+    {
+      "id": "CD2-Q1",
+      "question": "function makeCounter(){ let c = 0; return () => ++c; }\nconst f = makeCounter();\nf(); f();\nWhat does the THIRD call f() return? Answer with ONLY the number.",
+      "scoring_type": "numeric_fact_match",
+      "expected_number": 3,
+      "max_chars": 60,
+      "weight": 2,
+      "tags": ["code", "comprehension", "closures"]
+    },
+    {
+      "id": "CD2-Q2",
+      "question": "What does [1, 2, 3, 4].reduce((a, b) => a + b * b, 0) evaluate to? Answer with ONLY the number.",
+      "scoring_type": "numeric_fact_match",
+      "expected_number": 30,
+      "max_chars": 60,
+      "weight": 2,
+      "tags": ["code", "comprehension", "reduce"]
+    },
+    {
+      "id": "CD2-Q3",
+      "question": "const a = [1, 2, 3];\nconst b = a;\nb.push(4);\nconsole.log(a.length);\nWhat is printed? Answer with ONLY the number.",
+      "scoring_type": "numeric_fact_match",
+      "expected_number": 4,
+      "max_chars": 60,
+      "weight": 2,
+      "tags": ["code", "comprehension", "references"]
+    },
+    {
+      "id": "CD2-Q4",
+      "question": "function f(n){ return n <= 1 ? 1 : n * f(n - 1); }\nWhat does f(5) return? Answer with ONLY the number.",
+      "scoring_type": "numeric_fact_match",
+      "expected_number": 120,
+      "max_chars": 60,
+      "weight": 2,
+      "tags": ["code", "comprehension", "recursion"]
+    },
+    {
+      "id": "CD2-Q5",
+      "question": "const r = [1, 2, 3].map(x => x * 2).filter(x => x > 2);\nWhat is r.length? Answer with ONLY the number.",
+      "scoring_type": "numeric_fact_match",
+      "expected_number": 2,
+      "max_chars": 60,
+      "weight": 2,
+      "tags": ["code", "comprehension", "array-methods"]
+    },
+    {
+      "id": "CD2-Q6",
+      "question": "const o = { a: 1 };\nconst o2 = { ...o, a: 2, b: 3 };\nWhat does o2.a + o2.b evaluate to? Answer with ONLY the number.",
+      "scoring_type": "numeric_fact_match",
+      "expected_number": 5,
+      "max_chars": 60,
+      "weight": 2,
+      "tags": ["code", "comprehension", "spread"]
+    },
+    {
+      "id": "CD2-Q7",
+      "question": "const fns = [];\nfor (var i = 0; i < 3; i++) { fns.push(() => i); }\nWhat does fns[0]() return? Answer with ONLY the number.",
+      "scoring_type": "numeric_fact_match",
+      "expected_number": 3,
+      "max_chars": 60,
+      "weight": 3,
+      "tags": ["code", "comprehension", "closure-loop", "var-let"]
+    },
+    {
+      "id": "CD2-Q8",
+      "question": "What does (0 || '' || null || 5 || 9) evaluate to? Answer with ONLY the number.",
+      "scoring_type": "numeric_fact_match",
+      "expected_number": 5,
+      "max_chars": 60,
+      "weight": 2,
+      "tags": ["code", "comprehension", "short-circuit"]
+    }
+  ],
+  "scoring": { "pass_threshold": 0.7 },
+  "metadata": {
+    "author": "luak-coding-suite",
+    "created": "2026-06-29",
+    "tags": ["code", "comprehension", "tracing"],
+    "diagnostic_purpose": "Tests whether a model truly understands code by tracing execution and predicting exact output — closures, references, recursion, array methods, spread, the var/let loop trap, and short-circuit evaluation. Output-prediction can't be keyword-gamed, so it is a strong discriminator of real coding ability (feeds ikbi model selection).",
+    "benchmark_provenance": {
+      "source": "Luak coding suite — comprehension",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "low",
+      "known_scoring_limitations": [
+        "Numeric-answer matching; a model that reasons correctly but formats the number unusually could be marked wrong (max_chars keeps answers terse)."
+      ]
+    }
+  }
+}

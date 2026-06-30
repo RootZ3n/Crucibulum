@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Garage · Luak — prototype</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+  :root{
+    /* ── 1920s speedway — warm wood, brass, parchment, racing colours ── */
+    --wood-0:#120c05; --wood-1:#1c1308; --wood-2:#26190b; --wood-3:#33230f;
+    --bg-card:rgba(44,30,14,.78); --bg-card-hover:rgba(60,42,19,.9);
+    --parch:#f3e8cc; --parch-2:#e7d7af; --parch-ink:#392c14;
+    --brass:#c9a227; --brass-hot:#e7c552; --brass-deep:#9c7a1a;
+    --border-subtle:rgba(201,162,39,.22); --border-medium:rgba(201,162,39,.36); --border-bright:rgba(201,162,39,.58);
+    --orange:#dd9128; --coral:#d27a37; --teal:#3f9d6a; --teal-hot:#62c08a; --cyan:#4ea7ad;
+    --green-race:#2f7d54; --red:#bb4534; --oxblood:#8c2f24;
+    --ink:#f4e9cf; --ink-soft:#e3d2a7; --ink-dim:#b69a68; --ink-ghost:rgba(182,154,104,.5);
+    --display:"Cinzel",Georgia,"Times New Roman",serif;
+    --body:"Spectral",Georgia,ui-serif,"Times New Roman",serif;
+    --mono:"SF Mono",Consolas,"Liberation Mono","Courier New",monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  /* The living world — the speedway shows THROUGH, only lightly dimmed warm */
+  body{
+    font-family:var(--body); color:var(--ink); overflow:hidden; height:100vh;
+    background:
+      linear-gradient(rgba(20,13,4,.30),rgba(20,13,4,.44)),
+      url("http://localhost:18795/assets/luak-vintage-racing-map.png") center/cover fixed no-repeat,
+      var(--wood-0);
+  }
+  /* Faux hotspot sign — matches the map's brass-bordered cream signage */
+  .hotspot{position:fixed; left:50%; bottom:46px; transform:translateX(-50%); z-index:5;
+    background:linear-gradient(180deg,#f6efda,#e3d4ad); color:#3a2f1c; font-family:var(--display); font-weight:700; letter-spacing:2px;
+    padding:8px 20px; border-radius:5px; border:2px solid #9c7a1a; box-shadow:0 6px 18px rgba(0,0,0,.55),0 1px 0 rgba(255,255,255,.4) inset; font-size:13px}
+
+  /* ── Floating window over the world — wood & brass cabinet ─────── */
+  .win{
+    position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+    background:linear-gradient(180deg,rgba(30,20,10,.95),rgba(40,27,12,.97));
+    backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px);
+    border:1px solid var(--border-bright); border-radius:14px;
+    box-shadow:0 40px 110px rgba(0,0,0,.72), 0 0 0 3px rgba(60,42,19,.55), 0 0 0 4px rgba(201,162,39,.28), 0 1px 0 rgba(231,197,82,.15) inset;
+    display:flex; flex-direction:column; overflow:hidden; transition:width .28s ease,height .28s ease;
+  }
+  .win.card{width:384px; max-height:80vh}
+  .win.console{width:min(1080px,94vw); height:min(86vh,860px)}
+
+  .win-head{display:flex; align-items:center; gap:12px; padding:13px 18px;
+    background:linear-gradient(180deg,rgba(57,39,17,.96),rgba(36,24,11,.55)); border-bottom:1px solid var(--border-medium)}
+  .win-glyph{font-size:21px; filter:drop-shadow(0 2px 5px rgba(0,0,0,.5))}
+  .win-titles h1{margin:0; font-family:var(--display); font-size:18px; font-weight:700; letter-spacing:.6px; color:var(--brass-hot); text-shadow:0 1px 1px rgba(0,0,0,.5)}
+  .win-titles p{margin:1px 0 0; font-size:12px; font-style:italic; color:var(--ink-dim)}
+  .win-ctrls{margin-left:auto; display:flex; gap:6px; align-items:center}
+  .seg{display:flex; background:rgba(20,13,4,.6); border:1px solid var(--border-medium); border-radius:8px; overflow:hidden}
+  .seg button{background:transparent; border:none; color:var(--ink-dim); font-family:var(--display); font-size:11px; font-weight:600; letter-spacing:.5px; padding:5px 13px; cursor:pointer}
+  .seg button.on{background:linear-gradient(180deg,#d8b23e,#a8801c); color:#241a07}
+  .icon-btn{width:26px;height:26px;border-radius:7px;border:1px solid var(--border-medium);background:transparent;color:var(--ink-dim);cursor:pointer;font-size:13px}
+  .icon-btn:hover{color:var(--ink);border-color:var(--border-bright)}
+  .win-scroll{overflow:auto; padding:0}
+
+  /* ── CARD (small / solo) state — race-program index cards ──────── */
+  .card-body{padding:16px 18px}
+  .stat-row{display:flex; gap:10px; margin-bottom:14px}
+  .stat{flex:1; background:linear-gradient(180deg,var(--parch),var(--parch-2)); border:1px solid #b89240; border-radius:10px; padding:11px 12px; box-shadow:0 2px 6px rgba(0,0,0,.3)}
+  .stat .n{font-family:var(--display); font-size:25px; font-weight:700; line-height:1; color:#5a3d12}
+  .stat .l{font-size:10px; letter-spacing:1.2px; color:#7a5f2b; text-transform:uppercase; margin-top:5px; font-family:var(--display)}
+  .stat .n.teal{color:#2f7d4f} .stat .n.cyan{color:#2b6f74} .stat .n.orange{color:#9a6516}
+  .health{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; font-size:12px; color:var(--ink-soft)}
+  .health .pill{display:inline-flex; align-items:center; gap:6px; background:rgba(20,13,4,.5); border:1px solid var(--border-subtle); border-radius:999px; padding:4px 10px}
+  .mini-list{margin:4px 0 14px; display:flex; flex-direction:column; gap:6px}
+  .mini-prov{display:flex; align-items:center; gap:9px; font-size:13px; padding:6px 2px; border-bottom:1px dotted rgba(201,162,39,.18)}
+  .mini-prov .nm{font-weight:600}
+  .mini-prov .ct{margin-left:auto; color:var(--ink-dim); font-size:11px; font-family:var(--mono)}
+  .card-actions{display:flex; gap:8px; flex-wrap:wrap}
+
+  /* ── CONSOLE (detail) state ────────────────────────────────────── */
+  .console-grid{display:grid; grid-template-columns:330px 1fr; min-height:0}
+  @media(max-width:760px){.console-grid{grid-template-columns:1fr}}
+  .rail{padding:18px; border-right:1px solid var(--border-subtle); background:rgba(20,13,4,.4); overflow:auto}
+  .floor{padding:18px 20px; overflow:auto}
+  .mini{font-family:var(--display); font-size:10.5px; letter-spacing:1.6px; color:var(--ink-dim); text-transform:uppercase; margin-bottom:6px}
+  .rail h2,.floor h2{margin:0 0 4px; font-family:var(--display); font-size:15px; font-weight:600; letter-spacing:.4px; color:var(--brass-hot)}
+  .peh-tip{font-size:12.5px; line-height:1.5; color:var(--ink-soft); background:rgba(201,162,39,.1);
+    border-left:2px solid var(--brass); padding:9px 11px; border-radius:0 8px 8px 0; margin:12px 0 16px}
+  .peh-tip b{color:var(--teal-hot)}
+  .preset-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+  .preset{display:flex; flex-direction:column; gap:3px; text-align:left; cursor:pointer; background:var(--bg-card);
+    border:1px solid var(--border-subtle); border-radius:9px; padding:9px 10px; color:var(--ink); font-family:inherit; transition:.15s}
+  .preset:hover{background:var(--bg-card-hover); border-color:var(--border-bright); transform:translateY(-1px)}
+  .preset .pn{font-size:13px; font-weight:600}
+  .preset .pk{font-size:9.5px; letter-spacing:.5px; color:var(--ink-dim); font-family:var(--mono)}
+  .badge{font-size:9px; letter-spacing:.6px; padding:2px 6px; border-radius:5px; text-transform:uppercase; font-weight:700; display:inline-block; font-family:var(--display)}
+  .badge.local{background:rgba(47,125,84,.2); color:#7fd3a3; border:1px solid rgba(47,125,84,.45)}
+  .badge.cloud{background:rgba(78,167,173,.16); color:#8fd2d6; border:1px solid rgba(78,167,173,.34)}
+  .badge.first{background:rgba(221,145,40,.18); color:#f0b659; border:1px solid rgba(221,145,40,.4)}
+  .form{margin-top:12px; background:var(--bg-card); border:1px solid var(--border-bright); border-radius:11px; padding:13px}
+  .form h3{margin:0 0 8px; font-family:var(--display); font-size:13.5px; color:var(--brass-hot)}
+  .form label{display:block; font-size:11px; color:var(--ink-dim); margin:9px 0 3px; letter-spacing:.4px}
+  .form input{width:100%; background:rgba(20,13,4,.7); border:1px solid var(--border-medium); border-radius:8px; color:var(--ink); padding:8px 10px; font-family:var(--mono); font-size:12.5px}
+  .form input:focus{outline:none; border-color:var(--brass-hot)}
+  .form .hintline{font-size:11px; color:var(--ink-dim); margin-top:4px; line-height:1.4}
+  .row{display:flex; gap:8px; margin-top:12px}
+  button.btn{font-family:var(--display); cursor:pointer; border-radius:8px; padding:8px 13px; font-size:12px; font-weight:600; letter-spacing:.3px; border:1px solid transparent; transition:.15s}
+  button.btn.primary{background:linear-gradient(180deg,#d8b23e,#a8801c); color:#241a07; border-color:var(--brass-hot); box-shadow:0 2px 6px rgba(0,0,0,.3)}
+  button.btn.primary:hover{filter:brightness(1.08)}
+  button.btn.ghost{background:transparent; color:var(--ink-dim); border-color:var(--border-medium)}
+  button.btn.ghost:hover{color:var(--ink); border-color:var(--border-bright)}
+  button.btn.tiny{padding:5px 9px; font-size:10.5px}
+  button.btn.danger{color:#e0907f; border-color:rgba(187,69,52,.4)}
+  button.btn.danger:hover{background:rgba(187,69,52,.16)}
+  button.btn.test{color:#8fd2d6; border-color:rgba(78,167,173,.4)}
+  button.btn.test:hover{background:rgba(78,167,173,.14)}
+  .floor-head{display:flex; align-items:baseline; gap:10px; margin-bottom:4px}
+  .count{font-size:11px; color:var(--ink-dim); margin-left:auto; font-family:var(--mono)}
+  .vs-callout{display:none; align-items:center; gap:9px; margin:12px 0; padding:10px 13px; border-radius:10px;
+    background:rgba(47,125,84,.12); border:1px solid rgba(47,125,84,.32); font-size:12.5px; color:var(--teal-hot)}
+  .vs-callout.show{display:flex}
+  .prov{background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:12px; padding:14px; margin-top:13px; box-shadow:0 2px 8px rgba(0,0,0,.25)}
+  .prov.disabled{opacity:.55}
+  .prov-top{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  .prov-name{font-family:var(--display); font-size:14.5px; font-weight:600; color:var(--ink)}
+  .prov-sub{font-size:11px; color:var(--ink-dim); font-family:var(--mono)}
+  .dot{width:8px; height:8px; border-radius:50%; display:inline-block}
+  .dot.ok{background:var(--teal); box-shadow:0 0 8px var(--teal)}
+  .dot.bad{background:var(--red); box-shadow:0 0 8px var(--red)}
+  .dot.unk{background:var(--ink-ghost)}
+  .prov-ctrls{margin-left:auto; display:flex; gap:7px; flex-wrap:wrap}
+  .models{margin-top:12px; padding-top:11px; border-top:1px solid var(--border-subtle)}
+  .models .mlabel{font-family:var(--display); font-size:10.5px; letter-spacing:1.4px; color:var(--ink-dim); text-transform:uppercase; margin-bottom:8px}
+  .chips{display:flex; flex-wrap:wrap; gap:7px}
+  .chip{display:inline-flex; align-items:center; gap:7px; background:rgba(20,13,4,.55); border:1px solid var(--border-medium); border-radius:8px; padding:6px 9px; font-size:12px; font-family:var(--mono)}
+  .chip.off{opacity:.45; text-decoration:line-through}
+  .chip .x{cursor:pointer; color:var(--ink-ghost); font-weight:700}
+  .chip .x:hover{color:var(--red)}
+  .chip .tog{cursor:pointer; color:var(--ink-dim); font-size:11px}
+  .chip .tog:hover{color:var(--teal-hot)}
+  .addmodel{display:flex; gap:7px; margin-top:11px; flex-wrap:wrap}
+  .addmodel input{flex:1; min-width:150px; background:rgba(20,13,4,.7); border:1px solid var(--border-medium); border-radius:8px; color:var(--ink); padding:7px 10px; font-family:var(--mono); font-size:12px}
+  .addmodel input:focus{outline:none; border-color:var(--brass-hot)}
+  .empty{padding:24px; text-align:center; color:var(--ink-dim); font-size:13px; font-style:italic; border:1px dashed var(--border-medium); border-radius:12px; margin-top:14px}
+
+  /* ── Peh mascot + bubble (cream paper note) ────────────────────── */
+  .peh{position:fixed; left:24px; bottom:18px; display:flex; align-items:flex-end; gap:12px; z-index:60; max-width:min(420px,80vw)}
+  .peh img{width:88px; height:auto; filter:drop-shadow(0 10px 18px rgba(0,0,0,.55)); animation:bob 3.4s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+  .bubble{position:relative; background:linear-gradient(180deg,#fdfaf0,#f0e6cf); color:#352a17; border:1px solid #cdb578; border-radius:13px; padding:12px 14px; font-size:12.5px; line-height:1.55; box-shadow:0 12px 30px rgba(0,0,0,.45); margin-bottom:16px}
+  .bubble:after{content:""; position:absolute; left:-9px; bottom:16px; border:9px solid transparent; border-right-color:#f0e6cf; border-left:0}
+  .bubble b{color:#8a5a14}
+  .bubble .nav{display:flex; gap:8px; margin-top:9px; align-items:center}
+  .bubble .nav button{cursor:pointer; border:none; background:rgba(156,122,26,.16); color:#6b4a12; font-family:var(--display); font-weight:700; border-radius:6px; padding:3px 10px; font-size:12px}
+  .bubble .nav span{font-size:11px; color:#8a7344; font-family:var(--mono)}
+
+  #toast{position:fixed; right:20px; bottom:22px; z-index:80; display:flex; flex-direction:column; gap:8px; align-items:flex-end}
+  .toast{background:var(--wood-3); border:1px solid var(--border-bright); border-radius:10px; padding:10px 14px; font-size:12.5px; box-shadow:0 10px 26px rgba(0,0,0,.5); animation:slidein .2s ease}
+  .toast.ok{border-color:rgba(47,125,84,.55)} .toast.ok b{color:var(--teal-hot)}
+  .toast.err{border-color:rgba(187,69,52,.55)} .toast.err b{color:#e0907f}
+  @keyframes slidein{from{transform:translateX(20px);opacity:0}to{transform:none;opacity:1}}
+  .proto-tag{position:fixed; top:10px; right:14px; font-size:10px; letter-spacing:1px; color:rgba(244,233,207,.5); z-index:90; font-family:var(--mono)}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="proto-tag">PROTOTYPE · floating window over the world · live → :18795</div>
+<div class="hotspot">THE PIT LANE</div>
+
+<div class="win card" id="win">
+  <div class="win-head">
+    <span class="win-glyph">🔧</span>
+    <div class="win-titles">
+      <h1>The Garage</h1>
+      <p id="winSub">Where you wire up the cars</p>
+    </div>
+    <div class="win-ctrls">
+      <div class="seg">
+        <button id="segCard" class="on" onclick="setMode('card')">Card</button>
+        <button id="segConsole" onclick="setMode('console')">Console</button>
+      </div>
+      <button class="icon-btn" title="Close (back to map)" onclick="toast('In the real app this returns you to the speedway 🐿️')">×</button>
+    </div>
+  </div>
+
+  <!-- CARD STATE -->
+  <div class="win-scroll" id="cardView">
+    <div class="card-body" id="cardBody"></div>
+  </div>
+
+  <!-- CONSOLE STATE -->
+  <div class="win-scroll hidden" id="consoleView">
+    <div class="console-grid">
+      <aside class="rail">
+        <div class="mini">Step 1 · Registry</div>
+        <h2>Add a provider</h2>
+        <div class="peh-tip">A <b>provider</b> is a garage that supplies cars. A <b>model</b> is a car. <b>Local</b> garages run on your own machine — no internet, no cost.</div>
+        <div id="presets" class="preset-grid"></div>
+        <div id="provForm"></div>
+      </aside>
+      <main class="floor">
+        <div class="floor-head"><h2>Your garage</h2><span id="count" class="count"></span></div>
+        <div id="vsCallout" class="vs-callout">🏁 You have local models — race them head-to-head on the Racetrack, no cloud needed.</div>
+        <div id="provList"></div>
+      </main>
+    </div>
+  </div>
+</div>
+
+<div class="peh">
+  <div class="bubble" id="bubble">
+    <div id="bubbleText"></div>
+    <div class="nav"><button onclick="pehPrev()">‹</button><span id="bubbleIdx"></span><button onclick="pehNext()">›</button></div>
+  </div>
+  <img src="http://localhost:18795/assets/peh-vintage-racer-squirrel.png" alt="Peh the squirrel">
+</div>
+<div id="toast"></div>
+
+<script>
+const API="http://localhost:18795";
+let STATE={presets:[],providers:[],models:[]};
+let MODE='card';
+
+const PEH_CARD=[
+  "This is <b>The Garage</b> — the little window that pops up at the Pit Lane. The speedway's still right behind me. 🐿️",
+  "At a glance you see how many <b>garages</b> (providers) and <b>cars</b> (models) you've got, and which engines are tested. Quick stuff lives right here.",
+  "Need to actually add or tune things? Hit <b>Console</b> up top — that's when I roll out the full toolbox. Small window for a peek, big console for real work."
+];
+const PEH_CONSOLE=[
+  "Full toolbox is out. On the left, pick a <b>provider</b> — <b>Cloud</b> ones need a key, <b>Local</b> ones (Ollama) don't.",
+  "Drop <b>models</b> into a provider — type a model id and hit add. Those are your cars.",
+  "<b>Test</b> any provider to make sure the engine turns over before race day. Two local models? You can race them free over at the Racetrack."
+];
+let pehI=0;
+function pehScript(){return MODE==='card'?PEH_CARD:PEH_CONSOLE}
+function pehShow(){const s=pehScript();if(pehI>=s.length)pehI=0;document.getElementById('bubbleText').innerHTML=s[pehI];document.getElementById('bubbleIdx').textContent=(pehI+1)+" / "+s.length;}
+function pehNext(){const s=pehScript();pehI=(pehI+1)%s.length;pehShow();}
+function pehPrev(){const s=pehScript();pehI=(pehI-1+s.length)%s.length;pehShow();}
+
+function setMode(m){
+  MODE=m; pehI=0;
+  document.getElementById('win').className='win '+m;
+  document.getElementById('segCard').classList.toggle('on',m==='card');
+  document.getElementById('segConsole').classList.toggle('on',m==='console');
+  document.getElementById('cardView').classList.toggle('hidden',m!=='card');
+  document.getElementById('consoleView').classList.toggle('hidden',m!=='console');
+  document.getElementById('winSub').textContent=m==='card'?'Where you wire up the cars':'Pit Lane · full registry console';
+  pehShow();
+}
+
+async function api(method,path,body){
+  const r=await fetch(API+path,{method,headers:body?{"Content-Type":"application/json"}:{},body:body?JSON.stringify(body):undefined});
+  let data=null; try{data=await r.json()}catch(e){}
+  if(!r.ok) throw new Error((data&&data.error)||("HTTP "+r.status));
+  return data;
+}
+function toast(msg,kind){const t=document.createElement('div');t.className='toast '+(kind||'');t.innerHTML=msg;document.getElementById('toast').appendChild(t);setTimeout(()=>t.remove(),3800);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function isLocal(p){return (p.kind==='local')||p.adapter==='ollama'||/ollama|lm[\s-]?studio|localhost|127\.0\.0\.1/i.test((p.defaultBaseUrl||p.baseUrl||''))}
+
+async function load(){
+  try{STATE=await api('GET','/api/registry/state');}
+  catch(e){toast("Couldn't reach Luak at :18795 — is the server up?<br><small>"+esc(e.message)+"</small>",'err');return;}
+  renderCard(); renderPresets(); renderProviders();
+}
+
+function renderCard(){
+  const provs=STATE.providers||[], models=STATE.models||[];
+  const local=provs.filter(isLocal).length;
+  const testedOk=provs.filter(p=>p.lastTestedOk===true).length;
+  const untested=provs.filter(p=>p.lastTestedOk==null).length;
+  const failed=provs.filter(p=>p.lastTestedOk===false).length;
+  const el=document.getElementById('cardBody');
+  el.innerHTML=`
+    <div class="stat-row">
+      <div class="stat"><div class="n teal">${provs.length}</div><div class="l">Providers</div></div>
+      <div class="stat"><div class="n cyan">${models.length}</div><div class="l">Models</div></div>
+      <div class="stat"><div class="n orange">${local}</div><div class="l">Local</div></div>
+    </div>
+    <div class="health">
+      ${testedOk?`<span class="pill"><span class="dot ok"></span>${testedOk} tested OK</span>`:''}
+      ${failed?`<span class="pill"><span class="dot bad"></span>${failed} failing</span>`:''}
+      ${untested?`<span class="pill"><span class="dot unk"></span>${untested} untested</span>`:''}
+      ${!provs.length?'<span class="pill">Empty garage</span>':''}
+    </div>
+    <div class="mini-list">
+      ${provs.slice(0,4).map(p=>{const ms=models.filter(m=>m.providerConfigId===p.id).length;const d=p.lastTestedOk===true?'ok':p.lastTestedOk===false?'bad':'unk';
+        return `<div class="mini-prov"><span class="dot ${d}"></span><span class="nm">${esc(p.label||p.id)}</span>${isLocal(p)?'<span class="badge local">Local</span>':''}<span class="ct">${ms} car${ms===1?'':'s'}</span></div>`;}).join('')}
+      ${provs.length>4?`<div class="prov-sub" style="padding:2px">+${provs.length-4} more…</div>`:''}
+    </div>
+    <div class="card-actions">
+      <button class="btn primary" onclick="setMode('console')">⤢ Open the Garage</button>
+      <button class="btn test" onclick="testAll()">⚡ Test all</button>
+    </div>`;
+}
+async function testAll(){
+  const provs=STATE.providers||[]; if(!provs.length){toast('No providers to test yet');return;}
+  toast('Testing '+provs.length+' provider'+(provs.length===1?'':'s')+'…');
+  for(const p of provs){try{await api('POST','/api/registry/providers/'+encodeURIComponent(p.id)+'/test');}catch(e){}}
+  await load(); toast('Test sweep complete','ok');
+}
+
+function renderPresets(){
+  document.getElementById('presets').innerHTML=STATE.presets.map(p=>{
+    const local=isLocal(p);
+    return `<button class="preset" onclick="showForm('${esc(p.id)}')">
+      <span class="pn">${esc(p.label||p.id)}</span><span class="pk">${esc(p.adapter||p.id)}</span>
+      <span>${local?'<span class="badge local">Local</span>':'<span class="badge cloud">Cloud</span>'}${p.firstClass?' <span class="badge first">Rec</span>':''}</span>
+    </button>`;}).join('');
+}
+function showForm(presetId){
+  const p=STATE.presets.find(x=>x.id===presetId)||{}; const local=isLocal(p);
+  const needsKey=!local && p.envKey!==null && p.authStyle!=='none';
+  document.getElementById('provForm').innerHTML=`
+    <div class="form"><h3>Add ${esc(p.label||presetId)}</h3>
+      <label>Label (optional)</label><input id="f_label" placeholder="${esc(p.label||presetId)}">
+      ${(!p.defaultBaseUrl||local)?`<label>Base URL</label><input id="f_baseUrl" placeholder="${esc(p.defaultBaseUrl||'http://localhost:11434')}">`:''}
+      ${needsKey?`<label>API key</label><input id="f_apiKey" type="password" placeholder="sk-…"><div class="hintline">${p.envKey?('Or leave blank to use env <b>'+esc(p.envKey)+'</b>.'):''}</div>`:`<div class="hintline">${local?'Local provider — no API key needed. 🎉':''}</div>`}
+      <div class="row"><button class="btn primary" onclick="addProvider('${esc(presetId)}')">Add to garage</button><button class="btn ghost" onclick="closeForm()">Cancel</button></div>
+    </div>`;
+}
+function closeForm(){document.getElementById('provForm').innerHTML='';}
+async function addProvider(presetId){
+  const g=id=>{const e=document.getElementById(id);return e?e.value.trim():''};
+  const body={presetId}; const l=g('f_label'),b=g('f_baseUrl'),k=g('f_apiKey');
+  if(l)body.label=l; if(b)body.baseUrl=b; if(k)body.apiKey=k;
+  try{const r=await api('POST','/api/registry/providers',body);toast('Added <b>'+esc((r.provider&&r.provider.label)||presetId)+'</b>','ok');closeForm();await load();}
+  catch(e){toast('Add failed: '+esc(e.message),'err');}
+}
+async function testProvider(id){toast('Testing…');try{const r=await api('POST','/api/registry/providers/'+encodeURIComponent(id)+'/test');if(r.ok)toast('✅ <b>Connected</b>','ok');else toast('⚠️ '+esc(r.reason||'No connection'),'err');await load();}catch(e){toast('Test failed: '+esc(e.message),'err');}}
+async function toggleProvider(id,enabled){try{await api('PATCH','/api/registry/providers/'+encodeURIComponent(id),{enabled:!enabled});await load();}catch(e){toast(esc(e.message),'err')}}
+async function delProvider(id,label){if(!confirm('Remove "'+label+'" and its models?'))return;try{await api('DELETE','/api/registry/providers/'+encodeURIComponent(id));toast('Removed '+esc(label),'ok');await load();}catch(e){toast(esc(e.message),'err')}}
+async function addModel(pid){const inp=document.getElementById('nm_'+pid);const modelId=inp.value.trim();if(!modelId)return;try{await api('POST','/api/registry/models',{providerConfigId:pid,modelId});toast('Parked <b>'+esc(modelId)+'</b>','ok');await load();}catch(e){toast(esc(e.message),'err')}}
+async function toggleModel(id,enabled){try{await api('PATCH','/api/registry/models/'+encodeURIComponent(id),{enabled:!enabled});await load();}catch(e){toast(esc(e.message),'err')}}
+async function delModel(id,name){if(!confirm('Remove model "'+name+'"?'))return;try{await api('DELETE','/api/registry/models/'+encodeURIComponent(id));await load();}catch(e){toast(esc(e.message),'err')}}
+
+function renderProviders(){
+  const list=document.getElementById('provList');
+  const provs=STATE.providers||[], models=STATE.models||[];
+  document.getElementById('count').textContent=provs.length+' provider'+(provs.length===1?'':'s')+' · '+models.length+' model'+(models.length===1?'':'s');
+  const localModelCount=models.filter(m=>{const p=provs.find(x=>x.id===m.providerConfigId);return p&&isLocal(p)&&m.enabled!==false}).length;
+  document.getElementById('vsCallout').classList.toggle('show',localModelCount>=2);
+  if(!provs.length){list.innerHTML='<div class="empty">No providers yet — pick one on the left.</div>';return;}
+  list.innerHTML=provs.map(p=>{
+    const local=isLocal(p); const ms=models.filter(m=>m.providerConfigId===p.id);
+    const dot=p.lastTestedOk===true?'ok':p.lastTestedOk===false?'bad':'unk';
+    const dotTitle=p.lastTestedOk===true?'Tested OK':p.lastTestedOk===false?'Last test failed':'Not tested yet';
+    return `<div class="prov ${p.enabled===false?'disabled':''}">
+      <div class="prov-top">
+        <span class="dot ${dot}" title="${dotTitle}"></span>
+        <span class="prov-name">${esc(p.label||p.id)}</span>
+        ${local?'<span class="badge local">Local</span>':'<span class="badge cloud">Cloud</span>'}
+        ${p.firstClass?'<span class="badge first">Rec</span>':''}
+        <span class="prov-sub">${esc(p.adapter||p.presetId||'')}</span>
+        <span class="prov-ctrls">
+          <button class="btn test tiny" onclick="testProvider('${esc(p.id)}')">Test</button>
+          <button class="btn ghost tiny" onclick="toggleProvider('${esc(p.id)}',${p.enabled!==false})">${p.enabled===false?'Enable':'Disable'}</button>
+          <button class="btn danger tiny" onclick="delProvider('${esc(p.id)}','${esc((p.label||p.id)).replace(/'/g,'')}')">Remove</button>
+        </span>
+      </div>
+      <div class="models">
+        <div class="mlabel">Cars in this stall · ${ms.length}</div>
+        <div class="chips">
+          ${ms.length?ms.map(m=>`<span class="chip ${m.enabled===false?'off':''}">${esc(m.displayName||m.modelId||m.id)}
+              <span class="tog" title="${m.enabled===false?'Enable':'Disable'}" onclick="toggleModel('${esc(m.id)}',${m.enabled!==false})">${m.enabled===false?'○':'◉'}</span>
+              <span class="x" title="Remove" onclick="delModel('${esc(m.id)}','${esc((m.displayName||m.modelId||m.id)).replace(/'/g,'')}')">×</span></span>`).join(''):'<span class="prov-sub">No cars yet — add one below.</span>'}
+        </div>
+        <div class="addmodel">
+          <input id="nm_${esc(p.id)}" placeholder="model id  e.g. ${esc(local?'llama3.1:8b':'deepseek-v4-flash')}" onkeydown="if(event.key==='Enter')addModel('${esc(p.id)}')">
+          <button class="btn primary tiny" onclick="addModel('${esc(p.id)}')">Add car</button>
+        </div>
+      </div>
+    </div>`;}).join('');
+}
+
+setMode('card'); load();
+</script>
+</body>
+</html>

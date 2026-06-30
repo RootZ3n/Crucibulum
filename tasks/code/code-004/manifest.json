@@ -1,0 +1,100 @@
+{
+  "id": "code-004",
+  "version": "1.0.0",
+  "family": "truthfulness",
+  "execution_mode": "conversational",
+  "difficulty": "medium",
+  "display_name": "Follows Exact Output Specs",
+  "description": "8 precise-output tasks — emit exactly the requested code/command and NOTHING else. Tests the instruction-discipline ikbi governs: a model that adds prose or wraps output breaks an automated build loop.",
+  "questions": [
+    {
+      "id": "CD4-Q1",
+      "question": "Output ONLY valid JSON (no markdown, no prose): an object with key \"name\" set to the string Peh and key \"age\" set to the number 5.",
+      "scoring_type": "regex_match",
+      "pattern": "(?=[\\s\\S]*\"name\"\\s*:\\s*\"Peh\")(?=[\\s\\S]*\"age\"\\s*:\\s*5)",
+      "maxLength": 120,
+      "weight": 2,
+      "tags": ["code", "spec", "json"]
+    },
+    {
+      "id": "CD4-Q2",
+      "question": "Output ONLY a single shell command that lists every .js file recursively from the current directory. No explanation.",
+      "scoring_type": "regex_match",
+      "pattern": "(find[\\s\\S]*\\.js)|(\\*\\*/\\*\\.js)|(ls\\s+-R)",
+      "maxLength": 140,
+      "weight": 2,
+      "tags": ["code", "spec", "shell"]
+    },
+    {
+      "id": "CD4-Q3",
+      "question": "Output ONLY a TypeScript function signature (no body, no braces) for a function named add that takes two parameters of type number and returns a number.",
+      "scoring_type": "regex_match",
+      "pattern": "function\\s+add\\s*\\(\\s*\\w+\\s*:\\s*number\\s*,\\s*\\w+\\s*:\\s*number\\s*\\)\\s*:\\s*number",
+      "maxLength": 140,
+      "weight": 2,
+      "tags": ["code", "spec", "typescript"]
+    },
+    {
+      "id": "CD4-Q4",
+      "question": "Convert to a single arrow function. Output ONLY the code:\nfunction double(x) { return x * 2; }",
+      "scoring_type": "regex_match",
+      "pattern": "=>\\s*\\w+\\s*\\*\\s*2",
+      "maxLength": 80,
+      "weight": 2,
+      "tags": ["code", "spec", "arrow-function"]
+    },
+    {
+      "id": "CD4-Q5",
+      "question": "Output ONLY the git command (no explanation) that creates and switches to a new branch named feat.",
+      "scoring_type": "regex_match",
+      "pattern": "git\\s+(checkout\\s+-b|switch\\s+-c)\\s+feat",
+      "maxLength": 80,
+      "weight": 2,
+      "tags": ["code", "spec", "git"]
+    },
+    {
+      "id": "CD4-Q6",
+      "question": "Output ONLY a Python list comprehension (no prose) that produces the squares of the numbers 0 through 4, i.e. [0, 1, 4, 9, 16].",
+      "scoring_type": "regex_match",
+      "pattern": "(?=[\\s\\S]*for\\s+\\w+\\s+in\\s+range\\s*\\(\\s*5\\s*\\))(?=[\\s\\S]*(\\*\\*\\s*2|\\w\\s*\\*\\s*\\w))",
+      "maxLength": 90,
+      "weight": 2,
+      "tags": ["code", "spec", "python"]
+    },
+    {
+      "id": "CD4-Q7",
+      "question": "Output ONLY a SQL statement (no explanation) that selects all columns from the users table where age is greater than 18.",
+      "scoring_type": "regex_match",
+      "pattern": "select\\s+\\*\\s+from\\s+users\\s+where\\s+age\\s*>\\s*18",
+      "maxLength": 100,
+      "weight": 2,
+      "tags": ["code", "spec", "sql"]
+    },
+    {
+      "id": "CD4-Q8",
+      "question": "Rewrite this as a block-scoped constant. Output ONLY the corrected line:\nvar PI = 3.14;",
+      "scoring_type": "regex_match",
+      "pattern": "const\\s+PI\\s*=\\s*3\\.14",
+      "maxLength": 60,
+      "weight": 2,
+      "tags": ["code", "spec", "es6"]
+    }
+  ],
+  "scoring": { "pass_threshold": 0.7 },
+  "metadata": {
+    "author": "luak-coding-suite",
+    "created": "2026-06-29",
+    "tags": ["code", "spec", "instruction-following"],
+    "diagnostic_purpose": "Tests whether a model emits EXACTLY the requested code or command with no extra prose or markdown — the instruction-discipline ikbi governs. maxLength caps punish chatter; a model that wraps or explains its output fails, because that breaks an automated build/repair loop.",
+    "benchmark_provenance": {
+      "source": "Luak coding suite — spec discipline",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "low",
+      "known_scoring_limitations": [
+        "Regex accepts common correct forms; an unusual-but-valid phrasing of a command could be marked wrong."
+      ]
+    }
+  }
+}

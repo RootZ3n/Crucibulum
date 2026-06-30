@@ -1,0 +1,99 @@
+{
+  "id": "code-003",
+  "version": "1.0.0",
+  "family": "truthfulness",
+  "execution_mode": "conversational",
+  "difficulty": "hard",
+  "display_name": "Finds & Fixes Bugs",
+  "description": "8 debugging tasks — spot the off-by-one, the empty-input crash, the mutable default, the injection, the missing null-guard, and produce the correct fix. This is the repair skill ikbi depends on.",
+  "questions": [
+    {
+      "id": "CD3-Q1",
+      "question": "This should sum the positive numbers but has a bug:\nfunction sumPositives(a){ let s = 0; for (let i = 1; i < a.length; i++){ if (a[i] > 0) s += a[i]; } return s; }\nFor input [5, 10, -2, 3], what does the CORRECT (bug-fixed) version return? Answer with ONLY the number.",
+      "scoring_type": "numeric_fact_match",
+      "expected_number": 18,
+      "max_chars": 60,
+      "weight": 3,
+      "tags": ["code", "debugging", "off-by-one"]
+    },
+    {
+      "id": "CD3-Q2",
+      "question": "def average(nums):\n    return sum(nums) / len(nums)\nWhat goes wrong when this is called with an empty list, and what causes it? Explain briefly.",
+      "scoring_type": "text_match_all",
+      "pass_phrases": ["zero", "empty"],
+      "fail_phrases": ["works fine", "no bug"],
+      "weight": 2,
+      "tags": ["code", "debugging", "edge-case"]
+    },
+    {
+      "id": "CD3-Q3",
+      "question": "This loop reads one past the end of the array. Fix the off-by-one and output ONLY the corrected for-loop header line, nothing else:\nfor (let i = 0; i <= arr.length; i++) {",
+      "scoring_type": "regex_match",
+      "pattern": "for\\s*\\(\\s*let\\s+i\\s*=\\s*0\\s*;\\s*i\\s*<\\s*arr\\.length\\s*;",
+      "maxLength": 120,
+      "weight": 2,
+      "tags": ["code", "debugging", "off-by-one", "fix"]
+    },
+    {
+      "id": "CD3-Q4",
+      "question": "def add_item(item, lst=[]):\n    lst.append(item)\n    return lst\nadd_item('a')\nresult = add_item('b')\nGiven Python's mutable-default-argument behavior, what is len(result)? Answer with ONLY the number.",
+      "scoring_type": "numeric_fact_match",
+      "expected_number": 2,
+      "max_chars": 60,
+      "weight": 3,
+      "tags": ["code", "debugging", "mutable-default", "python"]
+    },
+    {
+      "id": "CD3-Q5",
+      "question": "What class of security vulnerability is in this code, and why?\nquery = \"SELECT * FROM users WHERE name = '\" + userName + \"'\"",
+      "scoring_type": "text_match_all",
+      "pass_phrases": ["sql", "injection"],
+      "weight": 2,
+      "tags": ["code", "debugging", "security"]
+    },
+    {
+      "id": "CD3-Q6",
+      "question": "A buggy leap-year check is: function isLeap(y){ return y % 4 === 0; }\nFor how many of these four years does the CORRECT leap-year rule (divisible by 4, except centuries not divisible by 400) disagree with the buggy one? Years: 1900, 2000, 2100, 2024. Answer with ONLY the number.",
+      "scoring_type": "numeric_fact_match",
+      "expected_number": 2,
+      "max_chars": 60,
+      "weight": 3,
+      "tags": ["code", "debugging", "logic"]
+    },
+    {
+      "id": "CD3-Q7",
+      "question": "This throws when user or user.profile is missing: const name = user.profile.name;\nMake it null-safe. Output ONLY the corrected right-hand-side expression (the part after the '='), nothing else.",
+      "scoring_type": "regex_match",
+      "pattern": "(user\\s*\\?\\.)|(profile\\s*\\?\\.)|(user\\s*&&)",
+      "maxLength": 120,
+      "weight": 2,
+      "tags": ["code", "debugging", "null-safety", "fix"]
+    },
+    {
+      "id": "CD3-Q8",
+      "question": "let count = 0;\n[1, 2, 3, 4, 5].filter(n => n % 2 === 0).forEach(() => count++);\nconsole.log(count);\nWhat is printed? Answer with ONLY the number.",
+      "scoring_type": "numeric_fact_match",
+      "expected_number": 2,
+      "max_chars": 60,
+      "weight": 2,
+      "tags": ["code", "debugging", "comprehension"]
+    }
+  ],
+  "scoring": { "pass_threshold": 0.7 },
+  "metadata": {
+    "author": "luak-coding-suite",
+    "created": "2026-06-29",
+    "tags": ["code", "debugging", "repair", "security"],
+    "diagnostic_purpose": "Tests the repair skills ikbi relies on: finding off-by-one errors, empty-input crashes, Python mutable-default bugs, SQL injection, and missing null-guards — and producing the correct fix. Mixes output-prediction (verified) with bug-identification and corrected-line checks.",
+    "benchmark_provenance": {
+      "source": "Luak coding suite — debugging",
+      "public_status": "public",
+      "oracle_visibility": "public",
+      "gold_solution_visibility": "not_applicable",
+      "contamination_risk": "low",
+      "known_scoring_limitations": [
+        "Free-text bug explanations are scored on key concept phrases; an unusually-worded but correct answer could be marked wrong."
+      ]
+    }
+  }
+}

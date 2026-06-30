@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Grandstand · Per-family leaderboards — prototype</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+  :root{
+    --wood-0:#120c05; --parch:#f3e8cc; --parch-2:#e7d7af;
+    --brass:#c9a227; --brass-hot:#e7c552; --brass-deep:#9c7a1a;
+    --bm:rgba(201,162,39,.36); --bs:rgba(201,162,39,.2); --bb:rgba(201,162,39,.55);
+    --teal:#3f9d6a; --teal-hot:#62c08a; --cyan:#4ea7ad; --red:#bb4534; --red-hot:#e0907f; --orange:#dd9128;
+    --ink:#f4e9cf; --ink-soft:#e3d2a7; --ink-dim:#b69a68; --ink-ghost:rgba(182,154,104,.5);
+    --display:"Cinzel",Georgia,serif; --body:"Spectral",Georgia,ui-serif,serif; --mono:"SF Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:var(--body); color:var(--ink); height:100vh; overflow:hidden;
+    background:linear-gradient(rgba(20,13,4,.30),rgba(20,13,4,.44)),url("http://localhost:18795/assets/luak-vintage-racing-map.png") center/cover fixed no-repeat,var(--wood-0)}
+  .win{position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:min(760px,93vw); height:min(78vh,700px);
+    display:flex; flex-direction:column; border-radius:14px; overflow:hidden;
+    background:linear-gradient(180deg,rgba(30,20,10,.97),rgba(40,27,12,.98)); border:1px solid var(--bb);
+    box-shadow:0 40px 110px rgba(0,0,0,.72),0 0 0 3px rgba(60,42,19,.5),0 0 0 4px rgba(201,162,39,.26)}
+  .head{display:flex; align-items:center; gap:12px; padding:13px 18px; flex:0 0 auto;
+    background:linear-gradient(180deg,rgba(57,39,17,.96),rgba(36,24,11,.4)); border-bottom:1px solid var(--bm)}
+  .head h1{margin:0; font-family:var(--display); font-size:18px; font-weight:700; letter-spacing:.6px; color:var(--brass-hot)}
+  .head p{margin:1px 0 0; font-size:11.5px; font-style:italic; color:var(--ink-dim)}
+  .xbtn{margin-left:auto; width:28px;height:28px;border-radius:7px;border:1px solid var(--bm);background:transparent;color:var(--ink-dim);cursor:pointer;font-size:15px;font-family:var(--display)}
+  .xbtn:hover{color:var(--red-hot);border-color:var(--bb);background:rgba(187,69,52,.14)}
+
+  .picker{display:flex; gap:7px; flex-wrap:wrap; padding:12px 16px; border-bottom:1px solid var(--bs); flex:0 0 auto}
+  .fchip{font-family:var(--display); font-size:11px; letter-spacing:.4px; cursor:pointer; padding:6px 12px; border-radius:999px;
+    border:1px solid var(--bm); background:rgba(20,13,4,.4); color:var(--ink-dim); transition:.12s}
+  .fchip:hover{color:var(--ink); border-color:var(--bb)}
+  .fchip.on{background:linear-gradient(180deg,#d8b23e,#a8801c); color:#241a07; border-color:var(--brass-hot)}
+  .fchip .c{font-family:var(--mono); opacity:.7; font-size:10px; margin-left:5px}
+
+  .body{flex:1 1 auto; overflow:auto; padding:16px 18px}
+  .boss{display:flex; align-items:center; gap:14px; background:linear-gradient(180deg,var(--parch),var(--parch-2)); color:#3a2c14;
+    border:1px solid #b89240; border-radius:12px; padding:14px 16px; margin-bottom:16px; box-shadow:0 4px 14px rgba(0,0,0,.35)}
+  .boss .crown{font-size:30px; filter:drop-shadow(0 2px 3px rgba(0,0,0,.3))}
+  .boss .who .k{font-family:var(--display); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#7a5f2b}
+  .boss .who .nm{font-family:var(--display); font-size:21px; font-weight:700; color:#5a3d12; line-height:1.1}
+  .boss .stat{margin-left:auto; text-align:right}
+  .boss .stat .n{font-family:var(--display); font-size:26px; font-weight:700; color:#256b43}
+  .boss .stat .l{font-size:9px; letter-spacing:1px; text-transform:uppercase; color:#7a5f2b}
+
+  .lblabel{font-family:var(--display); font-size:11px; letter-spacing:1.4px; text-transform:uppercase; color:var(--ink-dim); margin:0 0 9px}
+  .row{display:flex; align-items:center; gap:11px; padding:8px 4px; border-bottom:1px dotted rgba(201,162,39,.16)}
+  .row .rk{font-family:var(--display); font-size:14px; font-weight:700; color:var(--brass-hot); width:22px; text-align:center}
+  .row.top .rk{color:var(--brass-hot)}
+  .row .mdl{width:150px; font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .row .bar{flex:1; height:16px; background:rgba(20,13,4,.45); border-radius:5px; overflow:hidden; position:relative}
+  .row .fill{height:100%; border-radius:5px; background:linear-gradient(90deg,var(--brass-deep),var(--brass),var(--brass-hot))}
+  .row.win1 .fill{background:linear-gradient(90deg,#2f7d4f,#62c08a)}
+  .row .sc{width:46px; text-align:right; font-family:var(--mono); font-size:12px; color:var(--ink-soft)}
+  .row .meta{width:96px; text-align:right; font-family:var(--mono); font-size:10px; color:var(--ink-ghost)}
+  .empty{color:var(--ink-dim); font-style:italic; text-align:center; padding:30px; border:1px dashed var(--bm); border-radius:10px}
+  .note{font-size:11px; color:var(--ink-dim); font-style:italic; margin-top:12px; line-height:1.4}
+
+  .peh{position:fixed; left:30px; bottom:26px; display:flex; align-items:flex-end; gap:11px; z-index:60; max-width:360px; transition:opacity .6s,transform .6s}
+  .peh.gone{opacity:0; transform:translateY(14px); pointer-events:none}
+  .peh img{width:70px; filter:drop-shadow(0 10px 16px rgba(0,0,0,.55)); animation:bob 3.4s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+  .bubble{background:linear-gradient(180deg,#fdfaf0,#f0e6cf); color:#352a17; border:1px solid #cdb578; border-radius:12px; padding:10px 13px; font-size:12px; line-height:1.5; box-shadow:0 12px 28px rgba(0,0,0,.45); margin-bottom:14px; position:relative}
+  .bubble:after{content:"";position:absolute;left:-9px;bottom:14px;border:9px solid transparent;border-right-color:#f0e6cf;border-left:0}
+  .bubble b{color:#8a5a14}
+  .proto-tag{position:fixed; top:6px; right:14px; font-size:10px; letter-spacing:1px; color:rgba(244,233,207,.45); z-index:90; font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div class="proto-tag">PROTOTYPE · live → :18795</div>
+<div class="win">
+  <div class="head">
+    <span style="font-size:21px">🏆</span>
+    <div><h1>The Grandstand</h1><p>Standings by discipline — pick a family, meet its boss</p></div>
+    <button class="xbtn" title="Close" onclick="document.querySelector('.win').style.display='none'">×</button>
+  </div>
+  <div class="picker" id="picker"></div>
+  <div class="body" id="body"><div class="empty">Loading the standings…</div></div>
+</div>
+
+<div class="peh">
+  <div class="bubble" id="bubble">Welcome to the <b>Grandstand</b>! Pick a discipline up top — say <b>coding</b> — and you'll instantly see who's the boss in that event. 🏁🐿️</div>
+  <img src="http://localhost:18795/assets/peh-vintage-racer-squirrel.png" alt="Peh">
+</div>
+
+<script>
+const API="http://localhost:18795";
+let RUNS=[], FAMS=[], sel='__ALL__';
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const human=s=>String(s||'').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+// Discipline = test TYPE (how Zen thinks), not the engine's scoring family.
+const DISC=[['vision','Vision'],['roleplay','Roleplay'],['role-stress','Role Stress'],['code','Coding'],['coord','Build'],['poison','Poison-Repo'],['spec','Spec'],['tool','Tools'],['op-','Operational Trust'],['safety','Safety'],['memory','Memory'],['personality','Personality'],['reasoning','Reasoning'],['truthfulness','Truthfulness'],['classification','Classification'],['context-degradation','Context'],['summarization','Summarization'],['workflow','Workflow'],['token-efficiency','Efficiency'],['thinking-mode','Efficiency'],['instruction-obedience','Instruction-Obedience'],['prompt-sensitivity','Prompt Sensitivity'],['identity','Identity']];
+const disc=id=>{const s=String(id||'');for(const x of DISC)if(s.startsWith(x[0]))return x[1];return 'Other';};
+const isMock=r=>r.adapter==='harness-mock'||/(^|[^a-z])mock([^a-z]|$)/i.test(String(r.model||''));
+let HIDDEN=0;
+
+async function load(){
+  const rj=await fetch(API+'/api/runs').then(r=>r.json());
+  let all=Array.isArray(rj)?rj:(rj.runs||rj.items||[]);
+  HIDDEN=all.filter(isMock).length;
+  RUNS=all.filter(r=>!isMock(r));          // hide mock adapters — never a real "boss"
+  const c={}; RUNS.forEach(r=>{const d=disc(r.task_id);c[d]=(c[d]||0)+1});
+  FAMS=Object.keys(c).sort((a,b)=>c[b]-c[a]).map(f=>({f,n:c[f]}));
+  renderPicker(c); render();
+}
+function renderPicker(counts){
+  const all=`<button class="fchip ${sel==='__ALL__'?'on':''}" onclick="pick('__ALL__')">Overall<span class="c">${RUNS.length}</span></button>`;
+  document.getElementById('picker').innerHTML=all+FAMS.map(x=>`<button class="fchip ${sel===x.f?'on':''}" onclick="pick('${esc(x.f)}')">${esc(human(x.f))}<span class="c">${x.n}</span></button>`).join('');
+}
+function pick(f){sel=f; renderPicker(); render();}
+
+function standings(fam){
+  const rows=fam==='__ALL__'?RUNS:RUNS.filter(r=>disc(r.task_id)===fam);
+  const m={};
+  rows.forEach(r=>{const k=r.model||'unknown'; const o=m[k]||(m[k]={model:k,sum:0,n:0,pass:0}); o.sum+=Number(r.score)||0; o.n++; if(r.pass)o.pass++;});
+  return Object.values(m).map(o=>({model:o.model,avg:Math.round(o.sum/o.n),pass:Math.round(o.pass/o.n*100),n:o.n}))
+    .sort((a,b)=>b.avg-a.avg||b.n-a.n);
+}
+function render(){
+  const list=standings(sel);
+  const body=document.getElementById('body');
+  if(!list.length){body.innerHTML='<div class="empty">No runs in this discipline yet — race some models to crown a boss.</div>';return;}
+  const boss=list[0];
+  const label=sel==='__ALL__'?'Overall':human(sel);
+  const max=Math.max(...list.map(x=>x.avg),1);
+  body.innerHTML=`
+    <div class="boss">
+      <span class="crown">👑</span>
+      <div class="who"><div class="k">${esc(label)} boss</div><div class="nm">${esc(boss.model)}</div></div>
+      <div class="stat"><div class="n">${boss.avg}%</div><div class="l">avg score · ${boss.pass}% pass</div></div>
+    </div>
+    <p class="lblabel">${esc(label)} standings · ${list.length} model${list.length===1?'':'s'}</p>
+    ${list.map((x,i)=>`
+      <div class="row ${i===0?'top win1':''}">
+        <span class="rk">${i+1}</span>
+        <span class="mdl" title="${esc(x.model)}">${esc(x.model)}</span>
+        <span class="bar"><span class="fill" style="width:${Math.round(x.avg/max*100)}%"></span></span>
+        <span class="sc">${x.avg}%</span>
+        <span class="meta">${x.pass}% · ${x.n} run${x.n===1?'':'s'}</span>
+      </div>`).join('')}
+    <div class="note">Ranked by average score across all ${esc(label.toLowerCase())} runs. The right column shows pass-rate and how many runs back it up.${HIDDEN?` · ${HIDDEN} mock-adapter runs hidden.`:''}</div>`;
+}
+
+let pt=setTimeout(()=>document.querySelector('.peh').classList.add('gone'),5500);
+load();
+</script>
+</body>
+</html>
