@@ -325,13 +325,17 @@ async function callMiniMax(
     }
 
     const choice = data.choices?.[0];
-    const text =
+    const rawText =
       choice?.message?.content ??
       choice?.messages?.[0]?.content ??
       choice?.messages?.[0]?.text ??
       choice?.text ??
       data.reply ??
       "";
+    // MiniMax-M3 leaks its native tool-call markup into `content` even on the
+    // text protocol; strip it so the agentic command parser and the
+    // conversational scorer see only the clean visible turn.
+    const text = stripMiniMaxStructuralTokens(rawText);
 
     if (!text) {
       throw makeEmptyResponseError({ provider: "minimax", adapter: "minimax", attempt }, `MiniMax returned empty content. Raw body: ${rawBody.slice(0, 400)}`);
@@ -490,6 +494,28 @@ function classifyShellEnvironmentError(command: string, output: string): "runner
     return "model_tool_command_misuse";
   }
   return "command_failed";
+}
+
+/**
+ * MiniMax's M-series emits its native tool-call markup even when the adapter
+ * drives it with the text-command protocol: the visible turn ends at the
+ * structural separator `]<]minimax[>[`, immediately followed by a
+ * `<tool_call>…` block. Left in the content, that trailer is glued onto the
+ * agent's text commands — e.g. `SHELL ls -la]<]minimax[>[<tool_call>` — so the
+ * parser runs `ls -la]<]minimax[>[<tool_call>` and every command fails. In the
+ * 2026-06-30 MiniMax-M3 sweep coord-002 wrote 0 files in 40 steps with 36/37
+ * shells exiting non-zero for exactly this reason. Cut the response at the
+ * first structural marker so only the clean visible turn survives; no-op when
+ * no marker is present.
+ */
+export function stripMiniMaxStructuralTokens(text: string): string {
+  if (!text) return text;
+  let cut = text.length;
+  for (const marker of ["]<]minimax[>[", "<tool_call>", "<tool_calls>"]) {
+    const i = text.indexOf(marker);
+    if (i >= 0 && i < cut) cut = i;
+  }
+  return text.slice(0, cut).trimEnd();
 }
 
 function stripMarkdownFences(c: string): string {
