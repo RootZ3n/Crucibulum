@@ -103,4 +103,80 @@ describe("bundle HMAC signing (C2)", () => {
     assert.equal(result.signature_status, "forged");
     assert.equal(result.valid, false);
   });
+
+  it("rejects signed bundles after trust-relevant fields are mutated", () => {
+    process.env["LUAK_HMAC_KEY"] = "c2-test-secret-key";
+    delete process.env["CRUCIBLE_HMAC_KEY"];
+
+    const mutations: Array<[string, (bundle: EvidenceBundle) => void]> = [
+      ["verdict", (bundle) => {
+        bundle.verdict = {
+          ...bundle.verdict!,
+          completionState: "FAIL",
+          failureOrigin: "MODEL",
+          failureReasonCode: "low_score",
+          failureReasonSummary: "tampered verdict",
+          countsTowardModelScore: true,
+          countsTowardFailureRate: true,
+        };
+      }],
+      ["score", (bundle) => {
+        bundle.score = { ...bundle.score, total: 0, total_percent: 0, pass: false };
+      }],
+      ["agent.model", (bundle) => {
+        bundle.agent = { ...bundle.agent, model: "tampered-model" };
+      }],
+      ["agent.adapter", (bundle) => {
+        bundle.agent = { ...bundle.agent, adapter: "tampered-adapter" };
+      }],
+      ["task.id", (bundle) => {
+        bundle.task = { ...bundle.task, id: "tampered-task" };
+      }],
+      ["trust.verified", (bundle) => {
+        bundle.trust = { ...bundle.trust, verified: false } as EvidenceBundle["trust"] & { verified: boolean };
+      }],
+    ];
+
+    for (const [field, mutate] of mutations) {
+      const bundle = signBundle(buildUnsignedBundle());
+      mutate(bundle);
+      const result = verifyBundle(bundle);
+      assert.equal(result.valid, false, `${field} mutation must not verify`);
+      assert.notEqual(result.signature_status, "valid", `${field} mutation must not keep a valid signature`);
+    }
+  });
+
+  it("a signed bundle without a key at verify time fails gracefully", () => {
+    process.env["LUAK_HMAC_KEY"] = "c2-test-secret-key";
+    delete process.env["CRUCIBLE_HMAC_KEY"];
+    const bundle = signBundle(buildUnsignedBundle());
+
+    delete process.env["LUAK_HMAC_KEY"];
+    const result = verifyBundle(bundle);
+    assert.equal(result.signature_status, "unsigned_key_missing");
+    assert.equal(result.valid, false);
+    assert.equal(result.computed_signature, null);
+  });
+
+  it("treats an empty HMAC key as missing", () => {
+    process.env["LUAK_HMAC_KEY"] = "";
+    delete process.env["CRUCIBLE_HMAC_KEY"];
+    const bundle = signBundle(buildUnsignedBundle());
+    assert.equal(bundle.signature, undefined);
+
+    const result = verifyBundle(bundle);
+    assert.equal(result.signature_status, "legacy_unverified");
+    assert.equal(result.valid, false);
+  });
+
+  it("documents weak non-empty HMAC key behavior", () => {
+    process.env["LUAK_HMAC_KEY"] = "x";
+    delete process.env["CRUCIBLE_HMAC_KEY"];
+    const bundle = signBundle(buildUnsignedBundle());
+
+    assert.ok(bundle.signature?.startsWith("hmac-sha256:"));
+    const result = verifyBundle(bundle);
+    assert.equal(result.signature_status, "valid");
+    assert.equal(result.valid, true);
+  });
 });

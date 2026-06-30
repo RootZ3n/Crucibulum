@@ -42,6 +42,33 @@ describe("provider baseUrl SSRF guard (C6)", () => {
     }
   });
 
+  it("rejects encoded and alternate loopback forms for cloud providers", () => {
+    const blocked = [
+      "http://2130706433/v1", // decimal IPv4 for 127.0.0.1
+      "http://017700000001/v1", // octal IPv4 for 127.0.0.1
+      "http://[::ffff:127.0.0.1]/v1",
+      "http://[::1]/v1",
+      "http://[0:0:0:0:0:0:0:1]/v1",
+      "http://localhost./v1",
+      "http://LOCALHOST/v1",
+      "http://LocalHost/v1",
+      "http://localhost%00.evil.com/v1",
+    ];
+    for (const url of blocked) {
+      assert.ok(validateProviderBaseUrl(url, "cloud"), `should reject host bypass: ${url}`);
+    }
+  });
+
+  it("rejects userinfo and redirect-style credential exfiltration URLs for cloud providers", () => {
+    const blocked = [
+      "http://evil.com@legit.com/v1",
+      "http://evil.com/redirect?url=http://localhost/v1",
+    ];
+    for (const url of blocked) {
+      assert.ok(validateProviderBaseUrl(url, "cloud"), `should reject URL confusion bypass: ${url}`);
+    }
+  });
+
   it("does NOT reject 172.15/172.32 (outside the private 16-31 range)", () => {
     assert.equal(validateProviderBaseUrl("https://172.15.0.1/v1", "cloud"), null);
     assert.equal(validateProviderBaseUrl("https://172.32.0.1/v1", "cloud"), null);

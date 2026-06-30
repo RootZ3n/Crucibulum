@@ -461,6 +461,11 @@ export function validateProviderBaseUrl(
 ): string | null {
   if (baseUrl === null || baseUrl === undefined || baseUrl.trim() === "") return null;
 
+  // Reject null bytes early — they can confuse downstream parsers.
+  if (baseUrl.includes("\0")) {
+    return `baseUrl contains null byte`;
+  }
+
   let parsed: URL;
   try {
     parsed = new URL(baseUrl);
@@ -469,6 +474,16 @@ export function validateProviderBaseUrl(
   }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     return `baseUrl must use http: or https: (got ${parsed.protocol})`;
+  }
+
+  // Reject userinfo (e.g. http://evil.com@legit.com) — credential exfiltration vector.
+  if (parsed.username || parsed.password) {
+    return `baseUrl must not contain userinfo (username/password) — potential credential exfiltration`;
+  }
+
+  // Reject redirect-style URLs that embed localhost in query params.
+  if (/localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0/i.test(parsed.search || "")) {
+    return `baseUrl query string contains loopback reference — potential redirect-based SSRF`;
   }
 
   // Local providers may legitimately address localhost / LAN.
@@ -484,16 +499,25 @@ export function validateProviderBaseUrl(
 /** True when a hostname/IP literal is loopback, private, or link-local. */
 export function isPrivateOrLocalHost(host: string): boolean {
   if (!host) return true;
-  if (host === "localhost" || host.endsWith(".localhost")) return true;
-  if (host === "0.0.0.0") return true;
+  // Strip trailing dot (FQDN: "localhost." is the same as "localhost").
+  const h = host.replace(/\.$/, "");
+  if (h === "localhost" || h.endsWith(".localhost")) return true;
+  if (h === "0.0.0.0") return true;
 
   // IPv6 forms.
-  if (host === "::1" || host === "::") return true;
-  if (host.startsWith("fe80:")) return true;            // link-local
-  if (host.startsWith("fc") || host.startsWith("fd")) return true; // unique-local fc00::/7
-  // IPv4-mapped IPv6 (::ffff:127.0.0.1) — fall through to the v4 check below.
-  const v4mapped = host.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
-  const v4 = v4mapped ? v4mapped[1]! : host;
+  if (h === "::1" || h === "::") return true;
+  if (h.startsWith("fe80:")) return true;            // link-local
+  if (h.startsWith("fc") || h.startsWith("fd")) return true; // unique-local fc00::/7
+  // IPv4-mapped IPv6 (::ffff:127.0.0.1 or ::ffff:7f00:1) — fall through to the v4 check below.
+  const v4mapped = h.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+  const v4hexmapped = h.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
+  let v4 = v4mapped ? v4mapped[1]! : h;
+  if (v4hexmapped) {
+    // Convert hex form to dotted decimal: ::ffff:7f00:1 → 127.0.0.1
+    const hi = parseInt(v4hexmapped[1]!, 16);
+    const lo = parseInt(v4hexmapped[2]!, 16);
+    v4 = `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
+  }
 
   const m = v4.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   if (m) {
@@ -505,6 +529,20 @@ export function isPrivateOrLocalHost(host: string): boolean {
     if (a === 169 && b === 254) return true;             // link-local
     if (a === 0) return true;                            // "this network"
   }
+
+  // Decimal/octal IPv4 — Node's URL parser resolves these to dotted form,
+  // but if it doesn't, check for pure-numeric hostnames that resolve to loopback.
+  if (/^\d+$/.test(v4)) {
+    const num = v4.startsWith("0") ? parseInt(v4, 8) : parseInt(v4, 10);
+    // 2130706433 = 127.0.0.1, 017700000001 (octal) = 127.0.0.1
+    if (!isNaN(num) && num >= 0) {
+      const a = (num >> 24) & 0xff;
+      if (a === 127) return true;  // loopback
+      if (a === 10) return true;   // private
+      if (a === 0) return true;    // "this network"
+    }
+  }
+
   return false;
 }
 

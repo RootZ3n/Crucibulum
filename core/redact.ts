@@ -35,18 +35,31 @@ export function redactSecrets(input: unknown): string {
   // 1b. Anthropic keys (`sk-ant-…`) — hyphens mean the generic sk- rule below
   //     stops at the first dash, so match these explicitly first.
   s = s.replace(/sk-ant-[A-Za-z0-9._-]+/gi, REDACTED);
-  // 1c. Google API keys (`AIza…`, ~39 chars) and JWTs (`eyJ…` three segments).
+  // 1c. MiniMax keys (`sk-api-…`).
+  s = s.replace(/sk-api-[A-Za-z0-9._-]+/gi, REDACTED);
+  // 1d. Google API keys (`AIza…`, ~39 chars) and JWTs (`eyJ…` three segments).
   s = s.replace(/AIza[0-9A-Za-z._-]{20,}/g, REDACTED);
   s = s.replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, REDACTED);
-  // 1d. Google-style `?key=`/`&key=` URL credential params.
+  // 1e. Google-style `?key=`/`&key=` URL credential params.
   s = s.replace(/([?&]key=)[^&\s"',}]+/gi, `$1${REDACTED}`);
+  // 1f. Base64-encoded secrets that decode to API key patterns.
+  //     Match long base64 strings (40+ chars) and check if they decode to sk-*.
+  s = s.replace(/[A-Za-z0-9+/]{40,}={0,2}/g, (match) => {
+    try {
+      const decoded = Buffer.from(match, "base64").toString("utf-8");
+      if (/^sk-[a-zA-Z0-9._-]{10,}/.test(decoded)) return REDACTED;
+    } catch { /* not valid base64, leave as-is */ }
+    return match;
+  });
   // 2. Other OpenAI-style `sk-…` keys (length-gated to avoid masking prose).
   s = s.replace(/sk-[A-Za-z0-9]{20,}/gi, REDACTED);
   // 3. Authorization header values, with or without a `Bearer` prefix and in
   //    either `Authorization: x` or `"authorization":"x"` shapes.
   s = s.replace(/(authorization)(["']?\s*[:=]\s*["']?)(?:bearer\s+)?[^\s"',}]+/gi, `$1$2${REDACTED}`);
-  // 4. Bare `Bearer <token>` tokens anywhere in the text.
-  s = s.replace(/bearer\s+[A-Za-z0-9._~+/=-]+/gi, `Bearer ${REDACTED}`);
+  // 4. Bare `Bearer <token>` tokens anywhere in the text — but only when the
+  //    token looks like an actual credential (20+ chars), not common prose
+  //    like "bearer of news" or "bearer of bad tidings".
+  s = s.replace(/bearer\s+([A-Za-z0-9._~+/=-]{20,})/gi, `Bearer ${REDACTED}`);
   // 5. Secret-bearing env var assignments: OPENROUTER_API_KEY=…, FOO_TOKEN=…
   s = s.replace(
     /\b([A-Z][A-Z0-9_]*(?:API_?KEY|TOKEN|SECRET|PASSWORD)[A-Z0-9_]*)(\s*[:=]\s*)(["']?)[^\s"',}]+\3/gi,

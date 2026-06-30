@@ -27,6 +27,55 @@ describe("redactSecrets extended patterns (H2)", () => {
     assert.ok(!redactSecrets("https://x/models?key=AIzaSecretValue123456&z=1").includes("AIzaSecretValue123456"));
   });
 
+  it("masks provider-specific API key formats", () => {
+    const minimax = "sk-api-1234567890abcdef1234567890abcdef-xxx";
+    const openrouter = "sk-or-v1-deadbeefdeadbeefdeadbeef";
+    const anthropic = "sk-ant-api03-AAAA1111BBBB2222CCCC";
+    const output = redactSecrets(`MiniMax ${minimax} OpenRouter ${openrouter} Anthropic ${anthropic}`);
+    assert.ok(!output.includes(minimax));
+    assert.ok(!output.includes(openrouter));
+    assert.ok(!output.includes(anthropic));
+    assert.ok(output.includes("[redacted]"));
+  });
+
+  it("masks base64-encoded secrets in JSON bodies", () => {
+    const secret = "sk-or-v1-base64secretbase64secret";
+    const encoded = Buffer.from(secret, "utf-8").toString("base64");
+    const output = redactSecrets({ request: { body: JSON.stringify({ api_key_b64: encoded }) } });
+    assert.ok(!output.includes(encoded));
+    assert.ok(!output.includes(secret));
+  });
+
+  it("redactDeep scrubs secrets in objects nested more than three levels deep", () => {
+    const secret = "sk-api-1234567890abcdef1234567890abcdef-xxx";
+    const out = redactDeep({ a: { b: { c: { d: { header: `Authorization: Bearer ${secret}` } } } } });
+    assert.ok(!JSON.stringify(out).includes(secret));
+  });
+
+  it("redactDeep scrubs secrets in arrays", () => {
+    const secret = "sk-ant-api03-ARRAY1111BBBB2222CCCC";
+    const out = redactDeep(["ok", { headers: [`x-api-key: ${secret}`] }]);
+    assert.ok(!JSON.stringify(out).includes(secret));
+  });
+
+  it("masks multiline headers with embedded keys", () => {
+    const secret = "sk-or-v1-multilinekeymultilinekey";
+    const headers = [
+      "POST /v1/chat/completions HTTP/1.1",
+      "Host: openrouter.ai",
+      `Authorization: Bearer ${secret}`,
+      "Content-Type: application/json",
+    ].join("\n");
+    const output = redactSecrets(headers);
+    assert.ok(!output.includes(secret));
+    assert.match(output, /Authorization:\s*(?:Bearer\s*)?\[redacted\]/i);
+  });
+
+  it("keeps common non-secret words that resemble secret vocabulary", () => {
+    const input = "sketch tokenization secretary passwordless bearer of news api keynote";
+    assert.equal(redactSecrets(input), input);
+  });
+
   it("redactDeep scrubs nested string values while preserving shape", () => {
     const out = redactDeep({ a: [{ msg: "Authorization: Bearer sk-or-v1-deadbeefdeadbeef" }], n: 5, ok: true });
     assert.equal(out.n, 5);
