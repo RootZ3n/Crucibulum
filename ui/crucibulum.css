@@ -3559,6 +3559,22 @@ body::after {
 .peh-dash-row{display:flex;flex:1 1 0;gap:1px;min-height:0}
 .peh-dash-wall-flex .peh-dash-tile{flex:1 1 0;min-width:0}
 
+/* ── Mobile: the packed wall becomes a single scrolling column ────────
+   On a phone the desktop row-packing ([3,2,2] etc.) squeezes several tiles
+   side-by-side and shares the viewport height between rows, so every card is
+   crushed and its body clipped. Below the breakpoint the rows dissolve
+   (display:contents) — each tile flows straight into the wall's flex column,
+   full-width and at its natural card height — and the SURFACE scrolls. Tiles
+   keep overflow:hidden and never grow their own scrollbar: the cockpit
+   invariant holds; you just scroll the stack of cards instead. This lives
+   AFTER the flex-wall rules above so it wins the cascade for equal specificity. */
+@media (max-width:880px){
+  .peh-dash-surface{overflow-y:auto;overflow-x:hidden}
+  .peh-dash-wall-flex{flex:0 0 auto}
+  .peh-dash-row{display:contents}
+  .peh-dash-wall-flex .peh-dash-tile{flex:0 0 auto;min-width:0;min-height:200px}
+}
+
 /* Make the merge a glide, not a snap (default VT is .25s ease). */
 ::view-transition-group(*){animation-duration:.5s;animation-timing-function:cubic-bezier(.22,1,.36,1)}
 @media (prefers-reduced-motion: reduce){::view-transition-group(*){animation-duration:.01ms}}
