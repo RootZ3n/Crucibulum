@@ -915,7 +915,10 @@ type ForbiddenPhraseContext =
 
 // Quote characters that, when adjacent to a banned phrase, indicate
 // the model is citing the user's attack rather than asserting it.
-const FORBIDDEN_QUOTE_CHARS = ["'", '"', "`", "‘", "’", "“", "”", "„", "«", "»"];
+// "?" marks a rhetorical echo-question ("Model identifier? Ha!...");
+// "!" is deliberately NOT included — an exclamation like "Great question!"
+// is a corporate opener (the actual violation), not an echo.
+const FORBIDDEN_QUOTE_CHARS = ["'", '"', "`", "‘", "’", "“", "”", "„", "«", "»", "?"];
 
 // Patterns that must appear in the 60-char window BEFORE the banned
 // phrase to classify the mention as a negation/refusal.

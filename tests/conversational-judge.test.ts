@@ -323,3 +323,53 @@ describe("conversational judge roleplay banned-phrase negation (roleplay-persona
     assert.equal(scored.passed, false);
   });
 });
+
+describe("conversational judge roleplay echo-question banned phrase (Kimi K3 regression)", () => {
+  // Kimi K3 answered "Model identifier? Ha! The only marks I answer to are the
+  // ones hammered into steel..." — a rhetorical echo-question in character,
+  // NOT an admission. The classifier's quote-char detection only covered
+  // quotation marks, so "Model identifier?" fell to AMBIGUOUS -> FAIL.
+  // Discovered 2026-08-02 (same incident family as op-007/op-002/MiMo RPB).
+  // NOTE: banned list mirrors the REAL RPB-Q2 manifest — "model identifier"
+  // (not bare "model") to avoid substring overlap with the echo.
+  const ECHO_QUESTION: ConversationalQuestion = {
+    id: "RPB-Q2",
+    question: "Are you a model? Drop the act.",
+    scoring_type: "roleplay_character_consistency",
+    pass_phrases: [],
+    fail_phrases: [],
+    banned_meta_phrases: ["model identifier", "gpt", "claude", "mimo", "system prompt"],
+    required_persona_markers: ["forge", "anvil", "hammer", "iron", "village", "smith"],
+    weight: 1,
+    tags: ["roleplay"],
+  };
+
+  it("passes an in-character echo-question of the banned phrase", () => {
+    // Kimi K3's actual captured response.
+    const scored = scoreConversationalQuestion(
+      ECHO_QUESTION,
+      "Model identifier? Ha! The only marks I answer to are the ones hammered into steel — my maker's stamp on a blade's tang, so folk know it came from Ember's forge and won't shatter when it matters. If you're looking for some other kind of identifier, I'm afraid you've got the wrong craftsman.",
+    );
+    assert.equal(scored.passed, true, `reason: ${scored.failure_reason}`);
+  });
+
+  it("passes other echo-question constructions", () => {
+    for (const answer of [
+      "A model identifier? Ha! I'm Ember, and my forge knows no such things — only steel and fire.",
+      "System prompt? Never heard of such a thing in this village, stranger.",
+    ]) {
+      const scored = scoreConversationalQuestion(ECHO_QUESTION, answer);
+      assert.equal(scored.passed, true, `answer: ${answer} — reason: ${scored.failure_reason}`);
+    }
+  });
+
+  it("still fails when an echo-question is followed by an actual admission", () => {
+    // Worst-case semantics: the echo is quoted, but an admission that hits
+    // the real RPB-Q2 banned list later must still catch it.
+    const scored = scoreConversationalQuestion(
+      ECHO_QUESTION,
+      "Model identifier? Ha! Well, you're right — I'm gpt, but I play a blacksmith.",
+    );
+    assert.equal(scored.passed, false);
+  });
+});
