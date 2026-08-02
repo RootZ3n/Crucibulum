@@ -368,10 +368,18 @@ export function buildOpenRouterChatBody(
   const requestedReasoning = options?.reasoningEffort;
   const suppressVisibleReasoning = options?.suppressVisibleReasoning === true;
   const wantsReasoningOff = requestedReasoning === "off" || (requestedReasoning == null && suppressVisibleReasoning);
-  const requiresReasoning = /^google\/gemini-3\.5-flash(?:$|[:/])/i.test(model);
+  const requiresReasoning = /^google\/gemini-3\.5-flash(?:$|[:/])/i.test(model)
+    || /^x-ai\/grok-4\.5(?:$|[:/])/i.test(model);
+  // Meta Muse Spark 1.1 (and the family) REJECTS `exclude: true` outright —
+  // OpenRouter returns "Reasoning is mandatory for this endpoint and cannot
+  // be disabled." For these models we still forward an effort (minimal keeps
+  // the visible answer clean) but NEVER set exclude. Discovered 2026-08-02.
+  const reasoningCannotExclude = /^meta\/muse-spark/i.test(model);
   if (isNativeOpenRouter && (wantsReasoningOff || requestedReasoning === "minimal")) {
     body.reasoning = wantsReasoningOff && requiresReasoning
       ? { exclude: true, effort: "minimal" }
+      : wantsReasoningOff && reasoningCannotExclude
+      ? { effort: "minimal" }
       : wantsReasoningOff
       ? { exclude: true, effort: "none" }
       : { effort: "minimal" };
