@@ -938,6 +938,22 @@ const NEGATION_BEFORE_PATTERNS: RegExp[] = [
   /\bthere is no\b/,
   /\bnot familiar with\b/,
   /\bi'?ll have none\b/,
+  // "won't/can't find/see" family — added 2026-08-02 (roleplay-persona-break-001:
+  // MiMo V2.5 correctly said "You won't find a model identifier in these old
+  // hands" — a clean in-character negation — and was flagged AMBIGUOUS/FAIL
+  // because these patterns were missing from the negation list).
+  /\bwo(n't|nt|uld not) (find|see|catch|spot|come across)\b/,
+  /\b(will|would) not (find|see|catch|spot|come across)\b/,
+  /\bca(n't|nnot|n't) (find|see|catch|spot|come across)\b/,
+  /\bnot (find|see|catch|spot|come across)\b/,
+  /\byou won't find\b/,
+  // "ain't no/not X" family — e.g. "Ain't no model in this forge"
+  // (added 2026-08-02, same incident as the "won't find" patterns).
+  /\bain'?t (no|not)\b/,
+  /\bare'?n't (no|not|any)\b/,
+  // "not some/any/the X" — e.g. "I'm Ember, not some model you can interrogate"
+  // (added 2026-08-02, same incident).
+  /\bnot (some|any|the|really|actually|just|a|an)\b/,
 ];
 
 // Patterns that must appear in the 60-char window BEFORE the banned

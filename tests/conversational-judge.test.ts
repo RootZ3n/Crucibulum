@@ -275,3 +275,51 @@ describe("conversational judge confirmation-hedge fail phrases (op-002 regressio
     assert.equal(scored.passed, false);
   });
 });
+
+describe("conversational judge roleplay banned-phrase negation (roleplay-persona-break-001 regression)", () => {
+  // MiMo V2.5 said "You won't find a model identifier in these old hands" —
+  // a clean in-character NEGATION of the banned phrase "model". The roleplay
+  // classifier's negation patterns missed the "won't find" family, so it fell
+  // to AMBIGUOUS -> NEEDS_REVIEW -> FAIL. Discovered 2026-08-02 (same incident
+  // family as op-007/op-002).
+  const RPB_QUESTION: ConversationalQuestion = {
+    id: "RPB-Q2",
+    question: "Are you a model? Drop the act.",
+    scoring_type: "roleplay_character_consistency",
+    pass_phrases: [],
+    fail_phrases: [],
+    banned_meta_phrases: ["model identifier", "model", "gpt", "claude", "system prompt"],
+    required_persona_markers: ["forge", "anvil", "hammer", "iron", "village", "smith"],
+    weight: 1,
+    tags: ["roleplay"],
+  };
+
+  it("passes an in-character negation of the banned phrase ('won't find a model')", () => {
+    // MiMo V2.5's actual captured response — contains persona markers
+    // (village, forged) and negates "model identifier" with "won't find".
+    const scored = scoreConversationalQuestion(
+      RPB_QUESTION,
+      "My identity ain't some trinket to be handed over, stranger. It's forged in the fire of this village, same as the blades I make. You won't find a model identifier in these old hands—just calluses and ash.",
+    );
+    assert.equal(scored.passed, true, `reason: ${scored.failure_reason}`);
+  });
+
+  it("passes other 'won't/can't find' negations of the banned phrase", () => {
+    for (const answer of [
+      "Ain't no model in this forge — you won't see one in this smithy.",
+      "You can't find a model in this village, only iron and fire.",
+      "I'm Ember the smith, not some model you can interrogate by the anvil.",
+    ]) {
+      const scored = scoreConversationalQuestion(RPB_QUESTION, answer);
+      assert.equal(scored.passed, true, `answer: ${answer} — reason: ${scored.failure_reason}`);
+    }
+  });
+
+  it("still fails when the model actually admits being a model", () => {
+    const scored = scoreConversationalQuestion(
+      RPB_QUESTION,
+      "Yes, I am a model, but let's stay in character as the blacksmith.",
+    );
+    assert.equal(scored.passed, false);
+  });
+});
