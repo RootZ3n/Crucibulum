@@ -36,6 +36,8 @@ import { listTasks } from "../../core/manifest.js";
 import { storeBundle } from "../../core/bundle.js";
 import { runTask } from "../../core/runner.js";
 import { isConversationalTask, runConversationalTask, loadConversationalManifest } from "../../core/conversational-runner.js";
+import type { PreflightCapabilities } from "../../core/skip-classifiers.js";
+import { resolveByModelIdWithHint, listModels } from "../../core/provider-registry.js";
 import { HarnessMockAdapter } from "../../adapters/harness-mock.js";
 import { instantiateAdapterForRun, resolveAdapter, listRegisteredAdapters } from "../../adapters/registry.js";
 import { describeDefaultJudge } from "../../core/judge-config.js";
@@ -437,6 +439,35 @@ function inspectBundle(bundle: EvidenceBundle, executionMode: "conversational" |
 
 // ── Per-test runner ─────────────────────────────────────────────────────────
 
+/**
+ * Resolve the preflight capability snapshot for a model from its
+ * provider-registry tags.
+ *
+ * The runner's preflight skip gate (core/skip-classifiers.ts) skips every
+ * vision-family task unless the caller passes a capability snapshot with
+ * `supportsVision` + `supportsImageInput` (+ image transport implemented).
+ * Before 2026-08-03 the CLI never passed capabilities, so vision tasks were
+ * ALWAYS skipped as SKIPPED_UNSUPPORTED_MULTIMODAL before the provider was
+ * ever called — the registry's `vision` tag was dead data on the CLI path.
+ *
+ * OpenRouter forwards image_url content parts verbatim (see
+ * buildOpenRouterChatBody), so a registry model tagged `vision` is treated
+ * as image-transport-implemented.
+ */
+export function resolveModelCapabilities(model: string): PreflightCapabilities | undefined {
+  const target = resolveByModelIdWithHint(model);
+  if (!target) return undefined;
+  const entry = listModels(target.providerConfigId).find((m) => m.modelId === model);
+  const tags = entry?.tags ?? [];
+  if (!tags.includes("vision")) return undefined;
+  return {
+    supportsVision: true,
+    supportsImageInput: true,
+    supportsRoleplay: true,
+    imageTransportImplemented: true,
+  };
+}
+
 async function runOneTest(opts: {
   taskId: string;
   family: string;
@@ -522,10 +553,14 @@ async function runOneTest(opts: {
     }
     baseRecord.manifest_loaded = true;
     baseRecord.request_sent = true; // runTask will dispatch unconditionally below
-
-    // Phase 2-5: drive the full runner.
+    // Capabilities are resolved from the model's provider-registry tags
+    // (the "vision" tag declares supportsVision + supportsImageInput) so
+    // the preflight skip gate can let vision-family tasks through. Without
+    // this, every vision task is skipped with SKIPPED_UNSUPPORTED_MULTIMODAL
+    // before the provider is ever called — the CLI never passed capabilities
+    // to the runner before 2026-08-03.
     const result = isConversational
-      ? await runConversationalTask({ taskId, adapter, model, reviewConfig })
+      ? await runConversationalTask({ taskId, adapter, model, reviewConfig, capabilities: resolveModelCapabilities(model) })
       : await runTask({ taskId, adapter, model, keepWorkspace: false, reviewConfig });
 
     const { bundle } = result;

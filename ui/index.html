@@ -129,6 +129,14 @@ const MODEL_CERTIFICATION={
     {providerId:'openrouter',modelId:'xiaomi/mimo-v2-flash',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/xiaomi-mimo-v2-flash/2026-05-25T20-07-23Z.json',campaign:'2026-05-25',capabilities:{supportsText:true,supportsTools:true,supportsRepo:true,supportsRoleplay:true,supportsVision:false,supportsImageInput:false,multimodalTransport:'unsupported'}},
     // MiMo v2 Omni is the multimodal variant on OpenRouter — declare vision capability.
     {providerId:'openrouter',modelId:'xiaomi/mimo-v2-omni',tier:'PROVIDER_TESTED',evidence:'reports/model-certification/openrouter/xiaomi-mimo-v2-omni/2026-05-25T20-10-57Z.json',campaign:'2026-05-25',capabilities:{supportsText:true,supportsTools:true,supportsRepo:true,supportsRoleplay:true,supportsVision:true,supportsImageInput:true,supportsMultipleImages:true,multimodalTransport:'openai_image_url'}},
+    // Qwen3.8 Max — flagship 2.4T multimodal (text+image+video→text),
+    // 1M context, $2/$6 per 1M via OpenRouter. GA successor to the Max
+    // Preview. Declared vision so the runner sends image content; the
+    // main-suite benchmark (2026-08-03) skipped all 15 vision tasks
+    // because this entry was missing. Capability tier EXPERIMENTAL until
+    // a doctrine-aware promotion; see adapters/openrouter.ts
+    // reasoningCannotExclude (exclude rejected — effort-only accepted).
+    {providerId:'openrouter',modelId:'qwen/qwen3.8-max',tier:'EXPERIMENTAL',evidence:'reports/model-certification/openrouter/qwen-qwen3.8-max/',campaign:'2026-08-03-qwen38-max',note:'Qwen3.8 Max — multimodal flagship. Vision capability flags enabled so the runner sends image content. reasoningCannotExclude branch required (exclude rejected outright).',capabilities:{supportsText:true,supportsTools:true,supportsRepo:true,supportsRoleplay:true,supportsVision:true,supportsImageInput:true,supportsMultipleImages:true,multimodalTransport:'openai_image_url'}},
     // OpenAI gpt-5.4-mini — registered with vision capability for Phase 9
     // experimental smoke. NOT release-certified; the EXPERIMENTAL tier
     // is intentional. The OpenAI adapter forwards `image_url` content
