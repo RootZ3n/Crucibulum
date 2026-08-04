@@ -374,7 +374,10 @@ export function buildOpenRouterChatBody(
   // OpenRouter returns "Reasoning is mandatory for this endpoint and cannot
   // be disabled." For these models we still forward an effort (minimal keeps
   // the visible answer clean) but NEVER set exclude. Discovered 2026-08-02.
-  const reasoningCannotExclude = /^meta\/muse-spark/i.test(model);
+  // Qwen3.8 Max hits the same rejection (observed 2026-08-03): exclude is
+  // refused entirely, effort-only is accepted.
+  const reasoningCannotExclude = /^meta\/muse-spark/i.test(model)
+    || /^qwen\/qwen3\.8-max(?:$|[:/])/i.test(model);
   if (isNativeOpenRouter && (wantsReasoningOff || requestedReasoning === "minimal")) {
     body.reasoning = wantsReasoningOff && requiresReasoning
       ? { exclude: true, effort: "minimal" }
