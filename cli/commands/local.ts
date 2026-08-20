@@ -7,9 +7,10 @@
  * producing an export meant hand-writing a script and assembling JSON. That is
  * not an integration, and the audit was right to say so.
  *
- * Both commands are offline by default. `local-qualify` runs as a dry run
- * unless a responder is configured, and no responder ships in this phase — so
- * there is no flag combination here that reaches a model.
+ * Both commands are offline by default. `local-qualify` is a dry run unless
+ * `--responder` names one, and the credential is never a flag — it is read at
+ * request time from an environment variable or a 0600 file named in the
+ * responder config, so it never appears in argv, in `ps`, or in shell history.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { log } from "../../utils/logger.js";
@@ -37,8 +38,12 @@ Luak local qualification
       List local suites, their adjudication state, and fixture coverage.
 
   luak local-qualify --suite <id> [--split evaluation|development|both] [--seed N]
-      Build the suite's prompts and report coverage. Offline: with no responder
-      configured this is a dry run and nothing is invoked.
+                     [--responder bokahli --responder-config <path.json>]
+      Build the suite's prompts and report coverage. Without --responder this is
+      a dry run and nothing is invoked. With --responder bokahli it executes
+      attempts against the configured Bokahli deployment, one request at a time.
+      The credential is never a flag: name it in the config as an environment
+      variable or a 0600 file.
 
   luak export-qualification --suite <id> --identity <path.json> --records <path.json>
                             [--out <path.json>] [--allow-development-split]
@@ -99,9 +104,35 @@ export async function localQualifyCommand(args: string[]): Promise<void> {
   const split = (flag(args, "split") ?? "evaluation") as "development" | "evaluation" | "both";
   const seed = Number(flag(args, "seed") ?? 1);
 
-  // No responder is wired in this phase. The dry run is therefore structural
-  // rather than a flag: there is nothing to pass that would reach a model.
-  const result = await runLocalSuite({ suite, split, seed });
+  const responderName = flag(args, "responder");
+  let responder;
+  if (responderName === "bokahli") {
+    const cfgPath = flag(args, "responder-config");
+    if (!cfgPath) {
+      log("error", "local", "--responder bokahli requires --responder-config <path.json>");
+      process.exitCode = 1;
+      return;
+    }
+    const { createBokahliResponder } = await import("../../core/local/responders/bokahli.js");
+    const { validateBokahliConfig } = await import("../../core/local/responders/bokahli-config.js");
+    const parsedCfg = validateBokahliConfig(JSON.parse(readFileSync(cfgPath, "utf-8")));
+    if (!parsedCfg.ok) {
+      log("error", "local", "invalid responder config:");
+      for (const p of parsedCfg.problems) log("error", "local", `  ${p.field}: ${p.detail}`);
+      process.exitCode = 1;
+      return;
+    }
+    responder = createBokahliResponder({ config: parsedCfg.config });
+  } else if (responderName !== undefined) {
+    log("error", "local", `unknown responder "${responderName}" (have: bokahli)`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const result = await runLocalSuite({
+    suite, split, seed,
+    ...(responder ? { responder } : {}),
+  });
 
   console.log(`\n${suite.id}@${suite.version} — ${suite.label}`);
   console.log(`  adjudication : ${suite.adjudication} (canAdjudicate=${canAdjudicate(suite)})`);
@@ -112,9 +143,23 @@ export async function localQualifyCommand(args: string[]): Promise<void> {
     return a;
   }, {});
   for (const [k, v] of Object.entries(bySplit)) console.log(`    ${k}: ${v}`);
-  console.log(`  mode         : DRY RUN — no responder is configured in this phase, so no`);
-  console.log(`                 model was contacted and no attempt records were produced.`);
+  if (result.dryRun) {
+    console.log("  mode         : DRY RUN — no responder configured, so nothing was contacted");
+    console.log("                 and no attempt records were produced.");
+  } else {
+    console.log(`  mode         : LIVE via --responder ${responderName}`);
+    console.log(`  attempts     : ${result.records.length}`);
+    const outcomes = result.scored.reduce<Record<string, number>>((a, s2) => {
+      a[s2.outcome] = (a[s2.outcome] ?? 0) + 1;
+      return a;
+    }, {});
+    for (const [k, v] of Object.entries(outcomes)) console.log(`    ${k}: ${v}`);
+  }
   console.log(`  token counts : ${result.tokenCountSource}`);
+  if (result.tokenCountSource !== "runtime_tokenizer" && !result.dryRun) {
+    console.log("                 NOT exportable as qualification evidence: only a");
+    console.log("                 runtime-tokenizer measurement supports export.");
+  }
   console.log("");
   if (has(args, "print-prompts")) {
     for (const p of result.prompts) {

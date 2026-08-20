@@ -19,6 +19,27 @@ import {
 } from "../../types/local-verdict.js";
 import type { LaneScore, Measurement } from "./scorers.js";
 
+/**
+ * Provenance of a token count, from strongest to weakest.
+ *
+ *   runtime_tokenizer        The runtime stated the count *and* its tokenizer
+ *                            provenance is established. Only this supports export.
+ *   runtime_reported_unknown The runtime returned a usage block, but nothing in
+ *                            the response says which tokenizer produced it. Very
+ *                            probably correct; not established, so not exportable.
+ *   estimated                Computed on the client — characters, whitespace, or
+ *                            a local tokenizer that is not the serving one.
+ *   unknown                  No count at all.
+ */
+export type TokenCountSource =
+  | "runtime_tokenizer"
+  | "runtime_reported_unknown_tokenizer"
+  | "estimated"
+  | "unknown";
+
+/** The only provenance a qualification export accepts. */
+export const EXPORTABLE_TOKEN_SOURCES: readonly TokenCountSource[] = ["runtime_tokenizer"];
+
 /** Bump on any change to how measurements become outcomes. Evidence is bound to this. */
 export const LOCAL_REGIME_VERSION = "local-regime-1.0.0" as const;
 export type LocalRegimeVersion = typeof LOCAL_REGIME_VERSION;
@@ -43,11 +64,14 @@ export interface AttemptRecord {
   readonly promptTokens: number | null;
   readonly completionTokens: number | null;
   /**
-   * Where the counts came from. Only "runtime_tokenizer" is a measurement; the
-   * exporter refuses anything else, so a character estimate can never travel as
-   * a token count.
+   * Where the counts came from. Only "runtime_tokenizer" supports a
+   * qualification export; everything else is recorded, reported, and refused at
+   * export time. Four levels rather than two, because the interesting case sits
+   * between them: a runtime can report a usage block without ever saying which
+   * tokenizer produced it, and calling that a tokenizer measurement would be
+   * exactly the relabelling this field exists to prevent.
    */
-  readonly tokenCountSource: "runtime_tokenizer" | "estimated" | "unknown";
+  readonly tokenCountSource: TokenCountSource;
   readonly timeToFirstTokenMs: number | null;
   readonly decodeTokensPerSecond: number | null;
   readonly wallTimeMs: number | null;

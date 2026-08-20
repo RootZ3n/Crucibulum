@@ -22,7 +22,7 @@ import {
   scoreReconFixture, scoreTriageFixture,
   type LaneScore, type ReconAnswer, type TriageAnswer,
 } from "./scorers.js";
-import { scoreAttempt, type AttemptRecord, type ScoredAttempt } from "./regime.js";
+import { scoreAttempt, type AttemptRecord, type ScoredAttempt, type TokenCountSource } from "./regime.js";
 import type { LocalSuite } from "./suite-registry.js";
 
 /** Which split an attempt belongs to. Carried on every record, never inferred later. */
@@ -48,7 +48,7 @@ export interface LocalResponse {
   readonly rawText: string;
   readonly promptTokens: number | null;
   readonly completionTokens: number | null;
-  readonly tokenCountSource: "runtime_tokenizer" | "estimated" | "unknown";
+  readonly tokenCountSource: TokenCountSource;
   readonly timeToFirstTokenMs: number | null;
   readonly decodeTokensPerSecond: number | null;
   readonly wallTimeMs: number | null;
@@ -80,7 +80,7 @@ export interface RunResult {
   readonly records: readonly AttemptRecord[];
   readonly scored: readonly ScoredAttempt[];
   /** Set when any response reported anything other than a runtime tokenizer. */
-  readonly tokenCountSource: "runtime_tokenizer" | "estimated" | "unknown" | "not_measured";
+  readonly tokenCountSource: TokenCountSource | "not_measured";
 }
 
 // ---------------------------------------------------------------------------
