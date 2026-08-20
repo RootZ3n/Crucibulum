@@ -1,0 +1,34 @@
+{
+  "pinnedCommit": "9ed481bed93e0a2b936c489649ed3244b69744ec",
+  "publishedBranch": "origin/v2",
+  "sourcePrefix": "packages/contracts/src",
+  "files": {
+    "attestation.ts": {
+      "sourceSha256": "e53bb14a667f17d13dd2db86e7289416125606c24569f16311acdddd3bb0ef5f"
+    },
+    "canary.ts": {
+      "sourceSha256": "2a5bf5bd9dd371850ea6b60096772173ed0058e442f0c6cb7b56efc84b82b9bf"
+    },
+    "errors.ts": {
+      "sourceSha256": "1b1e0c1ab2e936abb6b512dd7f27ccc00669d118c050175af41df1b1d9c792da"
+    },
+    "identity.ts": {
+      "sourceSha256": "ab7aa4b6678b185b410fca584951ddaec9902a07ee68cfbb75087bcaafb563ef"
+    },
+    "index.ts": {
+      "sourceSha256": "234204e3dfce44de90085fa6fb28d2ddebf0abf013f7b87349f353cec23b766f"
+    },
+    "luak.ts": {
+      "sourceSha256": "8d467a2a6577970d071503ee88120aeb12c77000ad56aac15674a5d71f908c7c"
+    },
+    "qualification.ts": {
+      "sourceSha256": "ef98f9f7cad94ee643c40cc49c5c3d9f99d403890c7fcd3e5fce030516692787"
+    },
+    "routing.ts": {
+      "sourceSha256": "0f5b258f00082e0e4bf3b3b14798afe9777c4e3464e80d87da086678ba74cdeb"
+    },
+    "tasks.ts": {
+      "sourceSha256": "e521d5932d9ec33a0f9121f580c070a18a741248a315ad4f3e5ff0bcf987f6d6"
+    }
+  }
+}

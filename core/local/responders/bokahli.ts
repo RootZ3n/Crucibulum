@@ -33,8 +33,12 @@ import { validateBokahliConfig, type BokahliResponderConfig } from "./bokahli-co
 import { authHeaders, readCredential, redact } from "./credentials.js";
 import { lookupOutcome, type OutcomeMapping, type TransportEvent } from "./bokahli-failure-map.js";
 import { readBokahliStream } from "./bokahli-stream.js";
+import {
+  emptyB2Facts, extractB2Facts, refusesCanonicalAttempt, type BokahliB2Facts,
+} from "./bokahli-b2-facts.js";
+import { deriveTokenProvenance, type TokenProvenanceVerdict } from "./bokahli-provenance.js";
 
-export const BOKAHLI_RESPONDER_VERSION = "bokahli-responder-1.1.0" as const;
+export const BOKAHLI_RESPONDER_VERSION = "bokahli-responder-1.2.0" as const;
 
 /**
  * Hard limits on what a response may be.
@@ -52,20 +56,19 @@ export const RESPONSE_LIMITS = Object.freeze({
 });
 
 /**
- * Tokenizer provenance for counts Bokahli returns.
+ * The provenance a response falls back to when it proves nothing.
  *
- * Bokahli's `RequestTelemetry` carries `promptTokens` and `completionTokens`
- * but **no field stating which tokenizer produced them**. They originate in
- * llama.cpp's own `usage`/`timings` block and are almost certainly exact — but
- * "almost certainly" is not provenance, and the rule is that a count may only
- * be called a runtime-tokenizer measurement when the runtime says so.
+ * This used to be the *answer*: Bokahli published counts and no statement about
+ * which tokenizer produced them, so the responder returned this constant for
+ * every attempt. Correct then, and unfalsifiable — a hardcoded verdict cannot
+ * improve when the evidence does, and cannot degrade when the evidence goes
+ * away either.
  *
- * So the responder reports `runtime_reported_unknown_tokenizer`. The campaign
- * runs, the counts are recorded and usable for analysis, and the exporter
- * refuses a qualification export with a typed reason. Closing this needs one
- * field on Bokahli's side; see docs/local/BOKAHLI-RESPONDER.md.
+ * B2 publishes the proof, so the verdict is now *derived* — see
+ * `bokahli-provenance.ts`. The constant survives only as the floor: counts that
+ * exist but cannot be attributed. Nothing assigns it unconditionally.
  */
-export const BOKAHLI_TOKEN_PROVENANCE: TokenCountSource = "runtime_reported_unknown_tokenizer";
+export const BOKAHLI_TOKEN_PROVENANCE_FLOOR: TokenCountSource = "runtime_reported_unknown_tokenizer";
 
 /** What the responder observed, beyond the answer text. */
 export interface BokahliAttemptFacts {
@@ -99,8 +102,27 @@ export interface BokahliAttemptFacts {
   readonly gpuUtilisationPct: number | null;
   /** Sampler as *sent*. Bokahli never echoes what it applied. */
   readonly samplerSent: { temperature: number; topP: number; maxTokens: number };
-  /** Bokahli exposes no prompt-template identity at this commit. */
-  readonly promptTemplateId: null;
+  /**
+   * Prompt-template identity, from Bokahli B2. Null on a Phase 1 response.
+   *
+   * This is the *configured* template — what the backend holds. It is not a
+   * statement that this template rendered this request, and `b2.template`
+   * keeps the tiers apart.
+   */
+  readonly promptTemplateId: string | null;
+  /**
+   * The B2 attestation, read without flattening. Every field is null on a
+   * response that predates it.
+   */
+  readonly b2: BokahliB2Facts;
+  /** Why the counts are provenanced the way they are. */
+  readonly tokenProvenance: TokenProvenanceVerdict | null;
+  /**
+   * Set when Bokahli's own output forbids building a canonical attempt from
+   * this response — unattested, instance-unknown, instance-changed. An
+   * infrastructure outcome, never a model failure.
+   */
+  readonly canonicalAttemptRefused: readonly string[];
   readonly failure: (OutcomeMapping & { reason: string; kind: string }) | null;
 }
 
@@ -123,6 +145,9 @@ function emptyFacts(config: BokahliResponderConfig): BokahliAttemptFacts {
     gpuUsedMiB: null, gpuTotalMiB: null, gpuUtilisationPct: null,
     samplerSent: { ...config.sampler },
     promptTemplateId: null,
+    b2: emptyB2Facts(),
+    tokenProvenance: null,
+    canonicalAttemptRefused: [],
     failure: null,
   };
 }
@@ -206,8 +231,13 @@ function factsFromRouted(config: BokahliResponderConfig, body: JsonLike): Bokahl
   const rt = (si["runtime"] ?? {}) as Record<string, unknown>;
   const t = (body.telemetry ?? {}) as Record<string, unknown>;
   const gpu = (t["gpu"] ?? {}) as Record<string, unknown>;
+  // Read from the body rather than from `si`/`t` above: the B2 reader walks the
+  // whole response defensively, and a Phase 1 body simply yields nulls.
+  const b2 = extractB2Facts(body);
   return {
     ...emptyFacts(config),
+    b2,
+    promptTemplateId: b2.template.configuredTemplateId,
     requestId: str(body.requestId),
     outcome: str(body.outcome) ?? "ROUTED",
     attested: typeof si["attested"] === "boolean" ? (si["attested"] as boolean) : null,
@@ -507,6 +537,17 @@ export function createBokahliResponder(opts: BokahliResponderOptions): Responder
         lookupOutcome("REFUSED", problem.reason), problem.detail);
     }
 
+    // Bokahli says a completion happened. Whether it can be attributed is a
+    // separate question, and one this responder must answer before scoring:
+    // an unattested or discontinuous attempt is an infrastructure event, and
+    // counting it against the model would score a restart as a wrong answer.
+    const canonical = refusesCanonicalAttempt(facts.b2, facts.attested);
+    if (canonical.refuse) {
+      return fail(config, "ESCALATE", "ATTEMPT_NOT_ATTRIBUTABLE",
+        lookupOutcome("ESCALATE", "ATTEMPT_NOT_ATTRIBUTABLE"),
+        canonical.reasons.join("; "));
+    }
+
     const t = (parsed.telemetry ?? {}) as Record<string, unknown>;
     const promptTokens = num(t["promptTokens"]);
     const completionTokens = num(t["completionTokens"]);
@@ -518,17 +559,24 @@ export function createBokahliResponder(opts: BokahliResponderOptions): Responder
         `completion of ${content.length} characters exceeds ${RESPONSE_LIMITS.maxCompletionChars}`);
     }
 
+    // Derived from what the response proves, not asserted. A body that labels
+    // its own counts `runtime_tokenizer` without the supporting object gets the
+    // floor, exactly as one that says nothing does.
+    const provenance = deriveTokenProvenance({
+      body: parsed,
+      expectedModelId: config.modelId,
+      expectedArtifactDigest: config.artifactDigest,
+    });
+
     return {
       rawText: content,
       promptTokens,
       completionTokens,
-      // Never upgraded on the basis of the counts looking plausible.
-      tokenCountSource:
-        promptTokens === null && completionTokens === null ? "unknown" : BOKAHLI_TOKEN_PROVENANCE,
+      tokenCountSource: provenance.source,
       timeToFirstTokenMs: num(t["timeToFirstTokenMs"]),
       decodeTokensPerSecond: num(t["completionTokensPerSecond"]),
       wallTimeMs: num(t["totalMs"]) ?? clock() - started,
-      facts,
+      facts: { ...facts, tokenProvenance: provenance, canonicalAttemptRefused: [] },
     };
   };
 
@@ -610,19 +658,32 @@ async function consumeStream(
       `streamed completion of ${out.text.length} characters exceeds the bound`);
   }
 
+  // A stream is not a weaker contract, only a different transport: the same
+  // attribution rule applies to the terminal event it produced.
+  const canonical = refusesCanonicalAttempt(facts.b2, facts.attested);
+  if (canonical.refuse) {
+    return fail(config, "ESCALATE", "ATTEMPT_NOT_ATTRIBUTABLE",
+      lookupOutcome("ESCALATE", "ATTEMPT_NOT_ATTRIBUTABLE"),
+      canonical.reasons.join("; "));
+  }
+
   const t = (merged.telemetry ?? {}) as Record<string, unknown>;
   const promptTokens = num(t["promptTokens"]);
   const completionTokens = num(t["completionTokens"]);
+  const provenance = deriveTokenProvenance({
+    body: merged,
+    expectedModelId: config.modelId,
+    expectedArtifactDigest: config.artifactDigest,
+  });
   return {
     rawText: out.text,
     promptTokens,
     completionTokens,
-    tokenCountSource:
-      promptTokens === null && completionTokens === null ? "unknown" : BOKAHLI_TOKEN_PROVENANCE,
+    tokenCountSource: provenance.source,
     timeToFirstTokenMs: num(t["timeToFirstTokenMs"]),
     decodeTokensPerSecond: num(t["completionTokensPerSecond"]),
     wallTimeMs: num(t["totalMs"]) ?? clock() - started,
-    facts,
+    facts: { ...facts, tokenProvenance: provenance, canonicalAttemptRefused: [] },
   };
 }
 

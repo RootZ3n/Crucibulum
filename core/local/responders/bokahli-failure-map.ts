@@ -15,7 +15,7 @@
  */
 import type { AttributionClass, LocalFailureCode } from "../../../types/local-verdict.js";
 
-export const BOKAHLI_FAILURE_MAP_VERSION = "bokahli-failure-map-1.1.0" as const;
+export const BOKAHLI_FAILURE_MAP_VERSION = "bokahli-failure-map-1.2.0" as const;
 
 export interface OutcomeMapping {
   readonly code: LocalFailureCode;
@@ -59,6 +59,22 @@ export const ESCALATE_MAP: Readonly<Record<string, OutcomeMapping>> = Object.fre
   RUNTIME_UNHEALTHY: {
     code: "local_runtime_crash", attribution: "RUNTIME_PROVIDER", transient: true,
     why: "llama-server was not answering. Bokahli stayed up and said so; the model never ran.",
+  },
+  // --- added in Bokahli B2 -------------------------------------------------
+  ATTESTATION_STALE: {
+    code: "local_capacity_refused", attribution: "RUNTIME_PROVIDER", transient: true,
+    why: "The evidence behind the served identity had already lapsed when Bokahli admitted " +
+      "the request, so it refused before generating rather than producing a completion its " +
+      "own attestation no longer describes. Infrastructure, not capability: the model never " +
+      "ran and a retry re-attests.",
+  },
+  ATTEMPT_NOT_ATTRIBUTABLE: {
+    code: "local_runtime_crash", attribution: "RUNTIME_PROVIDER", transient: true,
+    why: "The backend instance changed while the request was executing, so the completion " +
+      "came from a process that was never attested for it. Bokahli discarded the output. " +
+      "The attempt must be dropped rather than scored — output produced by an unattested " +
+      "process is not a weaker answer, it is a different claim, and counting it against the " +
+      "model would score a restart as a wrong answer.",
   },
 });
 

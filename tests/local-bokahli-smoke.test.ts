@@ -103,14 +103,18 @@ test("live Bokahli: metadata only, no generation", { skip: !available }, async (
     assert.ok(!JSON.stringify(body).includes("/home/"), "no filesystem path may appear in inventory");
   });
 
-  await t.test("no tokenizer provenance field exists anywhere in metadata", async () => {
-    // The reason the exporter refuses qualification export today. If Bokahli
-    // gains the field, this test fails and the responder can be upgraded.
+  await t.test("the deployed metadata routes still predate the B2 contract", async () => {
+    // Bokahli B2 is published but deliberately not deployed. Until it is, the
+    // live metadata routes carry no tokenizer provenance, and the responder
+    // derives `runtime_reported_unknown_tokenizer` from that absence rather
+    // than from a hardcoded constant. When the deployment catches up this test
+    // fails, and the failure is the signal that the campaign can now export.
     const ready = await get("/health/ready");
     const models = await get("/v1/models");
     const text = JSON.stringify(ready.body) + JSON.stringify(models.body);
     assert.ok(!/tokenCountSource|tokenizer/i.test(text),
-      "Bokahli now reports tokenizer provenance — upgrade BOKAHLI_TOKEN_PROVENANCE");
+      "the deployment now reports tokenizer provenance: B2 has been deployed, and this " +
+      "expectation should flip to requiring it");
   });
 
   await t.test("no prompt-template identity is exposed", async () => {

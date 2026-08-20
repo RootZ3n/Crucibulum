@@ -21,7 +21,7 @@ import {
   ALL_MAPS, anyModelAttributed, BOKAHLI_FAILURE_MAP_VERSION, lookupOutcome,
 } from "../core/local/responders/bokahli-failure-map.js";
 import {
-  BOKAHLI_TOKEN_PROVENANCE, classifyTransportError, createBokahliResponder,
+  BOKAHLI_TOKEN_PROVENANCE_FLOOR, classifyTransportError, createBokahliResponder,
   type BokahliResponse,
 } from "../core/local/responders/bokahli.js";
 import { parseFrame, readBokahliStream } from "../core/local/responders/bokahli-stream.js";
@@ -335,16 +335,19 @@ test("an unattested response is refused", async () => {
 // token provenance
 // ---------------------------------------------------------------------------
 
-test("token counts are reported as runtime-reported, never as tokenizer-measured", async () => {
+test("a Phase 1 response yields counts that cannot be called a tokenizer measurement", async () => {
+  // The currently deployed Bokahli. It returns counts and publishes no
+  // attestation contract, so the counts are recorded, reported, and refused at
+  // export — which is exactly what the pilot was built around.
   nextResponse = { status: 200, body: routedBody() };
   const r = await ask();
   assert.equal(r.promptTokens, 120);
   assert.equal(r.completionTokens, 18);
-  // Bokahli returns counts but states no tokenizer provenance, so they may not
-  // be called a runtime-tokenizer measurement however plausible they look.
   assert.equal(r.tokenCountSource, "runtime_reported_unknown_tokenizer");
-  assert.equal(BOKAHLI_TOKEN_PROVENANCE, "runtime_reported_unknown_tokenizer");
+  assert.equal(BOKAHLI_TOKEN_PROVENANCE_FLOOR, "runtime_reported_unknown_tokenizer");
   assert.notEqual(r.tokenCountSource, "runtime_tokenizer");
+  assert.equal(r.facts.b2.publishesB2Contract, false, "and it is recognised as legacy, not as failing");
+  assert.ok((r.facts.tokenProvenance?.unmet.length ?? 0) > 0, "with reasons, not a bare verdict");
 });
 
 test("missing usage yields unknown, not zero and not an estimate", async () => {
@@ -574,7 +577,7 @@ test("evidence from this responder cannot be exported as qualification today", a
     contextPosition: null, contextTier: "control",
     promptTokens: 120, completionTokens: 18,
     // Exactly what the responder reports today.
-    tokenCountSource: BOKAHLI_TOKEN_PROVENANCE,
+    tokenCountSource: BOKAHLI_TOKEN_PROVENANCE_FLOOR,
     timeToFirstTokenMs: 288, decodeTokensPerSecond: 58.9, wallTimeMs: 390, seed: 1,
   };
   const result = exportBokahliBundle({
@@ -693,7 +696,7 @@ test("the streaming path is a real code path, not a spare module", async () => {
   assert.equal(r.facts.failure, null, JSON.stringify(r.facts.failure));
   assert.equal(r.rawText, '{"outcome":"ABSTAINED"}', "deltas, not the terminal content field");
   assert.equal(r.facts.attested, true);
-  assert.equal(r.tokenCountSource, BOKAHLI_TOKEN_PROVENANCE);
+  assert.equal(r.tokenCountSource, BOKAHLI_TOKEN_PROVENANCE_FLOOR);
   const sent = lastRequest?.body as { stream: boolean };
   assert.equal(sent.stream, true);
 });
