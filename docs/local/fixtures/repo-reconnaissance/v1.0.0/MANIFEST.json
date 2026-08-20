@@ -1,9 +1,15 @@
 {
   "suiteId": "local-repo-reconnaissance",
   "suiteVersion": "1.0.0",
+  "boundVersions": {
+    "regime": "local-regime-1.0.0",
+    "scorers": "local-scorers-1.0.0",
+    "generator": "local-context-generator-1.0.0"
+  },
+  "splitPolicy": "Evaluation-split fixtures are committed to a public repository and are NOT secret. They are excluded from development tuning by policy only. Genuinely hidden fixtures require an external private fixture pack with separately pinned identity.",
   "fixtureCount": 9,
   "developmentCount": 6,
-  "heldOutCount": 3,
+  "evaluationCount": 3,
   "kinds": [
     "abstention",
     "adversarial",
@@ -17,65 +23,65 @@
       "id": "rr-001-file-and-symbol-discovery",
       "kind": "positive",
       "title": "Find where a token is verified, among similarly named files",
-      "heldOut": false,
+      "split": "development",
       "contentHash": "sha256:45c967aa3780bb4e6ea22022b77bc707eeffa06844510125d1fd85717b60ea43"
     },
     {
       "id": "rr-002-dependency-edge",
       "kind": "positive",
       "title": "Trace which module reaches the rate limiter, and how",
-      "heldOut": false,
+      "split": "development",
       "contentHash": "sha256:4fb9716b242f0c5c6caf87baa49ab9a756a614f43a19edb328da199e6c5c067d"
     },
     {
       "id": "rr-003-generated-and-vendor",
       "kind": "negative",
       "title": "The match is in generated code and must not be reported as source",
-      "heldOut": false,
+      "split": "development",
       "contentHash": "sha256:b14b5c090d3566ae66f14ba8066dee344028eba0f58f7a1ca6e57493f2840c63"
     },
     {
       "id": "rr-004-missing-context",
       "kind": "abstention",
       "title": "The answer lives in a file the caller withheld",
-      "heldOut": true,
+      "split": "evaluation",
       "contentHash": "sha256:be67668ed915d91bcbcde5980a3c9fadffaca667cdc1ae2e0d56fb371804e1f0"
     },
     {
       "id": "rr-005-aliased-symbol",
       "kind": "ambiguous",
       "title": "A symbol re-exported under a different name",
-      "heldOut": false,
+      "split": "development",
       "contentHash": "sha256:bf488f61f745d319212931d9fe58bc606ceeca421e10c661e2c2c1b81ecd285a"
     },
     {
       "id": "rr-006-injection-in-source",
       "kind": "adversarial",
       "title": "A source comment instructing the model to report a different file",
-      "heldOut": true,
+      "split": "evaluation",
       "contentHash": "sha256:529806079826cf8c776f7d31459d8300dda2e3c4889c0da079ee0a263aab0793"
     },
     {
       "id": "rr-007-hallucination-trap",
       "kind": "adversarial",
       "title": "A question whose obvious answer would be a file that was not supplied",
-      "heldOut": true,
+      "split": "evaluation",
       "contentHash": "sha256:f9342322badfbdac4480ce83032de34755a6c32551c74919369c126b5c436ba7"
     },
     {
       "id": "rr-008-repeated-identifiers",
       "kind": "ambiguous",
       "title": "Three functions whose names differ by one character",
-      "heldOut": false,
+      "split": "development",
       "contentHash": "sha256:eb8d9bf1c54fdb516788ef063a295d1dcd7be4285c4c3ab19bd6a0fb650da8fa"
     },
     {
       "id": "rr-009-malformed-packet",
       "kind": "malformed",
       "title": "An excerpt whose declared line range does not match its text",
-      "heldOut": false,
+      "split": "development",
       "contentHash": "sha256:3cfe616b32686e291b23c30d73325b0bd9549034885e8d3d899c286d4edef1fe"
     }
   ],
-  "suiteHash": "sha256:0f5b53d7f092a81a4537054ba88fa48096ba6adc15759d1ac2c717d69af94932"
+  "suiteHash": "sha256:2e3aceb224ebd7a94000e56cf95770eb6fe3fb956ad69eaee14f24b71b818101"
 }

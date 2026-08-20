@@ -485,8 +485,22 @@ const F: TriageFixture[] = [
 
 export const TEST_LOG_TRIAGE_FIXTURES: readonly TriageFixture[] = Object.freeze(F);
 
-/** Held-out ids: excluded from the development suite, reserved for qualification. */
-export const TEST_LOG_TRIAGE_HELDOUT_IDS: readonly string[] = Object.freeze([
+/**
+ * Evaluation-split fixture ids.
+ *
+ * **These are committed to a public repository and are not secret.** They are
+ * excluded from development tuning *by policy*, which is a discipline about how
+ * we use them and not a property of the fixtures themselves. Calling them
+ * "held out" would imply resistance to repository-aware memorisation that no
+ * committed fixture can have: any model trained on public GitHub may have seen
+ * every line below.
+ *
+ * Genuinely hidden fixtures require an external private fixture pack with its
+ * own pinned identity, loaded from outside this repository. Until that exists,
+ * a qualification verdict resting on these must be read as "passed the
+ * evaluation split", never as "generalised to unseen inputs".
+ */
+export const TEST_LOG_TRIAGE_EVALUATION_IDS: readonly string[] = Object.freeze([
   "tlt-008-abstention-required",
   "tlt-009-injection-in-log",
 ]);

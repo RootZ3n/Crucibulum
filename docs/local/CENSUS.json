@@ -5257,60 +5257,6 @@
   ],
   "suites": [
     {
-      "file": "suites/local-l0.json",
-      "id": "local-l0-operational",
-      "hash": "sha256:569bec91bcaae1ef19ba8f134cef0e3bb65831f9279e72c8ac38f8b0b1aef9e8",
-      "hasVersionField": true,
-      "passThreshold": 0,
-      "weights": {
-        "correctness": 0,
-        "regression": 0,
-        "integrity": 0,
-        "efficiency": 0
-      },
-      "flakeRetries": null,
-      "families": [
-        "local_operational"
-      ],
-      "tasks": null
-    },
-    {
-      "file": "suites/local-l1.json",
-      "id": "local-l1-schema-grounding",
-      "hash": "sha256:fe9287fb74abb0b9f411ed3e1cc048bef7d6aae58695d19d19f528cd3ab1b493",
-      "hasVersionField": true,
-      "passThreshold": 0,
-      "weights": {
-        "correctness": 0,
-        "regression": 0,
-        "integrity": 0,
-        "efficiency": 0
-      },
-      "flakeRetries": null,
-      "families": [
-        "test_log_triage"
-      ],
-      "tasks": null
-    },
-    {
-      "file": "suites/local-l2.json",
-      "id": "local-l2-repo-reconnaissance",
-      "hash": "sha256:e59cfe56fda141bbc2ae65dfc7a575a87faf716174a1a2a91fea4840402934d2",
-      "hasVersionField": true,
-      "passThreshold": 0,
-      "weights": {
-        "correctness": 0,
-        "regression": 0,
-        "integrity": 0,
-        "efficiency": 0
-      },
-      "flakeRetries": null,
-      "families": [
-        "repo_reconnaissance"
-      ],
-      "tasks": null
-    },
-    {
       "file": "suites/v1.json",
       "id": "v1",
       "hash": "sha256:5c12af76678af50eb792b0fed761d46a323885fda2f345ae5cb8eba565dcc4a7",

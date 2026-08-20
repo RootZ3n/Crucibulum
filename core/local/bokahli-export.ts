@@ -36,6 +36,9 @@ import {
   type AttributionClass,
   type LocalFailureCode,
 } from "../../types/local-verdict.js";
+// Imported from the canonical module rather than restated, so the exporter
+// cannot emit an origin Luak does not define.
+import type { FailureOrigin } from "../../types/verdict.js";
 import { LOCAL_REGIME_VERSION, type AttemptRecord, type ScoredAttempt } from "./regime.js";
 
 export const BOKAHLI_BUNDLE_VERSION = "2.0.0-phase2a" as const;
@@ -58,7 +61,14 @@ export type ExportRefusalCode =
   | "MISSING_SUITE_VERSION"
   | "MISSING_REGIME_VERSION"
   | "CONTEXT_TIER_NOT_MEASURED"
-  | "FABRICATED_AGGREGATE";
+  | "FABRICATED_AGGREGATE"
+  | "MIXED_SUITE"
+  | "MIXED_SUITE_VERSION"
+  | "MIXED_CONTEXT_TIER"
+  | "IDENTITY_ATTEMPT_DISAGREEMENT"
+  | "NO_EVIDENCE_OF_EXECUTION"
+  | "TOKEN_COUNTS_NOT_MEASURED"
+  | "DEVELOPMENT_SPLIT_AS_QUALIFICATION";
 
 export interface ExportRefusal {
   readonly code: ExportRefusalCode;
@@ -100,6 +110,12 @@ export interface ExportInput {
    * other value.
    */
   readonly verdict?: "QUALIFIED" | "DISQUALIFIED";
+  /**
+   * Require every attempt to come from the evaluation split. Defaults to true:
+   * an export is qualification evidence unless someone deliberately says it is
+   * a development snapshot.
+   */
+  readonly requireEvaluationSplit?: boolean;
   /** Injected so exports are reproducible and testable. */
   readonly now: Date;
   readonly expiresAt?: string | null;
@@ -165,7 +181,10 @@ const OUTCOME_MAP: Readonly<Record<string, string | null>> = Object.freeze({
   UNSUPPORTED_CAPABILITY: null,
 });
 
-function originFor(codes: readonly LocalFailureCode[], attribution: AttributionClass): string | null {
+function originFor(
+  codes: readonly LocalFailureCode[],
+  attribution: AttributionClass,
+): FailureOrigin | null {
   if (codes.length === 0) return null;
   const first = codes.find((c) => LOCAL_FAILURE_MAP[c].failureOrigin !== null);
   if (first) return LOCAL_FAILURE_MAP[first].failureOrigin;
@@ -176,7 +195,8 @@ function originFor(codes: readonly LocalFailureCode[], attribution: AttributionC
 // export
 // ---------------------------------------------------------------------------
 
-export function exportBokahliBundle(input: ExportInput): ExportResult {
+export function exportBokahliBundle(rawInput: ExportInput): ExportResult {
+  const input: ExportInput = { requireEvaluationSplit: true, ...rawInput };
   const refusals: ExportRefusal[] = [];
   const add = (code: ExportRefusalCode, detail: string, field: string | null = null): void => {
     refusals.push({ code, detail, field });
@@ -279,9 +299,83 @@ export function exportBokahliBundle(input: ExportInput): ExportResult {
     }
   }
 
+  // 5. Homogeneity. One bundle describes one deployment running one suite at one
+  //    tier; anything else is several runs wearing a single identity, and the
+  //    aggregate over them means nothing. The first draft exported all of these.
+  const suiteIds = new Set(input.records.map((r) => r.suiteId));
+  const suiteVersions = new Set(input.records.map((r) => `${r.suiteId}@${r.suiteVersion}`));
+  const tiers = new Set(input.records.map((r) => r.contextTier ?? "(none)"));
+
+  if (suiteIds.size > 1) {
+    add("MIXED_SUITE",
+      `attempts span ${suiteIds.size} fixture suites (${[...suiteIds].join(", ")}). ` +
+      "One bundle is evidence about one suite; aggregating across suites produces a " +
+      "pass rate over two different questions.",
+      "attempts[].suiteId");
+  }
+  if (suiteVersions.size > 1) {
+    add("MIXED_SUITE_VERSION",
+      `attempts span ${suiteVersions.size} suite versions (${[...suiteVersions].join(", ")}). ` +
+      "A suite that gained a fixture is a different bar.",
+      "attempts[].suiteVersion");
+  }
+  if (tiers.size > 1) {
+    add("MIXED_CONTEXT_TIER",
+      `attempts span ${tiers.size} context tiers (${[...tiers].join(", ")}). ` +
+      "The bundle carries one contextTierTokens, so exporting a mixture would stamp " +
+      "every attempt with a tier most of them did not run at.",
+      "attempts[].contextTier");
+  }
+  if (input.identity && suiteIds.size === 1) {
+    const only = [...suiteIds][0];
+    if (only !== input.identity.fixtureSuiteId) {
+      add("IDENTITY_ATTEMPT_DISAGREEMENT",
+        `identity names fixture suite "${input.identity.fixtureSuiteId}" but every attempt ` +
+        `ran "${only}"`, "identity.fixtureSuiteId");
+    }
+    const onlyVersion = [...suiteVersions][0]?.split("@")[1];
+    if (onlyVersion && onlyVersion !== input.identity.fixtureSuiteVersion) {
+      add("IDENTITY_ATTEMPT_DISAGREEMENT",
+        `identity names suite version "${input.identity.fixtureSuiteVersion}" but the ` +
+        `attempts ran "${onlyVersion}"`, "identity.fixtureSuiteVersion");
+    }
+  }
+
+  // 6. Proof of execution. A record with no lanes and no runtime failure is a
+  //    record of nothing — the shape a hand-authored attempt has, because
+  //    writing plausible metadata is easy and producing a scored lane is not.
+  for (const rec of input.records) {
+    if (rec.applicability === "APPLICABLE" && rec.lanes.length === 0) {
+      add("NO_EVIDENCE_OF_EXECUTION",
+        `attempt ${rec.attemptId} carries no lane scores. Evidence is derived from scored ` +
+        "lanes; an attempt with none was never run through a scorer.",
+        `attempts.${rec.attemptId}.lanes`);
+    }
+    if (rec.tokenCountSource !== "runtime_tokenizer") {
+      add("TOKEN_COUNTS_NOT_MEASURED",
+        `attempt ${rec.attemptId} reports tokenCountSource "${rec.tokenCountSource}". ` +
+        "Token counts must come from the runtime's own tokenizer; an estimate is a " +
+        "character count wearing a token label.",
+        `attempts.${rec.attemptId}.tokenCountSource`);
+    }
+    if (rec.applicability === "APPLICABLE" && (rec.promptTokens === null || rec.completionTokens === null)) {
+      add("TOKEN_COUNTS_NOT_MEASURED",
+        `attempt ${rec.attemptId} has null token counts`,
+        `attempts.${rec.attemptId}.promptTokens`);
+    }
+    // 7. Split policy. Development fixtures are the ones tuning may have touched.
+    if (input.requireEvaluationSplit && rec.split !== "evaluation") {
+      add("DEVELOPMENT_SPLIT_AS_QUALIFICATION",
+        `attempt ${rec.attemptId} ran development fixture "${rec.fixtureId}". A ` +
+        "qualification export must use the evaluation split, which is excluded from " +
+        "development tuning by policy.",
+        `attempts.${rec.attemptId}.split`);
+    }
+  }
+
   if (refusals.length > 0) return { ok: false, refusals };
 
-  // 5. Build the bundle from the attempts, recomputing every aggregate.
+  // 8. Build the bundle from the attempts, recomputing every aggregate.
   const identity = input.identity as LocalModelIdentity;
   const exportable = input.scored.filter((s) => OUTCOME_MAP[s.outcome] !== null);
 

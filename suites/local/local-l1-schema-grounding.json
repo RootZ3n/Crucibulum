@@ -6,13 +6,13 @@
   "lane": "schema_grounding",
   "requiresLocalIdentity": true,
   "requiresInterface": "chat",
-  "fixtureSuites": [
-    { "id": "local-test-log-triage", "version": "1.0.0" }
-  ],
-  "contextTiers": ["control", "8k", "16k", "32k"],
-  "scoring": { "weights": { "correctness": 0, "regression": 0, "integrity": 0, "efficiency": 0 }, "pass_threshold": 0 },
+  "adjudication": "THRESHOLD_UNSET",
   "thresholds": null,
-  "families": ["test_log_triage"],
-  "tasks": null,
-  "note": "Lane measurements are reported separately and never collapsed into one number before an operator has chosen what matters."
+  "fixtureSuites": [{ "id": "local-test-log-triage", "version": "1.0.0" }],
+  "contextTiers": ["control", "8k", "16k", "32k"],
+  "boundVersions": {
+    "regime": "local-regime-1.0.0",
+    "scorers": "local-scorers-1.0.0",
+    "generator": "local-context-generator-1.0.0"
+  }
 }

@@ -57,6 +57,16 @@ async function main(): Promise<void> {
       await oracleHashCommand(args.slice(1));
       break;
     }
+    case "local-qualify": {
+      const { localQualifyCommand } = await import("./commands/local.js");
+      await localQualifyCommand(args.slice(1));
+      break;
+    }
+    case "export-qualification": {
+      const { exportQualificationCommand } = await import("./commands/local.js");
+      await exportQualificationCommand(args.slice(1));
+      break;
+    }
     case "harness":
     case "qa": {
       const { harnessCommand } = await import("./commands/harness.js");
@@ -76,6 +86,11 @@ Usage:
   luak replay  <bundle_id>
   luak oracle-hash [--write|--check|--dry-run]
   luak doctor
+
+  luak local-qualify --list                       # local suites and their state
+  luak local-qualify --suite <id> [--split evaluation|development|both]
+  luak export-qualification --suite <id> --identity <f.json> --records <f.json>
+                            [--out <f.json>]      # Bokahli Phase 2A bundle
   luak harness [--tab <key>] [--task <id>]
                [--adapter <id> --model <model>]   # live: route through registry
                [--live --model <model>]           # legacy: OpenRouter + judge model

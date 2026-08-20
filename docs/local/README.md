@@ -31,11 +31,23 @@ looked like model quality and were partly runtime and partly harness.
 | `../../types/local-identity.ts` | What local evidence must name to be about anything |
 | `../../core/local/` | Generator, fixtures, scorers, regime, exporter |
 | `fixtures/` | Materialised fixtures with recorded hashes. Kept out of `tasks/`, which is owned by the existing corpus validator and inventory pins |
-| `../../suites/local-l*.json` | Versioned suite definitions, thresholds deliberately `null` |
+| `../../suites/local/*.json` | Versioned local suites, loaded by `core/local/suite-registry.ts`. Kept out of `suites/` root, which the legacy loader enumerates |
+| `../../cli/commands/local.ts` | `luak local-qualify` and `luak export-qualification` |
 
-Regenerate with `node scripts/local-census.mjs` and
-`node scripts/local-fixtures.mjs`; both take `--check` to prove the committed
-artefacts are current.
+## How to run it
+
+```bash
+luak local-qualify --list                      # suites, adjudication state, coverage
+luak local-qualify --suite local-l1-schema-grounding --split evaluation
+luak export-qualification --suite <id> --identity <f.json> --records <f.json>
+```
+
+Both are offline. No responder ships in this phase, so `local-qualify` is a dry
+run by construction rather than by flag: there is nothing to pass that reaches a
+model.
+
+Regenerate the derived artefacts with `node scripts/local-census.mjs` and
+`node scripts/local-fixtures.mjs`; both take `--check`.
 
 ## The three ideas worth knowing
 
@@ -56,13 +68,35 @@ either as zero would manufacture a deficiency out of an interface mismatch.
 not a TTFT of zero; a fixture never repeated has a repeatability disagreement
 rate of `null`, not `0`, because `0` would assert a stability nothing measured.
 
-## No thresholds
+## No thresholds — as a state, not a number
 
-Nothing here says what is good enough. `pass_threshold` is `0` and `thresholds`
-is `null` in every local suite, and the regime emits distributions rather than
-verdicts. Choosing thresholds is an operator act that has to follow the first
-empirical campaign, because a threshold invented beforehand that happens to be
-met is indistinguishable from one that was earned.
+Local suites carry an `adjudication` state, never a numeric `pass_threshold`.
+The first draft used `pass_threshold: 0` to mean "measures rather than grades";
+that was a live exploit, because `resolvePassThreshold` returned `0` and every
+score satisfies `>= 0`. A state cannot be compared against a score, so it cannot
+be satisfied by one.
+
+| State | Meaning |
+|---|---|
+| `EVIDENCE_ONLY` | Measurements only. No pass/fail may be derived by anyone. |
+| `THRESHOLD_UNSET` | Thresholds would apply; none has been configured. |
+| `ADJUDICATED` | An operator configured versioned thresholds. |
+
+Every suite shipped today is `EVIDENCE_ONLY` or `THRESHOLD_UNSET`, and
+`canAdjudicate()` returns false for all of them. A suite claiming `ADJUDICATED`
+without thresholds, or carrying thresholds while claiming otherwise, fails to
+load.
+
+## Fixture splits are public, not secret
+
+The evaluation split is **committed to a public repository**. It is excluded
+from development tuning by policy — a discipline about how we use it, not a
+property of the fixtures. A model trained on public GitHub may have seen every
+line. A verdict resting on it means "passed the evaluation split", never
+"generalised to unseen inputs".
+
+Genuinely hidden fixtures require an external private fixture pack with its own
+pinned identity, loaded from outside this repository. That does not exist yet.
 
 ## Not in this phase
 

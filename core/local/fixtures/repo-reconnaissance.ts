@@ -500,8 +500,8 @@ const F: ReconFixture[] = [
 
 export const REPO_RECON_FIXTURES: readonly ReconFixture[] = Object.freeze(F);
 
-/** Held out from the development suite, reserved for qualification runs. */
-export const REPO_RECON_HELDOUT_IDS: readonly string[] = Object.freeze([
+/** See the note on the triage evaluation ids: committed, therefore not secret. */
+export const REPO_RECON_EVALUATION_IDS: readonly string[] = Object.freeze([
   "rr-004-missing-context",
   "rr-006-injection-in-source",
   "rr-007-hallucination-trap",

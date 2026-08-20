@@ -325,15 +325,22 @@ test("a recon answer citing a file outside the packet is caught", () => {
 function record(over: Partial<AttemptRecord> = {}): AttemptRecord {
   return {
     attemptId: "a1", fixtureId: "f1", suiteId: "local-test-log-triage", suiteVersion: "1.0.0",
-    applicability: "APPLICABLE", lanes: [], contextPosition: null, contextTier: null,
-    promptTokens: 100, completionTokens: 20, timeToFirstTokenMs: 200,
-    decodeTokensPerSecond: 60, wallTimeMs: 900, seed: 1, ...over,
+    split: "evaluation",
+    applicability: "APPLICABLE",
+    lanes: [{
+      lane: "facts", scorerVersion: "local-scorers-1.0.0",
+      measurements: [{ name: "facts.recall", value: 1, unit: "ratio", detail: "" }],
+      failureCodes: [], attribution: "MODEL", notes: [],
+    }],
+    contextPosition: null, contextTier: "control",
+    promptTokens: 100, completionTokens: 20, tokenCountSource: "runtime_tokenizer",
+    timeToFirstTokenMs: 200, decodeTokensPerSecond: 60, wallTimeMs: 900, seed: 1, ...over,
   };
 }
 
 test("a not-applicable lane is not a model failure", () => {
   for (const applicability of ["NOT_APPLICABLE", "UNSUPPORTED_CAPABILITY"] as const) {
-    const s = scoreAttempt(record({ applicability }));
+    const s = scoreAttempt(record({ applicability, lanes: [] }));
     assert.equal(s.outcome, applicability);
     assert.equal(s.score, null, "an inapplicable lane produces no score, not a zero");
     assert.deepEqual([...s.failureCodes], []);

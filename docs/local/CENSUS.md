@@ -191,7 +191,4 @@ Census version 1.0.0 · 87 tasks · 13 families · 180 conversational questions
 
 ## Suites
 
-- `local-l0-operational` (suites/local-l0.json) — pass threshold 0, flake retries null, version field: yes
-- `local-l1-schema-grounding` (suites/local-l1.json) — pass threshold 0, flake retries null, version field: yes
-- `local-l2-repo-reconnaissance` (suites/local-l2.json) — pass threshold 0, flake retries null, version field: yes
 - `v1` (suites/v1.json) — pass threshold 0.6, flake retries 3, version field: **absent**

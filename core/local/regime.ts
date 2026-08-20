@@ -28,6 +28,12 @@ export interface AttemptRecord {
   readonly fixtureId: string;
   readonly suiteId: string;
   readonly suiteVersion: string;
+  /**
+   * Which split this fixture belongs to. Carried on the record rather than
+   * looked up later, so an export cannot reclassify a development attempt as
+   * qualification evidence after the fact.
+   */
+  readonly split: "development" | "evaluation";
   readonly applicability: LocalApplicability;
   readonly lanes: readonly LaneScore[];
   /** Position band, when the fixture planted a fact. Null otherwise. */
@@ -36,6 +42,12 @@ export interface AttemptRecord {
   /** Measured by the runtime's own tokenizer, or null. Never estimated here. */
   readonly promptTokens: number | null;
   readonly completionTokens: number | null;
+  /**
+   * Where the counts came from. Only "runtime_tokenizer" is a measurement; the
+   * exporter refuses anything else, so a character estimate can never travel as
+   * a token count.
+   */
+  readonly tokenCountSource: "runtime_tokenizer" | "estimated" | "unknown";
   readonly timeToFirstTokenMs: number | null;
   readonly decodeTokensPerSecond: number | null;
   readonly wallTimeMs: number | null;
