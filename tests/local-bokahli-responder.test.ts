@@ -8,7 +8,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { createServer, type Server } from "node:http";
-import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -47,7 +47,7 @@ const PROMPT: LocalPrompt = {
 
 let server: Server;
 let base: string;
-let nextResponse: { status: number; body: unknown; sse?: string } = { status: 200, body: {} };
+let nextResponse: { status: number; body: unknown; sse?: string; headers?: Record<string, string> } = { status: 200, body: {} };
 let lastRequest: { headers: Record<string, string | string[] | undefined>; body: unknown } | null = null;
 
 function routedBody(over: Record<string, unknown> = {}): Record<string, unknown> {
@@ -89,11 +89,13 @@ before(async () => {
       try { parsed = JSON.parse(Buffer.concat(chunks).toString("utf-8")); } catch { /* ignore */ }
       lastRequest = { headers: req.headers, body: parsed };
       if (nextResponse.sse !== undefined) {
-        res.writeHead(200, { "content-type": "text/event-stream" });
+        res.writeHead(200, { "content-type": "text/event-stream", ...nextResponse.headers });
         res.end(nextResponse.sse);
         return;
       }
-      res.writeHead(nextResponse.status, { "content-type": "application/json" });
+      res.writeHead(nextResponse.status, {
+        "content-type": "application/json", ...nextResponse.headers,
+      });
       res.end(JSON.stringify(nextResponse.body));
     });
   });
@@ -541,10 +543,14 @@ test("timeouts before and during generation are distinguished", async () => {
 });
 
 test("frame parsing handles comments, [DONE], and multi-line data", () => {
-  assert.equal(parseFrame(": keepalive"), null);
-  assert.equal(parseFrame("data: [DONE]")?.event, "openai.done");
-  assert.deepEqual(parseFrame('event: x\ndata: {"a":\ndata: 1}')?.data, { a: 1 });
-  assert.equal(parseFrame("event: x\ndata: nope"), null);
+  assert.equal(parseFrame(": keepalive"), "skip", "a comment is skipped, not fatal");
+  const done = parseFrame("data: [DONE]");
+  assert.ok(done !== null && done !== "skip");
+  assert.equal(done.event, "openai.done");
+  const multi = parseFrame('event: x\ndata: {"a":\ndata: 1}');
+  assert.ok(multi !== null && multi !== "skip");
+  assert.deepEqual(multi.data, { a: 1 });
+  assert.equal(parseFrame("event: x\ndata: nope"), null, "data that will not parse is fatal");
 });
 
 // ---------------------------------------------------------------------------
@@ -596,4 +602,177 @@ test("evidence from this responder cannot be exported as qualification today", a
   const codes = result.refusals.map((r) => r.code);
   assert.ok(codes.includes("TOKEN_COUNTS_NOT_MEASURED"),
     `expected TOKEN_COUNTS_NOT_MEASURED, got ${codes.join(",")}`);
+});
+
+// ---------------------------------------------------------------------------
+// audit regressions — every one of these was an exploit before remediation
+// ---------------------------------------------------------------------------
+
+test("HTTP status, x-bokahli-outcome and body must agree", async () => {
+  // The worst pre-remediation defect: a 409 REFUSED carrying a ROUTED body was
+  // scored as a real completion — an infrastructure refusal read as an answer.
+  for (const [status, header] of [
+    [409, "REFUSED"], [503, "CAPACITY_UNAVAILABLE"], [500, "INTERNAL"],
+  ] as const) {
+    nextResponse = { status, body: routedBody(), headers: { "x-bokahli-outcome": header } };
+    const r = await ask();
+    assert.ok(r.facts.failure, `HTTP ${status} with a ROUTED body must not be scored`);
+    assert.equal(r.rawText, "", "no text from a contradictory response may be scored");
+  }
+  // Header disagreeing with body, at a plausible status.
+  nextResponse = { status: 200, body: routedBody(), headers: { "x-bokahli-outcome": "ESCALATE" } };
+  const mixed = await ask();
+  assert.ok(mixed.facts.failure);
+  assert.equal(mixed.facts.failure?.attribution, "COMPOSITE");
+});
+
+test("an agreeing response is still accepted", async () => {
+  nextResponse = { status: 200, body: routedBody(), headers: { "x-bokahli-outcome": "ROUTED" } };
+  const r = await ask();
+  assert.equal(r.facts.failure, null);
+  assert.equal(r.rawText, '{"outcome":"ABSTAINED"}');
+});
+
+test("an oversized response is refused rather than buffered", async () => {
+  const body = routedBody();
+  (body["result"] as Record<string, unknown>)["content"] = "x".repeat(2 * 1024 * 1024);
+  nextResponse = { status: 200, body };
+  const r = await ask();
+  assert.ok(r.facts.failure, "a 2 MB completion exceeds the bound");
+  assert.equal(r.facts.failure?.reason, "oversized_response");
+  assert.equal(r.rawText, "");
+});
+
+test("a redirect is refused, never followed", async () => {
+  nextResponse = { status: 302, body: {}, headers: { location: "http://127.0.0.1:9/elsewhere" } };
+  const r = await ask();
+  assert.equal(r.facts.failure?.reason, "redirect_refused");
+  assert.equal(r.rawText, "");
+});
+
+test("telemetry runtime build must agree with the served identity", async () => {
+  const body = routedBody();
+  (body["telemetry"] as Record<string, unknown>)["runtimeBuild"] = "b99999-different";
+  nextResponse = { status: 200, body };
+  const r = await ask();
+  assert.ok(r.facts.failure, "two different builds in one response cannot describe one deployment");
+  assert.equal(r.rawText, "");
+});
+
+test("a symlinked credential is refused before anything is opened", () => {
+  const dir = mkdtempSync(join(tmpdir(), "luak-link-"));
+  const real = join(dir, "real");
+  writeFileSync(real, FAKE_TOKEN);
+  chmodSync(real, 0o600);
+  const link = join(dir, "link");
+  symlinkSync(real, link);
+  // The link is 0777; statSync would follow it and report the target's 0600.
+  assert.throws(
+    () => readCredential(config({ credential: { kind: "file", path: link } })),
+    /symlink/,
+  );
+});
+
+test("the streaming path is a real code path, not a spare module", async () => {
+  nextResponse = {
+    status: 200, body: {},
+    sse:
+      'event: bokahli.identity\ndata: {"requestId":"r","servedIdentity":' +
+      `{"digest":"${DIGEST}"}}\n\n` +
+      'event: bokahli.delta\ndata: {"text":"{\\"outcome\\":"}\n\n' +
+      'event: bokahli.delta\ndata: {"text":"\\"ABSTAINED\\"}"}\n\n' +
+      'event: bokahli.done\ndata: {"requestId":"r","outcome":"ROUTED","result":' +
+      `{"content":"ignored","finishReason":"stop","servedIdentity":{"modelId":"${MODEL}",` +
+      `"digest":"${DIGEST}","runtime":{"engine":"llama.cpp","build":"${BUILD}",` +
+      '"executableDigest":null,"cuda":null,"driver":null},"servedContextTokens":32768,' +
+      '"attested":true,"attestationMethod":"backend-props-match"}},' +
+      '"telemetry":{"promptTokens":12,"completionTokens":6,"timeToFirstTokenMs":9,"totalMs":20,' +
+      `"completionTokensPerSecond":50,"runtimeBuild":"${BUILD}"}}\n\n`,
+  };
+  const r = await ask({ stream: true });
+  assert.equal(r.facts.failure, null, JSON.stringify(r.facts.failure));
+  assert.equal(r.rawText, '{"outcome":"ABSTAINED"}', "deltas, not the terminal content field");
+  assert.equal(r.facts.attested, true);
+  assert.equal(r.tokenCountSource, BOKAHLI_TOKEN_PROVENANCE);
+  const sent = lastRequest?.body as { stream: boolean };
+  assert.equal(sent.stream, true);
+});
+
+test("a streamed terminal ESCALATE is never scored, whatever arrived first", async () => {
+  nextResponse = {
+    status: 200, body: {},
+    sse:
+      'event: bokahli.delta\ndata: {"text":"a confident wrong answer"}\n\n' +
+      'event: bokahli.done\ndata: {"outcome":"ESCALATE","route":{"reason":"RUNTIME_UNHEALTHY"},' +
+      '"result":null,"partialTextDiscarded":true}\n\n',
+  };
+  const r = await ask({ stream: true });
+  assert.equal(r.facts.failure?.reason, "RUNTIME_UNHEALTHY");
+  assert.equal(r.facts.failure?.attribution, "RUNTIME_PROVIDER");
+  assert.equal(r.rawText, "");
+});
+
+test("a streamed success that also claims discarded text is contradictory", async () => {
+  nextResponse = {
+    status: 200, body: {},
+    sse:
+      'event: bokahli.delta\ndata: {"text":"x"}\n\n' +
+      'event: bokahli.done\ndata: {"outcome":"ROUTED","partialTextDiscarded":true,' +
+      '"result":{"content":"x"}}\n\n',
+  };
+  const r = await ask({ stream: true });
+  assert.equal(r.facts.failure?.reason, "contradictory_outcome");
+  assert.equal(r.rawText, "");
+});
+
+test("identity and terminal events must report the same digest", async () => {
+  nextResponse = {
+    status: 200, body: {},
+    sse:
+      `event: bokahli.identity\ndata: {"servedIdentity":{"digest":"sha256:${"b".repeat(64)}"}}\n\n` +
+      'event: bokahli.delta\ndata: {"text":"x"}\n\n' +
+      'event: bokahli.done\ndata: {"outcome":"ROUTED","result":{"content":"x","servedIdentity":' +
+      `{"modelId":"${MODEL}","digest":"${DIGEST}","runtime":{"build":"${BUILD}"},"attested":true}}}\n\n`,
+  };
+  const r = await ask({ stream: true });
+  assert.equal(r.facts.failure?.reason, "EXACT_DIGEST_MISMATCH");
+  assert.equal(r.rawText, "");
+});
+
+test("the stream reader survives hostile framing", async () => {
+  const cases: [string, string, string | null][] = [
+    ["multiple events in one chunk",
+      'event: bokahli.delta\ndata: {"text":"a"}\n\nevent: bokahli.delta\ndata: {"text":"b"}\n\n', "missing_terminal_event"],
+    ["unknown event type",
+      'event: bokahli.mystery\ndata: {"x":1}\n\n', "missing_terminal_event"],
+    ["comment/keepalive frames",
+      ': keepalive\n\nevent: bokahli.delta\ndata: {"text":"a"}\n\n', "missing_terminal_event"],
+    ["delta after terminal",
+      'event: bokahli.done\ndata: {"outcome":"ROUTED","result":{"content":"x"}}\n\n' +
+      'event: bokahli.delta\ndata: {"text":"late"}\n\n', null],
+  ];
+  for (const [label, sse, expected] of cases) {
+    const out = await readBokahliStream(
+      new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode(sse)); c.close(); } }),
+      { firstTokenTimeoutMs: 5_000, totalTimeoutMs: 10_000 },
+    );
+    assert.equal(out.transportEvent, expected, label);
+  }
+});
+
+test("a stream split across arbitrary TCP chunk boundaries still parses", async () => {
+  const whole =
+    'event: bokahli.delta\ndata: {"text":"hello"}\n\n' +
+    'event: bokahli.done\ndata: {"outcome":"ROUTED","result":{"content":"hello"}}\n\n';
+  for (const size of [1, 3, 7, 17, 64]) {
+    const chunks: Uint8Array[] = [];
+    const bytes = new TextEncoder().encode(whole);
+    for (let i = 0; i < bytes.length; i += size) chunks.push(bytes.slice(i, i + size));
+    const out = await readBokahliStream(
+      new ReadableStream({ start(c) { for (const ch of chunks) c.enqueue(ch); c.close(); } }),
+      { firstTokenTimeoutMs: 5_000, totalTimeoutMs: 10_000 },
+    );
+    assert.equal(out.text, "hello", `chunk size ${size}`);
+    assert.equal(out.transportEvent, null, `chunk size ${size}`);
+  }
 });

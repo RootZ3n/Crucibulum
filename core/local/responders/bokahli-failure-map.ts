@@ -15,7 +15,7 @@
  */
 import type { AttributionClass, LocalFailureCode } from "../../../types/local-verdict.js";
 
-export const BOKAHLI_FAILURE_MAP_VERSION = "bokahli-failure-map-1.0.0" as const;
+export const BOKAHLI_FAILURE_MAP_VERSION = "bokahli-failure-map-1.1.0" as const;
 
 export interface OutcomeMapping {
   readonly code: LocalFailureCode;
@@ -166,7 +166,10 @@ export type TransportEvent =
   | "malformed_event"
   | "missing_terminal_event"
   | "duplicate_terminal_event"
-  | "unexpected_close";
+  | "unexpected_close"
+  | "oversized_response"
+  | "redirect_refused"
+  | "contradictory_outcome";
 
 export const TRANSPORT_MAP: Readonly<Record<TransportEvent, OutcomeMapping>> = Object.freeze({
   connection_refused: {
@@ -215,6 +218,23 @@ export const TRANSPORT_MAP: Readonly<Record<TransportEvent, OutcomeMapping>> = O
   unexpected_close: {
     code: "local_runtime_crash", attribution: "RUNTIME_PROVIDER", transient: true,
     why: "The socket closed before the response completed.",
+  },
+  oversized_response: {
+    code: "local_harness_parse_failure", attribution: "HARNESS_PARSER", transient: false,
+    why: "The response exceeded a hard bound. Attributed to the harness rather than the model " +
+      "because the bound is Luak's choice — but recorded rather than truncated, since a " +
+      "silently cut completion scored as an answer is exactly what must not happen.",
+  },
+  redirect_refused: {
+    code: "local_harness_parse_failure", attribution: "HARNESS_PARSER", transient: false,
+    why: "A 3xx was returned and refused. A campaign names one deployment; measuring whatever " +
+      "a redirect points at would be measuring something else under the same evidence key.",
+  },
+  contradictory_outcome: {
+    code: "local_harness_parse_failure", attribution: "COMPOSITE", transient: false,
+    why: "HTTP status, x-bokahli-outcome and the body disagreed. COMPOSITE because it cannot " +
+      "be told from here whether the server, a proxy, or this client is wrong — and a 409 " +
+      "refusal carrying a ROUTED body must never be readable as a completion.",
   },
 });
 

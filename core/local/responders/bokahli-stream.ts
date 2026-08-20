@@ -37,8 +37,18 @@ export interface StreamOutcome {
   readonly deltaCount: number;
 }
 
-/** Parse one SSE frame. Returns null for a frame this client cannot read. */
-export function parseFrame(frame: string): StreamEvent | null {
+/**
+ * Parse one SSE frame.
+ *
+ * Three outcomes, not two. `"skip"` is a frame with nothing to read — a
+ * keepalive comment or a stray blank — which is legitimate and must be ignored.
+ * `null` is a frame that *carried data this client could not parse*, which must
+ * stop the stream, because it may have been the terminal event.
+ *
+ * Collapsing the two was a real bug: a `: keepalive` comment, which Bokahli and
+ * every intermediary are entitled to send, aborted the stream as malformed.
+ */
+export function parseFrame(frame: string): StreamEvent | "skip" | null {
   let event = "message";
   const dataLines: string[] = [];
   for (const line of frame.split("\n")) {
@@ -46,7 +56,7 @@ export function parseFrame(frame: string): StreamEvent | null {
     else if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
     else if (line.startsWith(":")) continue; // comment/keepalive
   }
-  if (dataLines.length === 0) return null;
+  if (dataLines.length === 0) return "skip";
   const raw = dataLines.join("\n");
   if (raw === "[DONE]") return { event: "openai.done", data: null };
   try {
@@ -125,6 +135,7 @@ export async function readBokahliStream(
         if (frame.trim().length === 0) continue;
 
         const parsed = parseFrame(frame);
+        if (parsed === "skip") continue;
         if (!parsed) {
           // Refused rather than skipped: a frame this client cannot read may
           // have carried the terminal event, and quietly continuing would turn

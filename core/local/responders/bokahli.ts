@@ -32,8 +32,24 @@ import type { TokenCountSource } from "../regime.js";
 import { validateBokahliConfig, type BokahliResponderConfig } from "./bokahli-config.js";
 import { authHeaders, readCredential, redact } from "./credentials.js";
 import { lookupOutcome, type OutcomeMapping, type TransportEvent } from "./bokahli-failure-map.js";
+import { readBokahliStream } from "./bokahli-stream.js";
 
-export const BOKAHLI_RESPONDER_VERSION = "bokahli-responder-1.0.0" as const;
+export const BOKAHLI_RESPONDER_VERSION = "bokahli-responder-1.1.0" as const;
+
+/**
+ * Hard limits on what a response may be.
+ *
+ * The deployment is trusted-ish, but "the server is ours" is not a size bound.
+ * A runaway generation, a degenerate loop, or a mis-set max_tokens produces a
+ * body that has to be buffered somewhere, and an evaluation harness that can be
+ * OOM-ed by the thing it is evaluating is not a harness. Exceeding a limit is a
+ * typed harness failure, never a model score.
+ */
+export const RESPONSE_LIMITS = Object.freeze({
+  maxResponseBytes: 8 * 1024 * 1024,
+  maxCompletionChars: 1 * 1024 * 1024,
+  maxJsonDepth: 64,
+});
 
 /**
  * Tokenizer provenance for counts Bokahli returns.
@@ -65,6 +81,8 @@ export interface BokahliAttemptFacts {
   readonly servedDigest: string | null;
   readonly runtimeEngine: string | null;
   readonly runtimeBuild: string | null;
+  /** The same build as reported in telemetry. Cross-checked against the above. */
+  readonly telemetryRuntimeBuild: string | null;
   /** Declared by Bokahli's contract but hardcoded null at 00f1508. */
   readonly runtimeExecutableDigest: string | null;
   readonly runtimeCuda: string | null;
@@ -97,6 +115,7 @@ function emptyFacts(config: BokahliResponderConfig): BokahliAttemptFacts {
     requireQualifiedSent: false,
     requestId: null, outcome: "UNKNOWN", attested: null, attestationMethod: null,
     servedModelId: null, servedDigest: null, runtimeEngine: null, runtimeBuild: null,
+    telemetryRuntimeBuild: null,
     runtimeExecutableDigest: null, runtimeCuda: null, runtimeDriver: null,
     servedContextTokens: null, contextUtilisation: null,
     promptTokensPerSecond: null, completionTokensPerSecond: null,
@@ -197,6 +216,7 @@ function factsFromRouted(config: BokahliResponderConfig, body: JsonLike): Bokahl
     servedDigest: str(si["digest"]),
     runtimeEngine: str(rt["engine"]),
     runtimeBuild: str(rt["build"]),
+    telemetryRuntimeBuild: str(t["runtimeBuild"]),
     runtimeExecutableDigest: str(rt["executableDigest"]),
     runtimeCuda: str(rt["cuda"]),
     runtimeDriver: str(rt["driver"]),
@@ -248,6 +268,82 @@ function identityProblem(
       detail: `served runtime build "${f.runtimeBuild}" is not the expected ` +
         `"${config.expectedRuntimeBuild}"; a build change invalidates the evidence`,
     };
+  }
+  // Bokahli reports the build twice — on the served identity and in telemetry.
+  // They come from the same probe, so a disagreement means the response was
+  // assembled from two different runs or edited in transit. Either way the
+  // attempt cannot be attributed to one deployment.
+  if (f.telemetryRuntimeBuild !== null && f.telemetryRuntimeBuild !== f.runtimeBuild) {
+    return {
+      reason: "EXACT_NOT_ATTESTED",
+      detail: `servedIdentity.runtime.build "${f.runtimeBuild}" disagrees with ` +
+        `telemetry.runtimeBuild "${f.telemetryRuntimeBuild}"`,
+    };
+  }
+  return null;
+}
+
+/** Depth of a parsed JSON value, bounded so the walk itself cannot blow up. */
+function jsonDepth(v: unknown, depth = 0): number {
+  if (depth > RESPONSE_LIMITS.maxJsonDepth + 1) return depth;
+  if (v === null || typeof v !== "object") return depth;
+  let worst = depth;
+  for (const child of Object.values(v as Record<string, unknown>)) {
+    worst = Math.max(worst, jsonDepth(child, depth + 1));
+    if (worst > RESPONSE_LIMITS.maxJsonDepth + 1) return worst;
+  }
+  return worst;
+}
+
+/** Read a body, giving up rather than buffering without limit. */
+async function readBounded(res: Response, maxBytes: number): Promise<string | null> {
+  if (!res.body) return await res.text().catch(() => "");
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let out = "";
+  let bytes = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > maxBytes) return null;
+      out += decoder.decode(value, { stream: true });
+    }
+  } catch {
+    return null;
+  } finally {
+    reader.releaseLock?.();
+  }
+  return out;
+}
+
+/**
+ * Whether HTTP status, header and body tell the same story.
+ *
+ * Bokahli's mapping, from its own source: ESCALATE → 200, REFUSED → 409,
+ * CAPACITY_UNAVAILABLE → 503, ROUTED → 200. Anything else is a contradiction.
+ */
+function outcomeDisagreement(
+  status: number,
+  headerOutcome: string | null,
+  bodyOutcome: string | null,
+  parsed: JsonLike,
+): string | null {
+  if (parsed.error?.code) return null; // error envelope: handled separately
+  if (headerOutcome && bodyOutcome && headerOutcome !== bodyOutcome) {
+    return `x-bokahli-outcome "${headerOutcome}" disagrees with body outcome "${bodyOutcome}"`;
+  }
+  const claimed = bodyOutcome ?? headerOutcome;
+  if (!claimed) return `HTTP ${status} response states no outcome`;
+  const expected: Record<string, number[]> = {
+    ROUTED: [200], ESCALATE: [200], REFUSED: [409], CAPACITY_UNAVAILABLE: [503],
+  };
+  const allowed = expected[claimed];
+  if (!allowed) return null; // unknown kind: the failure map reports it loudly
+  if (!allowed.includes(status)) {
+    return `outcome "${claimed}" arrived with HTTP ${status}; Bokahli sends ` +
+      `${allowed.join("/")} for that outcome`;
   }
   return null;
 }
@@ -308,7 +404,7 @@ export function createBokahliResponder(opts: BokahliResponderOptions): Responder
       maxTokens: config.sampler.maxTokens,
       temperature: config.sampler.temperature,
       topP: config.sampler.topP,
-      stream: false,
+      stream: config.stream === true,
     };
 
     const started = clock();
@@ -322,6 +418,11 @@ export function createBokahliResponder(opts: BokahliResponderOptions): Responder
         headers: authHeaders(token),
         body: JSON.stringify(body),
         signal: controller.signal,
+        // Never follow a redirect. A 3xx can move the request to another host,
+        // and even where the Authorization header is dropped, silently
+        // measuring a different endpoint than the one configured is worse than
+        // failing. The campaign names exactly one deployment.
+        redirect: "manual",
       });
     } catch (err) {
       globalThis.clearTimeout(timer);
@@ -332,7 +433,30 @@ export function createBokahliResponder(opts: BokahliResponderOptions): Responder
       globalThis.clearTimeout(timer);
     }
 
-    const text = await res.text().catch(() => "");
+    const declaredLength = Number(res.headers.get("content-length") ?? "0");
+    if (Number.isFinite(declaredLength) && declaredLength > RESPONSE_LIMITS.maxResponseBytes) {
+      return fail(config, "TRANSPORT", "oversized_response",
+        lookupOutcome("TRANSPORT", "oversized_response"),
+        `content-length ${declaredLength} exceeds ${RESPONSE_LIMITS.maxResponseBytes}`);
+    }
+
+    if (config.stream === true && res.status === 200 && res.body) {
+      return await consumeStream(config, res, clock, started);
+    }
+
+    if (res.status >= 300 && res.status < 400) {
+      return fail(config, "TRANSPORT", "redirect_refused",
+        lookupOutcome("TRANSPORT", "redirect_refused"),
+        `HTTP ${res.status} redirect to ${res.headers.get("location") ?? "(no location)"}`);
+    }
+
+    const text = await readBounded(res, RESPONSE_LIMITS.maxResponseBytes);
+    if (text === null) {
+      return fail(config, "TRANSPORT", "oversized_response",
+        lookupOutcome("TRANSPORT", "oversized_response"),
+        `response body exceeded ${RESPONSE_LIMITS.maxResponseBytes} bytes`);
+    }
+
     let parsed: JsonLike;
     try {
       parsed = JSON.parse(text) as JsonLike;
@@ -340,6 +464,26 @@ export function createBokahliResponder(opts: BokahliResponderOptions): Responder
       return fail(config, "TRANSPORT", "malformed_event",
         lookupOutcome("TRANSPORT", "malformed_event"),
         `HTTP ${res.status} body was not JSON`);
+    }
+    if (jsonDepth(parsed) > RESPONSE_LIMITS.maxJsonDepth) {
+      return fail(config, "TRANSPORT", "malformed_event",
+        lookupOutcome("TRANSPORT", "malformed_event"),
+        `response nesting exceeded ${RESPONSE_LIMITS.maxJsonDepth} levels`);
+    }
+
+    // The three channels must agree before anything is scored.
+    //
+    // Bokahli states its outcome three times — HTTP status, the
+    // x-bokahli-outcome header, and the body — and a disagreement means one of
+    // them is lying or a proxy rewrote the exchange. Trusting the body alone
+    // let a 409 REFUSED carrying a ROUTED body be scored as a real completion,
+    // which is the worst available failure: a refusal read as an answer.
+    const headerOutcome = res.headers.get("x-bokahli-outcome");
+    const bodyOutcome = parsed.route?.kind ?? parsed.outcome ?? null;
+    const disagreement = outcomeDisagreement(res.status, headerOutcome, bodyOutcome, parsed);
+    if (disagreement) {
+      return fail(config, "TRANSPORT", "contradictory_outcome",
+        lookupOutcome("TRANSPORT", "contradictory_outcome"), disagreement);
     }
 
     // Error envelope: {error:{code,message,requestId}}
@@ -367,8 +511,15 @@ export function createBokahliResponder(opts: BokahliResponderOptions): Responder
     const promptTokens = num(t["promptTokens"]);
     const completionTokens = num(t["completionTokens"]);
 
+    const content = parsed.result?.content ?? "";
+    if (content.length > RESPONSE_LIMITS.maxCompletionChars) {
+      return fail(config, "TRANSPORT", "oversized_response",
+        lookupOutcome("TRANSPORT", "oversized_response"),
+        `completion of ${content.length} characters exceeds ${RESPONSE_LIMITS.maxCompletionChars}`);
+    }
+
     return {
-      rawText: parsed.result?.content ?? "",
+      rawText: content,
       promptTokens,
       completionTokens,
       // Never upgraded on the basis of the counts looking plausible.
@@ -382,6 +533,97 @@ export function createBokahliResponder(opts: BokahliResponderOptions): Responder
   };
 
   return Object.assign(responder, { version: BOKAHLI_RESPONDER_VERSION });
+}
+
+/**
+ * Consume the SSE path.
+ *
+ * Everything the buffered path checks is checked here too — identity, digest,
+ * runtime build, attestation — because a stream is not a weaker contract, only
+ * a different transport. Text that arrived before a non-ROUTED terminal is
+ * already discarded by the reader and never reaches this function.
+ */
+async function consumeStream(
+  config: BokahliResponderConfig,
+  res: Response,
+  clock: () => number,
+  started: number,
+): Promise<BokahliResponse> {
+  const out = await readBokahliStream(res.body as ReadableStream<Uint8Array>, {
+    firstTokenTimeoutMs: config.firstTokenTimeoutMs,
+    totalTimeoutMs: config.requestTimeoutMs,
+    now: clock,
+  });
+
+  if (out.transportEvent) {
+    return fail(config, "TRANSPORT", out.transportEvent,
+      lookupOutcome("TRANSPORT", out.transportEvent),
+      `stream ended on ${out.transportEvent} after ${out.deltaCount} delta(s)`);
+  }
+  const terminal = out.terminal as JsonLike | null;
+  if (!terminal) {
+    return fail(config, "TRANSPORT", "missing_terminal_event",
+      lookupOutcome("TRANSPORT", "missing_terminal_event"), "no terminal event");
+  }
+  if (terminal.outcome !== "ROUTED") {
+    const reason = terminal.route?.reason ?? "UNKNOWN";
+    const kind = terminal.outcome ?? "UNKNOWN";
+    return fail(config, kind, reason, lookupOutcome(
+      kind as "ESCALATE" | "REFUSED" | "CAPACITY_UNAVAILABLE", reason,
+    ), redact(terminal.route?.detail ?? ""));
+  }
+  // A success that also claims text was discarded is self-contradictory, and
+  // the safe reading is the pessimistic one.
+  if (terminal.partialTextDiscarded === true) {
+    return fail(config, "TRANSPORT", "contradictory_outcome",
+      lookupOutcome("TRANSPORT", "contradictory_outcome"),
+      "terminal claims ROUTED and partialTextDiscarded together");
+  }
+
+  // The identity event and the terminal event must describe one deployment.
+  const identityServed = (out.identity?.["servedIdentity"] ?? null) as Record<string, unknown> | null;
+  // `?? null` rather than leaving it undefined: under exactOptionalPropertyTypes
+  // an absent key and an explicit undefined are different types, and "no result"
+  // should be one thing, not two.
+  const mergedResult: JsonLike["result"] =
+    terminal.result ?? (identityServed ? { servedIdentity: identityServed } : null);
+  const merged: JsonLike = { ...terminal, result: mergedResult };
+  if (identityServed && terminal.result?.servedIdentity) {
+    const a = identityServed["digest"];
+    const b = terminal.result.servedIdentity["digest"];
+    if (a !== b) {
+      return fail(config, "REFUSED", "EXACT_DIGEST_MISMATCH",
+        lookupOutcome("REFUSED", "EXACT_DIGEST_MISMATCH"),
+        "the identity event and the terminal event report different digests");
+    }
+  }
+
+  const facts = factsFromRouted(config, merged);
+  const problem = identityProblem(config, facts);
+  if (problem) {
+    return fail(config, "REFUSED", problem.reason,
+      lookupOutcome("REFUSED", problem.reason), problem.detail);
+  }
+  if (out.text.length > RESPONSE_LIMITS.maxCompletionChars) {
+    return fail(config, "TRANSPORT", "oversized_response",
+      lookupOutcome("TRANSPORT", "oversized_response"),
+      `streamed completion of ${out.text.length} characters exceeds the bound`);
+  }
+
+  const t = (merged.telemetry ?? {}) as Record<string, unknown>;
+  const promptTokens = num(t["promptTokens"]);
+  const completionTokens = num(t["completionTokens"]);
+  return {
+    rawText: out.text,
+    promptTokens,
+    completionTokens,
+    tokenCountSource:
+      promptTokens === null && completionTokens === null ? "unknown" : BOKAHLI_TOKEN_PROVENANCE,
+    timeToFirstTokenMs: num(t["timeToFirstTokenMs"]),
+    decodeTokensPerSecond: num(t["completionTokensPerSecond"]),
+    wallTimeMs: num(t["totalMs"]) ?? clock() - started,
+    facts,
+  };
 }
 
 /** Classify a transport error without letting an unfamiliar one become a model result. */

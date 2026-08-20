@@ -28,6 +28,16 @@ export interface BokahliResponderConfig {
   readonly requestTimeoutMs: number;
   readonly firstTokenTimeoutMs: number;
   /**
+   * Use Bokahli's SSE stream instead of a buffered response.
+   *
+   * Optional, default false. Buffered is simpler and enough for a qualification
+   * attempt, but the streaming path is a real code path rather than a spare
+   * module: a terminal ESCALATE arriving mid-generation is only observable
+   * there, and a reader that is never exercised is a reader that has never been
+   * shown to work.
+   */
+  readonly stream?: boolean;
+  /**
    * Where the bearer token comes from. Exactly one, never both, and never a
    * literal — a token in a config file ends up in git, in a diff, and in a
    * bug report.
@@ -145,6 +155,10 @@ export function validateBokahliConfig(raw: unknown): {
   }
   if (typeof c["contextTier"] !== "string" || !c["contextTier"]) {
     add("contextTier", "required");
+  }
+
+  if ("stream" in c && typeof c["stream"] !== "boolean") {
+    add("stream", "must be a boolean when present");
   }
 
   for (const k of ["requestTimeoutMs", "firstTokenTimeoutMs"]) {

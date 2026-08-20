@@ -15,12 +15,15 @@
  *   - Evidence, errors, receipts, logs. `redact()` runs over every diagnostic
  *     this responder emits, and the token is never placed on an attempt record.
  *   - Loose file permissions. A credential file readable by group or other is
- *     refused rather than warned about.
+ *     refused rather than warned about, as is one owned by another user.
+ *   - Symlinked credentials and the stat-then-read race. The link is rejected
+ *     before anything is opened, and the permission check runs against the same
+ *     descriptor the bytes are read from.
  *
  * The token is held in a local const for the duration of one request and is
  * never stored on an object that gets serialised.
  */
-import { readFileSync, statSync } from "node:fs";
+import { closeSync, fstatSync, lstatSync, openSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { isSecretBearingKey, type BokahliResponderConfig } from "./bokahli-config.js";
@@ -52,27 +55,60 @@ export function readCredential(config: BokahliResponderConfig): string {
   }
 
   const path = expand(config.credential.path);
-  let st;
+
+  // Refuse a symlink before opening anything. `statSync` follows links and
+  // reports the *target's* mode, so a world-writable symlink pointing at a
+  // 0600 file passes a naive check — and whoever can rewrite the link chooses
+  // which file gets read. Checking the link itself is the only way to see it.
   try {
-    st = statSync(path);
-  } catch {
+    if (lstatSync(path).isSymbolicLink()) {
+      throw new CredentialError(
+        `credential path ${path} is a symlink. Point the config at the real file: whoever can ` +
+          "rewrite the link controls which file is read.",
+      );
+    }
+  } catch (err) {
+    if (err instanceof CredentialError) throw err;
     throw new CredentialError(`credential file not found: ${path}`);
   }
-  if (!st.isFile()) {
-    throw new CredentialError(`credential path is not a regular file: ${path}`);
+
+  // Open once, then check and read through the same descriptor. A stat-then-read
+  // pair can be raced: the file that passed the permission check need not be the
+  // file that gets read.
+  let fd: number;
+  try {
+    fd = openSync(path, "r");
+  } catch {
+    throw new CredentialError(`credential file cannot be opened: ${path}`);
   }
-  // 0600 or tighter. A token any local process can read is a token that has
-  // already been shared with every local process.
-  const mode = st.mode & 0o777;
-  if ((mode & 0o077) !== 0) {
-    throw new CredentialError(
-      `credential file ${path} has mode ${mode.toString(8).padStart(4, "0")}; it must not be ` +
-        "readable or writable by group or other. Fix with: chmod 600 " + path,
-    );
+  try {
+    const st = fstatSync(fd);
+    if (!st.isFile()) {
+      throw new CredentialError(`credential path is not a regular file: ${path}`);
+    }
+    // 0600 or tighter. A token any local process can read is a token that has
+    // already been shared with every local process.
+    const mode = st.mode & 0o777;
+    if ((mode & 0o077) !== 0) {
+      throw new CredentialError(
+        `credential file ${path} has mode ${mode.toString(8).padStart(4, "0")}; it must not be ` +
+          "readable or writable by group or other. Fix with: chmod 600 " + path,
+      );
+    }
+    // A file owned by someone else is a file someone else can rewrite between
+    // one attempt and the next.
+    const uid = typeof process.getuid === "function" ? process.getuid() : null;
+    if (uid !== null && st.uid !== uid) {
+      throw new CredentialError(
+        `credential file ${path} is owned by uid ${st.uid}, not by this process (uid ${uid})`,
+      );
+    }
+    const raw = readFileSync(fd, "utf-8").trim();
+    if (raw.length === 0) throw new CredentialError(`credential file ${path} is empty`);
+    return raw;
+  } finally {
+    closeSync(fd);
   }
-  const raw = readFileSync(path, "utf-8").trim();
-  if (raw.length === 0) throw new CredentialError(`credential file ${path} is empty`);
-  return raw;
 }
 
 /**
