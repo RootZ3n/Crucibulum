@@ -12,7 +12,8 @@
  * request time from an environment variable or a 0600 file named in the
  * responder config, so it never appears in argv, in `ps`, or in shell history.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { log } from "../../utils/logger.js";
 import {
   canAdjudicate, listLocalSuites, loadLocalSuite, LocalSuiteError,
@@ -103,9 +104,11 @@ export async function localQualifyCommand(args: string[]): Promise<void> {
 
   const split = (flag(args, "split") ?? "evaluation") as "development" | "evaluation" | "both";
   const seed = Number(flag(args, "seed") ?? 1);
+  const repeats = Number(flag(args, "repeats") ?? 1);
 
   const responderName = flag(args, "responder");
   let responder;
+  let responderConfig: import("../../core/local/responders/bokahli-config.js").BokahliResponderConfig | undefined;
   if (responderName === "bokahli") {
     const cfgPath = flag(args, "responder-config");
     if (!cfgPath) {
@@ -123,16 +126,38 @@ export async function localQualifyCommand(args: string[]): Promise<void> {
       return;
     }
     responder = createBokahliResponder({ config: parsedCfg.config });
+    responderConfig = parsedCfg.config;
   } else if (responderName !== undefined) {
     log("error", "local", `unknown responder "${responderName}" (have: bokahli)`);
     process.exitCode = 1;
     return;
   }
 
+  // Preconditions are re-checked before every attempt when a responder is
+  // configured. A deployment that was healthy at the start of a run is not
+  // evidence that it is healthy now, and continuing through a restart would mix
+  // two deployments under one evidence key.
+  const precondition = responder
+    ? await (async () => {
+        const { makeBokahliPrecondition } = await import("../../core/local/responders/precondition.js");
+        return makeBokahliPrecondition(responderConfig!);
+      })()
+    : undefined;
+
+  const { parseTriageAnswer, parseReconAnswer } = await import("../../core/local/parsers.js");
+
   const result = await runLocalSuite({
-    suite, split, seed,
+    suite, split, seed, repeats,
+    parseTriage: parseTriageAnswer,
+    parseRecon: parseReconAnswer,
     ...(responder ? { responder } : {}),
+    ...(precondition ? { precondition } : {}),
   });
+
+  if (result.abortedReason) {
+    log("error", "local", `run aborted: ${result.abortedReason}`);
+    log("error", "local", "no infrastructure failure is retried; the partial run is preserved as-is");
+  }
 
   console.log(`\n${suite.id}@${suite.version} — ${suite.label}`);
   console.log(`  adjudication : ${suite.adjudication} (canAdjudicate=${canAdjudicate(suite)})`);
@@ -160,6 +185,21 @@ export async function localQualifyCommand(args: string[]): Promise<void> {
     console.log("                 NOT exportable as qualification evidence: only a");
     console.log("                 runtime-tokenizer measurement supports export.");
   }
+  // Persist the canonical records so `export-qualification` can read them.
+  // Written to runs/, which is gitignored: pilot output is plumbing evidence,
+  // not something to commit.
+  const out = flag(args, "out");
+  if (out && !result.dryRun) {
+    mkdirSync(dirname(out), { recursive: true });
+    writeFileSync(out, `${JSON.stringify({
+      suiteId: result.suiteId, suiteVersion: result.suiteVersion,
+      tokenCountSource: result.tokenCountSource,
+      abortedReason: result.abortedReason ?? null,
+      records: result.records, scored: result.scored,
+    }, null, 2)}\n`);
+    console.log(`  records      : ${out}`);
+  }
+
   console.log("");
   if (has(args, "print-prompts")) {
     for (const p of result.prompts) {

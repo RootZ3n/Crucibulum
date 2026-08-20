@@ -67,6 +67,14 @@ export interface RunOptions {
   readonly responder?: Responder;
   readonly split: FixtureSplit | "both";
   readonly seed: number;
+  /**
+   * How many times each fixture is attempted. Sequential, never concurrent:
+   * Bokahli serves one active request, and overlapping calls would turn queue
+   * behaviour into apparent model latency.
+   */
+  readonly repeats?: number;
+  /** Called before each attempt. Returning a reason aborts the run. */
+  readonly precondition?: (attemptIndex: number) => Promise<string | null>;
   /** Parser turning raw text into the shape a scorer needs. */
   readonly parseTriage?: (raw: string, fx: TriageFixture) => TriageAnswer | null;
   readonly parseRecon?: (raw: string, fx: ReconFixture) => ReconAnswer | null;
@@ -74,6 +82,8 @@ export interface RunOptions {
 
 export interface RunResult {
   readonly suiteId: string;
+  /** Set when a precondition failed. The run stops; nothing is retried. */
+  readonly abortedReason?: string;
   readonly suiteVersion: string;
   readonly dryRun: boolean;
   readonly prompts: readonly LocalPrompt[];
@@ -177,8 +187,22 @@ export async function runLocalSuite(opts: RunOptions): Promise<RunResult> {
 
   const records: AttemptRecord[] = [];
   let worstTokenSource: RunResult["tokenCountSource"] = "runtime_tokenizer";
+  const repeats = Math.max(1, opts.repeats ?? 1);
+  const schedule = Array.from({ length: repeats }, () => prompts).flat();
+  let abortedReason: string | undefined;
 
-  for (const prompt of prompts) {
+  for (const [index, prompt] of schedule.entries()) {
+    // Checked before *every* attempt, not once at the start. A deployment that
+    // was healthy six attempts ago is not evidence that it is healthy now, and
+    // a run that continued through a restart would silently mix two
+    // deployments under one evidence key.
+    if (opts.precondition) {
+      const problem = await opts.precondition(index);
+      if (problem) {
+        abortedReason = problem;
+        break;
+      }
+    }
     const res = await opts.responder(prompt);
     if (res.tokenCountSource !== "runtime_tokenizer") worstTokenSource = res.tokenCountSource;
 
@@ -236,6 +260,7 @@ export async function runLocalSuite(opts: RunOptions): Promise<RunResult> {
     records,
     scored: records.map(scoreAttempt),
     tokenCountSource: worstTokenSource,
+    ...(abortedReason !== undefined ? { abortedReason } : {}),
   };
 }
 
