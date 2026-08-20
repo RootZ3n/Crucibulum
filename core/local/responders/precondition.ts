@@ -25,6 +25,8 @@ export interface PreconditionSnapshot {
   readonly busySlots: number | null;
   readonly gpuUsedMiB: number | null;
   readonly foreignHolders: number | null;
+  /** The API's own process start time. A change mid-run means it restarted. */
+  readonly startedAt: string | null;
 }
 
 export const preconditionLog: PreconditionSnapshot[] = [];
@@ -33,6 +35,19 @@ export const preconditionLog: PreconditionSnapshot[] = [];
 export function makeBokahliPrecondition(
   config: BokahliResponderConfig,
 ): (attempt: number) => Promise<string | null> {
+  // Pinned on the first observation. Bokahli reports its own process start
+  // time, so a change is an unambiguous restart — and a restart mid-campaign
+  // means the attempts before and after it came from two different processes
+  // that the evidence would record under one identity.
+  //
+  // This sees the API restarting. A *runtime* restart that came back on the
+  // same build is not directly visible here; what covers that is the health
+  // sample itself, since a reloading llama-server is not `healthy` and not
+  // `reachable`, and this runs between every attempt. That is real coverage,
+  // not a guarantee, and it is one of the reasons Bokahli should expose the
+  // backend's own start time.
+  let pinnedStartedAt: string | null = null;
+
   return async (attempt: number): Promise<string | null> => {
     let token: string;
     try {
@@ -77,7 +92,15 @@ export function makeBokahliPrecondition(
       busySlots: (runtime["busySlots"] as number) ?? null,
       gpuUsedMiB: (snapshot?.["usedMiB"] as number) ?? null,
       foreignHolders: foreign.length,
+      startedAt: (ready["startedAt"] as string) ?? null,
     });
+
+    const startedAt = typeof ready["startedAt"] === "string" ? ready["startedAt"] : null;
+    if (pinnedStartedAt === null) pinnedStartedAt = startedAt;
+    else if (startedAt !== pinnedStartedAt) {
+      return `attempt ${attempt}: Bokahli restarted mid-run (${pinnedStartedAt} -> ` +
+        `${String(startedAt)}); the attempts before and after are not one deployment`;
+    }
 
     if (ready["status"] !== "ready") return `attempt ${attempt}: deployment is not ready`;
     if (runtime["health"] !== "healthy") return `attempt ${attempt}: runtime health is ${String(runtime["health"])}`;

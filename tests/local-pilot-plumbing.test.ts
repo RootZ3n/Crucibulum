@@ -185,3 +185,50 @@ test("an unparseable response becomes a HARNESS_PARSER failure, never a model fa
     assert.deepEqual(lanes[0]!.failureCodes, ["local_harness_parse_failure"]);
   }
 });
+
+// ---------------------------------------------------------------------------
+// restart detection
+// ---------------------------------------------------------------------------
+
+test("a changed startedAt aborts: two processes are not one deployment", async () => {
+  const { makeBokahliPrecondition } = await import("../core/local/responders/precondition.js");
+  const bodies = [
+    { startedAt: "2026-08-20T11:37:07.033Z" },
+    { startedAt: "2026-08-20T11:37:07.033Z" },
+    { startedAt: "2026-08-20T12:02:44.900Z" }, // restarted
+  ];
+  const base = {
+    status: "ready",
+    runtime: { health: "healthy", attested: true, build: "b-1" },
+    gpuLease: { available: true, foreignHolders: [] },
+    capacity: { depth: 0 },
+  };
+  let i = 0;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (url: string | URL | Request) => {
+    const u = String(url);
+    if (u.endsWith("/health/ready")) {
+      return new Response(JSON.stringify({ ...base, ...bodies[i++]! }), { status: 200 });
+    }
+    return new Response(JSON.stringify({
+      data: [{ id: "m-1", bokahli: { digest: "sha256:aa" } }],
+    }), { status: 200 });
+  }) as typeof fetch;
+  process.env["LUAK_TEST_FAKE_TOKEN"] = "not-a-real-token";
+  try {
+    const check = makeBokahliPrecondition({
+      endpoint: "http://127.0.0.1:9",
+      modelId: "m-1",
+      artifactDigest: "sha256:aa",
+      expectedRuntimeBuild: "b-1",
+      credential: { kind: "env", variable: "LUAK_TEST_FAKE_TOKEN" },
+    } as never);
+    assert.equal(await check(0), null);
+    assert.equal(await check(1), null, "an unchanged start time is not a restart");
+    const abort = await check(2);
+    assert.match(String(abort), /restarted mid-run/);
+  } finally {
+    globalThis.fetch = realFetch;
+    delete process.env["LUAK_TEST_FAKE_TOKEN"];
+  }
+});

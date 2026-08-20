@@ -26,6 +26,8 @@ export type LocalIdentityVersion = typeof LOCAL_IDENTITY_VERSION;
 export type ArtifactFormat = "gguf" | "safetensors" | "onnx" | "other";
 
 /** The weights themselves, exactly. */
+import type { TokenCountSource } from "./local-verdict.js";
+
 export interface LocalArtifactIdentity {
   /** Stable logical identity. Never a filesystem path. */
   readonly modelId: string;
@@ -131,10 +133,13 @@ export interface ContextFacts {
   readonly tierLabel: string | null;
   /**
    * How the token counts were obtained. Only "runtime_tokenizer" is a
-   * measurement; everything else is an estimate and is labelled as one, so a
-   * character count can never be presented as a token count.
+   * measurement; everything else is labelled for what it is, so a character
+   * count can never be presented as a token count. Shares one definition with
+   * the attempt records — see [[TokenCountSource]] — because when the identity
+   * kept its own narrower copy, a run measuring
+   * `runtime_reported_unknown_tokenizer` had to describe itself as `unknown`.
    */
-  readonly tokenCountSource: "runtime_tokenizer" | "estimated" | "unknown";
+  readonly tokenCountSource: TokenCountSource;
 }
 
 /** Concurrency the runtime was configured for while the evidence was produced. */

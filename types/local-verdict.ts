@@ -411,3 +411,29 @@ export interface LocalAttemptVerdict {
   readonly attribution: AttributionClass;
   readonly detail: string;
 }
+
+/**
+ * How a token count was obtained.
+ *
+ * Lives here, not beside the regime, because two places needed it — the attempt
+ * records and the identity the evidence is bound to — and when they each kept
+ * their own copy the copies drifted: the identity's was three-valued and could
+ * not express `runtime_reported_unknown_tokenizer` at all, so an identity for a
+ * run that measured exactly that had to round itself down to `unknown`. One
+ * definition, imported by both.
+ *
+ *   runtime_tokenizer                  The serving runtime counted, and said so.
+ *   runtime_reported_unknown_tokenizer The runtime returned counts but named no
+ *                                      tokenizer. Probably exact; "probably" is
+ *                                      not provenance.
+ *   estimated                          Computed client-side.
+ *   unknown                            No count at all.
+ */
+export type TokenCountSource =
+  | "runtime_tokenizer"
+  | "runtime_reported_unknown_tokenizer"
+  | "estimated"
+  | "unknown";
+
+/** The only provenance a qualification export accepts. */
+export const EXPORTABLE_TOKEN_SOURCES: readonly TokenCountSource[] = ["runtime_tokenizer"];

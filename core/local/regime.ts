@@ -16,6 +16,7 @@ import {
   type AttributionClass,
   type LocalApplicability,
   type LocalFailureCode,
+  type TokenCountSource,
 } from "../../types/local-verdict.js";
 import type { LaneScore, Measurement } from "./scorers.js";
 
@@ -31,14 +32,8 @@ import type { LaneScore, Measurement } from "./scorers.js";
  *                            a local tokenizer that is not the serving one.
  *   unknown                  No count at all.
  */
-export type TokenCountSource =
-  | "runtime_tokenizer"
-  | "runtime_reported_unknown_tokenizer"
-  | "estimated"
-  | "unknown";
-
-/** The only provenance a qualification export accepts. */
-export const EXPORTABLE_TOKEN_SOURCES: readonly TokenCountSource[] = ["runtime_tokenizer"];
+export type { TokenCountSource } from "../../types/local-verdict.js";
+export { EXPORTABLE_TOKEN_SOURCES } from "../../types/local-verdict.js";
 
 /** Bump on any change to how measurements become outcomes. Evidence is bound to this. */
 export const LOCAL_REGIME_VERSION = "local-regime-1.0.0" as const;
