@@ -11,7 +11,11 @@
  * see `credentials.ts`.
  */
 
-export const BOKAHLI_RESPONDER_CONFIG_VERSION = "bokahli-responder-config-1.0.0" as const;
+import {
+  DEFAULT_PROTOCOL_PIN, type BokahliProtocolPin,
+} from "./bokahli-protocol.js";
+
+export const BOKAHLI_RESPONDER_CONFIG_VERSION = "bokahli-responder-config-1.1.0" as const;
 
 export interface BokahliResponderConfig {
   readonly configVersion: typeof BOKAHLI_RESPONDER_CONFIG_VERSION;
@@ -45,6 +49,15 @@ export interface BokahliResponderConfig {
   readonly credential:
     | { readonly kind: "env"; readonly variable: string }
     | { readonly kind: "file"; readonly path: string };
+  /**
+   * Which Bokahli protocol generation this campaign targets.
+   *
+   * Optional only for source compatibility; absent means the B2 default. It is
+   * never inferred from a response: a stripped B2 body is a protocol failure,
+   * not a legacy deployment. Point a campaign at a Phase 1 deployment by saying
+   * so here, and its evidence stays unexportable regardless.
+   */
+  readonly protocol?: BokahliProtocolPin;
   /** Sampler settings sent with each request. Recorded whether or not echoed. */
   readonly sampler: {
     readonly temperature: number;
@@ -54,6 +67,11 @@ export interface BokahliResponderConfig {
 }
 
 export class BokahliConfigError extends Error {}
+
+/** The pin in force for a config, with the default applied. */
+export function protocolPinOf(c: BokahliResponderConfig): BokahliProtocolPin {
+  return c.protocol ?? DEFAULT_PROTOCOL_PIN;
+}
 
 /**
  * Whether a field name looks like it holds a secret.

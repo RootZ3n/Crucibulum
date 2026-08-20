@@ -152,8 +152,12 @@ function b2Body(bend: (b: Record<string, any>) => void = () => {}): Record<strin
   return body;
 }
 
-const derive = (body: unknown) =>
-  deriveTokenProvenance({ body, expectedModelId: MODEL, expectedArtifactDigest: DIGEST });
+const derive = (body: unknown, generation: "b2" | "legacy" = "b2") =>
+  deriveTokenProvenance({
+    body, expectedModelId: MODEL, expectedArtifactDigest: DIGEST,
+    expectedContractVersion: "bokahli.qualification-telemetry.v1",
+    protocolGeneration: generation,
+  });
 
 // ---------------------------------------------------------------------------
 // the happy path exists, so the refusals below mean something
@@ -286,7 +290,7 @@ test("an unattested completion carrying otherwise valid output is not an attempt
   const f = extractB2Facts(b2Body((b) => {
     b.result.servedIdentity.qualificationFacts.attestation.completeness = "unattested";
   }));
-  const r = refusesCanonicalAttempt(f, true);
+  const r = refusesCanonicalAttempt(f, true, "b2");
   assert.equal(r.refuse, true);
   assert.match(r.reasons.join(" "), /unattested/);
 });
@@ -300,7 +304,7 @@ test("the same pid with a different instance identity is a different process", (
     b.telemetry.attemptLifetime.instanceContinuous = true;   // upstream says fine
     b.telemetry.attemptLifetime.verdict = "valid";           // upstream says fine
   }));
-  const r = refusesCanonicalAttempt(f, true);
+  const r = refusesCanonicalAttempt(f, true, "b2");
   assert.equal(r.refuse, true);
   assert.match(r.reasons.join(" "), /different processes/);
 });
@@ -309,18 +313,18 @@ test("unknown continuity refuses a canonical attempt", () => {
   const f = extractB2Facts(b2Body((b) => {
     b.result.servedIdentity.qualificationFacts.backendInstance.instanceId = null;
   }));
-  assert.equal(refusesCanonicalAttempt(f, true).refuse, true);
+  assert.equal(refusesCanonicalAttempt(f, true, "b2").refuse, true);
 });
 
 test("an infrastructure-invalid verdict refuses a canonical attempt", () => {
   const f = extractB2Facts(b2Body((b) => {
     b.telemetry.attemptLifetime.verdict = "infrastructure-invalid";
   }));
-  assert.equal(refusesCanonicalAttempt(f, true).refuse, true);
+  assert.equal(refusesCanonicalAttempt(f, true, "b2").refuse, true);
 });
 
 test("a healthy B2 response is allowed to become an attempt", () => {
-  assert.equal(refusesCanonicalAttempt(extractB2Facts(b2Body()), true).refuse, false);
+  assert.equal(refusesCanonicalAttempt(extractB2Facts(b2Body()), true, "b2").refuse, false);
 });
 
 // ---------------------------------------------------------------------------
@@ -399,9 +403,12 @@ test("a Phase 1 response parses without crashing and claims nothing", () => {
   const f = extractB2Facts(legacy);
   assert.equal(f.publishesB2Contract, false);
   assert.equal(f.tokenizer.encodeCanaryVerified, null, "absent is null, never false");
-  assert.equal(refusesCanonicalAttempt(f, true).refuse, false,
-    "a legacy response cannot fail checks its contract never had");
-  assert.equal(derive(legacy).source, "runtime_reported_unknown_tokenizer");
+  assert.equal(refusesCanonicalAttempt(f, true, "legacy").refuse, false,
+    "a legacy-targeted campaign cannot fail checks its contract never had");
+  assert.equal(derive(legacy, "legacy").source, "runtime_reported_unknown_tokenizer");
+  // And the same body read as B2 is a protocol failure, not a lenient pass.
+  assert.equal(refusesCanonicalAttempt(f, true, "b2").refuse, true,
+    "a stripped response must not buy leniency by looking old");
 });
 
 test("hostile shapes do not crash the reader", () => {

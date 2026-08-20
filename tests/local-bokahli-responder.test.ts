@@ -117,9 +117,17 @@ function credFile(mode = 0o600): string {
   return p;
 }
 
+/**
+ * The fixtures in this file are Phase 1 shaped, which is what the deployment
+ * still serves. A responder pinned to B2 refuses them as a protocol failure —
+ * correctly — so these tests declare the legacy target explicitly. That is the
+ * whole point of the pin: legacy is a configuration, never an inference from
+ * which fields happened to arrive.
+ */
 function config(over: Partial<BokahliResponderConfig> = {}): BokahliResponderConfig {
   return {
     configVersion: BOKAHLI_RESPONDER_CONFIG_VERSION,
+    protocol: { mode: "legacy", expectedContractVersion: "bokahli.qualification-telemetry.v1" },
     endpoint: base,
     modelId: MODEL, artifactDigest: DIGEST, expectedRuntimeBuild: BUILD,
     contextTier: "control",

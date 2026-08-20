@@ -185,7 +185,8 @@ export type TransportEvent =
   | "unexpected_close"
   | "oversized_response"
   | "redirect_refused"
-  | "contradictory_outcome";
+  | "contradictory_outcome"
+  | "protocol_mismatch";
 
 export const TRANSPORT_MAP: Readonly<Record<TransportEvent, OutcomeMapping>> = Object.freeze({
   connection_refused: {
@@ -251,6 +252,17 @@ export const TRANSPORT_MAP: Readonly<Record<TransportEvent, OutcomeMapping>> = O
     why: "HTTP status, x-bokahli-outcome and the body disagreed. COMPOSITE because it cannot " +
       "be told from here whether the server, a proxy, or this client is wrong — and a 409 " +
       "refusal carrying a ROUTED body must never be readable as a completion.",
+  },
+  protocol_mismatch: {
+    code: "local_harness_parse_failure", attribution: "COMPOSITE", transient: false,
+    why: "The response did not match the Bokahli protocol generation this campaign is pinned " +
+      "to: a missing or wrong contract version, a non-optional block absent, or a legacy-" +
+      "targeted campaign meeting a B2 deployment. COMPOSITE because the cause is either a " +
+      "misconfigured campaign or a deployment that is not what it claims, and the evidence " +
+      "cannot say which. Never a model result: the model may well have answered, and the " +
+      "answer cannot be attributed to a protocol nobody agreed on. Critically this is NOT " +
+      "read as an older deployment — absence of a field is not a version, and inferring one " +
+      "let a stripped B2 response become an accepted attempt.",
   },
 });
 

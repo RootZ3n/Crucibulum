@@ -26,10 +26,14 @@
  * checked against the configured digest and runtime build on arrival, so a
  * substitution that somehow passed Bokahli's own checks still cannot be scored.
  */
+import { createHash } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import type { LocalPrompt, LocalResponse, Responder } from "../runner.js";
 import type { TokenCountSource } from "../regime.js";
-import { validateBokahliConfig, type BokahliResponderConfig } from "./bokahli-config.js";
+import {
+  protocolPinOf, validateBokahliConfig, type BokahliResponderConfig,
+} from "./bokahli-config.js";
+import { resolveProtocol, type BokahliProtocolMode } from "./bokahli-protocol.js";
 import { authHeaders, readCredential, redact } from "./credentials.js";
 import { lookupOutcome, type OutcomeMapping, type TransportEvent } from "./bokahli-failure-map.js";
 import { readBokahliStream } from "./bokahli-stream.js";
@@ -38,7 +42,7 @@ import {
 } from "./bokahli-b2-facts.js";
 import { deriveTokenProvenance, type TokenProvenanceVerdict } from "./bokahli-provenance.js";
 
-export const BOKAHLI_RESPONDER_VERSION = "bokahli-responder-1.2.0" as const;
+export const BOKAHLI_RESPONDER_VERSION = "bokahli-responder-1.3.0" as const;
 
 /**
  * Hard limits on what a response may be.
@@ -115,6 +119,14 @@ export interface BokahliAttemptFacts {
    * response that predates it.
    */
   readonly b2: BokahliB2Facts;
+  /**
+   * The protocol generation this response was accepted as.
+   *
+   * Declared by configuration and verified against the response, never inferred
+   * from which fields happen to be present. Null on any path that did not reach
+   * a routed response.
+   */
+  readonly protocolGeneration: BokahliProtocolMode | null;
   /** Why the counts are provenanced the way they are. */
   readonly tokenProvenance: TokenProvenanceVerdict | null;
   /**
@@ -146,6 +158,7 @@ function emptyFacts(config: BokahliResponderConfig): BokahliAttemptFacts {
     samplerSent: { ...config.sampler },
     promptTemplateId: null,
     b2: emptyB2Facts(),
+    protocolGeneration: null,
     tokenProvenance: null,
     canonicalAttemptRefused: [],
     failure: null,
@@ -537,11 +550,23 @@ export function createBokahliResponder(opts: BokahliResponderOptions): Responder
         lookupOutcome("REFUSED", problem.reason), problem.detail);
     }
 
+    // Which protocol is this? Declared, not inferred.
+    //
+    // Before this gate, deleting two fields from a real B2 response moved it
+    // onto the legacy path and turned an attempt that must be discarded into
+    // one that is kept. A stripped response is a protocol failure.
+    const pin = protocolPinOf(config);
+    const protocol = resolveProtocol(parsed, pin);
+    if (!protocol.ok) {
+      return fail(config, "TRANSPORT", "protocol_mismatch",
+        lookupOutcome("TRANSPORT", "protocol_mismatch"), protocol.problems.join("; "));
+    }
+
     // Bokahli says a completion happened. Whether it can be attributed is a
     // separate question, and one this responder must answer before scoring:
     // an unattested or discontinuous attempt is an infrastructure event, and
     // counting it against the model would score a restart as a wrong answer.
-    const canonical = refusesCanonicalAttempt(facts.b2, facts.attested);
+    const canonical = refusesCanonicalAttempt(facts.b2, facts.attested, protocol.generation);
     if (canonical.refuse) {
       return fail(config, "ESCALATE", "ATTEMPT_NOT_ATTRIBUTABLE",
         lookupOutcome("ESCALATE", "ATTEMPT_NOT_ATTRIBUTABLE"),
@@ -566,6 +591,11 @@ export function createBokahliResponder(opts: BokahliResponderOptions): Responder
       body: parsed,
       expectedModelId: config.modelId,
       expectedArtifactDigest: config.artifactDigest,
+      expectedContractVersion: pin.expectedContractVersion,
+      protocolGeneration: protocol.generation,
+      // The exact bytes, so the verdict cannot be re-sealed onto a doctored
+      // record without also doctoring the response it claims to describe.
+      rawResponseSha256: `sha256:${createHash("sha256").update(text).digest("hex")}`,
     });
 
     return {
@@ -576,7 +606,12 @@ export function createBokahliResponder(opts: BokahliResponderOptions): Responder
       timeToFirstTokenMs: num(t["timeToFirstTokenMs"]),
       decodeTokensPerSecond: num(t["completionTokensPerSecond"]),
       wallTimeMs: num(t["totalMs"]) ?? clock() - started,
-      facts: { ...facts, tokenProvenance: provenance, canonicalAttemptRefused: [] },
+      facts: {
+        ...facts,
+        protocolGeneration: protocol.generation,
+        tokenProvenance: provenance,
+        canonicalAttemptRefused: [],
+      },
     };
   };
 
@@ -612,6 +647,13 @@ async function consumeStream(
   if (!terminal) {
     return fail(config, "TRANSPORT", "missing_terminal_event",
       lookupOutcome("TRANSPORT", "missing_terminal_event"), "no terminal event");
+  }
+  // The buffered path bounds nesting; the streamed one did not, so a terminal
+  // frame could carry arbitrarily deep JSON into every reader downstream.
+  if (jsonDepth(terminal) > RESPONSE_LIMITS.maxJsonDepth) {
+    return fail(config, "TRANSPORT", "malformed_event",
+      lookupOutcome("TRANSPORT", "malformed_event"),
+      `terminal event nesting exceeded ${RESPONSE_LIMITS.maxJsonDepth} levels`);
   }
   if (terminal.outcome !== "ROUTED") {
     const reason = terminal.route?.reason ?? "UNKNOWN";
@@ -658,9 +700,16 @@ async function consumeStream(
       `streamed completion of ${out.text.length} characters exceeds the bound`);
   }
 
-  // A stream is not a weaker contract, only a different transport: the same
-  // attribution rule applies to the terminal event it produced.
-  const canonical = refusesCanonicalAttempt(facts.b2, facts.attested);
+  // A stream is not a weaker contract, only a different transport: the protocol
+  // gate and the attribution rule apply to the terminal event it produced.
+  const pin = protocolPinOf(config);
+  const protocol = resolveProtocol(merged, pin);
+  if (!protocol.ok) {
+    return fail(config, "TRANSPORT", "protocol_mismatch",
+      lookupOutcome("TRANSPORT", "protocol_mismatch"), protocol.problems.join("; "));
+  }
+
+  const canonical = refusesCanonicalAttempt(facts.b2, facts.attested, protocol.generation);
   if (canonical.refuse) {
     return fail(config, "ESCALATE", "ATTEMPT_NOT_ATTRIBUTABLE",
       lookupOutcome("ESCALATE", "ATTEMPT_NOT_ATTRIBUTABLE"),
@@ -674,6 +723,13 @@ async function consumeStream(
     body: merged,
     expectedModelId: config.modelId,
     expectedArtifactDigest: config.artifactDigest,
+    expectedContractVersion: pin.expectedContractVersion,
+    protocolGeneration: protocol.generation,
+    // The terminal event as received. A stream has no single body, so the
+    // terminal frame is what the seal binds to.
+    rawResponseSha256: `sha256:${createHash("sha256")
+      .update(JSON.stringify(terminal))
+      .digest("hex")}`,
   });
   return {
     rawText: out.text,
@@ -683,7 +739,12 @@ async function consumeStream(
     timeToFirstTokenMs: num(t["timeToFirstTokenMs"]),
     decodeTokensPerSecond: num(t["completionTokensPerSecond"]),
     wallTimeMs: num(t["totalMs"]) ?? clock() - started,
-    facts: { ...facts, tokenProvenance: provenance, canonicalAttemptRefused: [] },
+    facts: {
+      ...facts,
+      protocolGeneration: protocol.generation,
+      tokenProvenance: provenance,
+      canonicalAttemptRefused: [],
+    },
   };
 }
 

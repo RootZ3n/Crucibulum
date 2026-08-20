@@ -135,43 +135,19 @@ export interface BokahliB2Facts {
   readonly imageDigestIsProcessObserved: boolean;
 }
 
-function obj(v: unknown): Record<string, unknown> | null {
-  return typeof v === "object" && v !== null && !Array.isArray(v)
-    ? (v as Record<string, unknown>)
-    : null;
-}
-function at(root: unknown, ...keys: readonly string[]): unknown {
-  let cur: unknown = root;
-  for (const k of keys) {
-    const o = obj(cur);
-    if (o === null) return undefined;
-    cur = o[k];
-  }
-  return cur;
-}
-function s(v: unknown): string | null {
-  return typeof v === "string" ? v : null;
-}
-function n(v: unknown): number | null {
-  return typeof v === "number" && Number.isFinite(v) ? v : null;
-}
-/** Tri-state on purpose: absent stays null and never becomes false. */
-function b(v: unknown): boolean | null {
-  return typeof v === "boolean" ? v : null;
-}
-function strings(v: unknown): readonly string[] {
-  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
-}
-function numberMap(v: unknown): Readonly<Record<string, number>> | null {
-  const o = obj(v);
-  if (o === null) return null;
-  const out: Record<string, number> = {};
-  for (const [k, val] of Object.entries(o)) {
-    const num = n(val);
-    if (num !== null) out[k] = num;
-  }
-  return Object.freeze(out);
-}
+import {
+  boundedString, boundedStrings, digestString, finiteNumber, instantString, numberMap as boundedNumberMap,
+  plainObject, readPath, safeCount, strictBoolean,
+} from "./bokahli-validate.js";
+
+const obj = plainObject;
+const at = readPath;
+/** Bounded: a runtime-supplied label must not be able to inflate a record. */
+const s_ = boundedString;
+const n = finiteNumber;
+const b = strictBoolean;
+const strings = boundedStrings;
+const numberMap = boundedNumberMap;
 
 const EMPTY: BokahliB2Facts = Object.freeze({
   publishesB2Contract: false,
@@ -229,9 +205,9 @@ export function extractB2Facts(body: unknown): BokahliB2Facts {
   const life = at(telemetry, "attemptLifetime");
   const counts = at(telemetry, "tokenCounts");
 
-  const imageBinding = s(at(rt, "imageDigestBinding"));
+  const imageBinding = s_(at(rt, "imageDigestBinding"));
 
-  const contractVersion = s(at(facts, "contractVersion"));
+  const contractVersion = s_(at(facts, "contractVersion"));
   // Either marker is enough: the facts block names its contract version, and
   // telemetry carries the lifetime record. A body with neither is Phase 1.
   const publishesB2Contract = contractVersion !== null || obj(life) !== null;
@@ -240,77 +216,77 @@ export function extractB2Facts(body: unknown): BokahliB2Facts {
     publishesB2Contract,
     contractVersion,
     tokenizer: {
-      family: s(at(tok, "family")),
-      pretokenizer: s(at(tok, "pretokenizer")),
-      metadataDigest: s(at(tok, "metadataDigest")),
+      family: s_(at(tok, "family")),
+      pretokenizer: s_(at(tok, "pretokenizer")),
+      metadataDigest: digestString(at(tok, "metadataDigest")),
       metadataBound: b(at(tok, "metadataBound")),
       decodeCanaryVerified: b(at(tok, "decodeCanaryVerified")),
       encodeCanaryVerified: b(at(tok, "encodeCanaryVerified")),
       pretokenizerVerified: b(at(tok, "pretokenizerVerified")),
-      canarySuiteId: s(at(tok, "canarySuiteId")),
-      canarySuiteHash: s(at(tok, "canarySuiteHash")),
-      verifiedBackendInstanceId: s(at(tok, "verifiedBackendInstanceId")),
-      verifiedAt: s(at(tok, "verifiedAt")),
+      canarySuiteId: s_(at(tok, "canarySuiteId")),
+      canarySuiteHash: digestString(at(tok, "canarySuiteHash")),
+      verifiedBackendInstanceId: s_(at(tok, "verifiedBackendInstanceId")),
+      verifiedAt: instantString(at(tok, "verifiedAt")),
       vocabSizeMatch: b(at(tok, "vocabSizeMatch")),
       unprovenReasons: strings(at(tok, "unprovenReasons")),
-      declaredTokenCountSource: s(at(counts, "source")),
-      canaryCoverageNote: s(at(tok, "runtimeProof", "canary", "coverageNote")),
+      declaredTokenCountSource: s_(at(counts, "source")),
+      canaryCoverageNote: boundedString(at(tok, "runtimeProof", "canary", "coverageNote"), 2_000),
     },
     template: {
       matchesArtifactTemplate: b(at(tmpl, "configured", "matchesArtifactTemplate")),
-      configuredTemplateId: s(at(tmpl, "configured", "templateId")),
-      configuredTemplateDigest: s(at(tmpl, "configured", "templateDigest")),
-      configuredReasoningFormat: s(at(tmpl, "configured", "reasoningFormat")),
+      configuredTemplateId: s_(at(tmpl, "configured", "templateId")),
+      configuredTemplateDigest: digestString(at(tmpl, "configured", "templateDigest")),
+      configuredReasoningFormat: s_(at(tmpl, "configured", "reasoningFormat")),
       configuredApplied: b(at(tmpl, "configured", "applied")),
-      effectiveTemplateId: s(at(tmpl, "effective", "templateId")),
+      effectiveTemplateId: s_(at(tmpl, "effective", "templateId")),
       // Bokahli publishes `requestConfirmed` as an object or null. Anything
       // other than a present object means nothing was confirmed for this
       // request, which is the only value the current llama.cpp API can produce.
       requestConfirmed: obj(at(tmpl, "requestConfirmed")) !== null,
       reasoningFormatOverridden: b(at(tmpl, "reasoningFormatOverridden")),
-      requestedTemplateId: s(at(tmpl, "requested", "templateId")),
+      requestedTemplateId: s_(at(tmpl, "requested", "templateId")),
       mismatch: b(at(tmpl, "mismatch")),
     },
     sampler: {
       requested: numberMap(at(samp, "requested")),
       sent: numberMap(at(samp, "sent")),
       effectiveUncorrelated: numberMap(at(samp, "effective")),
-      effectiveSource: s(at(samp, "effectiveSource")),
-      effectiveScope: s(at(samp, "effectiveScope")),
-      seedSupport: s(at(samp, "seedSupport")),
+      effectiveSource: s_(at(samp, "effectiveSource")),
+      effectiveScope: s_(at(samp, "effectiveScope")),
+      seedSupport: s_(at(samp, "seedSupport")),
       deterministicOutputGuaranteed: b(at(samp, "deterministicOutputGuaranteed")),
     },
     instance: {
-      backendInstanceId: s(at(inst, "instanceId")),
-      backendPid: n(at(inst, "pid")),
-      instanceStartedAt: s(at(inst, "startedAt")),
-      admissionInstanceId: s(at(life, "instanceAtAdmission")),
-      terminalInstanceId: s(at(life, "instanceAtCompletion")),
-      continuityVerdict: s(at(life, "verdict")),
+      backendInstanceId: s_(at(inst, "instanceId")),
+      backendPid: safeCount(at(inst, "pid")),
+      instanceStartedAt: instantString(at(inst, "startedAt")),
+      admissionInstanceId: s_(at(life, "instanceAtAdmission")),
+      terminalInstanceId: s_(at(life, "instanceAtCompletion")),
+      continuityVerdict: s_(at(life, "verdict")),
       instanceContinuous: b(at(life, "instanceContinuous")),
       crossedAttestationTtl: b(at(life, "crossedAttestationTtl")),
-      revalidation: s(at(life, "revalidation")),
-      attestationGeneration: n(at(att, "generation")),
-      attestationObservedAt: s(at(att, "observedAt")),
-      attestationExpiresAt: s(at(att, "expiresAt")),
-      attestationCompleteness: s(at(att, "completeness")),
+      revalidation: s_(at(life, "revalidation")),
+      attestationGeneration: safeCount(at(att, "generation")),
+      attestationObservedAt: instantString(at(att, "observedAt")),
+      attestationExpiresAt: instantString(at(att, "expiresAt")),
+      attestationCompleteness: s_(at(att, "completeness")),
       attestationMissing: strings(at(att, "missing")),
-      bindingDigest: s(at(att, "bindingDigest")),
+      bindingDigest: digestString(at(att, "bindingDigest")),
     },
     placement: {
-      method: s(at(place, "method")),
+      method: s_(at(place, "method")),
       backendHoldsDevice: b(at(place, "backendHoldsDevice")),
-      backendVramMiB: n(at(place, "backendVramMiB")),
-      floorMiB: n(at(place, "floorMiB")),
-      requestedGpuLayers: n(at(place, "requestedGpuLayers")),
+      backendVramMiB: safeCount(at(place, "backendVramMiB")),
+      floorMiB: safeCount(at(place, "floorMiB")),
+      requestedGpuLayers: safeCount(at(place, "requestedGpuLayers")),
       cpuOffloadEnabled: b(at(place, "cpuOffloadEnabled")),
-      limitation: s(at(place, "limitation")),
-      imageDigest: s(at(rt, "imageDigest")),
+      limitation: boundedString(at(place, "limitation"), 2_000),
+      imageDigest: digestString(at(rt, "imageDigest")),
       imageDigestBinding: imageBinding,
-      imageDigestAlgorithm: s(at(rt, "imageDigestAlgorithm")),
-      processCudaRuntime: s(at(rt, "processCudaRuntime")),
-      driverVersion: s(at(rt, "driverVersion")),
-      driverSupportedCuda: s(at(rt, "driverSupportedCuda")),
+      imageDigestAlgorithm: s_(at(rt, "imageDigestAlgorithm")),
+      processCudaRuntime: s_(at(rt, "processCudaRuntime")),
+      driverVersion: s_(at(rt, "driverVersion")),
+      driverSupportedCuda: s_(at(rt, "driverSupportedCuda")),
     },
     // Only the strong form counts, and only when Bokahli says so by name. A
     // digest being present proves a digest was computed, not what it covers.
@@ -326,18 +302,46 @@ export function extractB2Facts(body: unknown): BokahliB2Facts {
  * restart, an expired attestation, or an unverifiable deployment against the
  * model's capability.
  */
-export function refusesCanonicalAttempt(f: BokahliB2Facts, attested: boolean | null): {
+export function refusesCanonicalAttempt(
+  f: BokahliB2Facts,
+  attested: boolean | null,
+  /**
+   * The generation the protocol gate *decided*, not one inferred here.
+   *
+   * Passing this in is the fix for the downgrade: `publishesB2Contract` is a
+   * description of which fields arrived, and letting a description of the
+   * fields decide which rules apply is what allowed two deletions to move a
+   * response onto the lenient path.
+   */
+  generation: "b2" | "legacy",
+): {
   readonly refuse: boolean;
   readonly reasons: readonly string[];
 } {
   const reasons: string[] = [];
   if (attested !== true) reasons.push("the served identity was not attested");
 
-  // A response that does not publish the contract cannot fail its checks. The
+  // A legacy-targeted campaign cannot fail checks its contract never had. The
   // attempt runs, the counts stay unprovenanced, and the exporter refuses —
-  // which is the behaviour the pilot was built around and the reason a campaign
-  // against a pre-B2 deployment is still worth running.
-  if (!f.publishesB2Contract) return { refuse: reasons.length > 0, reasons };
+  // the behaviour the pilot was built around, and the reason a campaign against
+  // a pre-B2 deployment is still worth running.
+  if (generation === "legacy") return { refuse: reasons.length > 0, reasons };
+
+  // In B2 mode the lifetime record must be *present*, not merely non-negative.
+  // Every continuity check below compares against a specific bad value, so a
+  // deleted record passed all of them: the second downgrade, inside B2 mode.
+  if (f.instance.continuityVerdict === null) {
+    reasons.push("the response carries no attempt-lifetime verdict, so continuity is unestablished");
+  }
+  if (f.instance.admissionInstanceId === null || f.instance.terminalInstanceId === null) {
+    reasons.push("the attempt names no admission or terminal backend instance");
+  }
+  if (f.instance.instanceContinuous !== true) {
+    reasons.push("continuity across the request was not affirmatively established");
+  }
+  if (f.tokenizer.metadataBound === null && f.tokenizer.encodeCanaryVerified === null) {
+    reasons.push("the response carries no tokenizer proof block");
+  }
 
   if (f.instance.attestationCompleteness === "unattested") {
     reasons.push("the attestation reports completeness 'unattested'");

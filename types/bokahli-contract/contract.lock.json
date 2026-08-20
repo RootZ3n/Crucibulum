@@ -1,4 +1,6 @@
 {
+  "generatorVersion": "bokahli-contract-sync-2",
+  "remote": "git@github.com:RootZ3n/bokahli.git",
   "pinnedCommit": "9ed481bed93e0a2b936c489649ed3244b69744ec",
   "publishedBranch": "origin/v2",
   "sourcePrefix": "packages/contracts/src",
