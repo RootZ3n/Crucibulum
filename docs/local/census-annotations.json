@@ -1,0 +1,143 @@
+{
+  "censusVersion": "1.0.0",
+  "authoredAt": "2026-08-20",
+  "method": "Every judgement below was made after reading the family's actual manifests, system prompts, question text, scoring types and oracle checks — not its directory name. Directory names are unreliable here: tasks/classification/ carries family \"identity\", and tasks/code/ carries family \"truthfulness\".",
+  "dispositionMeaning": {
+    "reuse_unchanged": "Runs against a local model as-is and measures something real about it.",
+    "parameterize": "Measures the right thing but is fixed at one context size, one phrasing, or one output bound; needs stress dimensions before it can qualify.",
+    "supplement": "The intent is right and the oracle is too weak, too narrow, or aimed at a different subject; keep it and author stronger fixtures alongside.",
+    "exclude_from_local": "Cannot measure a chat-only local model, or measures the harness rather than the model. Stays valid for hosted lanes."
+  },
+  "families": {
+    "cost_efficiency": {
+      "measures": "Concise numeric reasoning under a hard output-length cap (maxLength 12). The reasoning puzzles are textbook forms — a chickens-and-cows legs problem, and four of equivalent shape.",
+      "oracleKind": "deterministic (regex_match against an exact numeric answer)",
+      "appliesToLocal": "yes",
+      "confounds": "low — a wrong number is a model result, and the length cap is enforced by the scorer rather than the provider",
+      "dimension": "correctness + output-length compliance",
+      "memorisationExposure": "high — these are classic puzzles almost certainly present in any pretraining corpus, so a pass says little about reasoning",
+      "disposition": "reuse_unchanged",
+      "note": "Useful as a cheap liveness and format signal. Its memorisation exposure is why it must not carry weight in a qualification verdict: it can be passed by recall."
+    },
+    "identity": {
+      "measures": "Single-word classification into bug/feature/question, including six deliberately ambiguous inputs whose patterns accept either of two labels.",
+      "oracleKind": "deterministic (regex_match, maxLength 30)",
+      "appliesToLocal": "yes",
+      "confounds": "low",
+      "dimension": "correctness + instruction following (strict single-word output)",
+      "memorisationExposure": "medium — the inputs are generic phrasings, but short and reusable",
+      "disposition": "parameterize",
+      "note": "The ambiguous cases accept either label, so they measure 'commit to one of two' rather than 'recognise ambiguity'. Local qualification needs the opposite: an explicit abstention option, and credit for using it. That is why classification-with-abstention is authored fresh in the L1 lane rather than inherited from here."
+    },
+    "memory": {
+      "measures": "Recall of a fact planted several conversational turns earlier.",
+      "oracleKind": "deterministic (recall scorer, keyword presence)",
+      "appliesToLocal": "partially",
+      "confounds": "yes — whether earlier turns are resent is a harness decision, not a model property. A stateless server that is sent the full history 'remembers'; one that is not, cannot, at any quality.",
+      "dimension": "reliability (context handling)",
+      "memorisationExposure": "low",
+      "disposition": "supplement",
+      "note": "For a local model served statelessly, this is a context-window and attention test wearing the name of a memory test. The honest local version is context degradation with the fact placed at the beginning, middle and end of a filled window — which is what the L1 stress dimensions specify."
+    },
+    "operational_trust": {
+      "measures": "Staying inside an approved scope, refusing out-of-scope mutation, and reporting honestly about work not done. Twelve tasks, the largest conversational family.",
+      "oracleKind": "deterministic (text_match / text_match_all keyword presence over unbounded prose)",
+      "appliesToLocal": "yes",
+      "confounds": "low on infrastructure, high on oracle precision",
+      "dimension": "compliance (instruction following, refusal quality)",
+      "memorisationExposure": "low",
+      "disposition": "supplement",
+      "note": "The intent is squarely relevant — refusal and honest reporting are the failure modes that matter most for an unattended local appliance. The oracle is the weak part: keyword matching over free prose with no maxLength both passes verbose hedging and fails correct terse answers. The L1 lane replaces the keyword check with a structured refusal object whose fields can be checked exactly."
+    },
+    "orchestration": {
+      "measures": "Multi-file agentic repair in a real repository, verified by running the repo's own test command.",
+      "oracleKind": "deterministic (hidden shell tests, forbidden-path integrity checks)",
+      "appliesToLocal": "no",
+      "confounds": "yes — heavily. Requires shell, read_file, write_file and search. A chat-only inference server has none of these; the adapter must parse commands out of free text, so a model that cannot emit the harness's command syntax scores zero regardless of its repair ability.",
+      "dimension": "correctness + integrity",
+      "memorisationExposure": "low (repos are local fixtures)",
+      "disposition": "exclude_from_local",
+      "note": "Excluded from L0–L2 and named as the shape L3 must eventually take. Its oracle design — hidden tests plus forbidden-path integrity — is the right model for L3 and is reused there conceptually."
+    },
+    "personality": {
+      "measures": "Output *shape* compliance: exact word counts, casing, emoji presence, JSON validity, list formatting. Eight tasks, 38+ questions.",
+      "oracleKind": "deterministic (regex_match with tight patterns, maxLength enforced)",
+      "appliesToLocal": "yes",
+      "confounds": "low",
+      "dimension": "compliance (structured output)",
+      "memorisationExposure": "low — the constraint is the test, not the content",
+      "disposition": "parameterize",
+      "note": "Despite the name, this is the closest existing family to what local qualification most needs: can the model produce exactly the shape it was asked for. Structured-output failure is the dominant local failure mode at aggressive quantisation. It is parameterized rather than reused because it never varies context length or distractor density, and never demands a schema more complex than a list."
+    },
+    "poison_localization": {
+      "measures": "Finding the true root cause of a failure among planted decoys, in a real repository.",
+      "oracleKind": "deterministic (hidden tests plus decoy checks)",
+      "appliesToLocal": "no",
+      "confounds": "yes — same agentic requirement as orchestration",
+      "dimension": "correctness",
+      "memorisationExposure": "low",
+      "disposition": "exclude_from_local",
+      "note": "Conceptually the direct ancestor of test_log_triage: localise a root cause and do not be fooled by decoys. The L1 lane keeps the idea and drops the requirement for tools, by supplying the evidence as text rather than as a repository the model must explore."
+    },
+    "roleplay": {
+      "measures": "Persona consistency, in-character refusal, continuity across turns.",
+      "oracleKind": "deterministic (roleplay_character_consistency, roleplay_continuity_fact_match)",
+      "appliesToLocal": "not for this purpose",
+      "confounds": "low",
+      "dimension": "compliance (persona)",
+      "memorisationExposure": "low",
+      "disposition": "exclude_from_local",
+      "note": "Already excluded from the leaderboard composite by SKIPPED_EXPERIMENTAL_FAMILY. Nothing about persona stability bears on whether a local model can triage a test log or read a repository packet, so including it would dilute a qualification verdict with an unrelated measurement."
+    },
+    "safety": {
+      "measures": "Holding a refusal boundary under prompt injection framed as roleplay.",
+      "oracleKind": "deterministic (refusal_quality, refusal_check)",
+      "appliesToLocal": "yes",
+      "confounds": "low",
+      "dimension": "compliance",
+      "memorisationExposure": "medium — the injection phrasings are well known",
+      "disposition": "supplement",
+      "note": "The injection idea transfers directly and is one of the L1 requirements, but the position differs and the position is what matters: here the injection arrives in the user turn, where refusal is the expected behaviour. In L1 the injection is embedded *inside the evidence the model is asked to analyse*, where the correct behaviour is to treat it as data and carry on — a strictly harder and more operationally relevant test."
+    },
+    "spec_discipline": {
+      "measures": "Following a stated specification exactly in a repository edit, without over- or under-reaching.",
+      "oracleKind": "deterministic (hidden tests, diff rules)",
+      "appliesToLocal": "no",
+      "confounds": "yes — agentic requirement",
+      "dimension": "compliance + integrity",
+      "memorisationExposure": "low",
+      "disposition": "exclude_from_local",
+      "note": "Reserved for L3 design."
+    },
+    "tool_calling": {
+      "measures": "Emitting a well-formed tool call and respecting its schema.",
+      "oracleKind": "deterministic (hidden shell tests over the resulting filesystem state)",
+      "appliesToLocal": "no, as currently built",
+      "confounds": "yes — severely. Success is measured by the effect on the filesystem, which requires the adapter's free-text command parser to recognise what the model emitted. This scores the model and the parser together and reports the product as a model score.",
+      "dimension": "compliance",
+      "memorisationExposure": "low",
+      "disposition": "exclude_from_local",
+      "note": "The underlying question — can this model emit a syntactically valid, schema-conforming structured call — is central to local qualification. It is measured in the L1 schema lane directly against the emitted text, with no execution and no parser in between, so a failure is attributable to the model rather than shared with the harness."
+    },
+    "truthfulness": {
+      "measures": "Code generation, debugging and review, plus honesty about uncertainty.",
+      "oracleKind": "deterministic (regex_match with multi-lookahead patterns over free text)",
+      "appliesToLocal": "yes",
+      "confounds": "low on infrastructure, high on oracle precision",
+      "dimension": "correctness",
+      "memorisationExposure": "high — FizzBuzz and its neighbours are among the most-memorised programs in existence",
+      "disposition": "supplement",
+      "note": "The oracle checks that the answer *mentions* fizz, buzz and the right modulus operations; it never runs the code. A plausible-looking answer that does not execute passes. For local qualification that is exactly the wrong failure mode to be blind to, since degraded quantisation produces code-shaped text far more readily than correct code."
+    },
+    "vision": {
+      "measures": "Chart reading, OCR, spatial reasoning, object counting and hallucination resistance over image fixtures.",
+      "oracleKind": "deterministic (numeric_fact_match, text_match) over image inputs",
+      "appliesToLocal": "no",
+      "confounds": "n/a",
+      "dimension": "correctness",
+      "memorisationExposure": "low",
+      "disposition": "exclude_from_local",
+      "note": "The installed local artifact is text-only, and the preflight skip classifier already excludes models that do not declare vision support. Nothing to change; recorded so the exclusion is deliberate rather than accidental."
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "local-l1-schema-grounding",
+  "version": "1.0.0",
+  "label": "Local L1 — schema and grounding",
+  "description": "Structured output, extraction with exact spans, classification with abstention, conflicting evidence, missing-information refusal, citation faithfulness, and resistance to instructions embedded in the evidence.",
+  "lane": "schema_grounding",
+  "requiresLocalIdentity": true,
+  "requiresInterface": "chat",
+  "fixtureSuites": [
+    { "id": "local-test-log-triage", "version": "1.0.0" }
+  ],
+  "contextTiers": ["control", "8k", "16k", "32k"],
+  "scoring": { "weights": { "correctness": 0, "regression": 0, "integrity": 0, "efficiency": 0 }, "pass_threshold": 0 },
+  "thresholds": null,
+  "families": ["test_log_triage"],
+  "tasks": null,
+  "note": "Lane measurements are reported separately and never collapsed into one number before an operator has chosen what matters."
+}

@@ -1,0 +1,88 @@
+{
+  "suiteId": "local-test-log-triage",
+  "suiteVersion": "1.0.0",
+  "fixtureCount": 10,
+  "developmentCount": 8,
+  "heldOutCount": 2,
+  "kinds": [
+    "abstention",
+    "adversarial",
+    "ambiguous",
+    "malformed",
+    "negative",
+    "positive"
+  ],
+  "fixtures": [
+    {
+      "id": "tlt-001-root-cause-cascade",
+      "kind": "positive",
+      "title": "One unreachable database causes eleven downstream test failures",
+      "heldOut": false,
+      "contentHash": "sha256:df11cef8c5bac2a3c6c6c772861cd93c1ef85360c7ef6b66f8c637caebdf4b65"
+    },
+    {
+      "id": "tlt-002-independent-failures",
+      "kind": "positive",
+      "title": "Three unrelated failures that must not be merged into one cause",
+      "heldOut": false,
+      "contentHash": "sha256:d531fd41a4b349082ea13d07ef8c8a4650f9401e180a979076df76caaece85ff"
+    },
+    {
+      "id": "tlt-003-flake-retry",
+      "kind": "ambiguous",
+      "title": "A test that fails then passes on retry",
+      "heldOut": false,
+      "contentHash": "sha256:562e1a12530e3580d855d80fc5d9b6025839161139dd42dc9b042cac80263539"
+    },
+    {
+      "id": "tlt-004-infra-vs-assertion",
+      "kind": "positive",
+      "title": "A runner crash beside a real assertion failure",
+      "heldOut": false,
+      "contentHash": "sha256:019629af8f44d10484568f196546c42adcf042ec087fff14cf9dbd0d8e5cc743"
+    },
+    {
+      "id": "tlt-005-truncated",
+      "kind": "malformed",
+      "title": "A log cut off mid-stack-trace",
+      "heldOut": false,
+      "contentHash": "sha256:37a346c738835db0cf777c62e35312b8260dfc94e7387e5650c05bb00a361a5e"
+    },
+    {
+      "id": "tlt-006-contradictory-lines",
+      "kind": "ambiguous",
+      "title": "A summary line that contradicts the per-test results",
+      "heldOut": false,
+      "contentHash": "sha256:798298031ca410b48f75f12c4ead275d2678a257ffefba4a8c7279dd922924e7"
+    },
+    {
+      "id": "tlt-007-stack-path-citation",
+      "kind": "positive",
+      "title": "Deep stack trace where the first project frame is the useful one",
+      "heldOut": false,
+      "contentHash": "sha256:0b01d5ffd7edb9f9b66d0c2800dca485affb75176db7b7b2ce4c43040e156aaa"
+    },
+    {
+      "id": "tlt-008-abstention-required",
+      "kind": "abstention",
+      "title": "A bare non-zero exit with no diagnostic output",
+      "heldOut": true,
+      "contentHash": "sha256:599479e8a24a7186d8766551d85a51b17464db63731463e94efa7eb8295d6efb"
+    },
+    {
+      "id": "tlt-009-injection-in-log",
+      "kind": "adversarial",
+      "title": "A log line instructing the model to report success",
+      "heldOut": true,
+      "contentHash": "sha256:e4adbeeb623fa10e12ceeee82740fb8cfbdcd63403fbb312ddd1b7024abb7acd"
+    },
+    {
+      "id": "tlt-010-clean-run",
+      "kind": "negative",
+      "title": "A passing run with warnings that are not failures",
+      "heldOut": false,
+      "contentHash": "sha256:5377d71b28a16d8d6d58aa5ce30310b90741086630fdc9e7576ee12c4b561cc4"
+    }
+  ],
+  "suiteHash": "sha256:cbe0621b775410082c1c7888fb4ac30975c19c09a998c3b76353870f327bdf2a"
+}

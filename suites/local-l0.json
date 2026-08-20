@@ -1,0 +1,14 @@
+{
+  "id": "local-l0-operational",
+  "version": "1.0.0",
+  "label": "Local L0 — operational",
+  "description": "Identity, placement and measurement. Establishes that the thing under test is what it claims to be, running where it was meant to. Produces no capability claim.",
+  "lane": "operational",
+  "requiresLocalIdentity": true,
+  "requiresInterface": "chat",
+  "scoring": { "weights": { "correctness": 0, "regression": 0, "integrity": 0, "efficiency": 0 }, "pass_threshold": 0 },
+  "thresholds": null,
+  "families": ["local_operational"],
+  "tasks": null,
+  "note": "pass_threshold is 0 and thresholds are null because L0 measures rather than grades. Numbers here become inputs to a threshold decision an operator makes after the first campaign, not a verdict this suite issues."
+}

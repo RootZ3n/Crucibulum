@@ -1,0 +1,18 @@
+{
+  "id": "local-l2-repo-reconnaissance",
+  "version": "1.0.0",
+  "label": "Local L2 — bounded repository reconnaissance",
+  "description": "Relevant-file and symbol recall, dependency relationships, hallucinated-path rejection, omitted-context reporting, and citations into a caller-supplied bounded evidence packet. No filesystem access is granted.",
+  "lane": "repo_reconnaissance",
+  "requiresLocalIdentity": true,
+  "requiresInterface": "chat",
+  "fixtureSuites": [
+    { "id": "local-repo-reconnaissance", "version": "1.0.0" }
+  ],
+  "contextTiers": ["control", "8k", "16k", "32k"],
+  "scoring": { "weights": { "correctness": 0, "regression": 0, "integrity": 0, "efficiency": 0 }, "pass_threshold": 0 },
+  "thresholds": null,
+  "families": ["repo_reconnaissance"],
+  "tasks": null,
+  "note": "The evidence packet is the model's entire world. A citation to a real file that was not supplied is as invalid as one to a file that does not exist."
+}
