@@ -649,6 +649,11 @@ export function createBokahliResponder(opts: BokahliResponderOptions): Responder
 
     return {
       rawText: content,
+      // The runtime's own word for why generation stopped. Carried rather than
+      // inferred: "length" and "stop" are the difference between a model that
+      // was cut off and one that cannot close a JSON object, and the parse
+      // boundary must not have to guess which from the text.
+      finishReason: parsed.result?.finishReason ?? null,
       boundary: readBoundary(parsed["telemetry"]),
       promptTokens,
       completionTokens,
@@ -783,6 +788,7 @@ async function consumeStream(
   });
   return {
     rawText: out.text,
+    finishReason: (terminal as JsonLike).result?.finishReason ?? null,
     boundary: readBoundary((terminal as Record<string, unknown>)["telemetry"]),
     promptTokens,
     completionTokens,

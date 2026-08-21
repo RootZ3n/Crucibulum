@@ -617,10 +617,11 @@ test("evidence from this responder cannot be exported as qualification today", a
     suiteId: "local-test-log-triage", suiteVersion: "1.0.0",
     split: "evaluation" as const, applicability: "APPLICABLE" as const,
     lanes: [{
-      lane: "facts", scorerVersion: "local-scorers-1.0.0" as const,
+      lane: "facts", scorerVersion: "local-scorers-1.1.0" as const,
       measurements: [{ name: "facts.recall", value: 1, unit: "ratio" as const, detail: "" }],
       failureCodes: [], attribution: "MODEL" as const, notes: [],
     }],
+    completion: { sha256: `sha256:${"a".repeat(64)}`, chars: 42, finishReason: "stop" },
     contextPosition: null, contextTier: "control",
     promptTokens: 120, completionTokens: 18,
     // Exactly what the responder reports today.

@@ -113,6 +113,15 @@ rather than defaulting either way — defaulting to model failure would launder 
 protocol change into a capability claim; defaulting to infrastructure would hide
 one.
 
+That rule governs *outcomes the responder maps*, and it stops where the model's
+own answer begins. Once Bokahli returns a ROUTED completion, the responder's job
+is done and the completion's contents are the model's. A completion that arrives
+whole and is not valid JSON is `local_invalid_structured_output` attributed to
+MODEL — not a harness failure, however tempting the symmetry. The responder also
+carries the runtime's `finishReason` onto the record so the parse boundary can
+tell a generation cut at the token limit from a model that cannot close a brace,
+instead of inferring it from the text.
+
 ## Streaming
 
 Partial text is never a completion. Bokahli discards partial output when the

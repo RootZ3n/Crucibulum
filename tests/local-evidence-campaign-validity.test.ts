@@ -50,7 +50,7 @@ function transport(over: Partial<Transport> = {}): Transport {
 function record(over: Partial<AttemptRecord> = {}): AttemptRecord {
   return {
     attemptId: "a1",
-    evidenceTransport: transport(),
+    completion: { sha256: `sha256:${"b".repeat(64)}`, chars: 64, finishReason: "stop" },    evidenceTransport: transport(),
     fixtureId: "tlt-008-abstention-required",
     suiteId: "local-test-log-triage",
     suiteVersion: "1.0.0",
@@ -58,7 +58,7 @@ function record(over: Partial<AttemptRecord> = {}): AttemptRecord {
     applicability: "APPLICABLE",
     lanes: [{
       lane: "facts",
-      scorerVersion: "local-scorers-1.0.0",
+      scorerVersion: "local-scorers-1.1.0",
       measurements: [{ name: "facts.recall", value: 1, unit: "ratio", detail: "" }],
       failureCodes: [],
       attribution: "MODEL",
@@ -105,7 +105,7 @@ function identity() {
     concurrency: { slots: 1, maxConcurrentRequests: 1, batchSize: null },
     fixtureSuiteId: "local-test-log-triage",
     fixtureSuiteVersion: "1.0.0",
-    verificationRegimeVersion: "local-regime-1.1.0",
+    verificationRegimeVersion: "local-regime-1.2.0",
   };
 }
 
@@ -281,7 +281,7 @@ test("the exported provenance names the transport, so Bokahli can tell them apar
   assert.equal(r.ok, true);
   assert.ok(r.ok);
   const src = String(r.bundle.provenance["sourceContractVersion"]);
-  assert.match(src, /local-regime-1\.1\.0/);
+  assert.match(src, /local-regime-1\.2\.0/);
   assert.match(src, /luak\.bokahli-exporter-2\.1\.0/);
   assert.match(src, /luak\.evidence-transport\/1/);
   // And it still claims no trust of any kind.

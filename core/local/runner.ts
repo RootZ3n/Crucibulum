@@ -18,10 +18,13 @@ import {
   isEvaluationFixture,
   type ReconFixture, type TriageFixture,
 } from "./fixtures/index.js";
+import { createHash } from "node:crypto";
 import {
-  scoreReconFixture, scoreTriageFixture,
+  scoreReconFixture, scoreStructuredOutput, scoreTriageFixture,
+  LOCAL_SCORER_VERSION,
   type LaneScore, type ReconAnswer, type TriageAnswer,
 } from "./scorers.js";
+import type { StructuredParse } from "./parsers.js";
 import { scoreAttempt, type AttemptRecord, type ScoredAttempt, type TokenCountSource } from "./regime.js";
 import {
   EVIDENCE_TRANSPORT_VERSION, assertEvidenceIsolated, buildEvidencePacket,
@@ -84,6 +87,16 @@ export interface BoundaryObservation {
 
 export interface LocalResponse {
   readonly rawText: string;
+  /**
+   * Why the runtime stopped generating, as the runtime reported it.
+   *
+   * Absent on responders that predate the field. It is never inferred: "length"
+   * and "stop" are the difference between a model that cannot close a JSON
+   * object and one that was cut off before it could, and guessing which from the
+   * text is exactly the kind of inference that produced the misattribution this
+   * regime version exists to correct.
+   */
+  readonly finishReason?: string | null;
   /** Null when the deployment reported no boundary telemetry at all. */
   readonly boundary?: BoundaryObservation | null;
   readonly promptTokens: number | null;
@@ -115,9 +128,16 @@ export interface RunOptions {
   readonly repeats?: number;
   /** Called before each attempt. Returning a reason aborts the run. */
   readonly precondition?: (attemptIndex: number) => Promise<string | null>;
-  /** Parser turning raw text into the shape a scorer needs. */
-  readonly parseTriage?: (raw: string, fx: TriageFixture) => TriageAnswer | null;
-  readonly parseRecon?: (raw: string, fx: ReconFixture) => ReconAnswer | null;
+  /**
+   * Parser turning raw text into the shape a scorer needs.
+   *
+   * Returns a typed outcome, never `null`. The three cases it distinguishes —
+   * parsed, contract violation, extractor fault — carry different attributions,
+   * and a `null` return could not carry one, which is how a model's malformed
+   * JSON came to be recorded as a Luak defect.
+   */
+  readonly parseTriage?: (raw: string, fx: TriageFixture) => StructuredParse<TriageAnswer>;
+  readonly parseRecon?: (raw: string, fx: ReconFixture) => StructuredParse<ReconAnswer>;
 }
 
 export interface RunResult {
@@ -129,6 +149,23 @@ export interface RunResult {
   readonly prompts: readonly LocalPrompt[];
   readonly records: readonly AttemptRecord[];
   readonly scored: readonly ScoredAttempt[];
+  /**
+   * The raw completion behind every record, by attempt id.
+   *
+   * Kept beside the records rather than inside them. A structured-output verdict
+   * is a claim about specific bytes; discarding the bytes makes the claim
+   * unreviewable, which is how the IQ3_XXS misattribution survived a whole
+   * campaign. Nothing here is repaired, re-escaped or normalised — this is
+   * exactly what arrived. It is written to the run directory, which is
+   * gitignored, and never into an export bundle.
+   */
+  readonly completions: readonly {
+    readonly attemptId: string;
+    readonly fixtureId: string;
+    readonly sha256: string;
+    readonly finishReason: string | null;
+    readonly text: string;
+  }[];
   /** Set when any response reported anything other than a runtime tokenizer. */
   readonly tokenCountSource: TokenCountSource | "not_measured";
 }
@@ -279,11 +316,14 @@ export async function runLocalSuite(opts: RunOptions): Promise<RunResult> {
   if (!opts.responder) {
     return {
       suiteId: opts.suite.id, suiteVersion: opts.suite.version, dryRun: true,
-      prompts, records: [], scored: [], tokenCountSource: "not_measured",
+      prompts, records: [], scored: [], completions: [], tokenCountSource: "not_measured",
     };
   }
 
   const records: AttemptRecord[] = [];
+  const completions: {
+    attemptId: string; fixtureId: string; sha256: string; finishReason: string | null; text: string;
+  }[] = [];
   let worstTokenSource: RunResult["tokenCountSource"] = "runtime_tokenizer";
   const repeats = Math.max(1, opts.repeats ?? 1);
   const schedule = Array.from({ length: repeats }, () => prompts).flat();
@@ -312,20 +352,24 @@ export async function runLocalSuite(opts: RunOptions): Promise<RunResult> {
 
     if (res.runtimeFailure) {
       lanes = [{
-        lane: "runtime", scorerVersion: "local-scorers-1.0.0", measurements: [],
+        lane: "runtime", scorerVersion: LOCAL_SCORER_VERSION, measurements: [],
         failureCodes: [runtimeCodeFor(res.runtimeFailure.code)],
         attribution: "RUNTIME_PROVIDER", notes: [res.runtimeFailure.detail],
       }];
     } else if (tfx) {
-      const parsed = opts.parseTriage?.(res.rawText, tfx) ?? null;
-      lanes = parsed
-        ? scoreTriageFixture(tfx, parsed)
-        : [parseFailureLane(prompt.outputSchemaKeys)];
+      const p = opts.parseTriage?.(res.rawText, tfx);
+      lanes = p === undefined
+        ? [noExtractorLane(prompt.outputSchemaKeys)]
+        : p.status === "PARSED"
+          ? [scoreStructuredOutput(true, [], "MODEL", []), ...scoreTriageFixture(tfx, p.value)]
+          : [laneForParseFailure(p, prompt.outputSchemaKeys, res.finishReason ?? null)];
     } else if (rfx) {
-      const parsed = opts.parseRecon?.(res.rawText, rfx) ?? null;
-      lanes = parsed
-        ? scoreReconFixture(rfx, parsed)
-        : [parseFailureLane(prompt.outputSchemaKeys)];
+      const p = opts.parseRecon?.(res.rawText, rfx);
+      lanes = p === undefined
+        ? [noExtractorLane(prompt.outputSchemaKeys)]
+        : p.status === "PARSED"
+          ? [scoreStructuredOutput(true, [], "MODEL", []), ...scoreReconFixture(rfx, p.value)]
+          : [laneForParseFailure(p, prompt.outputSchemaKeys, res.finishReason ?? null)];
     } else {
       applicability = "NOT_APPLICABLE";
     }
@@ -336,8 +380,19 @@ export async function runLocalSuite(opts: RunOptions): Promise<RunResult> {
       : [];
     const modelOutput = b ? b.packets.filter((q) => q.zone === "model-output") : [];
 
+    const attemptId = `att_${randomUUID()}`;
+    if (!res.runtimeFailure) {
+      completions.push({
+        attemptId,
+        fixtureId: prompt.fixtureId,
+        sha256: `sha256:${createHash("sha256").update(res.rawText, "utf-8").digest("hex")}`,
+        finishReason: res.finishReason ?? null,
+        text: res.rawText,
+      });
+    }
+
     records.push({
-      attemptId: `att_${randomUUID()}`,
+      attemptId,
       evidenceTransport: {
         transportVersion: prompt.transportVersion,
         packetCount: prompt.evidence.length,
@@ -370,6 +425,13 @@ export async function runLocalSuite(opts: RunOptions): Promise<RunResult> {
       split: prompt.split,
       applicability,
       lanes,
+      completion: res.runtimeFailure
+        ? null
+        : {
+          sha256: `sha256:${createHash("sha256").update(res.rawText, "utf-8").digest("hex")}`,
+          chars: res.rawText.length,
+          finishReason: res.finishReason ?? null,
+        },
       contextPosition: null,
       contextTier: opts.suite.contextTiers[0] ?? null,
       promptTokens: res.promptTokens,
@@ -389,6 +451,7 @@ export async function runLocalSuite(opts: RunOptions): Promise<RunResult> {
     prompts,
     records,
     scored: records.map(scoreAttempt),
+    completions,
     tokenCountSource: worstTokenSource,
     ...(abortedReason !== undefined ? { abortedReason } : {}),
   };
@@ -406,18 +469,69 @@ function runtimeCodeFor(c: NonNullable<LocalResponse["runtimeFailure"]>["code"])
 }
 
 /**
- * A response Luak could not parse.
+ * A completion that did not become a scoreable answer.
  *
- * Attributed HARNESS_PARSER, not MODEL. Whether the model produced something
- * unusable or our parser failed to read something usable is not decidable from
- * here, and guessing in the model's disfavour is how a benchmark quietly
- * measures its own parser.
+ * Two outcomes, two attributions, and the discriminant decides — this function
+ * cannot pick.
+ *
+ *   CONTRACT_VIOLATION → MODEL. A completion arrived, the harness read it, and
+ *   it violates the output contract the prompt declared. `local_invalid_
+ *   structured_output`, `local_truncated_completion`, `local_empty_completion`
+ *   and `local_degeneration_repetition` are all MODEL-attributed in
+ *   LOCAL_FAILURE_MAP, and all of them describe something the model did.
+ *
+ *   EXTRACTOR_FAULT → HARNESS_PARSER. This module threw. Nothing was concluded
+ *   about the model, because nothing got as far as its answer.
+ *
+ * `local_harness_parse_failure` used to cover both. It now covers only the
+ * second, which is what "harness" meant all along.
  */
-function parseFailureLane(keys: readonly string[]): LaneScore {
+function laneForParseFailure(
+  p: Extract<StructuredParse<never>, { status: "CONTRACT_VIOLATION" | "EXTRACTOR_FAULT" }>,
+  keys: readonly string[],
+  finishReason: string | null,
+): LaneScore {
+  if (p.status === "EXTRACTOR_FAULT") {
+    return {
+      lane: "parse", scorerVersion: LOCAL_SCORER_VERSION, measurements: [],
+      failureCodes: ["local_harness_extraction_failure"],
+      // COMPOSITE, matching the code's own entry in LOCAL_FAILURE_MAP rather
+      // than restating a weaker attribution beside it. An extractor that
+      // faulted leaves the model's behaviour genuinely undetermined, and
+      // COMPOSITE is the verdict that can never be exported as a model result.
+      attribution: "COMPOSITE",
+      notes: [p.detail, `expected {${keys.join(", ")}}`],
+    };
+  }
+  // A runtime that says it stopped at the token limit has settled the
+  // truncation question; nothing has to be inferred from brace counting.
+  const truncatedByRuntime = finishReason === "length";
+  const code = truncatedByRuntime ? "local_truncated_completion" : p.failureCode;
+  const notes = [
+    ...p.problems,
+    `expected {${keys.join(", ")}}`,
+    `runtime finishReason: ${finishReason ?? "(not reported)"}`,
+  ];
+  if (truncatedByRuntime && p.failureCode !== "local_truncated_completion") {
+    notes.push(
+      `classified as truncated on the runtime's own finishReason rather than as ` +
+      `${p.failureCode}: the generation was cut at the token limit`,
+    );
+  }
+  return scoreStructuredOutput(false, [code], "MODEL", notes);
+}
+
+/**
+ * A fixture reached with no parser configured for its shape.
+ *
+ * A harness gap, and the only remaining use of `local_harness_parse_failure`
+ * outside a thrown extractor: nothing was read, so nothing may be concluded.
+ */
+function noExtractorLane(keys: readonly string[]): LaneScore {
   return {
-    lane: "parse", scorerVersion: "local-scorers-1.0.0", measurements: [],
+    lane: "parse", scorerVersion: LOCAL_SCORER_VERSION, measurements: [],
     failureCodes: ["local_harness_parse_failure"],
     attribution: "HARNESS_PARSER",
-    notes: [`response could not be parsed into {${keys.join(", ")}}`],
+    notes: [`no parser was configured for a fixture requiring {${keys.join(", ")}}`],
   };
 }

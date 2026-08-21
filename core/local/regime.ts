@@ -35,8 +35,24 @@ import type { LaneScore, Measurement } from "./scorers.js";
 export type { TokenCountSource } from "../../types/local-verdict.js";
 export { EXPORTABLE_TOKEN_SOURCES } from "../../types/local-verdict.js";
 
-/** Bump on any change to how measurements become outcomes. Evidence is bound to this. */
-export const LOCAL_REGIME_VERSION = "local-regime-1.1.0" as const;
+/**
+ * Bump on any change to how measurements become outcomes. Evidence is bound to
+ * this, and the exporter refuses a bundle that mixes versions.
+ *
+ * 1.2.0 changed three things, all of which move results:
+ *
+ *   - A completion that arrives and violates its output contract is MODEL, not
+ *     HARNESS_PARSER. Attempts that used to be excluded from the model's
+ *     distribution now score zero inside it.
+ *   - `structured_output` is a model lane, emitted on every scored attempt.
+ *   - Forbidden claims and injection compliance are measured over the model's
+ *     own voice, not over verbatim quotes of the evidence it was asked to cite.
+ *     A model that reports an attack by citing it is no longer recorded as
+ *     having obeyed it.
+ *
+ * A 1.1.0 result and a 1.2.0 result are not comparable and must never be pooled.
+ */
+export const LOCAL_REGIME_VERSION = "local-regime-1.2.0" as const;
 export type LocalRegimeVersion = typeof LOCAL_REGIME_VERSION;
 
 /**
@@ -94,6 +110,27 @@ export interface AttemptRecord {
   readonly split: "development" | "evaluation";
   readonly applicability: LocalApplicability;
   readonly lanes: readonly LaneScore[];
+  /**
+   * What the model actually emitted, bound to the record.
+   *
+   * Null only when no completion was received at all — a runtime failure, or a
+   * transport that never produced one. Otherwise present on every attempt,
+   * passing or failing.
+   *
+   * The digest, not the text. A structured-output failure is a claim about
+   * specific bytes, and a claim about bytes that are gone is unreviewable: the
+   * previous campaign recorded "HARNESS_PARSER" for an IQ3 attempt and kept
+   * nothing that could be re-read to check it. The bytes themselves are written
+   * beside the run (see `RunResult.completions`) rather than into the record,
+   * so evidence a bundle exports stays free of model prose while the completion
+   * remains resolvable against this digest.
+   */
+  readonly completion: {
+    readonly sha256: string;
+    readonly chars: number;
+    /** As the runtime reported it. Never inferred from the text. */
+    readonly finishReason: string | null;
+  } | null;
   /** Position band, when the fixture planted a fact. Null otherwise. */
   readonly contextPosition: "beginning" | "middle" | "end" | null;
   readonly contextTier: string | null;
@@ -138,6 +175,11 @@ export interface ScoredAttempt {
  * the harness lanes exist to explain a result, not to grade one.
  */
 export const MODEL_LANES: readonly string[] = [
+  // First, because under the unconstrained regime it is the precondition for
+  // every lane after it: an answer that cannot be read cannot be graded for
+  // grounding, and an attempt that produced one must still show up in the
+  // model's distribution rather than vanishing into the harness's.
+  "structured_output",
   "abstention", "citation", "facts", "classification",
   "injection", "coverage", "relationships", "file_selection", "context_position",
 ];

@@ -198,6 +198,22 @@ export async function localQualifyCommand(args: string[]): Promise<void> {
       records: result.records, scored: result.scored,
     }, null, 2)}\n`);
     console.log(`  records      : ${out}`);
+
+    // The completions, beside the records rather than inside them.
+    //
+    // A structured-output verdict is a claim about specific bytes. The previous
+    // campaign kept none, so its "HARNESS_PARSER" attributions could not be
+    // re-read and checked — which is how a model defect stayed labelled as a
+    // harness defect for a whole campaign. Each record's `completion.sha256`
+    // resolves into this file. Nothing here is repaired or re-escaped, and it
+    // never enters an export bundle.
+    const completionsPath = out.replace(/\.json$/, "") + ".completions.json";
+    writeFileSync(completionsPath, `${JSON.stringify({
+      note: "Raw model completions, verbatim. Resolved from records[].completion.sha256.",
+      suiteId: result.suiteId,
+      completions: result.completions,
+    }, null, 2)}\n`);
+    console.log(`  completions  : ${completionsPath}`);
   }
 
   console.log("");

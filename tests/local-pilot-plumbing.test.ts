@@ -11,10 +11,25 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { runLocalSuite, type LocalResponse } from "../core/local/runner.js";
 import { loadLocalSuite } from "../core/local/suite-registry.js";
-import { parseReconAnswer, parseTriageAnswer } from "../core/local/parsers.js";
+import {
+  parseReconAnswer, parseTriageAnswer,
+  type StructuredParse,
+} from "../core/local/parsers.js";
 import { TEST_LOG_TRIAGE_FIXTURES, REPO_RECON_FIXTURES } from "../core/local/fixtures/index.js";
 
 const SUITE = "local-l1-schema-grounding";
+
+/** Unwrap a parse that must have succeeded. */
+function parsed<T>(p: StructuredParse<T>): T {
+  assert.equal(p.status, "PARSED",
+    p.status === "PARSED" ? "" : `expected PARSED, got ${p.status}: ${JSON.stringify(p)}`);
+  return (p as { status: "PARSED"; value: T }).value;
+}
+
+/** Assert a parse was refused as the model's contract violation, not the harness's fault. */
+function modelViolation<T>(p: StructuredParse<T>, why: string): void {
+  assert.equal(p.status, "CONTRACT_VIOLATION", `${why}: got ${p.status}`);
+}
 
 function ok(rawText: string): LocalResponse {
   return {
@@ -96,17 +111,16 @@ const TRIAGE_FX = TEST_LOG_TRIAGE_FIXTURES[0]!;
 const RECON_FX = REPO_RECON_FIXTURES[0]!;
 
 test("a fenced JSON object parses; models wrap output far more often than they break it", () => {
-  const a = parseTriageAnswer(
+  const a = parsed(parseTriageAnswer(
     '```json\n{"outcome":"ANSWERED","failureGroups":[],"truncationReported":false,"needs":[]}\n```',
     TRIAGE_FX,
-  );
-  assert.ok(a);
+  ));
   assert.equal(a.abstained, false);
 });
 
 test("outcome must be one of the two declared values", () => {
   for (const bad of ['{"outcome":"yes"}', '{"outcome":null}', "{}", '{"outcome":"answered"}']) {
-    assert.equal(parseTriageAnswer(bad, TRIAGE_FX), null, `must refuse ${bad}`);
+    modelViolation(parseTriageAnswer(bad, TRIAGE_FX), `must refuse ${bad}`);
   }
 });
 
@@ -114,34 +128,37 @@ test("the parser repairs nothing", () => {
   // Trailing comma, single quotes, and a bare fragment are all refusals. A
   // parser that fixed these would be scoring its own repairs.
   for (const bad of ['{"outcome":"ANSWERED",}', "{'outcome':'ANSWERED'}", "ANSWERED", ""]) {
-    assert.equal(parseTriageAnswer(bad, TRIAGE_FX), null);
+    modelViolation(parseTriageAnswer(bad, TRIAGE_FX), `must refuse ${JSON.stringify(bad)}`);
   }
 });
 
 test("a JSON array or scalar is not an answer object", () => {
   for (const bad of ["[]", '["outcome"]', '"ANSWERED"', "42", "null"]) {
-    assert.equal(parseTriageAnswer(bad, TRIAGE_FX), null);
-    assert.equal(parseReconAnswer(bad, RECON_FX), null);
+    modelViolation(parseTriageAnswer(bad, TRIAGE_FX), bad);
+    modelViolation(parseReconAnswer(bad, RECON_FX), bad);
   }
 });
 
-test("ABSTAINED is a valid answer, not a parse failure", () => {
-  const a = parseTriageAnswer('{"outcome":"ABSTAINED","needs":["the full log"]}', TRIAGE_FX);
-  assert.ok(a);
+test("the unconstrained bar is unchanged: an abstention need not carry every declared key", () => {
+  // 1.1.0 re-attributes failures. It does not raise the bar, and this is the
+  // test that would fail if it had: a required-key check introduced alongside
+  // the attribution fix would make the two changes indistinguishable in a
+  // result. Required keys belong to the constrained regime, where the runtime
+  // enforces them before a token is emitted.
+  const a = parsed(parseTriageAnswer('{"outcome":"ABSTAINED","needs":["the full log"]}', TRIAGE_FX));
   assert.equal(a.abstained, true);
   assert.deepEqual(a.statedNeeds, ["the full log"]);
 });
 
 test("malformed citations are dropped rather than becoming NaN line numbers", () => {
-  const a = parseTriageAnswer(JSON.stringify({
+  const a = parsed(parseTriageAnswer(JSON.stringify({
     outcome: "ANSWERED",
     failureGroups: [{
       classification: "ASSERTION",
       observed: "x",
       citations: [{ startLine: 3 }, { startLine: "nonsense" }, null, { endLine: 9 }],
     }],
-  }), TRIAGE_FX);
-  assert.ok(a);
+  }), TRIAGE_FX));
   const cites = a.groups[0]!.citations;
   assert.equal(cites.length, 1, "only the one citation with a usable start line survives");
   assert.equal(cites[0]!.startLine, 3);
@@ -149,28 +166,31 @@ test("malformed citations are dropped rather than becoming NaN line numbers", ()
 });
 
 test("recon citations inherit the file path they were listed under", () => {
-  const a = parseReconAnswer(JSON.stringify({
+  const a = parsed(parseReconAnswer(JSON.stringify({
     outcome: "ANSWERED",
     files: [{ path: "core/a.ts", citations: [{ startLine: 1, endLine: 2 }] }],
-  }), RECON_FX);
-  assert.ok(a);
+  }), RECON_FX));
   assert.equal(a.files[0]!.citations[0]!.path, "core/a.ts");
 });
 
 test("non-string entries in string arrays are dropped, not stringified", () => {
-  const a = parseTriageAnswer(
+  const a = parsed(parseTriageAnswer(
     '{"outcome":"ANSWERED","needs":["real",7,null,{"a":1}]}', TRIAGE_FX,
-  );
-  assert.ok(a);
+  ));
   assert.deepEqual(a.statedNeeds, ["real"]);
 });
 
 test("rawText is preserved verbatim so a scored answer can be re-read", () => {
   const raw = '```json\n{"outcome":"ABSTAINED"}\n```';
-  assert.equal(parseTriageAnswer(raw, TRIAGE_FX)!.rawText, raw);
+  assert.equal(parsed(parseTriageAnswer(raw, TRIAGE_FX)).rawText, raw);
 });
 
-test("an unparseable response becomes a HARNESS_PARSER failure, never a model failure", async () => {
+test("a completion that violates the output contract is the model's failure, not the harness's", async () => {
+  // The inverse of the assertion this test used to make. Prose in place of the
+  // required JSON object is a completion Luak received and read; nothing about
+  // reading it was ambiguous. Attributing it to HARNESS_PARSER excluded it from
+  // the model's capability distribution entirely — an exclusion that only ever
+  // moved a result in the model's favour.
   const suite = loadLocalSuite(SUITE)!;
   const r = await runLocalSuite({
     suite, split: "evaluation", seed: 1,
@@ -181,9 +201,28 @@ test("an unparseable response becomes a HARNESS_PARSER failure, never a model fa
   for (const rec of r.records) {
     const lanes = rec.lanes;
     assert.equal(lanes.length, 1);
-    assert.equal(lanes[0]!.attribution, "HARNESS_PARSER");
-    assert.deepEqual(lanes[0]!.failureCodes, ["local_harness_parse_failure"]);
+    assert.equal(lanes[0]!.lane, "structured_output");
+    assert.equal(lanes[0]!.attribution, "MODEL");
+    assert.deepEqual(lanes[0]!.failureCodes, ["local_invalid_structured_output"]);
   }
+  for (const s2 of r.scored) {
+    assert.equal(s2.attribution, "MODEL");
+    assert.equal(s2.outcome, "FAIL", "a model failure is FAIL, not HARNESS_FAILURE");
+  }
+});
+
+test("HARNESS_PARSER survives for what it actually means: no extractor at all", async () => {
+  const suite = loadLocalSuite(SUITE)!;
+  const r = await runLocalSuite({
+    suite, split: "evaluation", seed: 1,
+    // No parseTriage/parseRecon: the harness cannot read this fixture's shape.
+    responder: async () => ok('{"outcome":"ANSWERED"}'),
+  });
+  for (const rec of r.records) {
+    assert.equal(rec.lanes[0]!.attribution, "HARNESS_PARSER");
+    assert.deepEqual(rec.lanes[0]!.failureCodes, ["local_harness_parse_failure"]);
+  }
+  for (const s2 of r.scored) assert.equal(s2.outcome, "HARNESS_FAILURE");
 });
 
 // ---------------------------------------------------------------------------

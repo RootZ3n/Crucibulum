@@ -245,10 +245,11 @@ function transport(over: Partial<NonNullable<AttemptRecord["evidenceTransport"]>
 function record(over: Partial<AttemptRecord> = {}): AttemptRecord {
   return {
     attemptId: "a1", evidenceTransport: transport(), fixtureId: "tlt-008-abstention-required",
+    completion: { sha256: `sha256:${"b".repeat(64)}`, chars: 64, finishReason: "stop" },
     suiteId: "local-test-log-triage", suiteVersion: "1.0.0",
     split: "evaluation", applicability: "APPLICABLE",
     lanes: [{
-      lane: "facts", scorerVersion: "local-scorers-1.0.0",
+      lane: "facts", scorerVersion: "local-scorers-1.1.0",
       measurements: [{ name: "facts.recall", value: 1, unit: "ratio", detail: "" }],
       failureCodes: [], attribution: "MODEL", notes: [],
     }],

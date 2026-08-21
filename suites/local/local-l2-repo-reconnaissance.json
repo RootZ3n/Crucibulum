@@ -1,6 +1,6 @@
 {
   "id": "local-l2-repo-reconnaissance",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "label": "Local L2 \u2014 bounded repository reconnaissance",
   "description": "Relevant-file and symbol recall, dependency relationships, hallucinated-path rejection, omitted-context reporting, and citations into a caller-supplied bounded evidence packet. No filesystem access is granted.",
   "lane": "repo_reconnaissance",
@@ -21,8 +21,8 @@
     "32k"
   ],
   "boundVersions": {
-    "regime": "local-regime-1.1.0",
-    "scorers": "local-scorers-1.0.0",
+    "regime": "local-regime-1.2.0",
+    "scorers": "local-scorers-1.1.0",
     "generator": "local-context-generator-1.0.0"
   }
 }
