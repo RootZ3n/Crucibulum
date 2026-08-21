@@ -1,0 +1,49 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["outcome", "files", "symbols", "relationships", "omissionReported", "needs"],
+  "properties": {
+    "outcome": { "type": "string", "enum": ["ANSWERED", "ABSTAINED"] },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "citations"],
+        "properties": {
+          "path": { "type": "string" },
+          "citations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["startLine", "endLine", "quote"],
+              "properties": {
+                "startLine": { "type": "integer" },
+                "endLine": { "type": "integer" },
+                "quote": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "symbols": { "type": "array", "items": { "type": "string" } },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from", "to", "kind", "basis"],
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "kind": { "type": "string" },
+          "basis": { "type": "string", "enum": ["OBSERVED", "INFERRED"] }
+        }
+      }
+    },
+    "omissionReported": { "type": "boolean" },
+    "needs": { "type": "array", "items": { "type": "string" } }
+  }
+}

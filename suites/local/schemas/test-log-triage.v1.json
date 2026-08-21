@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["outcome", "failureGroups", "truncationReported", "needs"],
+  "properties": {
+    "outcome": { "type": "string", "enum": ["ANSWERED", "ABSTAINED"] },
+    "failureGroups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["classification", "citations", "observed"],
+        "properties": {
+          "classification": { "type": "string" },
+          "observed": { "type": "string" },
+          "citations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["startLine", "endLine", "quote"],
+              "properties": {
+                "startLine": { "type": "integer" },
+                "endLine": { "type": "integer" },
+                "quote": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "truncationReported": { "type": "boolean" },
+    "needs": { "type": "array", "items": { "type": "string" } }
+  }
+}
