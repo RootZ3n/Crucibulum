@@ -78,7 +78,17 @@ export function makeBokahliPrecondition(
     const foreign = (lease["foreignHolders"] ?? []) as unknown[];
 
     const models = await get("/v1/models");
-    const first = ((models?.["data"] ?? []) as Record<string, unknown>[])[0];
+    // The artifact this campaign names, found among everything the deployment
+    // advertises — not whichever entry happens to be listed first.
+    //
+    // Taking `data[0]` was correct while Bokahli served one artifact. With a
+    // catalog of four it aborted a correctly-swapped runtime on the strength of
+    // catalog ordering, which is a fact about a JSON array and not about what
+    // is loaded. The check that matters is unchanged and still strict: the
+    // named model must be advertised, and its digest must be the configured
+    // one. A deployment that does not advertise it still fails here.
+    const advertised = (models?.["data"] ?? []) as Record<string, unknown>[];
+    const first = advertised.find((m) => m["id"] === config.modelId);
     const bok = (first?.["bokahli"] ?? {}) as Record<string, unknown>;
 
     preconditionLog.push({
@@ -109,7 +119,8 @@ export function makeBokahliPrecondition(
       return `attempt ${attempt}: runtime build ${String(runtime["build"])} is not ${config.expectedRuntimeBuild}`;
     }
     if (first?.["id"] !== config.modelId) {
-      return `attempt ${attempt}: advertised model ${String(first?.["id"])} is not ${config.modelId}`;
+      return `attempt ${attempt}: ${config.modelId} is not advertised by this deployment ` +
+        `(it offers ${advertised.map((m) => String(m["id"])).join(", ") || "nothing"})`;
     }
     if (bok["digest"] !== config.artifactDigest) {
       return `attempt ${attempt}: advertised digest does not match the configured artifact`;
