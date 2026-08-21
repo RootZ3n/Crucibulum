@@ -129,6 +129,12 @@ function fullIdentity(): Record<string, unknown> {
     placement: { requestedGpuLayers: 999, observedGpuLayers: 999, cpuOffloadEnabled: true, observedVramBytes: 1, observedHostRamBytes: 1, gpuConfirmed: true },
     context: { configuredTokens: 32768, effectiveMaxTokens: 8000, tierLabel: "8k", tokenCountSource: "runtime_tokenizer" },
     concurrency: { slots: 1, maxConcurrentRequests: 1, batchSize: null },
+    generation: {
+      regime: "unconstrained", contractVersion: "bokahli.structured-output/1",
+      outputSchemaDigest: null, enforcementRequested: false, enforcementConfirmed: null,
+      evidencePolicyVersion: "bokahli.evidence-policy/1",
+      evidencePolicyDigest: `sha256:${"c".repeat(64)}`, reasoningMode: "none",
+    },
     fixtureSuiteId: "local-test-log-triage",
     fixtureSuiteVersion: "1.0.0",
     verificationRegimeVersion: "local-regime-1.0.0",

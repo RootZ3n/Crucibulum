@@ -89,6 +89,25 @@ export interface EvidenceTransportRecord {
   readonly registryPayloadSha256: string | null;
 }
 
+/**
+ * The regime facts for one attempt, as Bokahli reported them.
+ *
+ * `enforcementRequested` and `enforcementConfirmed` stay apart here for the same
+ * reason they stay apart everywhere else: asking for constrained generation and
+ * getting it are different claims, and the state that matters most — asked and
+ * ignored — is the one a single boolean would hide.
+ */
+export interface GenerationRecord {
+  readonly regime: string | null;
+  readonly contractVersion: string | null;
+  readonly outputSchemaDigest: string | null;
+  readonly enforcementRequested: boolean | null;
+  readonly enforcementConfirmed: boolean | null;
+  readonly evidencePolicyVersion: string | null;
+  readonly evidencePolicyDigest: string | null;
+  readonly evidencePolicyApplied: boolean | null;
+}
+
 export interface AttemptRecord {
   readonly attemptId: string;
   /**
@@ -131,6 +150,15 @@ export interface AttemptRecord {
     /** As the runtime reported it. Never inferred from the text. */
     readonly finishReason: string | null;
   } | null;
+  /**
+   * How the deployment says this attempt's output was produced.
+   *
+   * On the record rather than only on the run's identity, so an export can
+   * prove that every attempt in a bundle ran under one regime instead of
+   * inheriting the claim from a file beside them. Null only on records produced
+   * before the regime existed, or where the deployment reported nothing.
+   */
+  readonly generation: GenerationRecord | null;
   /** Position band, when the fixture planted a fact. Null otherwise. */
   readonly contextPosition: "beginning" | "middle" | "end" | null;
   readonly contextTier: string | null;

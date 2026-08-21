@@ -28,7 +28,9 @@
  */
 import { createHash } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
-import type { BoundaryObservation, LocalPrompt, LocalResponse, Responder } from "../runner.js";
+import type {
+  BoundaryObservation, GenerationObservation, LocalPrompt, LocalResponse, Responder,
+} from "../runner.js";
 import { toWireEvidence } from "../evidence.js";
 import type { TokenCountSource } from "../regime.js";
 import {
@@ -84,7 +86,38 @@ function readBoundary(telemetry: unknown): BoundaryObservation | null {
   };
 }
 
-export const BOKAHLI_RESPONDER_VERSION = "bokahli-responder-2.0.0" as const;
+/**
+ * Read the generation regime off the response, never off the config.
+ *
+ * A campaign that *configured* the constrained regime and a deployment that
+ * *applied* it are two different claims. Filling either field in from what the
+ * harness meant to do would erase the distinction Bokahli went to the trouble of
+ * publishing — and the state that matters most, "asked for a grammar and was
+ * ignored", is precisely the one that would then be invisible.
+ */
+function readGeneration(telemetry: unknown): GenerationObservation | null {
+  if (!telemetry || typeof telemetry !== "object") return null;
+  const t = telemetry as Record<string, unknown>;
+  const so = t["structuredOutput"];
+  const ep = t["evidencePolicy"];
+  if ((!so || typeof so !== "object") && (!ep || typeof ep !== "object")) return null;
+  const o = (so ?? {}) as Record<string, unknown>;
+  const p = (ep ?? {}) as Record<string, unknown>;
+  const str = (x: unknown): string | null => (typeof x === "string" ? x : null);
+  const bool = (x: unknown): boolean | null => (typeof x === "boolean" ? x : null);
+  return {
+    regime: str(o["regime"]),
+    contractVersion: str(o["contractVersion"]),
+    outputSchemaDigest: str(o["schemaDigest"]),
+    enforcementRequested: bool(o["enforcementRequested"]),
+    enforcementConfirmed: bool(o["enforcementConfirmed"]),
+    evidencePolicyVersion: str(p["version"]),
+    evidencePolicyDigest: str(p["digest"]),
+    evidencePolicyApplied: bool(p["applied"]),
+  };
+}
+
+export const BOKAHLI_RESPONDER_VERSION = "bokahli-responder-2.1.0" as const;
 
 /**
  * Hard limits on what a response may be.
@@ -496,6 +529,13 @@ export function createBokahliResponder(opts: BokahliResponderOptions): Responder
       maxTokens: config.sampler.maxTokens,
       temperature: config.sampler.temperature,
       topP: config.sampler.topP,
+      // Sent only under the constrained regime, and then verbatim. Spread so an
+      // unconstrained campaign produces the byte-identical body it always did:
+      // the two regimes must differ in exactly one thing, or a difference in
+      // their results has two possible causes.
+      ...(config.regime === "json_schema" && config.outputSchema !== undefined
+        ? { structuredOutput: { schema: config.outputSchema, name: "luak_local_output" } }
+        : {}),
       stream: config.stream === true,
     };
 
@@ -654,6 +694,7 @@ export function createBokahliResponder(opts: BokahliResponderOptions): Responder
       // was cut off and one that cannot close a JSON object, and the parse
       // boundary must not have to guess which from the text.
       finishReason: parsed.result?.finishReason ?? null,
+      generation: readGeneration(parsed["telemetry"]),
       boundary: readBoundary(parsed["telemetry"]),
       promptTokens,
       completionTokens,
@@ -789,6 +830,7 @@ async function consumeStream(
   return {
     rawText: out.text,
     finishReason: (terminal as JsonLike).result?.finishReason ?? null,
+    generation: readGeneration((terminal as Record<string, unknown>)["telemetry"]),
     boundary: readBoundary((terminal as Record<string, unknown>)["telemetry"]),
     promptTokens,
     completionTokens,

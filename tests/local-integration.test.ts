@@ -210,6 +210,12 @@ function identity(over: Partial<LocalModelIdentity> = {}): LocalModelIdentity {
     placement: { requestedGpuLayers: 999, observedGpuLayers: 999, cpuOffloadEnabled: true, observedVramBytes: 1, observedHostRamBytes: 1, gpuConfirmed: true },
     context: { configuredTokens: 32768, effectiveMaxTokens: 8000, tierLabel: "control", tokenCountSource: "runtime_tokenizer" },
     concurrency: { slots: 1, maxConcurrentRequests: 1, batchSize: null },
+    generation: {
+      regime: "unconstrained", contractVersion: "bokahli.structured-output/1",
+      outputSchemaDigest: null, enforcementRequested: false, enforcementConfirmed: null,
+      evidencePolicyVersion: "bokahli.evidence-policy/1",
+      evidencePolicyDigest: `sha256:${"c".repeat(64)}`, reasoningMode: "none",
+    },
     fixtureSuiteId: "local-test-log-triage",
     fixtureSuiteVersion: "1.0.0",
     verificationRegimeVersion: LOCAL_REGIME_VERSION,
@@ -245,6 +251,12 @@ function transport(over: Partial<NonNullable<AttemptRecord["evidenceTransport"]>
 function record(over: Partial<AttemptRecord> = {}): AttemptRecord {
   return {
     attemptId: "a1", evidenceTransport: transport(), fixtureId: "tlt-008-abstention-required",
+    generation: {
+      regime: "unconstrained", contractVersion: "bokahli.structured-output/1",
+      outputSchemaDigest: null, enforcementRequested: false, enforcementConfirmed: null,
+      evidencePolicyVersion: "bokahli.evidence-policy/1",
+      evidencePolicyDigest: `sha256:${"c".repeat(64)}`, evidencePolicyApplied: true,
+    },
     completion: { sha256: `sha256:${"b".repeat(64)}`, chars: 64, finishReason: "stop" },
     suiteId: "local-test-log-triage", suiteVersion: "1.0.0",
     split: "evaluation", applicability: "APPLICABLE",

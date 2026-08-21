@@ -15,7 +15,7 @@ import {
   DEFAULT_PROTOCOL_PIN, type BokahliProtocolPin,
 } from "./bokahli-protocol.js";
 
-export const BOKAHLI_RESPONDER_CONFIG_VERSION = "bokahli-responder-config-1.1.0" as const;
+export const BOKAHLI_RESPONDER_CONFIG_VERSION = "bokahli-responder-config-1.2.0" as const;
 
 export interface BokahliResponderConfig {
   readonly configVersion: typeof BOKAHLI_RESPONDER_CONFIG_VERSION;
@@ -64,6 +64,28 @@ export interface BokahliResponderConfig {
     readonly topP: number;
     readonly maxTokens: number;
   };
+  /**
+   * Which generation regime this campaign measures.
+   *
+   * Optional for source compatibility; absent means `unconstrained`, which is
+   * what every earlier config meant. Naming it is what makes a run's results
+   * comparable only with results from the same regime — the two measure
+   * different capabilities and their numbers must never be pooled.
+   *
+   * `json_schema` requires `outputSchema`. A regime that names no schema is an
+   * unconstrained run wearing the wrong label, and the identity check refuses
+   * it rather than letting the label travel.
+   */
+  readonly regime?: "unconstrained" | "json_schema";
+  /**
+   * The JSON Schema to constrain generation with, under `json_schema`.
+   *
+   * Sent to Bokahli verbatim, which sends it to the runtime verbatim. Nothing
+   * on the path rewrites it: a schema anyone reshaped would constrain
+   * generation to a contract nobody wrote, and every result under it would
+   * describe that contract instead of the one the campaign declared.
+   */
+  readonly outputSchema?: Record<string, unknown>;
 }
 
 export class BokahliConfigError extends Error {}
@@ -208,6 +230,26 @@ export function validateBokahliConfig(raw: unknown): {
       const v = sampler[k];
       if (typeof v !== "number" || !Number.isFinite(v)) add(`sampler.${k}`, "must be a number");
     }
+  }
+
+  // The regime, and the schema it is meaningless without.
+  //
+  // Absent means `unconstrained`, which is what every pre-1.2.0 config meant, so
+  // an old file keeps its exact meaning rather than acquiring a new one.
+  const regime = c["regime"];
+  if (regime !== undefined && regime !== "unconstrained" && regime !== "json_schema") {
+    add("regime", 'must be "unconstrained" or "json_schema" when present');
+  }
+  const schema = c["outputSchema"];
+  if (regime === "json_schema") {
+    if (typeof schema !== "object" || schema === null || Array.isArray(schema)) {
+      add("outputSchema", "required under the json_schema regime: a regime that names no schema " +
+        "is an unconstrained run wearing the wrong label");
+    }
+  } else if (schema !== undefined) {
+    // Refused rather than ignored. A config carrying a schema the run will not
+    // send is a config whose author believes generation is constrained.
+    add("outputSchema", 'only meaningful under regime "json_schema"');
   }
 
   // A stray secret anywhere in the object is refused outright rather than

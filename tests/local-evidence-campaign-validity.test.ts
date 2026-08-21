@@ -50,6 +50,12 @@ function transport(over: Partial<Transport> = {}): Transport {
 function record(over: Partial<AttemptRecord> = {}): AttemptRecord {
   return {
     attemptId: "a1",
+    generation: {
+      regime: "unconstrained", contractVersion: "bokahli.structured-output/1",
+      outputSchemaDigest: null, enforcementRequested: false, enforcementConfirmed: null,
+      evidencePolicyVersion: "bokahli.evidence-policy/1",
+      evidencePolicyDigest: `sha256:${"c".repeat(64)}`, evidencePolicyApplied: true,
+    },
     completion: { sha256: `sha256:${"b".repeat(64)}`, chars: 64, finishReason: "stop" },    evidenceTransport: transport(),
     fixtureId: "tlt-008-abstention-required",
     suiteId: "local-test-log-triage",
@@ -103,6 +109,12 @@ function identity() {
       tierLabel: "control", tokenCountSource: "runtime_tokenizer",
     },
     concurrency: { slots: 1, maxConcurrentRequests: 1, batchSize: null },
+    generation: {
+      regime: "unconstrained", contractVersion: "bokahli.structured-output/1",
+      outputSchemaDigest: null, enforcementRequested: false, enforcementConfirmed: null,
+      evidencePolicyVersion: "bokahli.evidence-policy/1",
+      evidencePolicyDigest: `sha256:${"c".repeat(64)}`, reasoningMode: "none",
+    },
     fixtureSuiteId: "local-test-log-triage",
     fixtureSuiteVersion: "1.0.0",
     verificationRegimeVersion: "local-regime-1.2.0",

@@ -21,7 +21,7 @@
 import type { CompletionState, FailureOrigin, FailureReasonCode } from "./verdict.js";
 
 /** Bump when a code is added, removed, or its meaning changes. Evidence is bound to this. */
-export const LOCAL_TAXONOMY_VERSION = "local-failure-taxonomy-1.0.0" as const;
+export const LOCAL_TAXONOMY_VERSION = "local-failure-taxonomy-1.1.0" as const;
 export type LocalTaxonomyVersion = typeof LOCAL_TAXONOMY_VERSION;
 
 // ---------------------------------------------------------------------------
@@ -158,6 +158,18 @@ export type LocalFailureCode =
   | "local_prompt_template_mismatch"
   /** The server refused for capacity reasons: queue full, slots busy, lease held. */
   | "local_capacity_refused"
+  /**
+   * The runtime did not deliver a guarantee it accepted.
+   *
+   * Added in 1.1.0 for the constrained regime, where it is the only honest
+   * verdict available. Under `json_schema` the runtime accepted a schema and
+   * undertook to constrain generation to it; output that does not conform means
+   * that undertaking was not kept. Scoring it against the model would be
+   * exactly backwards — the model had no say in the matter — and scoring it as
+   * a model *success* would be worse. It is the runtime's, and it is not a
+   * capability measurement of anything.
+   */
+  | "local_runtime_contract_violation"
 
   // ── harness ──────────────────────────────────────────────────────────────
   /** Luak could not parse the response into a scoreable shape. */
@@ -195,6 +207,7 @@ export const LOCAL_FAILURE_CODES: readonly LocalFailureCode[] = [
   "local_wrong_served_artifact",
   "local_prompt_template_mismatch",
   "local_capacity_refused",
+  "local_runtime_contract_violation",
   "local_harness_parse_failure",
   "local_harness_judge_failure",
   "local_harness_extraction_failure",
@@ -357,6 +370,13 @@ export const LOCAL_FAILURE_MAP: Readonly<Record<LocalFailureCode, LocalFailureMa
       completionState: "NC", failureOrigin: "PROVIDER", legacyReasonCode: "provider_unavailable",
       reusesExisting: true, attribution: "RUNTIME_PROVIDER", countsTowardModelScore: false,
       why: "A typed capacity refusal is the server declining to start work, not the model failing.",
+    },
+    local_runtime_contract_violation: {
+      completionState: "NC", failureOrigin: "PROVIDER", legacyReasonCode: "provider_error",
+      reusesExisting: true, attribution: "RUNTIME_PROVIDER", countsTowardModelScore: false,
+      why: "The runtime accepted a constraint and did not apply it. provider_error already " +
+        "means the provider failed to do what it undertook; the model is not a party to it, " +
+        "and the attempt is neither a capability success nor a capability failure.",
     },
     local_harness_parse_failure: {
       completionState: "NC", failureOrigin: "HARNESS", legacyReasonCode: "harness_runtime_failure",

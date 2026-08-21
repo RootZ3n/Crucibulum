@@ -20,7 +20,7 @@
  */
 
 /** Bump when a required field is added or a meaning changes. */
-export const LOCAL_IDENTITY_VERSION = "local-identity-1.0.0" as const;
+export const LOCAL_IDENTITY_VERSION = "local-identity-1.1.0" as const;
 export type LocalIdentityVersion = typeof LOCAL_IDENTITY_VERSION;
 
 export type ArtifactFormat = "gguf" | "safetensors" | "onnx" | "other";
@@ -142,6 +142,62 @@ export interface ContextFacts {
   readonly tokenCountSource: TokenCountSource;
 }
 
+/**
+ * How the output was produced, and under what standing instructions.
+ *
+ * Added in 1.1.0, and part of the identity rather than a detail of a run,
+ * because both halves change what is being measured:
+ *
+ * **The generation regime.** Under `unconstrained` the model is responsible for
+ * emitting valid JSON and a malformed answer is its failure. Under
+ * `json_schema` the runtime constrains generation, malformed output is
+ * impossible if enforcement is real, and malformed output therefore means
+ * enforcement was not real — a runtime contract failure, never a model result in
+ * either direction. Those are different capabilities with the same-looking
+ * numbers, and evidence that cannot say which it measured is evidence about
+ * neither.
+ *
+ * `enforcementRequested` and `enforcementConfirmed` are separate because asking
+ * is not getting. llama-server exposes no field saying a grammar is attached, so
+ * Bokahli confirms it behaviourally against the serving instance; a run that
+ * asked and was ignored must not be readable as one that was answered.
+ *
+ * **The evidence policy.** A system-level instruction about what authority
+ * evidence carries is an input to the behaviour being measured, exactly as the
+ * artifact and the sampler are. A model measured under one policy version has
+ * not been measured under another, and injection-resistance results are the
+ * numbers this moves most.
+ */
+export interface GenerationRegimeFacts {
+  /** "unconstrained" or "json_schema". */
+  readonly regime: string;
+  /** The contract version the regime vocabulary comes from. */
+  readonly contractVersion: string | null;
+  /** Digest of the output schema, when one was sent. */
+  readonly outputSchemaDigest: string | null;
+  /** Whether Bokahli sent a schema on these attempts. */
+  readonly enforcementRequested: boolean;
+  /**
+   * Whether the serving instance was *proven* to constrain generation.
+   *
+   * Null means unprobed, which is not false: "we did not check" and "we checked
+   * and it does not work" are different states with different remedies.
+   */
+  readonly enforcementConfirmed: boolean | null;
+  /** Bokahli's system-level evidence policy version, e.g. "bokahli.evidence-policy/1". */
+  readonly evidencePolicyVersion: string | null;
+  /** Digest of that policy's exact text. */
+  readonly evidencePolicyDigest: string | null;
+  /**
+   * The reasoning mode in force, as the runtime reported it.
+   *
+   * Recorded because `--reasoning off` changes the generation prompt — on
+   * Qwen3.5 it injects an empty think block — and a model measured with
+   * reasoning suppressed has not been measured with it available.
+   */
+  readonly reasoningMode: string | null;
+}
+
 /** Concurrency the runtime was configured for while the evidence was produced. */
 export interface ConcurrencyFacts {
   readonly slots: number | null;
@@ -163,6 +219,12 @@ export interface LocalModelIdentity {
   readonly placement: DevicePlacementFacts;
   readonly context: ContextFacts;
   readonly concurrency: ConcurrencyFacts;
+  /**
+   * Added in 1.1.0. Optional on the type so a 1.0.0 bundle stays readable, and
+   * required by `REQUIRED_LOCAL_IDENTITY_PATHS` so a 1.0.0 bundle cannot pass
+   * as qualification evidence for a regime it never named.
+   */
+  readonly generation?: GenerationRegimeFacts;
   /** Fixture suite this evidence was produced against, and its version. */
   readonly fixtureSuiteId: string;
   readonly fixtureSuiteVersion: string;
@@ -183,6 +245,9 @@ export const REQUIRED_LOCAL_IDENTITY_PATHS: readonly string[] = [
   "fixtureSuiteId",
   "fixtureSuiteVersion",
   "verificationRegimeVersion",
+  // 1.1.0. A result that cannot say which regime produced it is not evidence
+  // about either of them.
+  "generation.regime",
 ];
 
 const DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
@@ -238,6 +303,31 @@ export function checkLocalIdentity(identity: unknown): LocalIdentityCheck {
   if (typeof ctx === "number" && (!Number.isInteger(ctx) || ctx <= 0)) {
     invalid.push({ path: "context.configuredTokens", why: "must be a positive integer" });
   }
+  const regime = get(identity, "generation.regime");
+  if (typeof regime === "string" && regime !== "unconstrained" && regime !== "json_schema") {
+    invalid.push({
+      path: "generation.regime",
+      why: 'must be "unconstrained" or "json_schema"',
+    });
+  }
+  // A run that says it constrained generation must name what it constrained it
+  // to. Without the digest, "json_schema" describes a schema nobody can produce.
+  if (regime === "json_schema") {
+    const d = get(identity, "generation.outputSchemaDigest");
+    if (typeof d !== "string" || !DIGEST_RE.test(d)) {
+      invalid.push({
+        path: "generation.outputSchemaDigest",
+        why: "a json_schema regime must carry the digest of the schema it used",
+      });
+    }
+    if (get(identity, "generation.enforcementRequested") !== true) {
+      invalid.push({
+        path: "generation.enforcementRequested",
+        why: "a json_schema regime that never asked for enforcement is an unconstrained run wearing the wrong label",
+      });
+    }
+  }
+
   const version = get(identity, "identityVersion");
   if (version !== undefined && version !== LOCAL_IDENTITY_VERSION) {
     invalid.push({

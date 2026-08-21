@@ -22,7 +22,121 @@ import { runLocalSuite } from "../../core/local/runner.js";
 import { summarise } from "../../core/local/regime.js";
 import { exportBokahliBundle } from "../../core/local/bokahli-export.js";
 import { assertSplitsDisjoint } from "../../core/local/fixtures/index.js";
-import type { LocalModelIdentity } from "../../types/local-identity.js";
+import { buildLocalIdentity } from "../../core/local/identity-builder.js";
+import { readCredential } from "../../core/local/responders/credentials.js";
+import { checkLocalIdentity, type LocalModelIdentity } from "../../types/local-identity.js";
+import type { AttemptRecord } from "../../core/local/regime.js";
+import type { LocalSuite } from "../../core/local/suite-registry.js";
+import type { BokahliResponderConfig } from "../../core/local/responders/bokahli-config.js";
+import { hostname, totalmem } from "node:os";
+import { readFileSync as readFileSyncNode } from "node:fs";
+
+/**
+ * Read the deployment's own account of itself, and fill in only what it cannot
+ * know.
+ *
+ * Bokahli is the authority for served identity, placement, tokenizer, template
+ * and backend instance. What it does not publish is the host's CPU and memory,
+ * the backend's resident set, and which fixture suite and regime this campaign
+ * ran — so those, and only those, are gathered here.
+ */
+async function deriveIdentity(args: {
+  config: BokahliResponderConfig;
+  suite: LocalSuite;
+  records: readonly AttemptRecord[];
+  tokenCountSource: string;
+}): Promise<LocalModelIdentity> {
+  const { config } = args;
+  const token = await readCredential(config);
+  const get = async (path: string): Promise<Record<string, unknown>> => {
+    const r = await fetch(`${config.endpoint}${path}`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (!r.ok) throw new Error(`${path} returned ${r.status}`);
+    return (await r.json()) as Record<string, unknown>;
+  };
+
+  const ready = await get("/health/ready");
+  const models = await get("/v1/models");
+  const data = Array.isArray(models["data"]) ? (models["data"] as Record<string, unknown>[]) : [];
+  // Found by identity, never at index zero. A catalog is advertised in whatever
+  // order it was loaded, and the campaign's artifact is the one it names.
+  const entry = data.find((e) => e["id"] === config.modelId);
+  const modelEntry = {
+    ...((entry?.["bokahli"] as Record<string, unknown> | undefined) ?? {}),
+  };
+
+  // The backend's resident set, from the process Bokahli says is serving.
+  const instance = (ready["backendInstance"] ?? {}) as Record<string, unknown>;
+  const pid = typeof instance["pid"] === "number" ? instance["pid"] : null;
+  let observedHostRamBytes: number | null = null;
+  if (pid !== null) {
+    try {
+      const status = readFileSyncNode(`/proc/${pid}/status`, "utf-8");
+      const m = status.match(/^VmRSS:\s+(\d+) kB$/m);
+      if (m) observedHostRamBytes = Number(m[1]) * 1024;
+    } catch {
+      // A pid we cannot read leaves the field null. Never estimated.
+    }
+  }
+
+  const gpu = ((ready["gpuLease"] as Record<string, unknown> | undefined)?.["snapshot"] ?? {}) as
+    Record<string, unknown>;
+  const runtimeFacts = (ready["runtimeFacts"] ?? {}) as Record<string, unknown>;
+  let cpuModel: string | null = null;
+  try {
+    const info = readFileSyncNode("/proc/cpuinfo", "utf-8");
+    cpuModel = info.match(/^model name\s*:\s*(.+)$/m)?.[1]?.trim() ?? null;
+  } catch { /* not Linux, or unreadable: stays null */ }
+
+  const gpuMemoryMiB = typeof gpu["totalMiB"] === "number" ? (gpu["totalMiB"] as number) : null;
+  // The device's own name, from the driver. Bokahli publishes VRAM, utilisation
+  // and temperature but not the model string — it reports what it measures, and
+  // the name is not something it measures. Read here, like the CPU model, and
+  // left null when the driver cannot be asked rather than filled with a guess.
+  let gpuModel: string | null = null;
+  try {
+    const { execFileSync } = await import("node:child_process");
+    gpuModel = execFileSync("nvidia-smi",
+      ["--query-gpu=name", "--format=csv,noheader"],
+      { encoding: "utf-8", timeout: 5000 }).split("\n")[0]?.trim() || null;
+  } catch { /* no driver, or no nvidia-smi: stays null */ }
+
+  // Per-attempt facts that live on the records rather than on /health/ready.
+  const withGen = args.records.find((r) => r.generation != null);
+  const promptTokens = args.records
+    .map((r) => r.promptTokens)
+    .filter((v): v is number => typeof v === "number");
+
+  return buildLocalIdentity({
+    ready,
+    modelEntry,
+    config,
+    fixtureSuiteId: args.suite.fixtureSuites[0]?.id ?? args.suite.id,
+    fixtureSuiteVersion: args.suite.fixtureSuites[0]?.version ?? args.suite.version,
+    effectiveMaxTokens: promptTokens.length ? Math.max(...promptTokens) : null,
+    tokenCountSource: args.tokenCountSource as never,
+    hardware: {
+      // Host, device and VRAM. Evidence is keyed on this, so two machines that
+      // differ in the thing that decides where a model runs must not share it.
+      profileId: [
+        hostname(),
+        gpuModel?.toLowerCase().replace(/^nvidia\s+/, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+        gpuMemoryMiB === null ? null : `${Math.round(gpuMemoryMiB / 1024)}g`,
+      ].filter((x): x is string => typeof x === "string" && x.length > 0).join("-"),
+      gpuModel,
+      gpuMemoryMiB,
+      gpuDriver: typeof runtimeFacts["driverVersion"] === "string" ? (runtimeFacts["driverVersion"] as string) : null,
+      cudaVersion: typeof runtimeFacts["driverSupportedCuda"] === "string" ? (runtimeFacts["driverSupportedCuda"] as string) : null,
+      cpuModel,
+      systemMemoryMiB: Math.round(totalmem() / (1024 * 1024)),
+    },
+    observedHostRamBytes,
+    outputSchemaDigest: withGen?.generation?.outputSchemaDigest ?? null,
+    evidencePolicyVersion: withGen?.generation?.evidencePolicyVersion ?? null,
+    evidencePolicyDigest: withGen?.generation?.evidencePolicyDigest ?? null,
+  });
+}
 
 function flag(args: string[], name: string): string | undefined {
   const i = args.indexOf(`--${name}`);
@@ -214,6 +328,39 @@ export async function localQualifyCommand(args: string[]): Promise<void> {
       completions: result.completions,
     }, null, 2)}\n`);
     console.log(`  completions  : ${completionsPath}`);
+
+    // The identity, derived beside the records rather than written by hand.
+    //
+    // These two files describe one run and are produced from it together, so
+    // they cannot drift apart. The pilot's hand-written identity claimed null
+    // placement for a deployment running `--n-gpu-layers 999 --cpu-moe` on a
+    // confirmed device — not a lie, just a file nobody had filled in, and
+    // evidence that could not say where the model ran.
+    if (responderConfig) {
+      try {
+        const identity = await deriveIdentity({
+          config: responderConfig,
+          suite,
+          records: result.records,
+          tokenCountSource: result.tokenCountSource,
+        });
+        const identityPath = out.replace(/\.json$/, "") + ".identity.json";
+        writeFileSync(identityPath, `${JSON.stringify(identity, null, 2)}\n`);
+        console.log(`  identity     : ${identityPath}`);
+        const check = checkLocalIdentity(identity);
+        if (!check.ok) {
+          console.log("                 INCOMPLETE — export will refuse this bundle:");
+          for (const m of check.missing) console.log(`                   missing ${m}`);
+          for (const i of check.invalid) console.log(`                   invalid ${i.path}: ${i.why}`);
+        }
+      } catch (err) {
+        // A derivation that failed is reported and the run is kept. Writing a
+        // partial identity would be worse than writing none: the export refuses
+        // an absent file loudly and a plausible one quietly.
+        log("error", "local", `identity could not be derived: ${(err as Error).message}`);
+        log("error", "local", "the records are intact; export will refuse until an identity exists");
+      }
+    }
   }
 
   console.log("");

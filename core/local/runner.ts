@@ -26,6 +26,7 @@ import {
 } from "./scorers.js";
 import type { StructuredParse } from "./parsers.js";
 import { scoreAttempt, type AttemptRecord, type ScoredAttempt, type TokenCountSource } from "./regime.js";
+import type { AttributionClass } from "../../types/local-verdict.js";
 import {
   EVIDENCE_TRANSPORT_VERSION, assertEvidenceIsolated, buildEvidencePacket,
   citationContract, evidenceSetDigest,
@@ -85,6 +86,24 @@ export interface BoundaryObservation {
   }[];
 }
 
+/**
+ * What Bokahli reported about the generation regime for one attempt.
+ *
+ * Every field comes off `telemetry.structuredOutput` and
+ * `telemetry.evidencePolicy`; nothing here is derived from the responder
+ * config.
+ */
+export interface GenerationObservation {
+  readonly regime: string | null;
+  readonly contractVersion: string | null;
+  readonly outputSchemaDigest: string | null;
+  readonly enforcementRequested: boolean | null;
+  readonly enforcementConfirmed: boolean | null;
+  readonly evidencePolicyVersion: string | null;
+  readonly evidencePolicyDigest: string | null;
+  readonly evidencePolicyApplied: boolean | null;
+}
+
 export interface LocalResponse {
   readonly rawText: string;
   /**
@@ -97,6 +116,17 @@ export interface LocalResponse {
    * regime version exists to correct.
    */
   readonly finishReason?: string | null;
+  /**
+   * How Bokahli says this output was produced.
+   *
+   * Read from the response's own telemetry, never asserted from the config.
+   * A campaign that *configured* the constrained regime and a deployment that
+   * *applied* it are two claims, and only the second one is evidence — the
+   * whole point of separating `enforcementRequested` from
+   * `enforcementConfirmed` is lost if the harness fills either in from what it
+   * meant to do.
+   */
+  readonly generation?: GenerationObservation | null;
   /** Null when the deployment reported no boundary telemetry at all. */
   readonly boundary?: BoundaryObservation | null;
   readonly promptTokens: number | null;
@@ -361,15 +391,21 @@ export async function runLocalSuite(opts: RunOptions): Promise<RunResult> {
       lanes = p === undefined
         ? [noExtractorLane(prompt.outputSchemaKeys)]
         : p.status === "PARSED"
-          ? [scoreStructuredOutput(true, [], "MODEL", []), ...scoreTriageFixture(tfx, p.value)]
-          : [laneForParseFailure(p, prompt.outputSchemaKeys, res.finishReason ?? null)];
+          ? [
+            scoreStructuredOutput(true, [], regimeAttribution(res), []),
+            ...scoreTriageFixture(tfx, p.value),
+          ]
+          : [laneForParseFailure(p, prompt.outputSchemaKeys, res.finishReason ?? null, res)];
     } else if (rfx) {
       const p = opts.parseRecon?.(res.rawText, rfx);
       lanes = p === undefined
         ? [noExtractorLane(prompt.outputSchemaKeys)]
         : p.status === "PARSED"
-          ? [scoreStructuredOutput(true, [], "MODEL", []), ...scoreReconFixture(rfx, p.value)]
-          : [laneForParseFailure(p, prompt.outputSchemaKeys, res.finishReason ?? null)];
+          ? [
+            scoreStructuredOutput(true, [], regimeAttribution(res), []),
+            ...scoreReconFixture(rfx, p.value),
+          ]
+          : [laneForParseFailure(p, prompt.outputSchemaKeys, res.finishReason ?? null, res)];
     } else {
       applicability = "NOT_APPLICABLE";
     }
@@ -425,6 +461,7 @@ export async function runLocalSuite(opts: RunOptions): Promise<RunResult> {
       split: prompt.split,
       applicability,
       lanes,
+      generation: res.generation ?? null,
       completion: res.runtimeFailure
         ? null
         : {
@@ -486,10 +523,37 @@ function runtimeCodeFor(c: NonNullable<LocalResponse["runtimeFailure"]>["code"])
  * `local_harness_parse_failure` used to cover both. It now covers only the
  * second, which is what "harness" meant all along.
  */
+/**
+ * Whether the runtime was actually constraining this attempt's output.
+ *
+ * `enforcementConfirmed`, not `enforcementRequested`: a deployment that asked
+ * for a grammar and was ignored produced unconstrained output, and treating it
+ * as constrained would move a model's failure onto the runtime — the mirror of
+ * the misattribution regime 1.2.0 exists to correct, and just as wrong.
+ */
+function constrainedForReal(res: LocalResponse): boolean {
+  const g = res.generation ?? null;
+  return g !== null && g.regime === "json_schema" && g.enforcementConfirmed === true;
+}
+
+/**
+ * Who owns a *valid* structured output.
+ *
+ * Under `unconstrained` the model wrote it and the credit is the model's. Under
+ * a confirmed `json_schema` regime a grammar guaranteed it, and crediting the
+ * model would report a capability the runtime supplied — so the lane is
+ * recorded as RUNTIME_PROVIDER, which keeps it out of the model's capability
+ * distribution while still being reported.
+ */
+function regimeAttribution(res: LocalResponse): AttributionClass {
+  return constrainedForReal(res) ? "RUNTIME_PROVIDER" : "MODEL";
+}
+
 function laneForParseFailure(
   p: Extract<StructuredParse<never>, { status: "CONTRACT_VIOLATION" | "EXTRACTOR_FAULT" }>,
   keys: readonly string[],
   finishReason: string | null,
+  res: LocalResponse,
 ): LaneScore {
   if (p.status === "EXTRACTOR_FAULT") {
     return {
@@ -503,6 +567,30 @@ function laneForParseFailure(
       notes: [p.detail, `expected {${keys.join(", ")}}`],
     };
   }
+  // Under a confirmed constrained regime, malformed output is impossible if the
+  // guarantee held — so malformed output means it did not. The runtime accepted
+  // a schema and undertook to constrain generation to it; the model had no say
+  // in the matter. Scoring this against the model would be exactly backwards,
+  // and scoring it as a model success would be worse.
+  //
+  // Truncation is exempt: a generation cut at the token limit is a budget
+  // problem, not a broken guarantee, and a grammar cannot prevent it.
+  if (constrainedForReal(res) && finishReason !== "length") {
+    return {
+      lane: "structured_output", scorerVersion: LOCAL_SCORER_VERSION,
+      measurements: [],
+      failureCodes: ["local_runtime_contract_violation"],
+      attribution: "RUNTIME_PROVIDER",
+      notes: [
+        ...p.problems,
+        "the runtime confirmed it constrains generation to this schema and returned output " +
+        "that does not conform; this is the runtime's failure, and it is neither a model " +
+        "success nor a model failure",
+        `runtime finishReason: ${finishReason ?? "(not reported)"}`,
+      ],
+    };
+  }
+
   // A runtime that says it stopped at the token limit has settled the
   // truncation question; nothing has to be inferred from brace counting.
   const truncatedByRuntime = finishReason === "length";

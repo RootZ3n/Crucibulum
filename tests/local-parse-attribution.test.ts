@@ -232,6 +232,12 @@ test("scoreAttempt no longer has a route from malformed output to HARNESS_FAILUR
       measurements: [{ name: "structuredOutput.valid", value: 0, unit: "boolean", detail: "" }],
       failureCodes: ["local_invalid_structured_output"], attribution: "MODEL", notes: [],
     }],
+    generation: {
+      regime: "unconstrained", contractVersion: "bokahli.structured-output/1",
+      outputSchemaDigest: null, enforcementRequested: false, enforcementConfirmed: null,
+      evidencePolicyVersion: "bokahli.evidence-policy/1",
+      evidencePolicyDigest: `sha256:${"c".repeat(64)}`, evidencePolicyApplied: true,
+    },
     completion: { sha256: "sha256:" + "0".repeat(64), chars: 12, finishReason: "stop" },
     contextPosition: null, contextTier: "control",
     promptTokens: 10, completionTokens: 3, tokenCountSource: "runtime_tokenizer",
