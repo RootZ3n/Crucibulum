@@ -2,7 +2,7 @@
  * GENERATED FILE — DO NOT EDIT.
  *
  * Copied verbatim from Bokahli `packages/contracts/src/luak.ts` at published commit
- * 9ed481bed93e0a2b936c489649ed3244b69744ec. Regenerate with:
+ * a4aac8dce1ee83bf9ef7d9eff7f9a0afb6e39217. Regenerate with:
  *
  *   node scripts/sync-bokahli-contract.mjs --sync
  *

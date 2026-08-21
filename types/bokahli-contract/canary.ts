@@ -2,7 +2,7 @@
  * GENERATED FILE — DO NOT EDIT.
  *
  * Copied verbatim from Bokahli `packages/contracts/src/canary.ts` at published commit
- * 9ed481bed93e0a2b936c489649ed3244b69744ec. Regenerate with:
+ * a4aac8dce1ee83bf9ef7d9eff7f9a0afb6e39217. Regenerate with:
  *
  *   node scripts/sync-bokahli-contract.mjs --sync
  *
@@ -194,5 +194,31 @@ export interface TokenizerCanaryResult {
   readonly verifiedAt: string;
   readonly reasons: readonly string[];
   /** The bound on the claim, carried with the claim. */
+  /**
+   * Set when the *host* could not be trusted to convert bytes, rather than the
+   * runtime disagreeing about tokenization.
+   *
+   * `Buffer.prototype.toString('base64')` was measured returning a wrong
+   * character roughly once in a thousand calls on one physical core of the
+   * deployment machine — silently, with no machine check and with the source
+   * bytes provably unchanged. That comparison used to decide
+   * `decodeCanaryVerified`, so a host fault presented as "the runtime decodes
+   * differently from the artifact token table" and discarded an otherwise valid
+   * attempt as a tokenizer-provenance problem.
+   *
+   * When this is non-null both canaries are unverified and the reason is this
+   * one. A consumer must treat it as a statement about the machine — a
+   * runtime-unhealthy outcome — and never as degraded token provenance, and
+   * never as a statement about the model.
+   */
+  readonly hostIntegrityFault: string | null;
+  /**
+   * Which base64 implementation produced and checked the pinned encodings.
+   *
+   * Bound into the result because "encoded with the audited implementation" is
+   * a claim about how bytes were converted, and a claim nobody records is a
+   * claim nobody can check.
+   */
+  readonly baseEncodingImplementation: string;
   readonly coverageNote: string;
 }

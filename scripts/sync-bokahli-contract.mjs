@@ -50,7 +50,7 @@ const PUBLISHED_BRANCH = process.env["LUAK_BOKAHLI_BRANCH"] ?? "origin/v2";
  *
  * Changing this constant is a reviewable diff. That is the point.
  */
-const REVIEWED_PIN = "9ed481bed93e0a2b936c489649ed3244b69744ec";
+const REVIEWED_PIN = "a4aac8dce1ee83bf9ef7d9eff7f9a0afb6e39217";
 
 /** Which repository. A branch name is not an identity; two clones can share one. */
 const EXPECTED_REMOTE = "git@github.com:RootZ3n/bokahli.git";
@@ -67,6 +67,10 @@ const GENERATOR_VERSION = "bokahli-contract-sync-2";
 const SOURCE_ALLOWLIST = Object.freeze([
   "attestation.ts", "canary.ts", "errors.ts", "identity.ts", "index.ts",
   "luak.ts", "qualification.ts", "routing.ts", "tasks.ts",
+  // Added with the pin advance to a4aac8d. Bokahli's trust-boundary contract:
+  // trust zones, finding summaries and the additive `telemetry.velum` block.
+  // Types only, like everything else here — nothing in this directory executes.
+  "velum.ts",
 ]);
 
 /**
@@ -76,7 +80,7 @@ const SOURCE_ALLOWLIST = Object.freeze([
  * the lock only ever certifies whatever is on disk beside it. Anchoring the
  * lock to a constant in reviewed source closes that loop.
  */
-const EXPECTED_LOCK_SHA256 = "6ff44ffd391a0acbe5aa90a74fb5397580e88822f2ac241faec012268e41da26";
+const EXPECTED_LOCK_SHA256 = "699de22f0eafdce1bdb6ea6336d4d0be77742e3322cd2d98dfa235b4235584b3";
 
 const sha256 = (s) => createHash("sha256").update(s).digest("hex");
 

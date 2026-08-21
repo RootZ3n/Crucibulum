@@ -15,7 +15,7 @@
  */
 import type { AttributionClass, LocalFailureCode } from "../../../types/local-verdict.js";
 
-export const BOKAHLI_FAILURE_MAP_VERSION = "bokahli-failure-map-1.2.0" as const;
+export const BOKAHLI_FAILURE_MAP_VERSION = "bokahli-failure-map-1.3.0" as const;
 
 export interface OutcomeMapping {
   readonly code: LocalFailureCode;
@@ -76,6 +76,60 @@ export const ESCALATE_MAP: Readonly<Record<string, OutcomeMapping>> = Object.fre
       "process is not a weaker answer, it is a different claim, and counting it against the " +
       "model would score a restart as a wrong answer.",
   },
+
+  // ── Bokahli's prompt-injection trust boundary ────────────────────────────
+  //
+  // Seven ways inspection can end a request instead of the model answering.
+  // `transient` mirrors Bokahli's own `retryableLocal` for each reason, read
+  // from its source rather than guessed, with one deliberate exception noted
+  // below. None is attributed to the model, and none qualifies anything.
+  VELUM_EVIDENCE_BLOCKED: {
+    code: "local_capacity_refused", attribution: "HARNESS_PARSER", transient: false,
+    why: "Caller-supplied evidence carried a block-severity prompt-injection finding and " +
+      "was not sent to the model under enforce mode. The route was sound and the runtime " +
+      "is healthy; the campaign supplied a document Bokahli's trust boundary refuses. The " +
+      "same bytes produce the same finding, so a retry cannot change it — a task or " +
+      "fixture problem, and never a statement about the model.",
+  },
+  VELUM_RESOURCE_LIMIT: {
+    code: "local_resource_exhausted", attribution: "RUNTIME_PROVIDER", transient: true,
+    why: "Bokahli's trust boundary hit a resource ceiling while inspecting the request and " +
+      "refused to execute uninspected. Inspection capacity is shared across concurrent " +
+      "requests, so a retry may well succeed. The model never ran.",
+  },
+  VELUM_MAPPING_FAILURE: {
+    code: "local_harness_parse_failure", attribution: "RUNTIME_PROVIDER", transient: true,
+    why: "Bokahli's trust boundary could not resolve a finding's span back onto the " +
+      "caller's raw evidence and declined to publish a citation it could not stand behind. " +
+      "A provenance failure inside the deployment, not a model result.",
+  },
+  VELUM_ENGINE_ERROR: {
+    code: "local_harness_parse_failure", attribution: "RUNTIME_PROVIDER", transient: true,
+    why: "Bokahli's prompt-injection detector failed while inspecting the request, and " +
+      "Bokahli refused to proceed with inspection skipped. A deployment-side fault; the " +
+      "model never ran.",
+  },
+  VELUM_SCAN_TIMEOUT: {
+    code: "local_resource_exhausted", attribution: "RUNTIME_PROVIDER", transient: true,
+    why: "Inspection exceeded its deadline and the worker was terminated; the request was " +
+      "not executed rather than executed uninspected. Load- and size-dependent, so a retry " +
+      "may succeed. The model never ran.",
+  },
+  VELUM_WORKER_LOST: {
+    code: "local_runtime_crash", attribution: "RUNTIME_PROVIDER", transient: true,
+    why: "Bokahli's inspection worker crashed, exited or was shut down mid-job. The pool " +
+      "replaces it immediately, so a retry is reasonable. Infrastructure, and never a " +
+      "statement about the content, the route or the model.",
+  },
+  HOST_INTEGRITY_FAULT: {
+    code: "local_runtime_crash", attribution: "RUNTIME_PROVIDER", transient: false,
+    why: "The deployment machine miscomputed a byte conversion, so nothing measured on it " +
+      "can be attributed to the runtime or the model. Non-transient on purpose, and the " +
+      "one place this table does not simply mirror Bokahli's retry hint: the fault is " +
+      "intermittent, and retrying samples a machine known to compute wrong answers until " +
+      "one of them looks right. A campaign seeing this must stop and the host must be " +
+      "investigated. It is evidence about the machine and about nothing else.",
+  },
 });
 
 /** Bokahli `REFUSED` reasons — HTTP 409. */
@@ -108,6 +162,7 @@ export const REFUSED_MAP: Readonly<Record<string, OutcomeMapping>> = Object.free
     code: "local_context_overflow", attribution: "HARNESS_PARSER", transient: false,
     why: "The prompt exceeded the served context. The tier was the harness's choice.",
   },
+
 });
 
 /** Bokahli `CAPACITY_UNAVAILABLE` reasons — HTTP 503. */
@@ -133,6 +188,13 @@ export const CAPACITY_MAP: Readonly<Record<string, OutcomeMapping>> = Object.fre
     code: "local_timeout_load", attribution: "RUNTIME_PROVIDER", transient: true,
     why: "The runtime was still loading. Distinguished from a crash because the operator " +
       "response is to wait rather than to investigate.",
+  },
+  VELUM_SCAN_CAPACITY: {
+    code: "local_capacity_refused", attribution: "RUNTIME_PROVIDER", transient: true,
+    why: "Every prompt-injection inspection worker was busy, or the process-wide byte " +
+      "budget was spent. Inspection is not queued — a waiter holds the memory it is " +
+      "waiting for — so excess is refused immediately with a retry interval. Capacity, " +
+      "not capability, and nothing to do with the model.",
   },
 });
 

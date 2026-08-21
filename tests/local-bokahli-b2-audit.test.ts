@@ -216,7 +216,7 @@ test("B2: syncing to an older ancestor of the published branch is refused", asyn
   const err = await run("node", [SYNC(), "--sync", "--commit", "4d8ced67bc4a176dcd06b64ea230706fb2e4a2c1"])
     .then(() => null, (e: { stderr?: string; message: string }) => `${e.stderr ?? ""}${e.message}`);
   assert.ok(err, "the downgrade must fail");
-  assert.match(err, /reviewed pin is 9ed481be/);
+  assert.match(err, /reviewed pin is a4aac8dc/);
 });
 
 test("B3: even with --allow-pin-change the file allowlist stops a silent downgrade", async () => {
@@ -254,10 +254,12 @@ test("B4: an edited contract file with a regenerated lock is still caught", asyn
 
 test("B5: the lock binds repository, commit, generator and file set", async () => {
   const lock = JSON.parse(await readFile(LOCK(), "utf-8")) as Record<string, unknown>;
-  assert.equal(lock["pinnedCommit"], "9ed481bed93e0a2b936c489649ed3244b69744ec");
+  // Advanced from 9ed481b in the same commit that added the trust-boundary
+  // contract file. The rule did not change: an exact object id, never ancestry.
+  assert.equal(lock["pinnedCommit"], "a4aac8dce1ee83bf9ef7d9eff7f9a0afb6e39217");
   assert.match(String(lock["remote"]), /bokahli/);
   assert.match(String(lock["generatorVersion"]), /^bokahli-contract-sync-/);
-  assert.equal(Object.keys(lock["files"] as object).length, 9);
+  assert.equal(Object.keys(lock["files"] as object).length, 10);
 });
 
 // ---------------------------------------------------------------------------
