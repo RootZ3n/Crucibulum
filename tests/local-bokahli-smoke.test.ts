@@ -103,18 +103,25 @@ test("live Bokahli: metadata only, no generation", { skip: !available }, async (
     assert.ok(!JSON.stringify(body).includes("/home/"), "no filesystem path may appear in inventory");
   });
 
-  await t.test("the deployed metadata routes still predate the B2 contract", async () => {
-    // Bokahli B2 is published but deliberately not deployed. Until it is, the
-    // live metadata routes carry no tokenizer provenance, and the responder
-    // derives `runtime_reported_unknown_tokenizer` from that absence rather
-    // than from a hardcoded constant. When the deployment catches up this test
-    // fails, and the failure is the signal that the campaign can now export.
+  await t.test("the deployed metadata routes carry the B2 contract", async () => {
+    // This assertion used to be its own inverse. Until B2 was deployed the live
+    // routes carried no tokenizer provenance, and the test asserted that
+    // absence with a note saying the failure would be the signal to flip it.
+    // B2 is deployed; this is the flip.
     const ready = await get("/health/ready");
-    const models = await get("/v1/models");
-    const text = JSON.stringify(ready.body) + JSON.stringify(models.body);
-    assert.ok(!/tokenCountSource|tokenizer/i.test(text),
-      "the deployment now reports tokenizer provenance: B2 has been deployed, and this " +
-      "expectation should flip to requiring it");
+    const text = JSON.stringify(ready.body);
+    assert.match(text, /tokenizer/i, "the deployment must now report tokenizer provenance");
+
+    const tok = (ready.body as Record<string, unknown>)["tokenizer"] as Record<string, unknown>;
+    assert.ok(tok, "/health/ready must carry a tokenizer block");
+    assert.equal(tok["encodeCanaryVerified"], true, "encode canary must be proven");
+    assert.equal(tok["decodeCanaryVerified"], true, "decode canary must be proven");
+    // A campaign cannot be scored on a host that miscomputes bytes, so the
+    // absence of a host-integrity fault is part of what "deployed" means.
+    const proof = tok["runtimeProof"] as Record<string, unknown> | undefined;
+    const canary = proof?.["canary"] as Record<string, unknown> | undefined;
+    assert.equal(canary?.["hostIntegrityFault"] ?? null, null,
+      "a host-integrity fault means nothing measured here is evidence");
   });
 
   await t.test("no prompt-template identity is exposed", async () => {

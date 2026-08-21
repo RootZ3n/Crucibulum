@@ -322,9 +322,34 @@ test("a recon answer citing a file outside the packet is caught", () => {
 // regime
 // ---------------------------------------------------------------------------
 
+/**
+ * A well-formed evidence-transport block for a record that represents a
+ * correct campaign. Written out rather than defaulted so a test that means to
+ * describe a *legacy* record has to say so by passing null.
+ */
+function transport(over: Partial<NonNullable<AttemptRecord["evidenceTransport"]>> = {}) {
+  return {
+    transportVersion: "luak.evidence-transport/1",
+    packetCount: 1,
+    evidenceSetDigest: `sha256:${"1".repeat(64)}`,
+    packetIds: ["fx/log"],
+    scannedAll: true,
+    fencedPacketCount: 1,
+    findingsByPacket: [{
+      packetId: "fx/log", zone: "evidence",
+      findingCount: 0, peakSeverity: null, disposition: "fenced",
+    }],
+    modelOutputFindingCount: 0,
+    boundaryDecision: "allow",
+    detectorVersion: "velum.a32-detector/1.0.0+abaiya-velum-mvp-1",
+    registryPayloadSha256: `sha256:${"2".repeat(64)}`,
+    ...over,
+  };
+}
+
 function record(over: Partial<AttemptRecord> = {}): AttemptRecord {
   return {
-    attemptId: "a1", fixtureId: "f1", suiteId: "local-test-log-triage", suiteVersion: "1.0.0",
+    attemptId: "a1", evidenceTransport: transport(), fixtureId: "f1", suiteId: "local-test-log-triage", suiteVersion: "1.0.0",
     split: "evaluation",
     applicability: "APPLICABLE",
     lanes: [{
@@ -372,7 +397,7 @@ test("a composite result cannot become a model score", () => {
 });
 
 test("summaries report distributions, and never invent repeatability", () => {
-  const recs = [record({ attemptId: "a1", fixtureId: "f1" }), record({ attemptId: "a2", fixtureId: "f2" })];
+  const recs = [record({ attemptId: "a1", evidenceTransport: transport(), fixtureId: "f1" }), record({ attemptId: "a2", evidenceTransport: transport(), fixtureId: "f2" })];
   const scored = recs.map((r) => scoreAttempt(r));
   const sum = summarise(scored, recs);
   assert.equal(sum.regimeVersion, LOCAL_REGIME_VERSION);
@@ -412,7 +437,7 @@ function identity(over: Partial<LocalModelIdentity> = {}): LocalModelIdentity {
 }
 
 function exportInput(over: Partial<ExportInput> = {}): ExportInput {
-  const recs = [record({ attemptId: "a1", fixtureId: "f1" }), record({ attemptId: "a2", fixtureId: "f2" })];
+  const recs = [record({ attemptId: "a1", evidenceTransport: transport(), fixtureId: "f1" }), record({ attemptId: "a2", evidenceTransport: transport(), fixtureId: "f2" })];
   return {
     taskClass: "test_log_triage",
     taskClassContractVersion: "1.0.0",
@@ -510,7 +535,7 @@ test("a scored attempt with no underlying record is refused", () => {
 
 test("a composite attempt cannot be exported as a model score", () => {
   const rec = record({
-    attemptId: "a1", fixtureId: "f1",
+    attemptId: "a1", evidenceTransport: transport(), fixtureId: "f1",
     lanes: [{
       lane: "tools", scorerVersion: "local-scorers-1.0.0", measurements: [],
       failureCodes: ["local_harness_extraction_failure"], attribution: "COMPOSITE", notes: [],

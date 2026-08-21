@@ -36,11 +36,53 @@ export type { TokenCountSource } from "../../types/local-verdict.js";
 export { EXPORTABLE_TOKEN_SOURCES } from "../../types/local-verdict.js";
 
 /** Bump on any change to how measurements become outcomes. Evidence is bound to this. */
-export const LOCAL_REGIME_VERSION = "local-regime-1.0.0" as const;
+export const LOCAL_REGIME_VERSION = "local-regime-1.1.0" as const;
 export type LocalRegimeVersion = typeof LOCAL_REGIME_VERSION;
+
+/**
+ * What the trust boundary did with this attempt's evidence.
+ *
+ * Recorded on every attempt, from Bokahli's own telemetry rather than from
+ * what Luak believes it sent. An attempt whose evidence was fenced and an
+ * attempt whose evidence was never inspected are different measurements, and
+ * before this block existed they were indistinguishable in the record.
+ */
+export interface EvidenceTransportRecord {
+  /** Absent on pre-1.1.0 records. Their absence is what makes them refusable. */
+  readonly transportVersion: string;
+  readonly packetCount: number;
+  readonly evidenceSetDigest: string;
+  /** Packet ids as sent, in order. */
+  readonly packetIds: readonly string[];
+  /** Bokahli confirmed it inspected every packet it was given. */
+  readonly scannedAll: boolean | null;
+  /** Packets Bokahli reported in an untrusted-evidence zone. */
+  readonly fencedPacketCount: number | null;
+  /** Detector findings inside evidence, by packet id. Counts, never matched text. */
+  readonly findingsByPacket: readonly {
+    readonly packetId: string;
+    readonly zone: string;
+    readonly findingCount: number;
+    readonly peakSeverity: string | null;
+    readonly disposition: string | null;
+  }[];
+  /** Findings the boundary reported on the model's own output. */
+  readonly modelOutputFindingCount: number | null;
+  readonly boundaryDecision: string | null;
+  readonly detectorVersion: string | null;
+  readonly registryPayloadSha256: string | null;
+}
 
 export interface AttemptRecord {
   readonly attemptId: string;
+  /**
+   * How untrusted material reached the model.
+   *
+   * Null only for records produced before the evidence transport existed. The
+   * exporter refuses those rather than exporting them as though the boundary
+   * had been exercised.
+   */
+  readonly evidenceTransport: EvidenceTransportRecord | null;
   readonly fixtureId: string;
   readonly suiteId: string;
   readonly suiteVersion: string;

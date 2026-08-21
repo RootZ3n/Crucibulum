@@ -28,7 +28,8 @@
  */
 import { createHash } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
-import type { LocalPrompt, LocalResponse, Responder } from "../runner.js";
+import type { BoundaryObservation, LocalPrompt, LocalResponse, Responder } from "../runner.js";
+import { toWireEvidence } from "../evidence.js";
 import type { TokenCountSource } from "../regime.js";
 import {
   protocolPinOf, validateBokahliConfig, type BokahliResponderConfig,
@@ -42,7 +43,48 @@ import {
 } from "./bokahli-b2-facts.js";
 import { deriveTokenProvenance, type TokenProvenanceVerdict } from "./bokahli-provenance.js";
 
-export const BOKAHLI_RESPONDER_VERSION = "bokahli-responder-1.3.0" as const;
+/**
+ * Read the trust boundary's own account of a request.
+ *
+ * Everything here is counts, zones and identities. Matched text is never
+ * carried: a record of what an injection said is a record of an injection, and
+ * evidence bundles are read by people and by other programs.
+ *
+ * Returns null when the deployment reported nothing, which is different from
+ * reporting that it found nothing, and the campaign validity check treats it
+ * that way.
+ */
+function readBoundary(telemetry: unknown): BoundaryObservation | null {
+  if (!telemetry || typeof telemetry !== "object") return null;
+  const v = (telemetry as Record<string, unknown>)["velum"];
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  const engine = (o["engine"] ?? {}) as Record<string, unknown>;
+  const rawPackets = Array.isArray(o["packets"]) ? (o["packets"] as unknown[]) : [];
+  const str = (x: unknown): string | null => (typeof x === "string" ? x : null);
+  return {
+    scannedAll: typeof o["scannedAll"] === "boolean" ? (o["scannedAll"] as boolean) : null,
+    decision: str(o["decision"]),
+    detectorVersion: str(engine["detectorVersion"]),
+    registryPayloadSha256: str(engine["registryPayloadSha256"]),
+    packets: rawPackets.flatMap((p) => {
+      if (!p || typeof p !== "object") return [];
+      const q = p as Record<string, unknown>;
+      const id = str(q["id"]);
+      const zone = str(q["zone"]);
+      if (id === null || zone === null) return [];
+      return [{
+        id,
+        zone,
+        findingCount: typeof q["findingCount"] === "number" ? (q["findingCount"] as number) : 0,
+        peakSeverity: str(q["peakSeverity"]),
+        disposition: str(q["disposition"]),
+      }];
+    }),
+  };
+}
+
+export const BOKAHLI_RESPONDER_VERSION = "bokahli-responder-2.0.0" as const;
 
 /**
  * Hard limits on what a response may be.
@@ -444,6 +486,13 @@ export function createBokahliResponder(opts: BokahliResponderOptions): Responder
         { role: "system", content: prompt.system },
         { role: "user", content: prompt.user },
       ],
+      // The correction. Untrusted fixture material travels here and only here,
+      // so Bokahli assigns it the untrusted-evidence zone and fences it. Before
+      // this, the log was interpolated into the `user` message above, which
+      // made it the caller's own speech: Velum saw the injection, correctly
+      // declined to fence a trusted principal's instruction, and the campaign
+      // measured a boundary it had never invoked.
+      evidence: toWireEvidence(prompt.evidence),
       maxTokens: config.sampler.maxTokens,
       temperature: config.sampler.temperature,
       topP: config.sampler.topP,
@@ -600,6 +649,7 @@ export function createBokahliResponder(opts: BokahliResponderOptions): Responder
 
     return {
       rawText: content,
+      boundary: readBoundary(parsed["telemetry"]),
       promptTokens,
       completionTokens,
       tokenCountSource: provenance.source,
@@ -733,6 +783,7 @@ async function consumeStream(
   });
   return {
     rawText: out.text,
+    boundary: readBoundary((terminal as Record<string, unknown>)["telemetry"]),
     promptTokens,
     completionTokens,
     tokenCountSource: provenance.source,

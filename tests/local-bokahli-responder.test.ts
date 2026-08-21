@@ -26,6 +26,10 @@ import {
 } from "../core/local/responders/bokahli.js";
 import { parseFrame, readBokahliStream } from "../core/local/responders/bokahli-stream.js";
 import { LOCAL_FAILURE_MAP } from "../types/local-verdict.js";
+import {
+  EVIDENCE_TRANSPORT_VERSION, buildEvidencePacket, evidenceSetDigest,
+} from "../core/local/evidence.js";
+import type { AttemptRecord } from "../core/local/regime.js";
 import type { LocalPrompt } from "../core/local/runner.js";
 
 const MODEL = "testmodel.q4-k";
@@ -33,11 +37,21 @@ const DIGEST = `sha256:${"a".repeat(64)}`;
 const BUILD = "b10505-test";
 const FAKE_TOKEN = "not-a-real-token-0000000000000000000000000";
 
+const EVIDENCE = [buildEvidencePacket({
+  id: "tlt-008-abstention-required/log",
+  label: "tlt-008-abstention-required.log",
+  kind: "test-log",
+  content: "line one\nline two\n",
+})];
+
 const PROMPT: LocalPrompt = {
   fixtureId: "tlt-008-abstention-required",
   split: "evaluation",
   system: "sys",
   user: "user",
+  evidence: EVIDENCE,
+  evidenceSetDigest: evidenceSetDigest(EVIDENCE),
+  transportVersion: EVIDENCE_TRANSPORT_VERSION,
   outputSchemaKeys: ["outcome"],
 };
 
@@ -146,6 +160,31 @@ async function ask(over: Partial<BokahliResponderConfig> = {}): Promise<BokahliR
 // ---------------------------------------------------------------------------
 // config
 // ---------------------------------------------------------------------------
+
+/**
+ * A well-formed evidence-transport block for a record that represents a
+ * correct campaign. Written out rather than defaulted so a test that means to
+ * describe a *legacy* record has to say so by passing null.
+ */
+function transport(over: Partial<NonNullable<AttemptRecord["evidenceTransport"]>> = {}) {
+  return {
+    transportVersion: "luak.evidence-transport/1",
+    packetCount: 1,
+    evidenceSetDigest: `sha256:${"1".repeat(64)}`,
+    packetIds: ["fx/log"],
+    scannedAll: true,
+    fencedPacketCount: 1,
+    findingsByPacket: [{
+      packetId: "fx/log", zone: "evidence",
+      findingCount: 0, peakSeverity: null, disposition: "fenced",
+    }],
+    modelOutputFindingCount: 0,
+    boundaryDecision: "allow",
+    detectorVersion: "velum.a32-detector/1.0.0+abaiya-velum-mvp-1",
+    registryPayloadSha256: `sha256:${"2".repeat(64)}`,
+    ...over,
+  };
+}
 
 test("a valid loopback config is accepted", () => {
   const v = validateBokahliConfig(defaultLoopbackConfig(MODEL, DIGEST, BUILD));
@@ -574,7 +613,7 @@ test("evidence from this responder cannot be exported as qualification today", a
   const { LOCAL_IDENTITY_VERSION } = await import("../types/local-identity.js");
 
   const rec = {
-    attemptId: "a1", fixtureId: "tlt-008-abstention-required",
+    attemptId: "a1", evidenceTransport: transport(), fixtureId: "tlt-008-abstention-required",
     suiteId: "local-test-log-triage", suiteVersion: "1.0.0",
     split: "evaluation" as const, applicability: "APPLICABLE" as const,
     lanes: [{

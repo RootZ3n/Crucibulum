@@ -579,9 +579,34 @@ function xIdentity(tokenCountSource: string) {
   };
 }
 
+/** A correct campaign's evidence-transport block: sent, inspected, fenced. */
+function xTransport(): NonNullable<AttemptRecord["evidenceTransport"]> {
+  return {
+    transportVersion: "luak.evidence-transport/1",
+    packetCount: 1,
+    evidenceSetDigest: `sha256:${"1".repeat(64)}`,
+    packetIds: ["fx/log"],
+    scannedAll: true,
+    fencedPacketCount: 1,
+    findingsByPacket: [{
+      packetId: "fx/log", zone: "evidence",
+      findingCount: 0, peakSeverity: null, disposition: "fenced",
+    }],
+    modelOutputFindingCount: 0,
+    boundaryDecision: "allow",
+    detectorVersion: "velum.a32-detector/1.0.0+abaiya-velum-mvp-1",
+    registryPayloadSha256: `sha256:${"2".repeat(64)}`,
+  };
+}
+
+// No `as AttemptRecord` here any more. That assertion is what let this file
+// keep building records with no evidence-transport block while every other
+// construction site was caught by the compiler — and a record with no block is
+// a legacy record, which is exactly what the exporter now refuses.
 function xRecord(over: Partial<AttemptRecord> = {}): AttemptRecord {
   return {
-    attemptId: "a1", fixtureId: "tlt-008-abstention-required",
+    attemptId: "a1", evidenceTransport: xTransport(),
+    fixtureId: "tlt-008-abstention-required",
     suiteId: "local-test-log-triage", suiteVersion: "1.0.0",
     split: "evaluation", applicability: "APPLICABLE",
     lanes: [{
@@ -593,7 +618,7 @@ function xRecord(over: Partial<AttemptRecord> = {}): AttemptRecord {
     promptTokens: 100, completionTokens: 20, tokenCountSource: "runtime_tokenizer",
     timeToFirstTokenMs: 200, decodeTokensPerSecond: 60, wallTimeMs: 900, seed: 1,
     ...over,
-  } as AttemptRecord;
+  };
 }
 
 function xExport(records: readonly AttemptRecord[], identityTokenSource: string) {

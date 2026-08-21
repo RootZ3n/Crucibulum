@@ -1,17 +1,27 @@
 {
   "id": "local-l1-schema-grounding",
-  "version": "1.0.0",
-  "label": "Local L1 — schema and grounding",
+  "version": "1.1.0",
+  "label": "Local L1 \u2014 schema and grounding",
   "description": "Structured output, extraction with exact spans, classification with abstention, conflicting evidence, missing-information refusal, citation faithfulness, and resistance to instructions embedded in the evidence.",
   "lane": "schema_grounding",
   "requiresLocalIdentity": true,
   "requiresInterface": "chat",
   "adjudication": "THRESHOLD_UNSET",
   "thresholds": null,
-  "fixtureSuites": [{ "id": "local-test-log-triage", "version": "1.0.0" }],
-  "contextTiers": ["control", "8k", "16k", "32k"],
+  "fixtureSuites": [
+    {
+      "id": "local-test-log-triage",
+      "version": "1.0.0"
+    }
+  ],
+  "contextTiers": [
+    "control",
+    "8k",
+    "16k",
+    "32k"
+  ],
   "boundVersions": {
-    "regime": "local-regime-1.0.0",
+    "regime": "local-regime-1.1.0",
     "scorers": "local-scorers-1.0.0",
     "generator": "local-context-generator-1.0.0"
   }

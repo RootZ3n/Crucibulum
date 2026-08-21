@@ -43,6 +43,21 @@ import { LOCAL_REGIME_VERSION, type AttemptRecord, type ScoredAttempt } from "./
 
 export const BOKAHLI_BUNDLE_VERSION = "2.0.0-phase2a" as const;
 
+/**
+ * The exporter's own version, distinct from the bundle format's.
+ *
+ * These moved together until the evidence-transport correction, which changed
+ * everything about how a campaign is *run* and nothing about the bundle's
+ * shape. Advancing BOKAHLI_BUNDLE_VERSION would have told Bokahli its pinned
+ * wire contract had changed, which is false, and its importer would have
+ * refused a bundle it understands perfectly.
+ *
+ * So the two are separated. The bundle version describes the wire. This
+ * describes the process that produced it, and it travels in provenance —
+ * where Bokahli records it and grants it exactly no authority.
+ */
+export const LUAK_EXPORTER_VERSION = "luak.bokahli-exporter-2.1.0" as const;
+
 /** Task-class contract versions this exporter can produce evidence for. */
 export const SUPPORTED_TASK_CONTRACTS: Readonly<Record<string, string>> = Object.freeze({
   test_log_triage: "1.0.0",
@@ -65,6 +80,19 @@ export type ExportRefusalCode =
   | "MIXED_SUITE"
   | "MIXED_SUITE_VERSION"
   | "MIXED_CONTEXT_TIER"
+  // Evidence transport, added with bundle 2.1.0. A campaign that did not send
+  // untrusted material through Bokahli's evidence[] contract did not test the
+  // boundary, and must not export as though it had.
+  | "MIXED_EVIDENCE_TRANSPORT"
+  | "LEGACY_EVIDENCE_TRANSPORT"
+  | "MIXED_EVIDENCE_TRANSPORT_VERSION"
+  | "EVIDENCE_TRANSPORT_EMPTY"
+  | "EVIDENCE_TRANSPORT_INCONSISTENT"
+  | "EVIDENCE_TRANSPORT_DUPLICATE_PACKET"
+  | "EVIDENCE_TRANSPORT_UNCONFIRMED"
+  | "EVIDENCE_TRANSPORT_UNSCANNED"
+  | "EVIDENCE_NOT_FENCED"
+  | "MIXED_DETECTOR"
   | "IDENTITY_ATTEMPT_DISAGREEMENT"
   | "NO_EVIDENCE_OF_EXECUTION"
   | "TOKEN_COUNTS_NOT_MEASURED"
@@ -326,6 +354,100 @@ export function exportBokahliBundle(rawInput: ExportInput): ExportResult {
       "every attempt with a tier most of them did not run at.",
       "attempts[].contextTier");
   }
+  // 5b. Evidence transport. A campaign that measured injection resistance
+  //     without sending the material as evidence measured the harness, not the
+  //     model — which is exactly what the first Bokahli campaign did, and its
+  //     records look identical to a correct campaign's unless something refuses
+  //     them. Absence is the discriminator: pre-transport records carry no block
+  //     at all, and there is no value they could carry that would forge one,
+  //     because the boundary fields come from Bokahli rather than from Luak.
+  const withTransport = input.records.filter((r) => r.evidenceTransport != null);
+  const withoutTransport = input.records.filter((r) => r.evidenceTransport == null);
+
+  if (withTransport.length > 0 && withoutTransport.length > 0) {
+    add("MIXED_EVIDENCE_TRANSPORT",
+      `${withTransport.length} of ${input.records.length} attempts used the typed ` +
+      "evidence transport and the rest did not. The two are not comparable: one " +
+      "exercised Bokahli's evidence boundary and the other handed the same bytes to " +
+      "the model as the caller's own instruction.",
+      "attempts[].evidenceTransport");
+  } else if (withoutTransport.length === input.records.length && input.records.length > 0) {
+    add("LEGACY_EVIDENCE_TRANSPORT",
+      "no attempt carries an evidence-transport record. These were produced before " +
+      "untrusted fixture material travelled through Bokahli's evidence[] contract, so " +
+      "any injection result in them is a statement about the harness. Re-run the " +
+      "campaign; this evidence cannot be repaired by re-exporting it.",
+      "attempts[].evidenceTransport");
+  }
+
+  const transportVersions = new Set(
+    withTransport.map((r) => r.evidenceTransport!.transportVersion),
+  );
+  if (transportVersions.size > 1) {
+    add("MIXED_EVIDENCE_TRANSPORT_VERSION",
+      `attempts span ${transportVersions.size} evidence transport versions ` +
+      `(${[...transportVersions].join(", ")}).`,
+      "attempts[].evidenceTransport.transportVersion");
+  }
+
+  for (const r of withTransport) {
+    const t = r.evidenceTransport!;
+    if (t.packetCount === 0) {
+      add("EVIDENCE_TRANSPORT_EMPTY",
+        `attempt ${r.attemptId} claims the evidence transport but sent no packets. A ` +
+        "stripped evidence[] is a campaign that asked the model about material it never " +
+        "received.",
+        `attempts.${r.attemptId}.evidenceTransport.packetCount`);
+    }
+    if (t.packetIds.length !== t.packetCount) {
+      add("EVIDENCE_TRANSPORT_INCONSISTENT",
+        `attempt ${r.attemptId} reports ${t.packetCount} packets but names ` +
+        `${t.packetIds.length}.`,
+        `attempts.${r.attemptId}.evidenceTransport.packetIds`);
+    }
+    if (new Set(t.packetIds).size !== t.packetIds.length) {
+      add("EVIDENCE_TRANSPORT_DUPLICATE_PACKET",
+        `attempt ${r.attemptId} sent the same packet id twice; one packet cannot stand ` +
+        "in for another's digest.",
+        `attempts.${r.attemptId}.evidenceTransport.packetIds`);
+    }
+    // The boundary's own confirmation. Null means the deployment said nothing,
+    // which is not the same as saying it found nothing, and a campaign cannot
+    // claim a boundary ran on the strength of its own intention to invoke it.
+    if (t.scannedAll === null || t.boundaryDecision === null) {
+      add("EVIDENCE_TRANSPORT_UNCONFIRMED",
+        `attempt ${r.attemptId} carries no trust-boundary telemetry, so there is no ` +
+        "evidence the packets were inspected. Luak's intent to use the evidence channel " +
+        "is not proof that the deployment did.",
+        `attempts.${r.attemptId}.evidenceTransport.boundaryDecision`);
+    } else if (t.scannedAll === false) {
+      add("EVIDENCE_TRANSPORT_UNSCANNED",
+        `attempt ${r.attemptId} ran against a deployment that did not inspect every ` +
+        "packet it was given.",
+        `attempts.${r.attemptId}.evidenceTransport.scannedAll`);
+    }
+    if (t.fencedPacketCount !== null && t.packetCount > 0 && t.fencedPacketCount === 0) {
+      add("EVIDENCE_NOT_FENCED",
+        `attempt ${r.attemptId} sent ${t.packetCount} evidence packet(s) and the boundary ` +
+        "fenced none of them. Untrusted material that was not fenced reached the model " +
+        "with the same standing as the caller's instruction.",
+        `attempts.${r.attemptId}.evidenceTransport.fencedPacketCount`);
+    }
+  }
+
+  const detectors = new Set(
+    withTransport.map((r) => r.evidenceTransport!.detectorVersion).filter((d) => d !== null),
+  );
+  const registries = new Set(
+    withTransport.map((r) => r.evidenceTransport!.registryPayloadSha256).filter((d) => d !== null),
+  );
+  if (detectors.size > 1 || registries.size > 1) {
+    add("MIXED_DETECTOR",
+      "attempts ran against more than one detector version or pattern registry. " +
+      "Injection results from different detectors are not one measurement.",
+      "attempts[].evidenceTransport.detectorVersion");
+  }
+
   if (input.identity && suiteIds.size === 1) {
     const only = [...suiteIds][0];
     if (only !== input.identity.fixtureSuiteId) {
@@ -440,7 +562,14 @@ export function exportBokahliBundle(rawInput: ExportInput): ExportResult {
     aggregate,
     provenance: {
       claimedAuthority: "luak",
-      sourceContractVersion: `${LOCAL_REGIME_VERSION}+${identity.fixtureSuiteId}@${identity.fixtureSuiteVersion}`,
+      // Regime, fixture suite, exporter and evidence transport. A campaign run
+      // before untrusted material travelled through Bokahli's evidence[]
+      // contract cannot produce this string, and one run after it cannot fail
+      // to: the transport version is read from the records, not asserted here.
+      sourceContractVersion:
+        `${LOCAL_REGIME_VERSION}+${identity.fixtureSuiteId}@${identity.fixtureSuiteVersion}` +
+        `+${LUAK_EXPORTER_VERSION}` +
+        `+${[...new Set(input.records.map((r) => r.evidenceTransport?.transportVersion ?? "no-evidence-transport"))].sort().join(",")}`,
       luakBundleIds: [...input.luakBundleIds],
       luakBundleHashes: [...input.luakBundleHashes],
       claimedSignatureStatus: input.luakSignatureStatus,
