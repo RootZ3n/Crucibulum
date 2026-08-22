@@ -68,6 +68,16 @@ async function main(): Promise<void> {
       await harnessCommand(args.slice(1));
       break;
     }
+    case "howa-import": {
+      const { howaImportCommand } = await import("./commands/howa-import.js");
+      await howaImportCommand(args.slice(1));
+      break;
+    }
+    case "howa-score": {
+      const { howaScoreCommand } = await import("./commands/howa-score.js");
+      await howaScoreCommand(args.slice(1));
+      break;
+    }
     default:
       console.log(`Luak — Execution-Based AI Agent Evaluation
 
@@ -93,6 +103,8 @@ Usage:
                [--live --model <model>]           # legacy: OpenRouter + judge model
                [--provider <id>]                  # configurable adapters only
                [--enable-judge] [--output <path>]
+  luak howa-import <receipt.json...> --store <dir>
+  luak howa-score --store <dir> [--campaign-id <id>]
 
   Without --adapter or --live the harness uses the offline mock adapter.
 
