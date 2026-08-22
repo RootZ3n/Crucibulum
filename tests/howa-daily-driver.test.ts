@@ -1,5 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { chmodSync, mkdtempSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -18,14 +19,14 @@ const fixtureCases = JSON.parse(readFileSync(join(process.cwd(), "tests", "fixtu
 
 function receipt(overrides: Partial<HowaDailyDriverReceipt> = {}): HowaDailyDriverReceipt {
   const value: HowaDailyDriverReceipt = {
-    schema_version: "howa.hermes-daily-driver.receipt.v2", receipt_digest: hash("0"), trial_id: "ddv1-01-porcelain-parser", trial_suite_version: "hermes-daily-driver.v1", run_id: "run-1", timestamp: now,
-    model_id: "model-a", provider_id: "provider-a", provider_route: "direct", reasoning_level: "max", served_model_identity: "model-a",
-    hermes_version: "1", hermes_commit: "abc", hermes_launcher_digest: hash("b"), hermes_executable_digest: hash("a"), hermes_arguments: ["--oneshot"], requested_temperature: null, hermes_configuration_digest: hash("1"), system_prompt_digest: hash("2"), tool_registry_digest: hash("3"), fixture_digest: hash("4"),
+    schema_version: "howa.hermes-daily-driver.receipt.v3", receipt_digest: hash("0"), trial_id: "ddv1-01-porcelain-parser", trial_suite_version: "hermes-daily-driver.v1", run_id: "run-1", timestamp: now,
+    model_id: "offline/mock-v2", provider_id: "offline", provider_route: "direct", reasoning_level: "max", served_model_identity: "offline/mock-v2",
+    hermes_version: "offline-proof-v1", hermes_commit: "sha256:95cc04a110f9c114ce407835e77920ca7434f11ef7dd6f73d030a5930ab56d86", hermes_launcher_digest: "sha256:3f0f753fba087a2789530e59e0cc9480aa4f847c644f67135f1e87287387ad56", terminal_sandbox_digest:"sha256:1e4c00bd9498aedebc024e556e4790076694db50ca8182e554fcd9b242c35b44",runtime_policy_version:"howa.ddv1-runtime.2026-08-22.2",runtime_policy_digest:"sha256:0648cc9a98d5696f304d69feb9464b72c316c0be423412d63070c2c6ecdb62c6", hermes_executable_digest: "sha256:95cc04a110f9c114ce407835e77920ca7434f11ef7dd6f73d030a5930ab56d86", hermes_arguments: ["--oneshot"], requested_temperature: null, hermes_configuration_digest: hash("1"), system_prompt_digest: hash("2"), tool_registry_digest: hash("3"), fixture_digest: hash("4"),campaign_entropy_commitment:hash("e"),
     start_timestamp: now, end_timestamp: now, wall_clock_duration_ms: 100,
-    attempts: [{ attempt: 1, started_at: now, finished_at: now, duration_ms: 100, exit_code: 0, outcome: "accepted_output", error_kind: null, retryable: false, stdout_digest: hash("5"), stderr_digest: hash("6") }],
-    retries: 0, connection_failures: [], timeout_events: [], compaction_events: [], input_tokens: 10, output_tokens: 5, charged_cost_usd: 0.02, api_equivalent_cost_usd: 0.02, plan_credit_consumed: null, subscription_quota_consumed: null, cost_rate_card_version: "test-rates", cost_provenance: "provider_actual", candidate_accommodations: [], max_turns: 24, max_output_tokens: 8192, limits_enforcement: "enforced",
+    attempts: [{ attempt: 1, started_at: now, finished_at: now, duration_ms: 100, exit_code: 0, outcome: "accepted_output", error_kind: null, retryable: false, stdout_digest: hash("5"), stderr_digest: hash("6"),timeout_stage:"none",signals_sent:[],cleanup_outcome:"not_required" }],
+    retries: 0, connection_failures: [], timeout_events: [], compaction_events: [], input_tokens: 10, output_tokens: 5, charged_cost_usd: 0.02, api_equivalent_cost_usd: 0.02, plan_credit_consumed: null, subscription_quota_consumed: null, cost_rate_card_version: "howa.ddv1-rates.2026-08-22.1", cost_provenance: "provider_actual", candidate_accommodations: [], max_turns: 24, max_output_tokens: 8192, limits_enforcement: "enforced",
     tool_calls: [], mutation_observations: [], deterministic_checks: [{ id: "porcelain.evidence", passed: true, details: "verified", evidence_refs: ["candidate.stdout"] }],
-    raw_verdict: "PASS", evidence_references: [{ id: "candidate.stdout", kind: "stdout", path: "artifacts/stdout.txt", digest: hash("7") }], correction_rounds: 0, accepted: true, disqualifier_codes: [],
+    raw_verdict: "PASS", evidence_references: [{ id: "candidate.stdout", kind: "stdout", path: "artifacts/run-1/ddv1-01-porcelain-parser/stdout.txt", digest: hash("7") },{id:"runtime-identity.json",kind:"artifact",path:"artifacts/run-1/ddv1-01-porcelain-parser/runtime-identity.json",digest:hash("8")}],evidence_manifest_path:"manifests/run-1/ddv1-01-porcelain-parser.evidence-manifest.json",evidence_manifest_digest:hash("9"),evidence_bundle_mode:"receipt-plus-evidence-directory",redaction_events:[], correction_rounds: 0, accepted: true, disqualifier_codes: [],
     ...overrides,
   };
   value.receipt_digest = computeHowaReceiptDigest(value as unknown as Record<string, unknown>);
@@ -34,7 +35,15 @@ function receipt(overrides: Partial<HowaDailyDriverReceipt> = {}): HowaDailyDriv
 
 function root(): string { return mkdtempSync(join(tmpdir(), "luak-howa-import-")); }
 function source(dir: string, value: unknown, name = "receipt.json"): { path: string; bytes: string } {
-  const bytes = `${JSON.stringify(value, null, 2)}\n`;
+  const r=value as HowaDailyDriverReceipt; const canonical=(item:unknown):string=>{if(item===null||typeof item==="boolean"||typeof item==="string"||typeof item==="number")return JSON.stringify(item);if(Array.isArray(item))return`[${item.map(canonical).join(",")}]`;const o=item as Record<string,unknown>;return`{${Object.keys(o).sort().map(k=>`${JSON.stringify(k)}:${canonical(o[k])}`).join(",")}}`;};const sha=(bytes:string)=>`sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+  const base=join(dir,"evidence"); const artifact=`artifacts/${r.run_id}/${r.trial_id}`; const stdout="synthetic evidence\n"; const nonce="11".repeat(32);
+  r.campaign_entropy_commitment=`sha256:${createHash("sha256").update(Buffer.concat([Buffer.from("howa-ddv1-entropy-commitment\0"),Buffer.from(nonce,"hex")])).digest("hex")}`;
+  const identity=`${canonical({hermes_launcher_digest:r.hermes_launcher_digest,terminal_sandbox_digest:r.terminal_sandbox_digest,hermes_executable_digest:r.hermes_executable_digest,runtime_policy_version:r.runtime_policy_version,runtime_policy_digest:r.runtime_policy_digest,hermes_configuration_digest:r.hermes_configuration_digest,system_prompt_digest:r.system_prompt_digest,tool_registry_digest:r.tool_registry_digest,cost_rate_card_version:r.cost_rate_card_version,campaign_entropy_commitment:r.campaign_entropy_commitment})}\n`;
+  const authority=`${canonical({schema_version:"howa.ddv1-authority.v1",run_id:r.run_id,trial_id:r.trial_id,nonce_hex:nonce,entropy_commitment:r.campaign_entropy_commitment,fixture_digest:r.fixture_digest})}\n`;
+  r.attempts[0]!.stdout_digest=sha(stdout); r.evidence_references=[{id:"candidate.stdout",kind:"stdout",path:`${artifact}/stdout.txt`,digest:sha(stdout)},{id:"runtime-identity.json",kind:"artifact",path:`${artifact}/runtime-identity.json`,digest:sha(identity)},{id:"trusted-authority.json",kind:"artifact",path:`${artifact}/trusted-authority.json`,digest:sha(authority)}];
+  const contents:Record<string,string>={"candidate.stdout":stdout,"runtime-identity.json":identity,"trusted-authority.json":authority}; const entries=r.evidence_references.map(ref=>({path:ref.path,byte_length:Buffer.byteLength(contents[ref.id]!),digest:ref.digest,evidence_class:ref.kind,run_id:r.run_id,trial_id:r.trial_id})).sort((a,b)=>a.path.localeCompare(b.path)); const manifest=`${canonical({schema_version:"howa.hermes-daily-driver.evidence-manifest.v1",run_id:r.run_id,trial_id:r.trial_id,entries})}\n`;
+  r.evidence_manifest_path=`manifests/${r.run_id}/${r.trial_id}.evidence-manifest.json`; r.evidence_manifest_digest=sha(manifest); r.receipt_digest=computeHowaReceiptDigest(r as unknown as Record<string,unknown>); mkdirSync(join(base,artifact),{recursive:true}); mkdirSync(join(base,"manifests",r.run_id),{recursive:true}); writeFileSync(join(base,`${artifact}/stdout.txt`),stdout); writeFileSync(join(base,`${artifact}/runtime-identity.json`),identity); writeFileSync(join(base,`${artifact}/trusted-authority.json`),authority); writeFileSync(join(base,r.evidence_manifest_path),manifest);
+  const bytes = `${JSON.stringify(r, null, 2)}\n`;
   const path = join(dir, name); writeFileSync(path, bytes); return { path, bytes };
 }
 
@@ -43,14 +52,14 @@ describe("Howa Daily Driver importer", () => {
     const dir = root();
     mkdirSync(join(dir, "runs")); writeFileSync(join(dir, "runs", "sentinel.json"), "existing-campaign\n");
     const input = source(dir, receipt());
-    const imported = importHowaReceipt(input.path, dir);
+    const imported = importHowaReceipt(input.path, dir, join(dir,"evidence"));
     assert.equal(readFileSync(imported.raw_path, "utf8"), input.bytes);
     assert.equal(readFileSync(join(dir, "runs", "sentinel.json"), "utf8"), "existing-campaign\n");
     const derived = loadImportedHowaResults(dir)[0]!;
     assert.equal(derived.final_accepted, true);
     assert.equal(derived.charged_cost_usd, 0.02);
     assert.equal(statSync(imported.raw_path).mode & 0o222, 0);
-    assert.equal(importHowaReceipt(input.path, dir).raw_path, imported.raw_path, "byte-identical re-import is idempotent, never rewritten");
+    assert.equal(importHowaReceipt(input.path, dir, join(dir,"evidence")).raw_path, imported.raw_path, "byte-identical re-import is idempotent, never rewritten");
   });
 
   it("rejects wrong arithmetic, missing evidence, unsupported COMPLETE, protected mutation, and masked test failure", () => {
@@ -71,29 +80,36 @@ describe("Howa Daily Driver importer", () => {
     assert.throws(() => validateHowaReceipt(receipt({ served_model_identity: "different-model" })), /does not match/);
     const tampered = receipt(); tampered.wall_clock_duration_ms = 999;
     assert.throws(() => validateHowaReceipt(tampered), /digest/);
-    const forward = { ...receipt(), schema_version: "howa.hermes-daily-driver.receipt.v3" };
+    const forward = { ...receipt(), schema_version: "howa.hermes-daily-driver.receipt.v4" };
     assert.throws(() => validateHowaReceipt(forward), /unsupported/);
   });
 
   it("detects tampering with an application-write-once raw receipt on re-import", () => {
     const dir = root();
     const input = source(dir, receipt());
-    const imported = importHowaReceipt(input.path, dir);
+    const imported = importHowaReceipt(input.path, dir, join(dir,"evidence"));
     chmodSync(imported.raw_path, 0o644);
     writeFileSync(imported.raw_path, "{}\n");
-    assert.throws(() => importHowaReceipt(input.path, dir), /application-write-once raw receipt differs/);
+    assert.throws(() => importHowaReceipt(input.path, dir, join(dir,"evidence")), /application-write-once raw receipt differs/);
   });
 
   it("rejects duplicate/conflicting run and trial identities during import", () => {
-    const dir = root(); const first = source(dir, receipt(), "first.json"); importHowaReceipt(first.path, dir);
+    const dir = root(); const first = source(dir, receipt(), "first.json"); importHowaReceipt(first.path, dir, join(dir,"evidence"));
     const second = source(dir, receipt({ wall_clock_duration_ms: 101 }), "second.json");
-    assert.throws(() => importHowaReceipt(second.path, dir), /duplicate\/conflicting identity/);
+    assert.throws(() => importHowaReceipt(second.path, dir, join(dir,"evidence")), /duplicate\/conflicting identity/);
+  });
+
+  it("independently rejects tampered evidence, unknown launchers, and unknown cost",()=>{
+    const dir=root(); const input=source(dir,receipt()); const parsed=JSON.parse(input.bytes) as HowaDailyDriverReceipt; const stdout=parsed.evidence_references.find((item)=>item.kind==="stdout")!;
+    writeFileSync(join(dir,"evidence",stdout.path),"tampered\n"); assert.throws(()=>importHowaReceipt(input.path,dir,join(dir,"evidence")),/evidence bytes mismatch/);
+    const launcherDir=root(); const launcherInput=source(launcherDir,receipt({hermes_launcher_digest:hash("f")}),"launcher.json"); assert.throws(()=>importHowaReceipt(launcherInput.path,launcherDir,join(launcherDir,"evidence")),/unknown launcher/);
+    const unknown=receipt({api_equivalent_cost_usd:null,cost_provenance:"unknown",disqualifier_codes:["COST_UNKNOWN"],accepted:false,raw_verdict:"ERROR"}); assert.throws(()=>validateHowaReceipt(unknown),/unknown cost/);
   });
 
   it("rejects transport/model failure category inversions", () => {
-    const timeoutAsModel = receipt({ accepted: false, raw_verdict: "ERROR", deterministic_checks: [{ id: "transport", passed: false, details: "timeout", evidence_refs: ["candidate.stdout"] }], attempts: [{ attempt: 1, started_at: now, finished_at: now, duration_ms: 100, exit_code: 124, outcome: "model_failure", error_kind: "TIMEOUT", retryable: true, stdout_digest: hash("5"), stderr_digest: hash("6") }] });
+    const timeoutAsModel = receipt({ accepted: false, raw_verdict: "ERROR", deterministic_checks: [{ id: "transport", passed: false, details: "timeout", evidence_refs: ["candidate.stdout"] }], attempts: [{ attempt: 1, started_at: now, finished_at: now, duration_ms: 100, exit_code: 124, outcome: "model_failure", error_kind: "TIMEOUT", retryable: true, stdout_digest: hash("5"), stderr_digest: hash("6"),timeout_stage:"term_sent",signals_sent:["SIGTERM"],cleanup_outcome:"group_terminated" }] });
     assert.throws(() => validateHowaReceipt(timeoutAsModel), /misreported as model_failure/);
-    const modelAsTransport = receipt({ accepted: false, raw_verdict: "ERROR", deterministic_checks: [{ id: "model", passed: false, details: "wrong output", evidence_refs: ["candidate.stdout"] }], attempts: [{ attempt: 1, started_at: now, finished_at: now, duration_ms: 100, exit_code: 1, outcome: "transport_failure", error_kind: "MODEL_OR_PROCESS_FAILURE", retryable: false, stdout_digest: hash("5"), stderr_digest: hash("6") }] });
+    const modelAsTransport = receipt({ accepted: false, raw_verdict: "ERROR", deterministic_checks: [{ id: "model", passed: false, details: "wrong output", evidence_refs: ["candidate.stdout"] }], attempts: [{ attempt: 1, started_at: now, finished_at: now, duration_ms: 100, exit_code: 1, outcome: "transport_failure", error_kind: "MODEL_OR_PROCESS_FAILURE", retryable: false, stdout_digest: hash("5"), stderr_digest: hash("6"),timeout_stage:"none",signals_sent:[],cleanup_outcome:"not_required" }] });
     assert.throws(() => validateHowaReceipt(modelAsTransport), /misreported as transport_failure/);
     assert.deepEqual(fixtureCases.slice(5), ["secret exposure", "model/provider identity mismatch", "modified Howa raw receipt", "unsupported schema version", "connection timeout misreported as model failure", "model failure misreported as transport failure"]);
   });
