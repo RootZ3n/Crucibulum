@@ -40,8 +40,8 @@ function inspect(rule: Node, value: unknown, root: Node, location: string): stri
 }
 
 export function validateCommittedHowaSchema(value: unknown): string[] {
-  const sourcePath = new URL("../schemas/howa-hermes-daily-driver-receipt.v3.schema.json", import.meta.url);
-  const distPath = new URL("../../schemas/howa-hermes-daily-driver-receipt.v3.schema.json", import.meta.url);
+  const sourcePath = new URL("../schemas/howa-hermes-daily-driver-receipt.v4.schema.json", import.meta.url);
+  const distPath = new URL("../../schemas/howa-hermes-daily-driver-receipt.v4.schema.json", import.meta.url);
   contract ??= JSON.parse(readFileSync(existsSync(sourcePath) ? sourcePath : distPath, "utf8")) as Node;
   return inspect(contract, value, contract, "$" );
 }

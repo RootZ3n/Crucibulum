@@ -1,6 +1,6 @@
 # Howa Daily Driver receipt import
 
-Luak consumes `howa.hermes-daily-driver.receipt.v3` as a standalone, versioned data contract. It has no source import from Howa. The importer performs strict nested-key, type, invariant, secret, evidence-manifest, authorized-runtime, served-identity, failure-category, canonical-digest, and supported-version validation before persisting anything.
+Luak consumes `howa.hermes-daily-driver.receipt.v4` as a standalone, versioned data contract. It has no source import from Howa. The importer performs strict nested-key, type, invariant, secret, evidence-manifest, trusted-expected/authority correspondence, authorized-runtime, served-identity, failure-category, canonical-digest, and supported-version validation before persisting anything. It uses Luak's committed schema and validator check-set authority rather than trusting a prior Howa verification result.
 
 Accepted raw bytes are written once beneath `<store>/howa-imports/raw/` under the receipt digest and made read-only. The verified evidence bundle is copied application-write-once beneath `<store>/howa-imports/evidence/`. A byte-different re-import at the same identity is rejected. These files are tamper-evident, not filesystem-immutable. Luak writes its `luak.howa-derived-result.v1` projection separately beneath `derived/`; it never changes the raw verdict or existing `runs/` campaign data.
 
