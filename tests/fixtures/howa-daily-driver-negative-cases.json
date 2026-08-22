@@ -1,0 +1,13 @@
+[
+  "wrong arithmetic",
+  "missing evidence",
+  "unsupported COMPLETE",
+  "protected-path mutation",
+  "masked test failure",
+  "secret exposure",
+  "model/provider identity mismatch",
+  "modified Howa raw receipt",
+  "unsupported schema version",
+  "connection timeout misreported as model failure",
+  "model failure misreported as transport failure"
+]
