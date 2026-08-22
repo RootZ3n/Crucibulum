@@ -10,7 +10,7 @@ import {
   validateHowaReceipt,
   type HowaDailyDriverReceipt,
 } from "../core/howa-daily-driver.js";
-import { deriveHowaMetrics, loadImportedHowaResults, projectHowaScoreboard } from "../core/howa-daily-driver-scoring.js";
+import { deriveHowaMetrics, loadImportedHowaResults, projectHowaScoreboard, REQUIRED_DAILY_DRIVER_TRIAL_IDS } from "../core/howa-daily-driver-scoring.js";
 
 const now = "2026-08-22T12:00:00.000Z";
 const hash = (char: string) => `sha256:${char.repeat(64)}`;
@@ -18,12 +18,12 @@ const fixtureCases = JSON.parse(readFileSync(join(process.cwd(), "tests", "fixtu
 
 function receipt(overrides: Partial<HowaDailyDriverReceipt> = {}): HowaDailyDriverReceipt {
   const value: HowaDailyDriverReceipt = {
-    schema_version: "howa.hermes-daily-driver.receipt.v1", receipt_digest: hash("0"), trial_id: "ddv1-01-porcelain-parser", trial_suite_version: "hermes-daily-driver.v1", run_id: "run-1", timestamp: now,
+    schema_version: "howa.hermes-daily-driver.receipt.v2", receipt_digest: hash("0"), trial_id: "ddv1-01-porcelain-parser", trial_suite_version: "hermes-daily-driver.v1", run_id: "run-1", timestamp: now,
     model_id: "model-a", provider_id: "provider-a", provider_route: "direct", reasoning_level: "max", served_model_identity: "model-a",
-    hermes_version: "1", hermes_commit: "abc", hermes_configuration_digest: hash("1"), system_prompt_digest: hash("2"), tool_registry_digest: hash("3"), fixture_digest: hash("4"),
+    hermes_version: "1", hermes_commit: "abc", hermes_launcher_digest: hash("b"), hermes_executable_digest: hash("a"), hermes_arguments: ["--oneshot"], requested_temperature: null, hermes_configuration_digest: hash("1"), system_prompt_digest: hash("2"), tool_registry_digest: hash("3"), fixture_digest: hash("4"),
     start_timestamp: now, end_timestamp: now, wall_clock_duration_ms: 100,
     attempts: [{ attempt: 1, started_at: now, finished_at: now, duration_ms: 100, exit_code: 0, outcome: "accepted_output", error_kind: null, retryable: false, stdout_digest: hash("5"), stderr_digest: hash("6") }],
-    retries: 0, connection_failures: [], timeout_events: [], compaction_events: [], input_tokens: 10, output_tokens: 5, charged_cost_usd: 0.02,
+    retries: 0, connection_failures: [], timeout_events: [], compaction_events: [], input_tokens: 10, output_tokens: 5, charged_cost_usd: 0.02, api_equivalent_cost_usd: 0.02, plan_credit_consumed: null, subscription_quota_consumed: null, cost_rate_card_version: "test-rates", cost_provenance: "provider_actual", candidate_accommodations: [], max_turns: 24, max_output_tokens: 8192, limits_enforcement: "enforced",
     tool_calls: [], mutation_observations: [], deterministic_checks: [{ id: "porcelain.evidence", passed: true, details: "verified", evidence_refs: ["candidate.stdout"] }],
     raw_verdict: "PASS", evidence_references: [{ id: "candidate.stdout", kind: "stdout", path: "artifacts/stdout.txt", digest: hash("7") }], correction_rounds: 0, accepted: true, disqualifier_codes: [],
     ...overrides,
@@ -48,7 +48,7 @@ describe("Howa Daily Driver importer", () => {
     assert.equal(readFileSync(join(dir, "runs", "sentinel.json"), "utf8"), "existing-campaign\n");
     const derived = loadImportedHowaResults(dir)[0]!;
     assert.equal(derived.final_accepted, true);
-    assert.equal(derived.raw_cost_usd, 0.02);
+    assert.equal(derived.charged_cost_usd, 0.02);
     assert.equal(statSync(imported.raw_path).mode & 0o222, 0);
     assert.equal(importHowaReceipt(input.path, dir).raw_path, imported.raw_path, "byte-identical re-import is idempotent, never rewritten");
   });
@@ -71,17 +71,23 @@ describe("Howa Daily Driver importer", () => {
     assert.throws(() => validateHowaReceipt(receipt({ served_model_identity: "different-model" })), /does not match/);
     const tampered = receipt(); tampered.wall_clock_duration_ms = 999;
     assert.throws(() => validateHowaReceipt(tampered), /digest/);
-    const forward = { ...receipt(), schema_version: "howa.hermes-daily-driver.receipt.v2" };
+    const forward = { ...receipt(), schema_version: "howa.hermes-daily-driver.receipt.v3" };
     assert.throws(() => validateHowaReceipt(forward), /unsupported/);
   });
 
-  it("detects a modified immutable raw receipt on re-import", () => {
+  it("detects tampering with an application-write-once raw receipt on re-import", () => {
     const dir = root();
     const input = source(dir, receipt());
     const imported = importHowaReceipt(input.path, dir);
     chmodSync(imported.raw_path, 0o644);
     writeFileSync(imported.raw_path, "{}\n");
-    assert.throws(() => importHowaReceipt(input.path, dir), /existing immutable raw receipt differs/);
+    assert.throws(() => importHowaReceipt(input.path, dir), /application-write-once raw receipt differs/);
+  });
+
+  it("rejects duplicate/conflicting run and trial identities during import", () => {
+    const dir = root(); const first = source(dir, receipt(), "first.json"); importHowaReceipt(first.path, dir);
+    const second = source(dir, receipt({ wall_clock_duration_ms: 101 }), "second.json");
+    assert.throws(() => importHowaReceipt(second.path, dir), /duplicate\/conflicting identity/);
   });
 
   it("rejects transport/model failure category inversions", () => {
@@ -113,5 +119,39 @@ describe("Howa derived scoring", () => {
       { attempt: 1, sequence: 2, name: "terminal", arguments_digest: hash("b"), started_at: now, finished_at: now, exit_code: 7, timed_out: false },
     ];
     assert.equal(deriveHowaMetrics(receipt({ tool_calls: calls })).tool_reliability, 0.5);
+    assert.equal(deriveHowaMetrics(receipt({ tool_calls: [] })).tool_reliability, 0, "missing required tool use scores zero");
+  });
+
+  function campaign(overrides: Partial<HowaDailyDriverReceipt> = {}) {
+    return REQUIRED_DAILY_DRIVER_TRIAL_IDS.map((trial_id) => deriveHowaMetrics(receipt({ trial_id, run_id: "complete-run", ...overrides })));
+  }
+
+  it("six-of-twelve and unexpected/duplicate trial identities are INCOMPLETE and receive no composite", () => {
+    const partial = projectHowaScoreboard(campaign().slice(0, 6))[0]!;
+    assert.equal(partial.campaign_status, "INCOMPLETE"); assert.equal(partial.composite_score, null); assert.equal(partial.rank_eligible, false); assert.equal(partial.missing_trial_ids.length, 6);
+    const complete = campaign();
+    const duplicate = projectHowaScoreboard([...complete, complete[0]!])[0]!;
+    assert.deepEqual(duplicate.duplicate_trial_ids, [REQUIRED_DAILY_DRIVER_TRIAL_IDS[0]]); assert.equal(duplicate.composite_score, null);
+    const unexpected = deriveHowaMetrics(receipt({ trial_id: "ddv1-99-unexpected", run_id: "complete-run" }));
+    const extra = projectHowaScoreboard([...complete, unexpected])[0]!; assert.deepEqual(extra.unexpected_trial_ids, ["ddv1-99-unexpected"]); assert.equal(extra.rank_eligible, false);
+  });
+
+  it("FORBIDDEN_MUTATION explicitly disqualifies an otherwise complete campaign", () => {
+    const values = campaign();
+    values[0] = deriveHowaMetrics(receipt({ trial_id: REQUIRED_DAILY_DRIVER_TRIAL_IDS[0], run_id: "complete-run", accepted: false, raw_verdict: "FAIL", disqualifier_codes: ["FORBIDDEN_MUTATION"], mutation_observations: [{ path: "forbidden", kind: "modified", allowed: false, before_digest: hash("1"), after_digest: hash("2") }] }));
+    const row = projectHowaScoreboard(values)[0]!; assert.equal(row.campaign_status, "DISQUALIFIED"); assert.equal(row.composite_score, 0); assert.equal(row.rank_eligible, false);
+  });
+
+  it("unknown cost earns no advantage and subscription quota is never represented as free", () => {
+    const unknown = projectHowaScoreboard(campaign({ api_equivalent_cost_usd: null, charged_cost_usd: null, cost_provenance: "unknown" }))[0]!;
+    const known = projectHowaScoreboard(campaign({ api_equivalent_cost_usd: 0.02 }))[0]!;
+    assert.equal(unknown.cost_reporting_complete, false); assert.equal(unknown.effective_cost_per_accepted_task_usd, null); assert.ok((unknown.composite_score ?? 0) < (known.composite_score ?? 0));
+    const subscription = deriveHowaMetrics(receipt({ charged_cost_usd: null, api_equivalent_cost_usd: 0.02, subscription_quota_consumed: 1, cost_provenance: "subscription" }));
+    assert.equal(subscription.charged_cost_usd, null); assert.equal(subscription.api_equivalent_cost_usd, 0.02); assert.equal(subscription.subscription_quota_consumed, 1); assert.equal(subscription.effective_cost_for_accepted_task_usd, 0.02);
+  });
+
+  it("a candidate failing every trial scores zero rather than inheriting a composite floor", () => {
+    const failed = campaign({ accepted: false, raw_verdict: "FAIL", disqualifier_codes: ["WRONG_ARITHMETIC"] });
+    const row = projectHowaScoreboard(failed)[0]!; assert.equal(row.campaign_status, "COMPLETE"); assert.equal(row.final_acceptance, 0); assert.equal(row.composite_score, 0);
   });
 });

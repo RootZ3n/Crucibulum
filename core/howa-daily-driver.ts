@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
-import { closeSync, constants, existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, constants, existsSync, mkdirSync, openSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { validateCommittedHowaSchema } from "./json-schema-runtime.js";
 
-export const HOWA_DAILY_DRIVER_SCHEMA = "howa.hermes-daily-driver.receipt.v1" as const;
+export const HOWA_DAILY_DRIVER_SCHEMA = "howa.hermes-daily-driver.receipt.v2" as const;
 export const HOWA_DAILY_DRIVER_SUITE = "hermes-daily-driver.v1" as const;
 
 export class HowaReceiptImportError extends Error {
@@ -25,13 +26,17 @@ export interface HowaDailyDriverReceipt {
   trial_suite_version: typeof HOWA_DAILY_DRIVER_SUITE; run_id: string; timestamp: string;
   model_id: string; provider_id: string; provider_route: string; reasoning_level: string;
   served_model_identity: string | null; hermes_version: string; hermes_commit: string;
+  hermes_launcher_digest: string; hermes_executable_digest: string; hermes_arguments: string[]; requested_temperature: number | null;
   hermes_configuration_digest: string; system_prompt_digest: string; tool_registry_digest: string;
   fixture_digest: string; start_timestamp: string; end_timestamp: string; wall_clock_duration_ms: number;
   attempts: HowaAttempt[]; retries: number;
   connection_failures: Array<{ attempt: number; kind: string; timestamp: string; message: string }>;
   timeout_events: Array<{ attempt: number; timestamp: string; timeout_ms: number; phase: "candidate_process" | "validator" }>;
   compaction_events: Array<{ attempt: number; timestamp: string; before_tokens: number | null; after_tokens: number | null }>;
-  input_tokens: number | null; output_tokens: number | null; charged_cost_usd: number | null;
+  input_tokens: number | null; output_tokens: number | null; charged_cost_usd: number | null; api_equivalent_cost_usd: number | null;
+  plan_credit_consumed: number | null; subscription_quota_consumed: number | null; cost_rate_card_version: string;
+  cost_provenance: "provider_actual" | "rate_card_estimate" | "subscription" | "token_plan" | "unknown";
+  candidate_accommodations: string[]; max_turns: number; max_output_tokens: number; limits_enforcement: "enforced" | "post_hoc";
   tool_calls: Array<{ attempt: number; sequence: number; name: string; arguments_digest: string; started_at: string; finished_at: string | null; exit_code: number | null; timed_out: boolean }>;
   mutation_observations: Array<{ path: string; kind: "created" | "modified" | "deleted"; allowed: boolean; before_digest: string | null; after_digest: string | null }>;
   deterministic_checks: HowaCheck[];
@@ -41,7 +46,7 @@ export interface HowaDailyDriverReceipt {
 }
 
 const TOP_KEYS = [
-  "schema_version", "receipt_digest", "trial_id", "trial_suite_version", "run_id", "timestamp", "model_id", "provider_id", "provider_route", "reasoning_level", "served_model_identity", "hermes_version", "hermes_commit", "hermes_configuration_digest", "system_prompt_digest", "tool_registry_digest", "fixture_digest", "start_timestamp", "end_timestamp", "wall_clock_duration_ms", "attempts", "retries", "connection_failures", "timeout_events", "compaction_events", "input_tokens", "output_tokens", "charged_cost_usd", "tool_calls", "mutation_observations", "deterministic_checks", "raw_verdict", "evidence_references", "correction_rounds", "accepted", "disqualifier_codes",
+  "schema_version", "receipt_digest", "trial_id", "trial_suite_version", "run_id", "timestamp", "model_id", "provider_id", "provider_route", "reasoning_level", "served_model_identity", "hermes_version", "hermes_commit", "hermes_launcher_digest", "hermes_executable_digest", "hermes_arguments", "requested_temperature", "hermes_configuration_digest", "system_prompt_digest", "tool_registry_digest", "fixture_digest", "start_timestamp", "end_timestamp", "wall_clock_duration_ms", "attempts", "retries", "connection_failures", "timeout_events", "compaction_events", "input_tokens", "output_tokens", "charged_cost_usd", "api_equivalent_cost_usd", "plan_credit_consumed", "subscription_quota_consumed", "cost_rate_card_version", "cost_provenance", "candidate_accommodations", "max_turns", "max_output_tokens", "limits_enforcement", "tool_calls", "mutation_observations", "deterministic_checks", "raw_verdict", "evidence_references", "correction_rounds", "accepted", "disqualifier_codes",
 ] as const;
 const DIGEST = /^sha256:[a-f0-9]{64}$/;
 const CODE = /^[A-Z][A-Z0-9_]*$/;
@@ -98,17 +103,26 @@ function scanSecrets(value: unknown, at: string, issues: string[]): void {
 }
 
 export function validateHowaReceipt(value: unknown): asserts value is HowaDailyDriverReceipt {
-  const issues: string[] = [];
+  const issues: string[] = validateCommittedHowaSchema(value).map((issue) => `JSON Schema ${issue}`);
   if (!exact(value, TOP_KEYS, "$", issues)) throw new HowaReceiptImportError(issues);
   const r = value;
-  for (const key of ["schema_version", "receipt_digest", "trial_id", "trial_suite_version", "run_id", "model_id", "provider_id", "provider_route", "reasoning_level", "hermes_version", "hermes_commit"] as const) string(r, key, "$", issues);
+  for (const key of ["schema_version", "receipt_digest", "trial_id", "trial_suite_version", "run_id", "model_id", "provider_id", "provider_route", "reasoning_level", "hermes_version", "hermes_commit", "cost_rate_card_version"] as const) string(r, key, "$", issues);
   if (r.schema_version !== HOWA_DAILY_DRIVER_SCHEMA) issues.push(`$.schema_version unsupported: ${String(r.schema_version)}`);
   if (r.trial_suite_version !== HOWA_DAILY_DRIVER_SUITE) issues.push(`$.trial_suite_version unsupported: ${String(r.trial_suite_version)}`);
   string(r, "served_model_identity", "$", issues, true);
-  for (const key of ["receipt_digest", "hermes_configuration_digest", "system_prompt_digest", "tool_registry_digest", "fixture_digest"] as const) hash(r, key, "$", issues);
+  for (const key of ["receipt_digest", "hermes_launcher_digest", "hermes_executable_digest", "hermes_configuration_digest", "system_prompt_digest", "tool_registry_digest", "fixture_digest"] as const) hash(r, key, "$", issues);
+  array(r, "hermes_arguments", "$", issues).forEach((item, index) => { if (typeof item !== "string") issues.push(`$.hermes_arguments[${index}] invalid`); });
+  nonNegative(r, "requested_temperature", "$", issues, true);
   for (const key of ["timestamp", "start_timestamp", "end_timestamp"] as const) timestamp(r, key, "$", issues);
   nonNegative(r, "wall_clock_duration_ms", "$", issues); nonNegative(r, "retries", "$", issues, false, true); nonNegative(r, "correction_rounds", "$", issues, false, true);
-  for (const key of ["input_tokens", "output_tokens", "charged_cost_usd"] as const) nonNegative(r, key, "$", issues, true);
+  for (const key of ["input_tokens", "output_tokens"] as const) nonNegative(r, key, "$", issues, true, true);
+  for (const key of ["charged_cost_usd", "api_equivalent_cost_usd", "plan_credit_consumed", "subscription_quota_consumed"] as const) nonNegative(r, key, "$", issues, true);
+  for (const key of ["max_turns", "max_output_tokens"] as const) nonNegative(r, key, "$", issues, false, true);
+  if (typeof r.max_turns === "number" && r.max_turns < 1) issues.push("$.max_turns must be >= 1");
+  if (typeof r.max_output_tokens === "number" && r.max_output_tokens < 1) issues.push("$.max_output_tokens must be >= 1");
+  if (!["provider_actual", "rate_card_estimate", "subscription", "token_plan", "unknown"].includes(String(r.cost_provenance))) issues.push("$.cost_provenance invalid");
+  if (!["enforced", "post_hoc"].includes(String(r.limits_enforcement))) issues.push("$.limits_enforcement invalid");
+  array(r, "candidate_accommodations", "$", issues).forEach((item, index) => { if (typeof item !== "string" || item.length === 0) issues.push(`$.candidate_accommodations[${index}] invalid`); });
   if (typeof r.accepted !== "boolean") issues.push("$.accepted must be boolean");
   if (!["PASS", "FAIL", "SAFE_FAIL", "INCOMPLETE", "ERROR"].includes(String(r.raw_verdict))) issues.push("$.raw_verdict invalid");
 
@@ -123,6 +137,7 @@ export function validateHowaReceipt(value: unknown): asserts value is HowaDailyD
     if (item.error_kind !== null && typeof item.error_kind !== "string") issues.push(`${at}.error_kind invalid`);
     if (typeof item.retryable !== "boolean") issues.push(`${at}.retryable invalid`);
     hash(item, "stdout_digest", at, issues); hash(item, "stderr_digest", at, issues);
+    if (item.attempt !== index + 1) issues.push(`${at}.attempt must be contiguous and one-based`);
     if (item.outcome === "model_failure" && typeof item.error_kind === "string" && TRANSPORT_KINDS.has(item.error_kind)) issues.push(`${at} connection timeout/transport error misreported as model_failure`);
     if ((item.outcome === "transport_failure" || item.outcome === "timeout") && (typeof item.error_kind !== "string" || !TRANSPORT_KINDS.has(item.error_kind))) issues.push(`${at} model/process failure misreported as transport_failure`);
   });
@@ -215,9 +230,15 @@ export function importHowaReceipt(sourcePath: string, storeRoot: string): { rece
   const receipt = parsed;
   const digestName = receipt.receipt_digest.slice(7);
   const rawPath = safeInside(storeRoot, join("howa-imports", "raw", `${digestName}.json`));
+  const rawDir = safeInside(storeRoot, join("howa-imports", "raw"));
+  if (existsSync(rawDir)) for (const name of readdirSync(rawDir)) {
+    if (!/^[a-f0-9]{64}\.json$/.test(name) || join(rawDir, name) === rawPath) continue;
+    const existingReceipt = JSON.parse(readFileSync(join(rawDir, name), "utf8")) as Record<string, unknown>;
+    if (existingReceipt.run_id === receipt.run_id && existingReceipt.trial_id === receipt.trial_id) throw new HowaReceiptImportError([`duplicate/conflicting identity (${receipt.run_id}, ${receipt.trial_id})`]);
+  }
   if (existsSync(rawPath)) {
     const existing = readFileSync(rawPath);
-    if (!existing.equals(rawBytes)) throw new HowaReceiptImportError(["existing immutable raw receipt differs byte-for-byte"]);
+    if (!existing.equals(rawBytes)) throw new HowaReceiptImportError(["existing application-write-once raw receipt differs byte-for-byte"]);
   } else {
     writeOnce(rawPath, rawBytes);
   }

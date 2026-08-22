@@ -12,5 +12,5 @@ export async function howaScoreCommand(args: string[]): Promise<void> {
   const rows = projectHowaScoreboard(loadImportedHowaResults(resolve(store)));
   const campaignId = option(args, "--campaign-id");
   if (campaignId) process.stdout.write(`campaign_snapshot=${writeHowaCampaignSnapshot(resolve(store), campaignId, rows)}\n`);
-  process.stdout.write(`${JSON.stringify({ schema_version: "luak.howa-scoreboard.v1", rows }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ schema_version: "luak.howa-scoreboard.v2", rows }, null, 2)}\n`);
 }
