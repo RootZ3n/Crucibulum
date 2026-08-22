@@ -19,9 +19,9 @@ const fixtureCases = JSON.parse(readFileSync(join(process.cwd(), "tests", "fixtu
 
 function receipt(overrides: Partial<HowaDailyDriverReceipt> = {}): HowaDailyDriverReceipt {
   const value: HowaDailyDriverReceipt = {
-    schema_version: "howa.hermes-daily-driver.receipt.v3", receipt_digest: hash("0"), trial_id: "ddv1-01-porcelain-parser", trial_suite_version: "hermes-daily-driver.v1", run_id: "run-1", timestamp: now,
+    schema_version: "howa.hermes-daily-driver.receipt.v3", receipt_digest: hash("0"), trial_id: "ddv1-01-porcelain-parser", trial_suite_version: "hermes-daily-driver.v1.1", run_id: "run-1", timestamp: now,
     model_id: "offline/mock-v2", provider_id: "offline", provider_route: "direct", reasoning_level: "max", served_model_identity: "offline/mock-v2",
-    hermes_version: "offline-proof-v1", hermes_commit: "sha256:95cc04a110f9c114ce407835e77920ca7434f11ef7dd6f73d030a5930ab56d86", hermes_launcher_digest: "sha256:3f0f753fba087a2789530e59e0cc9480aa4f847c644f67135f1e87287387ad56", terminal_sandbox_digest:"sha256:1e4c00bd9498aedebc024e556e4790076694db50ca8182e554fcd9b242c35b44",runtime_policy_version:"howa.ddv1-runtime.2026-08-22.2",runtime_policy_digest:"sha256:0648cc9a98d5696f304d69feb9464b72c316c0be423412d63070c2c6ecdb62c6", hermes_executable_digest: "sha256:95cc04a110f9c114ce407835e77920ca7434f11ef7dd6f73d030a5930ab56d86", hermes_arguments: ["--oneshot"], requested_temperature: null, hermes_configuration_digest: hash("1"), system_prompt_digest: hash("2"), tool_registry_digest: hash("3"), fixture_digest: hash("4"),campaign_entropy_commitment:hash("e"),
+    hermes_version: "offline-proof-v1", hermes_commit: "sha256:a4249fdb8dfda815d88992dca0582ad58e704d75afce0032b58e70d20364ebc6", hermes_launcher_digest: "sha256:3f0f753fba087a2789530e59e0cc9480aa4f847c644f67135f1e87287387ad56", terminal_sandbox_digest:"sha256:1e4c00bd9498aedebc024e556e4790076694db50ca8182e554fcd9b242c35b44",runtime_policy_version:"howa.ddv1-runtime.2026-08-22.3",runtime_policy_digest:"sha256:03b996b787ad78295c1731c6bb97f9d190b378f643ff97add6b6c5a71df67807", hermes_executable_digest: "sha256:a4249fdb8dfda815d88992dca0582ad58e704d75afce0032b58e70d20364ebc6", hermes_arguments: ["--oneshot"], requested_temperature: null, hermes_configuration_digest: hash("1"), system_prompt_digest: hash("2"), tool_registry_digest: hash("3"), fixture_digest: hash("4"),campaign_entropy_commitment:hash("e"),
     start_timestamp: now, end_timestamp: now, wall_clock_duration_ms: 100,
     attempts: [{ attempt: 1, started_at: now, finished_at: now, duration_ms: 100, exit_code: 0, outcome: "accepted_output", error_kind: null, retryable: false, stdout_digest: hash("5"), stderr_digest: hash("6"),timeout_stage:"none",signals_sent:[],cleanup_outcome:"not_required" }],
     retries: 0, connection_failures: [], timeout_events: [], compaction_events: [], input_tokens: 10, output_tokens: 5, charged_cost_usd: 0.02, api_equivalent_cost_usd: 0.02, plan_credit_consumed: null, subscription_quota_consumed: null, cost_rate_card_version: "howa.ddv1-rates.2026-08-22.1", cost_provenance: "provider_actual", candidate_accommodations: [], max_turns: 24, max_output_tokens: 8192, limits_enforcement: "enforced",
@@ -36,10 +36,9 @@ function receipt(overrides: Partial<HowaDailyDriverReceipt> = {}): HowaDailyDriv
 function root(): string { return mkdtempSync(join(tmpdir(), "luak-howa-import-")); }
 function source(dir: string, value: unknown, name = "receipt.json"): { path: string; bytes: string } {
   const r=value as HowaDailyDriverReceipt; const canonical=(item:unknown):string=>{if(item===null||typeof item==="boolean"||typeof item==="string"||typeof item==="number")return JSON.stringify(item);if(Array.isArray(item))return`[${item.map(canonical).join(",")}]`;const o=item as Record<string,unknown>;return`{${Object.keys(o).sort().map(k=>`${JSON.stringify(k)}:${canonical(o[k])}`).join(",")}}`;};const sha=(bytes:string)=>`sha256:${createHash("sha256").update(bytes).digest("hex")}`;
-  const base=join(dir,"evidence"); const artifact=`artifacts/${r.run_id}/${r.trial_id}`; const stdout="synthetic evidence\n"; const nonce="11".repeat(32);
-  r.campaign_entropy_commitment=`sha256:${createHash("sha256").update(Buffer.concat([Buffer.from("howa-ddv1-entropy-commitment\0"),Buffer.from(nonce,"hex")])).digest("hex")}`;
+  const base=join(dir,"evidence"); const artifact=`artifacts/${r.run_id}/${r.trial_id}`; const stdout="synthetic evidence\n";
   const identity=`${canonical({hermes_launcher_digest:r.hermes_launcher_digest,terminal_sandbox_digest:r.terminal_sandbox_digest,hermes_executable_digest:r.hermes_executable_digest,runtime_policy_version:r.runtime_policy_version,runtime_policy_digest:r.runtime_policy_digest,hermes_configuration_digest:r.hermes_configuration_digest,system_prompt_digest:r.system_prompt_digest,tool_registry_digest:r.tool_registry_digest,cost_rate_card_version:r.cost_rate_card_version,campaign_entropy_commitment:r.campaign_entropy_commitment})}\n`;
-  const authority=`${canonical({schema_version:"howa.ddv1-authority.v1",run_id:r.run_id,trial_id:r.trial_id,nonce_hex:nonce,entropy_commitment:r.campaign_entropy_commitment,fixture_digest:r.fixture_digest})}\n`;
+  const authority=`${canonical({schema_version:"howa.ddv1-authority.v2",run_id:r.run_id,trial_id:r.trial_id,entropy_commitment:r.campaign_entropy_commitment,fixture_digest:r.fixture_digest,authority_digest:hash("a")})}\n`;
   r.attempts[0]!.stdout_digest=sha(stdout); r.evidence_references=[{id:"candidate.stdout",kind:"stdout",path:`${artifact}/stdout.txt`,digest:sha(stdout)},{id:"runtime-identity.json",kind:"artifact",path:`${artifact}/runtime-identity.json`,digest:sha(identity)},{id:"trusted-authority.json",kind:"artifact",path:`${artifact}/trusted-authority.json`,digest:sha(authority)}];
   const contents:Record<string,string>={"candidate.stdout":stdout,"runtime-identity.json":identity,"trusted-authority.json":authority}; const entries=r.evidence_references.map(ref=>({path:ref.path,byte_length:Buffer.byteLength(contents[ref.id]!),digest:ref.digest,evidence_class:ref.kind,run_id:r.run_id,trial_id:r.trial_id})).sort((a,b)=>a.path.localeCompare(b.path)); const manifest=`${canonical({schema_version:"howa.hermes-daily-driver.evidence-manifest.v1",run_id:r.run_id,trial_id:r.trial_id,entries})}\n`;
   r.evidence_manifest_path=`manifests/${r.run_id}/${r.trial_id}.evidence-manifest.json`; r.evidence_manifest_digest=sha(manifest); r.receipt_digest=computeHowaReceiptDigest(r as unknown as Record<string,unknown>); mkdirSync(join(base,artifact),{recursive:true}); mkdirSync(join(base,"manifests",r.run_id),{recursive:true}); writeFileSync(join(base,`${artifact}/stdout.txt`),stdout); writeFileSync(join(base,`${artifact}/runtime-identity.json`),identity); writeFileSync(join(base,`${artifact}/trusted-authority.json`),authority); writeFileSync(join(base,r.evidence_manifest_path),manifest);
@@ -104,6 +103,16 @@ describe("Howa Daily Driver importer", () => {
     writeFileSync(join(dir,"evidence",stdout.path),"tampered\n"); assert.throws(()=>importHowaReceipt(input.path,dir,join(dir,"evidence")),/evidence bytes mismatch/);
     const launcherDir=root(); const launcherInput=source(launcherDir,receipt({hermes_launcher_digest:hash("f")}),"launcher.json"); assert.throws(()=>importHowaReceipt(launcherInput.path,launcherDir,join(launcherDir,"evidence")),/unknown launcher/);
     const unknown=receipt({api_equivalent_cost_usd:null,cost_provenance:"unknown",disqualifier_codes:["COST_UNKNOWN"],accepted:false,raw_verdict:"ERROR"}); assert.throws(()=>validateHowaReceipt(unknown),/unknown cost/);
+  });
+
+  it("dedicated: independently rejects unknown-cost receipts",()=>{
+    const unknown=receipt({charged_cost_usd:null,api_equivalent_cost_usd:null,cost_provenance:"unknown",disqualifier_codes:["COST_UNKNOWN"],accepted:false,raw_verdict:"ERROR"});
+    assert.throws(()=>validateHowaReceipt(unknown),/unknown cost/);
+  });
+
+  it("charged dollars require explicit provider-actual provenance",()=>{
+    assert.throws(()=>validateHowaReceipt(receipt({charged_cost_usd:0.01,cost_provenance:"rate_card_estimate"})),/provider_actual/);
+    assert.doesNotThrow(()=>validateHowaReceipt(receipt({charged_cost_usd:null,cost_provenance:"rate_card_estimate"})));
   });
 
   it("rejects transport/model failure category inversions", () => {
