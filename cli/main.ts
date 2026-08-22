@@ -103,7 +103,7 @@ Usage:
                [--live --model <model>]           # legacy: OpenRouter + judge model
                [--provider <id>]                  # configurable adapters only
                [--enable-judge] [--output <path>]
-  luak howa-import <receipt.json...> --store <dir>
+  luak howa-import <receipt.json...> --store <dir> --evidence-root <dir>
   luak howa-score --store <dir> [--campaign-id <id>]
 
   Without --adapter or --live the harness uses the offline mock adapter.
